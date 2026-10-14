@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { simulate } from '../src/game/simulate';
-import { createNewGame, type GameState } from '../src/game/state';
+import { type GameState } from '../src/game/state';
+import { newTeen } from './helpers';
 import { fastForward, feed, giveMedicine, play } from '../src/game/actions';
 import { CONFIG } from '../src/game/config';
 import { canPlayMinigames } from '../src/game/stats';
@@ -12,7 +13,7 @@ const WARN_HOURS = CONFIG.sickness.warningHoursBeforeSick;
 
 // A pet whose tummy is already low, so neglect starts right away.
 function hungryPet(): GameState {
-  const s = createNewGame(START);
+  const s = newTeen(START);
   s.pet.stats.hunger = 25;
   return s;
 }
@@ -32,7 +33,7 @@ describe('warning, sickness and medicine', () => {
   it('never skips the warning, even after a long time away', () => {
     // Step through a week of neglect minute by minute and record every
     // condition change. It must always go healthy -> warning -> sick.
-    let s = createNewGame(START);
+    let s = newTeen(START);
     const seen: string[] = [s.pet.condition];
     for (let i = 0; i < 7 * 24 * 60; i++) {
       s = simulate(s, s.lastUpdated + MINUTE);
@@ -61,7 +62,7 @@ describe('warning, sickness and medicine', () => {
   });
 
   it('medicine does nothing if the pet is not sick', () => {
-    expect(giveMedicine(createNewGame(START), START).blocked).toBe('notSick');
+    expect(giveMedicine(newTeen(START), START).blocked).toBe('notSick');
   });
 
   it('blocks mini-games during recovery but still allows feeding and play', () => {
@@ -88,7 +89,7 @@ describe('warning, sickness and medicine', () => {
 
 describe('care score', () => {
   it('rises when the pet is well looked after', () => {
-    const s = createNewGame(START);
+    const s = newTeen(START);
     s.pet.stats.hunger = 100;
     s.pet.stats.happiness = 100;
     const after = simulate(s, START + 2 * HOUR);
@@ -103,7 +104,7 @@ describe('care score', () => {
 
 describe('debug fast-forward', () => {
   it('moves the game clock forward and catches up', () => {
-    const s = fastForward(createNewGame(START), START, 6);
+    const s = fastForward(newTeen(START), START, 6);
     expect(s.clockOffsetMs).toBe(6 * HOUR);
     expect(s.lastUpdated).toBe(START + 6 * HOUR);
     expect(s.pet.stats.hunger).toBeLessThan(80);

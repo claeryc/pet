@@ -9,7 +9,7 @@ const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 export interface SaveFile {
   version: number;
@@ -38,6 +38,14 @@ export function migrate(save: SaveFile): SaveFile {
   if (save.version === 2) {
     save.state.pet.buffs = [];
     save.version = 3;
+  }
+  // Version 3 -> 4: added life stages. Pets from before this update were
+  // already up and about, so they continue as babies from now on.
+  if (save.version === 3) {
+    save.state.pet.stage = 'baby';
+    save.state.pet.formId = 'baby';
+    save.state.pet.stageStartedAt = save.state.lastUpdated;
+    save.version = 4;
   }
   return save;
 }

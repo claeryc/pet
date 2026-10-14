@@ -56,7 +56,7 @@ function drawWindow(ctx: CanvasRenderingContext2D, night: boolean, timeMs: numbe
 
 export function drawRoom(
   ctx: CanvasRenderingContext2D,
-  sheet: SpriteSheet,
+  sheet: SpriteSheet | undefined,
   scene: Scene,
   timeMs: number,
 ): void {
@@ -70,11 +70,23 @@ export function drawRoom(
   drawWindow(ctx, scene.night, timeMs);
 
   // The pet, centred and standing on the floor.
-  const { frameWidth: w, frameHeight: h } = sheet.manifest;
-  const { sx, sy } = frameFor(sheet, scene.animation, timeMs);
-  const dx = Math.floor((ROOM_WIDTH - w) / 2);
-  const dy = 40 - h;
-  ctx.drawImage(sheet.image, sx, sy, w, h, dx, dy, w, h);
+  if (sheet) {
+    const { frameWidth: w, frameHeight: h } = sheet;
+    const { sx, sy } = frameFor(sheet, scene.animation, timeMs);
+    const dx = Math.floor((ROOM_WIDTH - w) / 2);
+    const dy = 40 - h;
+    ctx.drawImage(sheet.image, sx, sy, w, h, dx, dy, w, h);
+  } else {
+    // The sprite is missing (or still loading): draw a little "?" box so
+    // it's obvious something needs fixing in manifest.json.
+    ctx.fillStyle = PALETTE.lilac;
+    ctx.fillRect(26, 22, 12, 14);
+    ctx.fillStyle = PALETTE.white;
+    ctx.fillRect(30, 25, 4, 1);
+    ctx.fillRect(33, 26, 1, 3);
+    ctx.fillRect(31, 29, 2, 1);
+    ctx.fillRect(31, 32, 2, 2);
+  }
 
   // Lights off: dim the whole room.
   if (scene.lightsOff) {

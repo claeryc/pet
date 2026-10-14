@@ -6,9 +6,10 @@
 import { CONFIG } from './config';
 import { simulate } from './simulate';
 import { clampStat } from './stats';
+import { stageLengthMs } from './growth';
 import type { GameState, Pet } from './state';
 
-export type BlockReason = 'asleep' | 'tooTired' | 'notSick';
+export type BlockReason = 'egg' | 'asleep' | 'tooTired' | 'notSick';
 
 export interface ActionResult {
   state: GameState;
@@ -30,6 +31,7 @@ export type ActivityId = (typeof CONFIG.activities)[number]['id'];
 
 export function feed(state: GameState, now: number, foodId: FoodId = 'riceBall'): ActionResult {
   const s = simulate(state, now);
+  if (s.pet.stage === 'egg') return { state: s, blocked: 'egg' };
   if (s.pet.asleep) return { state: s, blocked: 'asleep' };
   const food: Food = CONFIG.foods.find((f) => f.id === foodId)!;
   return {
@@ -51,6 +53,7 @@ export function feed(state: GameState, now: number, foodId: FoodId = 'riceBall')
 
 export function play(state: GameState, now: number, activityId: ActivityId = 'ball'): ActionResult {
   const s = simulate(state, now);
+  if (s.pet.stage === 'egg') return { state: s, blocked: 'egg' };
   if (s.pet.asleep) return { state: s, blocked: 'asleep' };
   const activity = CONFIG.activities.find((a) => a.id === activityId)!;
   if (s.pet.stats.energy < -activity.energy) return { state: s, blocked: 'tooTired' };
@@ -66,6 +69,7 @@ export function play(state: GameState, now: number, activityId: ActivityId = 'ba
 // Turns the lights off (pet goes to sleep) or on (pet wakes up).
 export function toggleLights(state: GameState, now: number): ActionResult {
   const s = simulate(state, now);
+  if (s.pet.stage === 'egg') return { state: s, blocked: 'egg' };
   return { state: withPet(s, (pet) => (pet.asleep = !pet.asleep)) };
 }
 
@@ -88,4 +92,14 @@ export function giveMedicine(state: GameState, now: number): ActionResult {
 export function fastForward(state: GameState, realNow: number, hours: number): GameState {
   const clockOffsetMs = state.clockOffsetMs + hours * 3_600_000;
   return simulate({ ...state, clockOffsetMs }, realNow + clockOffsetMs);
+}
+
+// Debug helper: skips the rest of the current stage so the pet grows up
+// on the next tick. Used by the "Grow up now" button in Settings.
+export function growNow(state: GameState, now: number): GameState {
+  const s = simulate(state, now);
+  const length = stageLengthMs(s.pet.stage);
+  if (!isFinite(length)) return s; // adults don't grow any more
+  const pet: Pet = { ...s.pet, stageStartedAt: now - length };
+  return simulate({ ...s, pet, lastUpdated: now - 60_000 }, now);
 }

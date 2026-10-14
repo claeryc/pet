@@ -2,6 +2,7 @@
 // saved, so keep it plain data (numbers, strings, arrays) with no functions.
 
 import { CONFIG } from './config';
+import type { Stage } from './growth';
 
 export interface PetStats {
   hunger: number; // 0-100, higher is better (a full tummy)
@@ -25,6 +26,9 @@ export interface Pet {
   name: string;
   bornAt: number; // timestamp in milliseconds
   stats: PetStats;
+  stage: Stage; // egg, baby, teen or adult
+  formId: string; // which look it has (an id from src/data/creatures.json)
+  stageStartedAt: number; // when it entered its current stage
   asleep: boolean; // true while the lights are off
   condition: Condition;
   warningMinutes: number; // how long the current warning has lasted
@@ -55,6 +59,9 @@ export function createNewGame(now: number): GameState {
       name: 'Mochi',
       bornAt: now,
       stats: { ...CONFIG.startingStats },
+      stage: 'egg', // every pet starts life as an egg
+      formId: 'egg',
+      stageStartedAt: now,
       asleep: false,
       condition: 'healthy',
       warningMinutes: 0,

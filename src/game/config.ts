@@ -10,12 +10,35 @@ export const CONFIG = {
   // How often the open game re-runs simulate(), in seconds.
   liveUpdateSeconds: 5,
 
+  // How long the pet's eating / happy animation plays after you feed or
+  // play with it, in milliseconds.
+  reactionMs: 1400,
+
   // Starting values for a brand new pet.
   startingStats: {
     hunger: 80, // 100 = completely full, 0 = starving
     happiness: 80, // 100 = overjoyed, 0 = miserable
     health: 100, // 100 = in perfect health
     energy: 80, // 100 = full of beans, 0 = exhausted
+  },
+
+  // Growing up. How many hours the pet spends in each stage before moving
+  // on (adults stay adults). Use the fast-forward and "Grow up now" testing
+  // tools in Settings to try this without waiting days.
+  growth: {
+    stageHours: {
+      egg: 0.5, // the egg hatches after 30 minutes
+      baby: 24, // a baby for 1 day
+      teen: 72, // a teen for 3 days, then an adult
+    },
+    // Babies get hungry and bored faster; adults a bit slower. Eggs don't
+    // need anything at all.
+    decayMultiplier: {
+      egg: 0,
+      baby: 1.25,
+      teen: 1,
+      adult: 0.9,
+    },
   },
 
   // How many points each stat loses per hour while awake, when nothing else
