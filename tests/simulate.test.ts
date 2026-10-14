@@ -76,16 +76,24 @@ describe('actions', () => {
   });
 
   it('play raises joy and costs a little hunger and energy', () => {
-    const s = play(freshGame(), START).state;
-    const a = CONFIG.actions;
-    expect(s.pet.stats.happiness).toBe(80 + a.playHappiness);
-    expect(s.pet.stats.hunger).toBe(80 + a.playHunger);
-    expect(s.pet.stats.energy).toBe(80 + a.playEnergy);
+    const s = play(freshGame(), START, 'ball').state;
+    const a = CONFIG.activities.find((x) => x.id === 'ball')!;
+    expect(s.pet.stats.happiness).toBe(80 + a.happiness);
+    expect(s.pet.stats.hunger).toBe(80 + a.hunger);
+    expect(s.pet.stats.energy).toBe(80 + a.energy);
+  });
+
+  it('each food changes stats by its own amounts', () => {
+    const s = feed(freshGame(), START, 'cookie').state;
+    const f = CONFIG.foods.find((x) => x.id === 'cookie')!;
+    expect(s.pet.stats.hunger).toBe(80 + f.hunger);
+    expect(s.pet.stats.happiness).toBe(80 + f.happiness);
+    expect(s.pet.stats.health).toBe(100 + f.health);
   });
 
   it('catches up time before applying the action', () => {
-    const s = feed(freshGame(), START + 5 * HOUR).state;
-    expect(s.pet.stats.hunger).toBeCloseTo(80 - 20 + CONFIG.actions.feedHunger);
+    const s = feed(freshGame(), START + 5 * HOUR, 'riceBall').state;
+    expect(s.pet.stats.hunger).toBeCloseTo(80 - 20 + CONFIG.foods[0].hunger);
   });
 
   it('refuses to play when the pet is too tired', () => {

@@ -48,8 +48,8 @@ function runAction(action: (s: GameState, now: number) => ActionResult): void {
 }
 
 const home = createHomeScreen(root, {
-  onFeed: () => runAction(feed),
-  onPlay: () => runAction(play),
+  onFeed: (food) => runAction((s, now) => feed(s, now, food)),
+  onPlay: (activity) => runAction((s, now) => play(s, now, activity)),
   onLights: () => runAction(toggleLights),
   onMedicine: () => runAction(giveMedicine),
   onReset: () => {

@@ -18,6 +18,21 @@ export const STRINGS = {
     reset: 'Start over',
     menu: 'Menu',
   },
+  foods: {
+    riceBall: 'Rice ball',
+    strawberry: 'Strawberry',
+    warmMilk: 'Warm milk',
+    cookie: 'Cookie',
+  },
+  activities: {
+    cuddle: 'Cuddle',
+    ball: 'Toss a ball',
+    tickle: 'Tickle',
+  },
+  minigames: {
+    catchTreats: 'Catch treats',
+    memoryMatch: 'Memory match',
+  },
   menu: {
     title: 'Menu',
     settings: 'Settings',

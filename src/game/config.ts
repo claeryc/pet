@@ -68,13 +68,22 @@ export const CONFIG = {
     lossPerHourWhenSick: 1.5,
   },
 
-  // What the buttons do.
-  actions: {
-    feedHunger: 20, // Feed: +20 tummy
-    playHappiness: 15, // Play: +15 joy
-    playHunger: -3, // playing makes the pet a little peckish
-    playEnergy: -5, // and a little tired
-  },
+  // What's inside the Feed panel. Each food changes stats by these amounts.
+  // (In Milestone 3 these will come from your inventory and the shop.)
+  foods: [
+    { id: 'riceBall', hunger: 20, happiness: 0, health: 0 },
+    { id: 'strawberry', hunger: 10, happiness: 6, health: 0 },
+    { id: 'warmMilk', hunger: 12, happiness: 2, health: 3 },
+    { id: 'cookie', hunger: 6, happiness: 12, health: -2 },
+  ],
+
+  // What's inside the Play panel. Playing costs energy and makes the pet a
+  // little peckish. Mini-games join this list in Milestone 4.
+  activities: [
+    { id: 'cuddle', happiness: 10, hunger: 0, energy: -2 },
+    { id: 'ball', happiness: 18, hunger: -4, energy: -8 },
+    { id: 'tickle', happiness: 14, hunger: -2, energy: -5 },
+  ],
 
   // Testing helpers shown in Settings. Turn off before releasing the game.
   debug: {

@@ -22,26 +22,32 @@ function withPet(state: GameState, change: (pet: Pet) => void): GameState {
   return { ...state, pet };
 }
 
-export function feed(state: GameState, now: number): ActionResult {
+export type FoodId = (typeof CONFIG.foods)[number]['id'];
+export type ActivityId = (typeof CONFIG.activities)[number]['id'];
+
+export function feed(state: GameState, now: number, foodId: FoodId = 'riceBall'): ActionResult {
   const s = simulate(state, now);
   if (s.pet.asleep) return { state: s, blocked: 'asleep' };
+  const food = CONFIG.foods.find((f) => f.id === foodId)!;
   return {
     state: withPet(s, (pet) => {
-      pet.stats.hunger = clampStat(pet.stats.hunger + CONFIG.actions.feedHunger);
+      pet.stats.hunger = clampStat(pet.stats.hunger + food.hunger);
+      pet.stats.happiness = clampStat(pet.stats.happiness + food.happiness);
+      pet.stats.health = clampStat(pet.stats.health + food.health);
     }),
   };
 }
 
-export function play(state: GameState, now: number): ActionResult {
+export function play(state: GameState, now: number, activityId: ActivityId = 'ball'): ActionResult {
   const s = simulate(state, now);
   if (s.pet.asleep) return { state: s, blocked: 'asleep' };
-  if (s.pet.stats.energy < -CONFIG.actions.playEnergy) return { state: s, blocked: 'tooTired' };
+  const activity = CONFIG.activities.find((a) => a.id === activityId)!;
+  if (s.pet.stats.energy < -activity.energy) return { state: s, blocked: 'tooTired' };
   return {
     state: withPet(s, (pet) => {
-      const a = CONFIG.actions;
-      pet.stats.happiness = clampStat(pet.stats.happiness + a.playHappiness);
-      pet.stats.hunger = clampStat(pet.stats.hunger + a.playHunger);
-      pet.stats.energy = clampStat(pet.stats.energy + a.playEnergy);
+      pet.stats.happiness = clampStat(pet.stats.happiness + activity.happiness);
+      pet.stats.hunger = clampStat(pet.stats.hunger + activity.hunger);
+      pet.stats.energy = clampStat(pet.stats.energy + activity.energy);
     }),
   };
 }

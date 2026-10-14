@@ -7,10 +7,12 @@ import { CONFIG } from '../game/config';
 import { getLook, isNight, isRecovering } from '../game/stats';
 import type { GameState, PetStats } from '../game/state';
 import { createMenu, type DebugCallbacks } from './menu';
+import { createDrawer, type DrawerOption } from './drawer';
+import type { ActivityId, FoodId } from '../game/actions';
 
 export interface HomeCallbacks extends DebugCallbacks {
-  onFeed: () => void;
-  onPlay: () => void;
+  onFeed: (food: FoodId) => void;
+  onPlay: (activity: ActivityId) => void;
   onLights: () => void;
   onMedicine: () => void;
   onReset: () => void;
@@ -110,8 +112,44 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   stats.className = 'stats';
   stats.append(...Object.values(bars).map((b) => b.el));
 
-  const feedBtn = button(STRINGS.buttons.feed, 'btn', cb.onFeed);
-  const playBtn = button(STRINGS.buttons.play, 'btn', cb.onPlay);
+  const actions = document.createElement('div');
+  actions.className = 'actions';
+
+  // Turns stat changes like { hunger: 20, happiness: 5 } into "+20 Tummy +5 Joy".
+  const hint = (changes: Partial<Record<keyof PetStats, number>>) =>
+    (Object.entries(changes) as [keyof PetStats, number][])
+      .filter(([, v]) => v !== 0)
+      .map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${STRINGS.stats[k]}`)
+      .join('  ');
+
+  // The pet's name, for messages. Updated in update().
+  let petName = '';
+  let petAsleep = false;
+  const drawerSetup = {
+    row: actions,
+    comingSoon: STRINGS.menu.comingSoon,
+    beforeOpen: () => (petAsleep ? STRINGS.blocked.asleep(petName) : null),
+    onBlocked: (msg: string) => showToast(msg),
+  };
+
+  const feedOptions: DrawerOption[] = CONFIG.foods.map((f) => ({
+    label: STRINGS.foods[f.id],
+    hint: hint({ hunger: f.hunger, happiness: f.happiness, health: f.health }),
+    onPick: () => cb.onFeed(f.id),
+  }));
+  const playOptions: DrawerOption[] = [
+    ...CONFIG.activities.map((a) => ({
+      label: STRINGS.activities[a.id],
+      hint: hint({ happiness: a.happiness, energy: a.energy }),
+      onPick: () => cb.onPlay(a.id),
+    })),
+    // Mini-games arrive in Milestone 4.
+    { label: STRINGS.minigames.catchTreats },
+    { label: STRINGS.minigames.memoryMatch },
+  ];
+
+  const feedDrawer = createDrawer({ id: 'feed', label: STRINGS.buttons.feed, options: feedOptions, ...drawerSetup });
+  const playDrawer = createDrawer({ id: 'play', label: STRINGS.buttons.play, options: playOptions, ...drawerSetup });
   const lights = button('', 'btn btn-icon', cb.onLights);
 
   // The gear button opens the menu (settings, shop and more).
@@ -120,14 +158,18 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   gear.setAttribute('aria-label', STRINGS.buttons.menu);
   gear.innerHTML = GEAR_ICON;
 
-  const actions = document.createElement('div');
-  actions.className = 'actions';
-  actions.append(feedBtn, playBtn, lights, gear);
+  actions.append(feedDrawer.el, playDrawer.el, lights, gear);
 
   // A short message that pops up and fades, e.g. "Mochi is asleep".
   const toastEl = document.createElement('div');
   toastEl.className = 'toast';
   let toastTimer = 0;
+  function showToast(message: string): void {
+    toastEl.textContent = message;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = window.setTimeout(() => toastEl.classList.remove('show'), 2500);
+  }
 
   root.append(title, clock, canvas, mood, banner, stats, actions, menu.el, toastEl);
 
@@ -135,6 +177,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     canvas,
     update(state, now) {
       const pet = state.pet;
+      petName = pet.name;
+      petAsleep = pet.asleep;
       for (const key of Object.keys(bars) as (keyof PetStats)[]) bars[key].set(pet.stats[key]);
       clock.textContent = formatClock(now);
       mood.textContent = STRINGS.mood[getLook(pet)](pet.name);
@@ -157,16 +201,16 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       lights.title = label;
       // Dim Feed and Play while asleep. They still work when tapped, so the
       // game can explain why nothing happened.
-      feedBtn.classList.toggle('dim', pet.asleep);
-      playBtn.classList.toggle('dim', pet.asleep);
+      feedDrawer.setDim(pet.asleep);
+      playDrawer.setDim(pet.asleep);
+      // If the pet falls asleep while a panel is open, close it.
+      if (pet.asleep) {
+        feedDrawer.close();
+        playDrawer.close();
+      }
 
       menu.update(state);
     },
-    toast(message) {
-      toastEl.textContent = message;
-      toastEl.classList.add('show');
-      clearTimeout(toastTimer);
-      toastTimer = window.setTimeout(() => toastEl.classList.remove('show'), 2500);
-    },
+    toast: showToast,
   };
 }
