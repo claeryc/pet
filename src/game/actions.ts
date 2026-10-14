@@ -1,22 +1,74 @@
 // Things the player can do. Each action first catches the world up to "now"
-// with simulate(), then applies its effect, and returns a new state.
+// with simulate(), then applies its effect. Some actions can be refused (for
+// example, you can't play with a sleeping pet); then `blocked` says why and
+// the state is returned unchanged apart from the catch-up.
 
 import { CONFIG } from './config';
 import { simulate } from './simulate';
 import { clampStat } from './stats';
-import type { GameState } from './state';
+import type { GameState, Pet } from './state';
 
-export function feed(state: GameState, now: number): GameState {
-  const s = simulate(state, now);
-  const stats = { ...s.pet.stats };
-  stats.hunger = clampStat(stats.hunger + CONFIG.actions.feedHunger);
-  return { ...s, pet: { ...s.pet, stats } };
+export type BlockReason = 'asleep' | 'tooTired' | 'notSick';
+
+export interface ActionResult {
+  state: GameState;
+  blocked?: BlockReason;
 }
 
-export function play(state: GameState, now: number): GameState {
+// Helper: returns a copy of the state with the pet changed by `change`.
+function withPet(state: GameState, change: (pet: Pet) => void): GameState {
+  const pet: Pet = { ...state.pet, stats: { ...state.pet.stats } };
+  change(pet);
+  return { ...state, pet };
+}
+
+export function feed(state: GameState, now: number): ActionResult {
   const s = simulate(state, now);
-  const stats = { ...s.pet.stats };
-  stats.happiness = clampStat(stats.happiness + CONFIG.actions.playHappiness);
-  stats.hunger = clampStat(stats.hunger + CONFIG.actions.playHunger);
-  return { ...s, pet: { ...s.pet, stats } };
+  if (s.pet.asleep) return { state: s, blocked: 'asleep' };
+  return {
+    state: withPet(s, (pet) => {
+      pet.stats.hunger = clampStat(pet.stats.hunger + CONFIG.actions.feedHunger);
+    }),
+  };
+}
+
+export function play(state: GameState, now: number): ActionResult {
+  const s = simulate(state, now);
+  if (s.pet.asleep) return { state: s, blocked: 'asleep' };
+  if (s.pet.stats.energy < -CONFIG.actions.playEnergy) return { state: s, blocked: 'tooTired' };
+  return {
+    state: withPet(s, (pet) => {
+      const a = CONFIG.actions;
+      pet.stats.happiness = clampStat(pet.stats.happiness + a.playHappiness);
+      pet.stats.hunger = clampStat(pet.stats.hunger + a.playHunger);
+      pet.stats.energy = clampStat(pet.stats.energy + a.playEnergy);
+    }),
+  };
+}
+
+// Turns the lights off (pet goes to sleep) or on (pet wakes up).
+export function toggleLights(state: GameState, now: number): ActionResult {
+  const s = simulate(state, now);
+  return { state: withPet(s, (pet) => (pet.asleep = !pet.asleep)) };
+}
+
+// Cures sickness and starts the recovery rest.
+export function giveMedicine(state: GameState, now: number): ActionResult {
+  const s = simulate(state, now);
+  if (s.pet.condition !== 'sick') return { state: s, blocked: 'notSick' };
+  return {
+    state: withPet(s, (pet) => {
+      pet.condition = 'healthy';
+      pet.warningMinutes = 0;
+      pet.stats.health = clampStat(pet.stats.health + CONFIG.sickness.medicineHealth);
+      pet.recoveryUntil = now + CONFIG.sickness.recoveryHours * 3_600_000;
+    }),
+  };
+}
+
+// Debug helper: pretends `hours` have passed by moving the game's clock
+// forward, then catches up. Used by the fast-forward buttons in Settings.
+export function fastForward(state: GameState, realNow: number, hours: number): GameState {
+  const clockOffsetMs = state.clockOffsetMs + hours * 3_600_000;
+  return simulate({ ...state, clockOffsetMs }, realNow + clockOffsetMs);
 }

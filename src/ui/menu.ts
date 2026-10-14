@@ -3,14 +3,22 @@
 // features we haven't built yet are shown greyed out with "Coming soon".
 
 import { STRINGS } from '../strings';
+import { CONFIG } from '../game/config';
+import type { GameState } from '../game/state';
 
-export interface MenuCallbacks {
+export interface DebugCallbacks {
+  onFastForward: (hours: number) => void;
+  onResetClock: () => void;
+}
+
+export interface MenuCallbacks extends DebugCallbacks {
   onReset: () => void;
 }
 
 export interface Menu {
   el: HTMLElement;
   open: () => void;
+  update: (state: GameState) => void;
 }
 
 function item(label: string, onClick?: () => void): HTMLButtonElement {
@@ -47,6 +55,10 @@ export function createMenu(cb: MenuCallbacks): Menu {
     if (e.target === el) close();
   });
 
+  // Live readout for the testing tools, refreshed by update().
+  const debugInfo = document.createElement('p');
+  debugInfo.className = 'debug-info';
+
   function header(title: string, onBack?: () => void): HTMLElement {
     const h = document.createElement('div');
     h.className = 'menu-header';
@@ -80,6 +92,31 @@ export function createMenu(cb: MenuCallbacks): Menu {
     );
   }
 
+  function debugSection(): HTMLElement {
+    const section = document.createElement('div');
+    section.className = 'debug';
+    const h = document.createElement('h3');
+    h.textContent = STRINGS.debug.title;
+    const label = document.createElement('p');
+    label.textContent = STRINGS.debug.fastForwardLabel;
+    const row = document.createElement('div');
+    row.className = 'debug-row';
+    for (const hours of CONFIG.debug.fastForwardHours) {
+      const b = document.createElement('button');
+      b.className = 'chip';
+      b.textContent = STRINGS.debug.fastForward(hours);
+      b.addEventListener('click', () => cb.onFastForward(hours));
+      row.append(b);
+    }
+    const back = document.createElement('button');
+    back.className = 'chip';
+    back.textContent = STRINGS.debug.resetClock;
+    back.addEventListener('click', cb.onResetClock);
+    row.append(back);
+    section.append(h, label, row, debugInfo);
+    return section;
+  }
+
   function showSettings(): void {
     const reset = item(STRINGS.buttons.reset, () => {
       close();
@@ -87,6 +124,7 @@ export function createMenu(cb: MenuCallbacks): Menu {
     });
     reset.classList.add('menu-item-danger');
     panel.replaceChildren(header(STRINGS.menu.settings, showMain), reset);
+    if (CONFIG.debug.showTools) panel.append(debugSection());
   }
 
   return {
@@ -94,6 +132,10 @@ export function createMenu(cb: MenuCallbacks): Menu {
     open() {
       showMain();
       el.hidden = false;
+    },
+    update(state) {
+      const p = state.pet;
+      debugInfo.textContent = `${STRINGS.debug.careScore}: ${p.careScore.toFixed(1)} · ${STRINGS.debug.condition}: ${p.condition}`;
     },
   };
 }

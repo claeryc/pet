@@ -2,15 +2,21 @@
 // "Given how things were at state.lastUpdated, what are they like now?"
 //
 // It never relies on the browser tab staying open. Whether you closed the game
-// for ten seconds or ten days, it walks forward in small steps (ticks) and
-// applies everything that would have happened in between. We call it when the
-// game loads, when you come back to the tab, and every few seconds while open.
+// for ten seconds or ten days, it walks forward one minute at a time (a
+// "tick") and applies everything that would have happened in between: stats
+// dropping, sleeping and waking, warnings, sickness and the Care Score. We
+// call it when the game loads, when you come back to the tab, and every few
+// seconds while open.
 
 import { CONFIG } from './config';
-import { clampStat } from './stats';
-import type { GameState } from './state';
+import { clampStat, isNeglected, isNight, isWellFed } from './stats';
+import type { GameState, Pet } from './state';
 
 const MS_PER_MINUTE = 60_000;
+const TICKS_PER_HOUR = 60 / CONFIG.tickMinutes;
+
+// Turns a "per hour" rate from the config into a "per tick" amount.
+const perTick = (perHour: number) => perHour / TICKS_PER_HOUR;
 
 export function simulate(state: GameState, now: number): GameState {
   const tickMs = CONFIG.tickMinutes * MS_PER_MINUTE;
@@ -23,24 +29,78 @@ export function simulate(state: GameState, now: number): GameState {
   const ticks = Math.floor(elapsed / tickMs);
 
   // Work on a copy so the original state is never changed by accident.
-  const stats = { ...state.pet.stats };
+  const pet: Pet = { ...state.pet, stats: { ...state.pet.stats } };
 
-  // How much each stat drops in a single tick.
-  const ticksPerHour = 60 / CONFIG.tickMinutes;
-  const hungerPerTick = CONFIG.decayPerHour.hunger / ticksPerHour;
-  const happinessPerTick = CONFIG.decayPerHour.happiness / ticksPerHour;
-
+  let t = state.lastUpdated;
   for (let i = 0; i < ticks; i++) {
-    stats.hunger = clampStat(stats.hunger - hungerPerTick);
-    stats.happiness = clampStat(stats.happiness - happinessPerTick);
-    // Later milestones add sleep, sickness, growth and breeding timers here.
+    const wasNight = isNight(t);
+    t += tickMs;
+    tick(pet, t, wasNight);
   }
 
-  return {
-    ...state,
-    pet: { ...state.pet, stats },
-    // Only move forward by whole ticks, so leftover seconds aren't lost and
-    // get counted next time.
-    lastUpdated: state.lastUpdated + ticks * tickMs,
-  };
+  return { ...state, pet, lastUpdated: t };
+}
+
+// Advances the pet by one tick ending at time `t`. Changes `pet` in place
+// (it's our private copy from simulate()).
+function tick(pet: Pet, t: number, wasNight: boolean): void {
+  const s = pet.stats;
+  const night = isNight(t);
+  const cfg = CONFIG;
+
+  // 1. Sleeping and waking.
+  if (pet.asleep) {
+    const morningJustCame = wasNight && !night;
+    const napFinished = !night && s.energy >= 100;
+    if (morningJustCame || napFinished) pet.asleep = false;
+  } else if (s.energy <= 0) {
+    pet.asleep = true; // too tired: the pet dozes off by itself
+  }
+
+  // 2. Hunger, joy and energy.
+  const slow = pet.asleep ? cfg.sleep.decayMultiplierAsleep : 1;
+  const sickJoy = pet.condition === 'sick' ? cfg.sickness.sickJoyMultiplier : 1;
+  s.hunger = clampStat(s.hunger - perTick(cfg.decayPerHour.hunger) * slow);
+  s.happiness = clampStat(s.happiness - perTick(cfg.decayPerHour.happiness) * slow * sickJoy);
+  if (pet.asleep) {
+    s.energy = clampStat(s.energy + perTick(cfg.sleep.energyPerHourAsleep));
+  } else {
+    const lateNight = night ? cfg.sleep.energyMultiplierNightAwake : 1;
+    s.energy = clampStat(s.energy - perTick(cfg.decayPerHour.energy) * lateNight);
+  }
+
+  // 3. Health.
+  let healthChange = -cfg.decayPerHour.health;
+  if (pet.condition === 'sick') healthChange -= cfg.health.sickDecayPerHour;
+  else if (isNeglected(s)) healthChange -= cfg.health.neglectDecayPerHour;
+  else if (isWellFed(s)) healthChange = cfg.health.recoverPerHourWhenCared;
+  s.health = clampStat(s.health + perTick(healthChange));
+
+  // 4. Warning and sickness.
+  if (pet.recoveryUntil !== null && t >= pet.recoveryUntil) pet.recoveryUntil = null;
+  const recovering = pet.recoveryUntil !== null;
+  const neglected = isNeglected(s);
+
+  if (pet.condition === 'healthy' && neglected) {
+    pet.condition = 'warning';
+    pet.warningMinutes = 0;
+  } else if (pet.condition === 'warning') {
+    if (!neglected) {
+      pet.condition = 'healthy';
+      pet.warningMinutes = 0;
+    } else {
+      pet.warningMinutes += cfg.tickMinutes;
+      const warnedLongEnough = pet.warningMinutes >= cfg.sickness.warningHoursBeforeSick * 60;
+      // A pet resting after medicine can't fall sick again straight away.
+      if (warnedLongEnough && !recovering) pet.condition = 'sick';
+    }
+  }
+  // A sick pet stays sick until it gets medicine (see actions.ts).
+
+  // 5. Care Score.
+  let care = 0;
+  if (pet.condition === 'sick') care = -cfg.careScore.lossPerHourWhenSick;
+  else if (neglected) care = -cfg.careScore.lossPerHourWhenNeglected;
+  else if (isWellFed(s) && s.health >= cfg.goodStatThreshold) care = cfg.careScore.gainPerHourWhenCared;
+  pet.careScore = clampStat(pet.careScore + perTick(care));
 }

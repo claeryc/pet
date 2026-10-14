@@ -2,24 +2,38 @@
 // of touching localStorage directly, so later we can swap localStorage for
 // IndexedDB or a cloud save by changing only this file.
 
+import { CONFIG } from '../game/config';
 import type { GameState } from '../game/state';
 
 const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
-interface SaveFile {
+export interface SaveFile {
   version: number;
-  state: GameState;
+  // Older saves have a different shape, so we treat the contents loosely
+  // here and only promise a proper GameState once migrate() is done.
+  state: any;
 }
 
-// Upgrades an old save to the current version, one version at a time.
-// Example for the future:
-//   if (save.version === 1) { save.state.pet.stats.energy = 100; save.version = 2; }
+// Upgrades an old save to the current version, one version at a time, so a
+// player's pet survives every update to the game.
 export function migrate(save: SaveFile): SaveFile {
-  // Nothing to migrate yet: version 1 is the first version.
+  // Version 1 -> 2: added health, energy, sleep, sickness and the Care Score.
+  if (save.version === 1) {
+    const pet = save.state.pet;
+    pet.stats.health = CONFIG.startingStats.health;
+    pet.stats.energy = CONFIG.startingStats.energy;
+    pet.asleep = false;
+    pet.condition = 'healthy';
+    pet.warningMinutes = 0;
+    pet.recoveryUntil = null;
+    pet.careScore = CONFIG.careScore.start;
+    save.state.clockOffsetMs = 0;
+    save.version = 2;
+  }
   return save;
 }
 
@@ -41,7 +55,7 @@ export function loadGame(): GameState | null {
     if (!raw) return null;
     const file = migrate(JSON.parse(raw) as SaveFile);
     if (file.version !== SAVE_VERSION) return null;
-    return file.state;
+    return file.state as GameState;
   } catch (err) {
     console.warn('Could not load the save, starting fresh:', err);
     return null;

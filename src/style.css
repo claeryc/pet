@@ -10,6 +10,9 @@
   --track: #d9c8ee;
   --lilac: #a68bc9;
   --plum: #5b3f6e;
+  --lavender: #d9c8ee;
+  --butter: #ffe596;
+  --leaf-dark: #4a9a76;
 }
 
 * {
@@ -98,7 +101,7 @@ h1 {
 
 .actions {
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
+  grid-template-columns: 1fr 1fr auto auto;
   gap: 12px;
 }
 
@@ -221,4 +224,109 @@ h1 {
 
 .menu-item-danger {
   color: var(--accent-dark);
+}
+
+/* ---- Milestone 2: clock, banner, toast, testing tools ---- */
+
+.clock {
+  margin: -8px 0 0;
+  text-align: center;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.banner {
+  background: var(--card);
+  border: 2px solid var(--butter);
+  border-radius: 16px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.banner[hidden] {
+  display: none;
+}
+
+.banner p {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.banner[data-kind='sick'] {
+  border-color: var(--accent-dark);
+}
+
+.btn-medicine {
+  background: var(--good);
+  box-shadow: 0 4px 0 var(--leaf-dark);
+}
+
+.btn-medicine[hidden] {
+  display: none;
+}
+
+.btn.dim {
+  opacity: 0.5;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translate(-50%, 20px);
+  max-width: min(380px, calc(100% - 32px));
+  background: var(--ink);
+  color: white;
+  padding: 10px 16px;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 20;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.debug {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 2px dashed var(--track);
+}
+
+.debug h3 {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+}
+
+.debug p {
+  margin: 4px 0;
+  font-size: 0.85rem;
+}
+
+.debug-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 999px;
+  background: var(--lavender);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.debug-info {
+  opacity: 0.7;
 }

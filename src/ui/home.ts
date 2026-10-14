@@ -1,28 +1,40 @@
-// The home screen: the pet's room, its stat bars and the action buttons.
-// This file only shows things and passes button presses on. The rules for
-// what Feed or Play actually do live in src/game/actions.ts.
+// The home screen: the pet's room, its stat bars, status messages and the
+// action buttons. This file only shows things and passes button presses on.
+// The rules for what each button actually does live in src/game/actions.ts.
 
 import { STRINGS } from '../strings';
-import { getMood } from '../game/stats';
-import type { GameState } from '../game/state';
-import { createMenu } from './menu';
+import { CONFIG } from '../game/config';
+import { getLook, isNight, isRecovering } from '../game/stats';
+import type { GameState, PetStats } from '../game/state';
+import { createMenu, type DebugCallbacks } from './menu';
 
-export interface HomeCallbacks {
+export interface HomeCallbacks extends DebugCallbacks {
   onFeed: () => void;
   onPlay: () => void;
+  onLights: () => void;
+  onMedicine: () => void;
   onReset: () => void;
 }
 
-// A small gear drawn on a 12x12 pixel grid, so it matches the pixel-art style.
+export interface HomeScreen {
+  canvas: HTMLCanvasElement;
+  update: (state: GameState, now: number) => void;
+  toast: (message: string) => void;
+}
+
+// Pixel icons drawn on a 12x12 grid, so they match the pixel-art style.
 const GEAR_ICON = `
   <svg viewBox="0 0 12 12" width="24" height="24" shape-rendering="crispEdges" aria-hidden="true">
     <path fill="currentColor" d="M4 0h4v1H4zM1 1h2v1H1zM4 1h4v1H4zM9 1h2v1H9zM1 2h10v1H1zM2 3h8v1H2zM1 4h4v1H1zM7 4h4v1H7zM0 5h4v1H0zM8 5h4v1H8zM0 6h4v1H0zM8 6h4v1H8zM1 7h4v1H1zM7 7h4v1H7zM2 8h8v1H2zM1 9h10v1H1zM1 10h2v1H1zM4 10h4v1H4zM9 10h2v1H9zM4 11h4v1H4z"/>
   </svg>`;
-
-export interface HomeScreen {
-  canvas: HTMLCanvasElement;
-  update: (state: GameState) => void;
-}
+const MOON_ICON = `
+  <svg viewBox="0 0 12 12" width="24" height="24" shape-rendering="crispEdges" aria-hidden="true">
+    <path fill="currentColor" d="M4 1h4v1H4zM2 2h3v1H2zM1 3h3v2H1zM0 5h4v2H0zM1 7h4v1H1zM1 8h10v1H1zM2 9h8v1H2zM4 10h4v1H4zM6 7h5v1H6zM8 6h3v1H8z"/>
+  </svg>`;
+const SUN_ICON = `
+  <svg viewBox="0 0 12 12" width="24" height="24" shape-rendering="crispEdges" aria-hidden="true">
+    <path fill="currentColor" d="M5 0h2v2H5zM1 1h2v2H1zM9 1h2v2H9zM4 3h4v1H4zM3 4h6v4H3zM4 8h4v1H4zM0 5h2v2H0zM10 5h2v2h-2zM1 9h2v2H1zM9 9h2v2H9zM5 10h2v2H5z"/>
+  </svg>`;
 
 function statBar(label: string): { el: HTMLElement; set: (v: number) => void } {
   const el = document.createElement('div');
@@ -36,10 +48,9 @@ function statBar(label: string): { el: HTMLElement; set: (v: number) => void } {
   return {
     el,
     set(v: number) {
-      const rounded = Math.round(v);
       fill.style.width = `${v}%`;
-      fill.classList.toggle('low', v < 30);
-      value.textContent = String(rounded);
+      fill.classList.toggle('low', v < CONFIG.lowStatThreshold);
+      value.textContent = String(Math.round(v));
     },
   };
 }
@@ -52,11 +63,29 @@ function button(label: string, className: string, onClick: () => void): HTMLButt
   return b;
 }
 
+// "4h 12m" style text for a length of time.
+function formatDuration(ms: number): string {
+  const totalMinutes = Math.max(0, Math.ceil(ms / 60_000));
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+function formatClock(time: number): string {
+  const d = new Date(time);
+  const day = d.toLocaleDateString('en', { weekday: 'short' });
+  const hm = d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', hour12: false });
+  return `${day} ${hm} · ${isNight(time) ? STRINGS.clock.night : STRINGS.clock.day}`;
+}
+
 export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScreen {
   root.innerHTML = '';
 
   const title = document.createElement('h1');
   title.textContent = STRINGS.title;
+
+  const clock = document.createElement('p');
+  clock.className = 'clock';
 
   const canvas = document.createElement('canvas');
   canvas.className = 'room';
@@ -64,34 +93,80 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const mood = document.createElement('p');
   mood.className = 'mood';
 
-  const hunger = statBar(STRINGS.stats.hunger);
-  const happiness = statBar(STRINGS.stats.happiness);
+  // Warning / sick / recovering banner, hidden when all is well.
+  const banner = document.createElement('div');
+  banner.className = 'banner';
+  const bannerText = document.createElement('p');
+  const medicine = button(STRINGS.buttons.medicine, 'btn btn-medicine', cb.onMedicine);
+  banner.append(bannerText, medicine);
+
+  const bars: Record<keyof PetStats, ReturnType<typeof statBar>> = {
+    hunger: statBar(STRINGS.stats.hunger),
+    happiness: statBar(STRINGS.stats.happiness),
+    health: statBar(STRINGS.stats.health),
+    energy: statBar(STRINGS.stats.energy),
+  };
   const stats = document.createElement('div');
   stats.className = 'stats';
-  stats.append(hunger.el, happiness.el);
+  stats.append(...Object.values(bars).map((b) => b.el));
 
-  const actions = document.createElement('div');
-  actions.className = 'actions';
-  actions.append(
-    button(STRINGS.buttons.feed, 'btn', cb.onFeed),
-    button(STRINGS.buttons.play, 'btn', cb.onPlay),
-  );
+  const feedBtn = button(STRINGS.buttons.feed, 'btn', cb.onFeed);
+  const playBtn = button(STRINGS.buttons.play, 'btn', cb.onPlay);
+  const lights = button('', 'btn btn-icon', cb.onLights);
 
   // The gear button opens the menu (settings, shop and more).
-  const menu = createMenu({ onReset: cb.onReset });
+  const menu = createMenu(cb);
   const gear = button('', 'btn btn-icon', menu.open);
   gear.setAttribute('aria-label', STRINGS.buttons.menu);
   gear.innerHTML = GEAR_ICON;
-  actions.append(gear);
 
-  root.append(title, canvas, mood, stats, actions, menu.el);
+  const actions = document.createElement('div');
+  actions.className = 'actions';
+  actions.append(feedBtn, playBtn, lights, gear);
+
+  // A short message that pops up and fades, e.g. "Mochi is asleep".
+  const toastEl = document.createElement('div');
+  toastEl.className = 'toast';
+  let toastTimer = 0;
+
+  root.append(title, clock, canvas, mood, banner, stats, actions, menu.el, toastEl);
 
   return {
     canvas,
-    update(state) {
-      hunger.set(state.pet.stats.hunger);
-      happiness.set(state.pet.stats.happiness);
-      mood.textContent = STRINGS.mood[getMood(state.pet.stats)](state.pet.name);
+    update(state, now) {
+      const pet = state.pet;
+      for (const key of Object.keys(bars) as (keyof PetStats)[]) bars[key].set(pet.stats[key]);
+      clock.textContent = formatClock(now);
+      mood.textContent = STRINGS.mood[getLook(pet)](pet.name);
+
+      // Banner: sick beats recovering beats warning.
+      let text = '';
+      if (pet.condition === 'sick') text = STRINGS.status.sick(pet.name);
+      else if (isRecovering(pet, now))
+        text = STRINGS.status.recovering(pet.name, formatDuration(pet.recoveryUntil! - now));
+      else if (pet.condition === 'warning') text = STRINGS.status.warning(pet.name);
+      banner.hidden = text === '';
+      banner.dataset.kind = pet.condition === 'sick' ? 'sick' : 'info';
+      bannerText.textContent = text;
+      medicine.hidden = pet.condition !== 'sick';
+
+      // Lights button shows what pressing it will do.
+      const label = pet.asleep ? STRINGS.buttons.lightsOn : STRINGS.buttons.lightsOff;
+      lights.innerHTML = pet.asleep ? SUN_ICON : MOON_ICON;
+      lights.setAttribute('aria-label', label);
+      lights.title = label;
+      // Dim Feed and Play while asleep. They still work when tapped, so the
+      // game can explain why nothing happened.
+      feedBtn.classList.toggle('dim', pet.asleep);
+      playBtn.classList.toggle('dim', pet.asleep);
+
+      menu.update(state);
+    },
+    toast(message) {
+      toastEl.textContent = message;
+      toastEl.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(() => toastEl.classList.remove('show'), 2500);
     },
   };
 }
