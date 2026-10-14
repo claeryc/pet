@@ -18,5 +18,6 @@ describe('save migration', () => {
     expect(out.state.pet.condition).toBe('healthy');
     expect(out.state.clockOffsetMs).toBe(0);
     expect(out.state.pet.buffs).toEqual([]);
+    expect(out.state.pet.stage).toBe('baby');
   });
 });

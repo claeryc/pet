@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { simulate } from '../src/game/simulate';
-import { createNewGame, type GameState } from '../src/game/state';
+import { type GameState } from '../src/game/state';
+import { newTeen } from './helpers';
 import { feed, play } from '../src/game/actions';
 import { CONFIG } from '../src/game/config';
 
@@ -12,7 +13,7 @@ const START = new Date(2026, 0, 1, 12, 0).getTime();
 // A new game with tummy and joy kept full and energy topped up, so tests
 // can focus on one thing at a time.
 function freshGame(): GameState {
-  return createNewGame(START);
+  return newTeen(START);
 }
 
 describe('simulate', () => {

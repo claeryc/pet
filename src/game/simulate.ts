@@ -10,6 +10,7 @@
 
 import { CONFIG } from './config';
 import { clampStat, isNeglected, isNight, isWellFed } from './stats';
+import { growUp, stageLengthMs } from './growth';
 import type { GameState, Pet } from './state';
 
 const MS_PER_MINUTE = 60_000;
@@ -44,9 +45,14 @@ export function simulate(state: GameState, now: number): GameState {
 // Advances the pet by one tick ending at time `t`. Changes `pet` in place
 // (it's our private copy from simulate()).
 function tick(pet: Pet, t: number, wasNight: boolean): void {
+  const cfg = CONFIG;
+
+  // 0. Growing up. An egg just waits to hatch: nothing else happens to it.
+  if (t - pet.stageStartedAt >= stageLengthMs(pet.stage)) growUp(pet, t);
+  if (pet.stage === 'egg') return;
+
   const s = pet.stats;
   const night = isNight(t);
-  const cfg = CONFIG;
 
   // 1. Sleeping and waking.
   if (pet.asleep) {
@@ -58,7 +64,8 @@ function tick(pet: Pet, t: number, wasNight: boolean): void {
   }
 
   // 2. Hunger, joy and energy.
-  const slow = pet.asleep ? cfg.sleep.decayMultiplierAsleep : 1;
+  const ageRate = cfg.growth.decayMultiplier[pet.stage];
+  const slow = (pet.asleep ? cfg.sleep.decayMultiplierAsleep : 1) * ageRate;
   const sickJoy = pet.condition === 'sick' ? cfg.sickness.sickJoyMultiplier : 1;
   // Timed food effects: drop any that have worn off, then apply the rest.
   pet.buffs = pet.buffs.filter((b) => t <= b.until);

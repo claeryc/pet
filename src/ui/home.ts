@@ -5,6 +5,7 @@
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import { getLook, isNight, isRecovering } from '../game/stats';
+import { stageLengthMs } from '../game/growth';
 import type { GameState, PetStats } from '../game/state';
 import { createMenu, type DebugCallbacks } from './menu';
 import { createDrawer, type DrawerOption, type Effect } from './drawer';
@@ -69,8 +70,10 @@ function button(label: string, className: string, onClick: () => void): HTMLButt
 // "4h 12m" style text for a length of time.
 function formatDuration(ms: number): string {
   const totalMinutes = Math.max(0, Math.ceil(ms / 60_000));
-  const h = Math.floor(totalMinutes / 60);
+  const d = Math.floor(totalMinutes / 1440);
+  const h = Math.floor((totalMinutes % 1440) / 60);
   const m = totalMinutes % 60;
+  if (d > 0) return `${d}d ${h}h`;
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
@@ -89,6 +92,10 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
 
   const clock = document.createElement('p');
   clock.className = 'clock';
+
+  // "Mochi · Baby · 3h old"
+  const age = document.createElement('p');
+  age.className = 'age';
 
   const canvas = document.createElement('canvas');
   canvas.className = 'room';
@@ -133,10 +140,12 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   // The pet's name, for messages. Updated in update().
   let petName = '';
   let petAsleep = false;
+  let petIsEgg = false;
   const drawerSetup = {
     row: actions,
     comingSoon: STRINGS.menu.comingSoon,
-    beforeOpen: () => (petAsleep ? STRINGS.blocked.asleep(petName) : null),
+    beforeOpen: () =>
+      petIsEgg ? STRINGS.blocked.egg(petName) : petAsleep ? STRINGS.blocked.asleep(petName) : null,
     onBlocked: (msg: string) => showToast(msg),
   };
 
@@ -193,7 +202,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     toastTimer = window.setTimeout(() => toastEl.classList.remove('show'), 2500);
   }
 
-  root.append(title, clock, canvas, mood, banner, stats, actions, menu.el, toastEl);
+  root.append(title, clock, age, canvas, mood, banner, stats, actions, menu.el, toastEl);
 
   return {
     canvas,
@@ -201,13 +210,19 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       const pet = state.pet;
       petName = pet.name;
       petAsleep = pet.asleep;
+      const isEgg = pet.stage === 'egg';
+      petIsEgg = isEgg;
       for (const key of Object.keys(bars) as (keyof PetStats)[]) bars[key].set(pet.stats[key]);
+      stats.hidden = isEgg; // an egg has no needs yet
       clock.textContent = formatClock(now);
-      mood.textContent = STRINGS.mood[getLook(pet)](pet.name);
+      age.textContent = `${pet.name} · ${STRINGS.age(STRINGS.stages[pet.stage], formatDuration(now - pet.bornAt))}`;
+      mood.textContent = isEgg ? STRINGS.mood.egg(pet.name) : STRINGS.mood[getLook(pet)](pet.name);
 
-      // Banner: sick beats recovering beats warning.
+      // Banner: hatching countdown, or sick beats recovering beats warning.
       let text = '';
-      if (pet.condition === 'sick') text = STRINGS.status.sick(pet.name);
+      if (isEgg)
+        text = STRINGS.status_egg(formatDuration(pet.stageStartedAt + stageLengthMs('egg') - now));
+      else if (pet.condition === 'sick') text = STRINGS.status.sick(pet.name);
       else if (isRecovering(pet, now))
         text = STRINGS.status.recovering(pet.name, formatDuration(pet.recoveryUntil! - now));
       else if (pet.condition === 'warning') text = STRINGS.status.warning(pet.name);
@@ -223,8 +238,9 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       lights.title = label;
       // Dim Feed and Play while asleep. They still work when tapped, so the
       // game can explain why nothing happened.
-      feedDrawer.setDim(pet.asleep);
-      playDrawer.setDim(pet.asleep);
+      feedDrawer.setDim(pet.asleep || isEgg);
+      playDrawer.setDim(pet.asleep || isEgg);
+      lights.classList.toggle('dim', isEgg);
       // If the pet falls asleep while a panel is open, close it.
       if (pet.asleep) {
         feedDrawer.close();

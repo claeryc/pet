@@ -1,0 +1,11 @@
+{
+  "_help": "Every look your pet can have. Each form belongs to a stage (egg, baby, teen, adult) and points at a sprite sheet listed in public/sprites/manifest.json. When the pet grows into a stage, the game picks the form with the highest minCare that the pet's Care Score reaches. If several forms share that minCare, one of them is picked per pet, so you can add variations just by adding entries here. See docs/ART_GUIDE.md.",
+  "forms": [
+    { "id": "egg", "stage": "egg", "name": "Egg", "sprite": "egg", "minCare": 0 },
+    { "id": "baby", "stage": "baby", "name": "Baby", "sprite": "baby", "minCare": 0 },
+    { "id": "teen", "stage": "teen", "name": "Teen", "sprite": "teen", "minCare": 0 },
+    { "id": "sunny", "stage": "adult", "name": "Sunny", "sprite": "adult-sunny", "minCare": 70 },
+    { "id": "puffy", "stage": "adult", "name": "Puffy", "sprite": "adult-puffy", "minCare": 40 },
+    { "id": "mossy", "stage": "adult", "name": "Mossy", "sprite": "adult-mossy", "minCare": 0 }
+  ]
+}

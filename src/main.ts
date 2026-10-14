@@ -10,14 +10,16 @@ import {
   fastForward,
   feed,
   giveMedicine,
+  growNow,
   play,
   toggleLights,
   type ActionResult,
 } from './game/actions';
+import { getForm } from './game/growth';
 import { getLook, isNight } from './game/stats';
 import { clearSave, loadGame, saveGame } from './storage/storage';
 import { setupCanvas, drawRoom } from './render/canvas';
-import { makePlaceholderSheet } from './render/sprites';
+import { loadSprites, type SpriteLibrary } from './render/sprites';
 import { createHomeScreen } from './ui/home';
 import { STRINGS } from './strings';
 
@@ -33,23 +35,42 @@ let state: GameState = loadGame() ?? createNewGame(Date.now());
 state = simulate(state, gameNow());
 saveGame(state);
 
-// Replaces the current state, saves it and refreshes the screen.
+// Replaces the current state, saves it and refreshes the screen. If the pet
+// just grew into a new stage, celebrate it.
 function setState(next: GameState): void {
+  const before = state.pet.stage;
   state = next;
   saveGame(state);
   home.update(state, gameNow());
+  if (state.pet.stage !== before) {
+    const form = getForm(state.pet.formId);
+    home.toast(STRINGS.growth[state.pet.stage](state.pet.name, form.name));
+    react('happy');
+  }
 }
 
-// Runs a player action. If the game refused it, shows a little message why.
-function runAction(action: (s: GameState, now: number) => ActionResult): void {
+// A short animation the pet plays in response to something (eating,
+// playing). It's only for show, so it lives here and isn't saved.
+let reaction: { animation: string; until: number } | null = null;
+function react(animation: string): void {
+  reaction = { animation, until: performance.now() + CONFIG.reactionMs };
+}
+
+// Runs a player action. If the game refused it, shows a little message why;
+// otherwise plays the matching reaction.
+function runAction(
+  action: (s: GameState, now: number) => ActionResult,
+  animation?: string,
+): void {
   const result = action(state, gameNow());
   setState(result.state);
   if (result.blocked) home.toast(STRINGS.blocked[result.blocked](state.pet.name));
+  else if (animation) react(animation);
 }
 
 const home = createHomeScreen(root, {
-  onFeed: (food) => runAction((s, now) => feed(s, now, food)),
-  onPlay: (activity) => runAction((s, now) => play(s, now, activity)),
+  onFeed: (food) => runAction((s, now) => feed(s, now, food), 'eat'),
+  onPlay: (activity) => runAction((s, now) => play(s, now, activity), 'happy'),
   onLights: () => runAction(toggleLights),
   onMedicine: () => runAction(giveMedicine),
   onReset: () => {
@@ -59,20 +80,37 @@ const home = createHomeScreen(root, {
     }
   },
   onFastForward: (hours) => setState(fastForward(state, Date.now(), hours)),
+  onGrowNow: () => setState(growNow(state, gameNow())),
   // Going back to real time can't undo what happened, so we keep the pet as
-  // it is and just restart the clock from now.
-  onResetClock: () => setState({ ...state, clockOffsetMs: 0, lastUpdated: Date.now() }),
+  // it is and just restart the clock from now. Timers the pet is waiting on
+  // are moved back by the same amount, so they still finish on time.
+  onResetClock: () => {
+    const off = state.clockOffsetMs;
+    const pet = {
+      ...state.pet,
+      stageStartedAt: state.pet.stageStartedAt - off,
+      recoveryUntil: state.pet.recoveryUntil === null ? null : state.pet.recoveryUntil - off,
+      buffs: state.pet.buffs.map((b) => ({ ...b, until: b.until - off })),
+    };
+    setState({ ...state, pet, clockOffsetMs: 0, lastUpdated: Date.now() });
+  },
 });
 home.update(state, gameNow());
 
-// Draw the pet every animation frame (about 60 times a second).
+// Draw the pet every animation frame (about 60 times a second). The sprite
+// sheet comes from the pet's current form (see src/data/creatures.json).
 const ctx = setupCanvas(home.canvas);
-const sheet = makePlaceholderSheet();
+let sprites: SpriteLibrary = new Map();
+loadSprites().then((lib) => (sprites = lib));
+
 function render(timeMs: number): void {
+  const pet = state.pet;
+  let animation: string = getLook(pet);
+  if (reaction && timeMs < reaction.until && !pet.asleep) animation = reaction.animation;
   drawRoom(
     ctx,
-    sheet,
-    { animation: getLook(state.pet), night: isNight(gameNow()), lightsOff: state.pet.asleep },
+    sprites.get(getForm(pet.formId).sprite),
+    { animation, night: isNight(gameNow()), lightsOff: pet.asleep },
     timeMs,
   );
   requestAnimationFrame(render);

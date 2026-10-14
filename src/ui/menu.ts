@@ -9,6 +9,7 @@ import type { GameState } from '../game/state';
 export interface DebugCallbacks {
   onFastForward: (hours: number) => void;
   onResetClock: () => void;
+  onGrowNow: () => void;
 }
 
 export interface MenuCallbacks extends DebugCallbacks {
@@ -112,7 +113,11 @@ export function createMenu(cb: MenuCallbacks): Menu {
     back.className = 'chip';
     back.textContent = STRINGS.debug.resetClock;
     back.addEventListener('click', cb.onResetClock);
-    row.append(back);
+    const grow = document.createElement('button');
+    grow.className = 'chip';
+    grow.textContent = STRINGS.debug.growNow;
+    grow.addEventListener('click', cb.onGrowNow);
+    row.append(back, grow);
     section.append(h, label, row, debugInfo);
     return section;
   }
@@ -135,7 +140,7 @@ export function createMenu(cb: MenuCallbacks): Menu {
     },
     update(state) {
       const p = state.pet;
-      debugInfo.textContent = `${STRINGS.debug.careScore}: ${p.careScore.toFixed(1)} · ${STRINGS.debug.condition}: ${p.condition}`;
+      debugInfo.textContent = `${STRINGS.debug.careScore}: ${p.careScore.toFixed(1)} · ${STRINGS.debug.condition}: ${p.condition} · ${STRINGS.debug.form}: ${p.formId}`;
     },
   };
 }
