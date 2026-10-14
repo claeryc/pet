@@ -8,6 +8,8 @@
   --good: #6cc19a;
   --low: #e05a7a;
   --track: #d9c8ee;
+  --lilac: #a68bc9;
+  --plum: #5b3f6e;
 }
 
 * {
@@ -96,7 +98,7 @@ h1 {
 
 .actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr auto;
   gap: 12px;
 }
 
@@ -119,19 +121,104 @@ h1 {
   box-shadow: 0 1px 0 var(--accent-dark);
 }
 
-.footer {
+.btn-icon {
   display: flex;
+  align-items: center;
   justify-content: center;
+  padding: 10px 14px;
+  background: var(--lilac);
+  box-shadow: 0 4px 0 var(--plum);
 }
 
-.btn-small {
+.btn-icon:active {
+  box-shadow: 0 1px 0 var(--plum);
+}
+
+/* The slide-up menu. */
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(43, 33, 64, 0.35);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 10;
+}
+
+.menu-backdrop[hidden] {
+  display: none;
+}
+
+.menu-panel {
+  width: 100%;
+  max-width: 420px;
+  background: var(--card);
+  border-radius: 24px 24px 0 0;
+  padding: 12px 16px calc(20px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: slide-up 0.2s ease-out;
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+.menu-header {
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.menu-header h2 {
+  margin: 0;
+  text-align: center;
+  font-size: 1.15rem;
+}
+
+.menu-header-btn {
   font: inherit;
-  font-size: 0.85rem;
-  padding: 6px 12px;
+  font-size: 1.6rem;
+  line-height: 1;
+  width: 40px;
+  height: 40px;
   border: none;
-  border-radius: 999px;
+  border-radius: 12px;
   background: transparent;
   color: var(--ink);
-  opacity: 0.6;
   cursor: pointer;
+}
+
+.menu-item {
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-align: left;
+  padding: 14px 16px;
+  border: none;
+  border-radius: 14px;
+  background: var(--bg);
+  color: var(--ink);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.menu-item:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.menu-soon {
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+.menu-item-danger {
+  color: var(--accent-dark);
 }

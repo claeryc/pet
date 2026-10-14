@@ -11,6 +11,17 @@ export const STRINGS = {
     feed: 'Feed',
     play: 'Play',
     reset: 'Start over',
+    menu: 'Menu',
+  },
+  menu: {
+    title: 'Menu',
+    settings: 'Settings',
+    shop: 'Shop',
+    minigames: 'Mini-games',
+    familyTree: 'Family Tree',
+    comingSoon: 'Coming soon',
+    back: 'Back',
+    close: 'Close',
   },
   mood: {
     happy: (name: string) => `${name} is feeling cozy.`,

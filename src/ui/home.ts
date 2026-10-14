@@ -5,12 +5,19 @@
 import { STRINGS } from '../strings';
 import { getMood } from '../game/stats';
 import type { GameState } from '../game/state';
+import { createMenu } from './menu';
 
 export interface HomeCallbacks {
   onFeed: () => void;
   onPlay: () => void;
   onReset: () => void;
 }
+
+// A small gear drawn on a 12x12 pixel grid, so it matches the pixel-art style.
+const GEAR_ICON = `
+  <svg viewBox="0 0 12 12" width="24" height="24" shape-rendering="crispEdges" aria-hidden="true">
+    <path fill="currentColor" d="M4 0h4v1H4zM1 1h2v1H1zM4 1h4v1H4zM9 1h2v1H9zM1 2h10v1H1zM2 3h8v1H2zM1 4h4v1H1zM7 4h4v1H7zM0 5h4v1H0zM8 5h4v1H8zM0 6h4v1H0zM8 6h4v1H8zM1 7h4v1H1zM7 7h4v1H7zM2 8h8v1H2zM1 9h10v1H1zM1 10h2v1H1zM4 10h4v1H4zM9 10h2v1H9zM4 11h4v1H4z"/>
+  </svg>`;
 
 export interface HomeScreen {
   canvas: HTMLCanvasElement;
@@ -70,11 +77,14 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     button(STRINGS.buttons.play, 'btn', cb.onPlay),
   );
 
-  const footer = document.createElement('div');
-  footer.className = 'footer';
-  footer.append(button(STRINGS.buttons.reset, 'btn-small', cb.onReset));
+  // The gear button opens the menu (settings, shop and more).
+  const menu = createMenu({ onReset: cb.onReset });
+  const gear = button('', 'btn btn-icon', menu.open);
+  gear.setAttribute('aria-label', STRINGS.buttons.menu);
+  gear.innerHTML = GEAR_ICON;
+  actions.append(gear);
 
-  root.append(title, canvas, mood, stats, actions, footer);
+  root.append(title, canvas, mood, stats, actions, menu.el);
 
   return {
     canvas,
