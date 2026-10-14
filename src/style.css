@@ -1,0 +1,137 @@
+/* Soft, cozy colours. These match the pixel palette in src/render/palette.ts. */
+:root {
+  --bg: #fde8ef;
+  --card: #fff7ec;
+  --ink: #2b2140;
+  --accent: #f48fb1;
+  --accent-dark: #e05a7a;
+  --good: #6cc19a;
+  --low: #e05a7a;
+  --track: #d9c8ee;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: ui-rounded, 'Nunito', system-ui, sans-serif;
+  display: flex;
+  justify-content: center;
+}
+
+#app {
+  width: 100%;
+  max-width: 420px; /* phone-shaped, even on desktop */
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+h1 {
+  margin: 4px 0;
+  text-align: center;
+  font-size: 1.4rem;
+}
+
+/* The canvas is tiny; CSS scales it up with chunky pixels. */
+.room {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  image-rendering: pixelated;
+  border-radius: 20px;
+  border: 4px solid var(--card);
+  box-shadow: 0 4px 0 rgba(43, 33, 64, 0.12);
+}
+
+.mood {
+  margin: 0;
+  text-align: center;
+  min-height: 1.4em;
+}
+
+.stats {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stat {
+  display: grid;
+  grid-template-columns: 4.5em 1fr 2.2em;
+  align-items: center;
+  gap: 8px;
+}
+
+.stat-track {
+  height: 12px;
+  background: var(--track);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.stat-fill {
+  height: 100%;
+  background: var(--good);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.stat-fill.low {
+  background: var(--low);
+}
+
+.stat-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.btn {
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 700;
+  padding: 14px;
+  border: none;
+  border-radius: 16px;
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 4px 0 var(--accent-dark);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--accent-dark);
+}
+
+.footer {
+  display: flex;
+  justify-content: center;
+}
+
+.btn-small {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  opacity: 0.6;
+  cursor: pointer;
+}
