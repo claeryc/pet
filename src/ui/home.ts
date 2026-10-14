@@ -7,8 +7,9 @@ import { CONFIG } from '../game/config';
 import { getLook, isNight, isRecovering } from '../game/stats';
 import type { GameState, PetStats } from '../game/state';
 import { createMenu, type DebugCallbacks } from './menu';
-import { createDrawer, type DrawerOption } from './drawer';
-import type { ActivityId, FoodId } from '../game/actions';
+import { createDrawer, type DrawerOption, type Effect } from './drawer';
+import { ITEM_ICONS, STAT_ICONS } from './icons';
+import type { ActivityId, Food, FoodId } from '../game/actions';
 
 export interface HomeCallbacks extends DebugCallbacks {
   onFeed: (food: FoodId) => void;
@@ -115,12 +116,19 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const actions = document.createElement('div');
   actions.className = 'actions';
 
-  // Turns stat changes like { hunger: 20, happiness: 5 } into "+20 Tummy +5 Joy".
-  const hint = (changes: Partial<Record<keyof PetStats, number>>) =>
+  // Turns stat changes like { hunger: 20, energy: -8 } into effect chips.
+  const statEffects = (changes: Partial<Record<keyof PetStats, number>>): Effect[] =>
     (Object.entries(changes) as [keyof PetStats, number][])
       .filter(([, v]) => v !== 0)
-      .map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${STRINGS.stats[k]}`)
-      .join('  ');
+      .map(([stat, v]) => {
+        const text = `${v > 0 ? '+' : ''}${v}`;
+        return {
+          icon: STAT_ICONS[stat],
+          text,
+          title: `${text} ${STRINGS.stats[stat]}`,
+          kind: v > 0 ? 'up' : 'down',
+        };
+      });
 
   // The pet's name, for messages. Updated in update().
   let petName = '';
@@ -132,20 +140,34 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     onBlocked: (msg: string) => showToast(msg),
   };
 
-  const feedOptions: DrawerOption[] = CONFIG.foods.map((f) => ({
-    label: STRINGS.foods[f.id],
-    hint: hint({ hunger: f.hunger, happiness: f.happiness, health: f.health }),
-    onPick: () => cb.onFeed(f.id),
-  }));
+  const feedOptions: DrawerOption[] = CONFIG.foods.map((f: Food) => {
+    const effects = statEffects({ hunger: f.hunger, happiness: f.happiness, health: f.health });
+    if (f.slowHunger) {
+      const { hours, percent } = f.slowHunger;
+      effects.push({
+        icon: STAT_ICONS.timer,
+        text: `${hours}h -${percent}%`,
+        title: STRINGS.effects.slowHunger(percent, hours),
+        kind: 'timer',
+      });
+    }
+    return {
+      icon: ITEM_ICONS[f.id],
+      label: STRINGS.foods[f.id],
+      effects,
+      onPick: () => cb.onFeed(f.id),
+    };
+  });
   const playOptions: DrawerOption[] = [
     ...CONFIG.activities.map((a) => ({
+      icon: ITEM_ICONS[a.id],
       label: STRINGS.activities[a.id],
-      hint: hint({ happiness: a.happiness, energy: a.energy }),
+      effects: statEffects({ happiness: a.happiness, energy: a.energy }),
       onPick: () => cb.onPlay(a.id),
     })),
     // Mini-games arrive in Milestone 4.
-    { label: STRINGS.minigames.catchTreats },
-    { label: STRINGS.minigames.memoryMatch },
+    { icon: ITEM_ICONS.catchTreats, label: STRINGS.minigames.catchTreats, effects: [] },
+    { icon: ITEM_ICONS.memoryMatch, label: STRINGS.minigames.memoryMatch, effects: [] },
   ];
 
   const feedDrawer = createDrawer({ id: 'feed', label: STRINGS.buttons.feed, options: feedOptions, ...drawerSetup });

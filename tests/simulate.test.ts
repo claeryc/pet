@@ -96,6 +96,16 @@ describe('actions', () => {
     expect(s.pet.stats.hunger).toBeCloseTo(80 - 20 + CONFIG.foods[0].hunger);
   });
 
+  it('hearty stew slows hunger by 20% for 6 hours, then wears off', () => {
+    let s = feed(freshGame(), START, 'heartyStew').state; // tummy 80 -> 100
+    s = simulate(s, START + 6 * HOUR);
+    const slowed = 100 - 6 * CONFIG.decayPerHour.hunger * 0.8;
+    expect(s.pet.stats.hunger).toBeCloseTo(slowed);
+    s = simulate(s, START + 7 * HOUR);
+    expect(s.pet.stats.hunger).toBeCloseTo(slowed - CONFIG.decayPerHour.hunger, 0);
+    expect(s.pet.buffs).toEqual([]);
+  });
+
   it('refuses to play when the pet is too tired', () => {
     const s = freshGame();
     s.pet.stats.energy = 2;

@@ -7,10 +7,19 @@
 // (look for "drawer"); this file just builds the pieces and flips a few
 // data attributes that the CSS reacts to.
 
+// One effect shown on the right of a row, e.g. [apple icon] "+20".
+export interface Effect {
+  icon: string; // SVG markup
+  text: string;
+  title: string; // full description, read out by screen readers
+  kind?: 'up' | 'down' | 'timer'; // colours the chip
+}
+
 export interface DrawerOption {
+  icon: string; // SVG markup for the item's picture
   label: string;
-  hint?: string; // small text under the label, e.g. "+20 Tummy"
-  onPick?: () => void; // leave out to show a disabled "coming soon" option
+  effects: Effect[];
+  onPick?: () => void; // leave out to show a disabled "coming soon" row
 }
 
 export interface Drawer {
@@ -56,17 +65,38 @@ export function createDrawer(setup: DrawerSetup): Drawer {
   body.append(inner);
   el.append(head, body);
 
+  // Each option is one row: picture, name, then its effects on the right.
   setup.options.forEach((opt, i) => {
     const b = document.createElement('button');
     b.className = 'drawer-option';
     b.style.setProperty('--i', String(i)); // used to stagger the pop-in
+
+    const icon = document.createElement('span');
+    icon.className = 'drawer-option-icon';
+    icon.innerHTML = opt.icon;
+
     const label = document.createElement('span');
     label.className = 'drawer-option-label';
     label.textContent = opt.label;
-    const hint = document.createElement('span');
-    hint.className = 'drawer-option-hint';
-    hint.textContent = opt.onPick ? (opt.hint ?? '') : setup.comingSoon;
-    b.append(label, hint);
+
+    const effects = document.createElement('span');
+    effects.className = 'drawer-option-effects';
+    if (opt.onPick) {
+      for (const e of opt.effects) {
+        const chip = document.createElement('span');
+        chip.className = `chip-effect chip-${e.kind ?? 'up'}`;
+        chip.title = e.title;
+        chip.setAttribute('aria-label', e.title);
+        chip.innerHTML = e.icon;
+        chip.append(e.text);
+        effects.append(chip);
+      }
+    } else {
+      effects.textContent = setup.comingSoon;
+      effects.classList.add('soon');
+    }
+
+    b.append(icon, label, effects);
     if (opt.onPick) {
       b.addEventListener('click', () => {
         close();

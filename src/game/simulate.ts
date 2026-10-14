@@ -29,7 +29,7 @@ export function simulate(state: GameState, now: number): GameState {
   const ticks = Math.floor(elapsed / tickMs);
 
   // Work on a copy so the original state is never changed by accident.
-  const pet: Pet = { ...state.pet, stats: { ...state.pet.stats } };
+  const pet: Pet = { ...state.pet, stats: { ...state.pet.stats }, buffs: [...state.pet.buffs] };
 
   let t = state.lastUpdated;
   for (let i = 0; i < ticks; i++) {
@@ -60,7 +60,11 @@ function tick(pet: Pet, t: number, wasNight: boolean): void {
   // 2. Hunger, joy and energy.
   const slow = pet.asleep ? cfg.sleep.decayMultiplierAsleep : 1;
   const sickJoy = pet.condition === 'sick' ? cfg.sickness.sickJoyMultiplier : 1;
-  s.hunger = clampStat(s.hunger - perTick(cfg.decayPerHour.hunger) * slow);
+  // Timed food effects: drop any that have worn off, then apply the rest.
+  pet.buffs = pet.buffs.filter((b) => t <= b.until);
+  const hungerBuff = pet.buffs.find((b) => b.stat === 'hunger');
+  const slowHunger = hungerBuff ? 1 - hungerBuff.percent / 100 : 1;
+  s.hunger = clampStat(s.hunger - perTick(cfg.decayPerHour.hunger) * slow * slowHunger);
   s.happiness = clampStat(s.happiness - perTick(cfg.decayPerHour.happiness) * slow * sickJoy);
   if (pet.asleep) {
     s.energy = clampStat(s.energy + perTick(cfg.sleep.energyPerHourAsleep));

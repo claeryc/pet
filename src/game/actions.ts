@@ -17,23 +17,34 @@ export interface ActionResult {
 
 // Helper: returns a copy of the state with the pet changed by `change`.
 function withPet(state: GameState, change: (pet: Pet) => void): GameState {
-  const pet: Pet = { ...state.pet, stats: { ...state.pet.stats } };
+  const pet: Pet = { ...state.pet, stats: { ...state.pet.stats }, buffs: [...state.pet.buffs] };
   change(pet);
   return { ...state, pet };
 }
 
-export type FoodId = (typeof CONFIG.foods)[number]['id'];
+export type Food = (typeof CONFIG.foods)[number] & {
+  slowHunger?: { percent: number; hours: number };
+};
+export type FoodId = Food['id'];
 export type ActivityId = (typeof CONFIG.activities)[number]['id'];
 
 export function feed(state: GameState, now: number, foodId: FoodId = 'riceBall'): ActionResult {
   const s = simulate(state, now);
   if (s.pet.asleep) return { state: s, blocked: 'asleep' };
-  const food = CONFIG.foods.find((f) => f.id === foodId)!;
+  const food: Food = CONFIG.foods.find((f) => f.id === foodId)!;
   return {
     state: withPet(s, (pet) => {
       pet.stats.hunger = clampStat(pet.stats.hunger + food.hunger);
       pet.stats.happiness = clampStat(pet.stats.happiness + food.happiness);
       pet.stats.health = clampStat(pet.stats.health + food.health);
+      if (food.slowHunger) {
+        // Eating it again restarts the timer (effects don't stack).
+        const until = now + food.slowHunger.hours * 3_600_000;
+        pet.buffs = [
+          ...pet.buffs.filter((b) => b.stat !== 'hunger'),
+          { stat: 'hunger', percent: food.slowHunger.percent, until },
+        ];
+      }
     }),
   };
 }

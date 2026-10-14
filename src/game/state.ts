@@ -13,6 +13,13 @@ export interface PetStats {
 // healthy -> warning (a stat is low) -> sick (stayed low too long).
 export type Condition = 'healthy' | 'warning' | 'sick';
 
+// A timed effect from food, e.g. "tummy empties 20% slower until 6pm".
+export interface Buff {
+  stat: 'hunger';
+  percent: number; // how much slower that stat drops, 0-100
+  until: number; // timestamp when the effect wears off
+}
+
 export interface Pet {
   id: string; // unique id, so pets can later appear in family trees online
   name: string;
@@ -23,6 +30,7 @@ export interface Pet {
   warningMinutes: number; // how long the current warning has lasted
   recoveryUntil: number | null; // resting after medicine until this time
   careScore: number; // hidden 0-100 long-term care rating
+  buffs: Buff[]; // active timed effects
 }
 
 export interface GameState {
@@ -52,6 +60,7 @@ export function createNewGame(now: number): GameState {
       warningMinutes: 0,
       recoveryUntil: null,
       careScore: CONFIG.careScore.start,
+      buffs: [],
     },
     lastUpdated: now,
     clockOffsetMs: 0,

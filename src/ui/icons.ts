@@ -1,0 +1,234 @@
+// Little pixel-art icons for the Feed/Play lists, drawn as SVG from text
+// grids. Each letter is one pixel in a palette colour (see PIXEL_COLORS
+// below) and "." is see-through. Placeholder art: swap for real sprites
+// later without touching the rest of the UI.
+
+import { PALETTE } from '../render/palette';
+
+const PIXEL_COLORS: Record<string, string> = {
+  k: PALETTE.ink,
+  w: PALETTE.white,
+  r: PALETTE.rose,
+  p: PALETTE.pink,
+  g: PALETTE.leaf,
+  m: PALETTE.mint,
+  b: PALETTE.ocean,
+  s: PALETTE.sky,
+  y: PALETTE.butter,
+  c: PALETTE.cocoa,
+  o: PALETTE.peach,
+  l: PALETTE.lilac,
+  v: PALETTE.lavender,
+};
+
+// Turns a text grid into an SVG string.
+function pixelIcon(rows: string[]): string {
+  const h = rows.length;
+  const w = rows[0].length;
+  let rects = '';
+  rows.forEach((row, y) => {
+    [...row].forEach((ch, x) => {
+      const color = PIXEL_COLORS[ch];
+      if (color) rects += `<rect x="${x}" y="${y}" width="1" height="1" fill="${color}"/>`;
+    });
+  });
+  return `<svg viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
+}
+
+// Big icons (12x12) shown at the start of each row.
+export const ITEM_ICONS: Record<string, string> = {
+  riceBall: pixelIcon([
+    '.....kk.....',
+    '....kwwk....',
+    '...kwwwwk...',
+    '..kwwwwwwk..',
+    '..kwwwwwwk..',
+    '.kwwwwwwwwk.',
+    '.kwwkkkkwwk.',
+    'kwwwkkkkwwwk',
+    'kwwwkkkkwwwk',
+    'kwwwkkkkwwwk',
+    '.kkkkkkkkkk.',
+    '............',
+  ]),
+  heartyStew: pixelIcon([
+    '...w..w..w..',
+    '..w..w..w...',
+    '...w..w..w..',
+    '............',
+    'kkkkkkkkkkkk',
+    'koocoooycook',
+    'kcccccccccck',
+    '.kcccccccck.',
+    '..kcccccck..',
+    '...kkkkkk...',
+    '............',
+    '............',
+  ]),
+  strawberry: pixelIcon([
+    '...g.gg.g...',
+    '....gggg....',
+    '..krrggrrk..',
+    '.krrrrrrrrk.',
+    '.krwrrrrwrk.',
+    '.krrrrrrrrk.',
+    '..krrwrrrk..',
+    '..krrrrrrk..',
+    '...krrrrk...',
+    '....krrk....',
+    '.....kk.....',
+    '............',
+  ]),
+  warmMilk: pixelIcon([
+    '..kkkkkkkk..',
+    '..kssssssk..',
+    '..kssssssk..',
+    '..kwwwwwwk..',
+    '..kwwwwwwk..',
+    '..kwwwwwwk..',
+    '..kwwwwwwk..',
+    '..kwwwwwwk..',
+    '..kwwwwwwk..',
+    '...kwwwwk...',
+    '...kkkkkk...',
+    '............',
+  ]),
+  cookie: pixelIcon([
+    '...kkkkkk...',
+    '..koooooook.',
+    '.koocooooook',
+    'kooooooocook',
+    'koooocoooook',
+    'kocoooooocok',
+    'koooooocoook',
+    '.koocoooook.',
+    '..kooooook..',
+    '...kkkkkk...',
+    '............',
+    '............',
+  ]),
+  cuddle: pixelIcon([
+    '............',
+    '..kk....kk..',
+    '.kppk..kppk.',
+    'kpwppkkppppk',
+    'kpwppppppppk',
+    'kppppppppppk',
+    '.kppppppppk.',
+    '..kppppppk..',
+    '...kppppk...',
+    '....kppk....',
+    '.....kk.....',
+    '............',
+  ]),
+  ball: pixelIcon([
+    '............',
+    '...kkkkkk...',
+    '..kbbwwrrk..',
+    '.kbbbwwrrrk.',
+    'kbbbbwwrrrrk',
+    'kbbbbwwrrrrk',
+    'kbbbbwwrrrrk',
+    'kbbbbwwrrrrk',
+    '.kbbbwwrrrk.',
+    '..kbbwwrrk..',
+    '...kkkkkk...',
+    '............',
+  ]),
+  tickle: pixelIcon([
+    '........kk..',
+    '.......kvvk.',
+    '......kvvvk.',
+    '.....kvvlvk.',
+    '....kvvlvk..',
+    '...kvvlvk...',
+    '..kvvlvk....',
+    '..kvlvk.....',
+    '.kllkk......',
+    '.lk.........',
+    'l...........',
+    '............',
+  ]),
+  catchTreats: pixelIcon([
+    '............',
+    '............',
+    '............',
+    '............',
+    '.k..kkkk..k.',
+    '.kkkpwppkkk.',
+    '.kpkppppkpk.',
+    '.kkkppppkkk.',
+    '.k..kkkk..k.',
+    '............',
+    '............',
+    '............',
+  ]),
+  memoryMatch: pixelIcon([
+    '............',
+    '............',
+    'kkkkk..kkkkk',
+    'kvvvk..kwwwk',
+    'kvpvk..kwpwk',
+    'kpppk..kpppk',
+    'kvpvk..kwpwk',
+    'kvvvk..kwwwk',
+    'kkkkk..kkkkk',
+    '............',
+    '............',
+    '............',
+  ]),
+};
+
+// Small icons (8x8) used next to the numbers.
+export const STAT_ICONS = {
+  hunger: pixelIcon([
+    '....g...',
+    '.kkgkk..',
+    'krrrrrk.',
+    'krwrrrk.',
+    'krrrrrk.',
+    'krrrrrk.',
+    '.krrrk..',
+    '..kkk...',
+  ]),
+  happiness: pixelIcon([
+    '........',
+    '.kk.kk..',
+    'kppkppk.',
+    'kpppppk.',
+    '.kpppk..',
+    '..kpk...',
+    '...k....',
+    '........',
+  ]),
+  health: pixelIcon([
+    '..kkkk..',
+    '..kmmk..',
+    'kkkmmkkk',
+    'kmmmmmmk',
+    'kmmmmmmk',
+    'kkkmmkkk',
+    '..kmmk..',
+    '..kkkk..',
+  ]),
+  energy: pixelIcon([
+    '....kkk.',
+    '...kyyk.',
+    '..kyyk..',
+    '.kyyyyk.',
+    '.kkyyk..',
+    '..kyk...',
+    '.kyk....',
+    '.kk.....',
+  ]),
+  timer: pixelIcon([
+    '..kkkk..',
+    '.kwwwwk.',
+    'kwwkwwwk',
+    'kwwkwwwk',
+    'kwwkkkwk',
+    'kwwwwwwk',
+    '.kwwwwk.',
+    '..kkkk..',
+  ]),
+};

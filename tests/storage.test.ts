@@ -17,5 +17,6 @@ describe('save migration', () => {
     expect(out.state.pet.stats.energy).toBeTypeOf('number');
     expect(out.state.pet.condition).toBe('healthy');
     expect(out.state.clockOffsetMs).toBe(0);
+    expect(out.state.pet.buffs).toEqual([]);
   });
 });

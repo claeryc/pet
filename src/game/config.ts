@@ -69,11 +69,14 @@ export const CONFIG = {
   },
 
   // What's inside the Feed panel. Each food changes stats by these amounts.
+  // A food can also have a timed effect: `slowHunger` makes the tummy empty
+  // more slowly (by `percent`) for a number of `hours`.
   // (In Milestone 3 these will come from your inventory and the shop.)
   foods: [
     { id: 'riceBall', hunger: 20, happiness: 0, health: 0 },
+    { id: 'heartyStew', hunger: 20, happiness: 0, health: 0, slowHunger: { percent: 20, hours: 6 } },
     { id: 'strawberry', hunger: 10, happiness: 6, health: 0 },
-    { id: 'warmMilk', hunger: 12, happiness: 2, health: 3 },
+    { id: 'warmMilk', hunger: 12, happiness: 0, health: 3 },
     { id: 'cookie', hunger: 6, happiness: 12, health: -2 },
   ],
 

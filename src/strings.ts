@@ -20,6 +20,7 @@ export const STRINGS = {
   },
   foods: {
     riceBall: 'Rice ball',
+    heartyStew: 'Hearty stew',
     strawberry: 'Strawberry',
     warmMilk: 'Warm milk',
     cookie: 'Cookie',
@@ -28,6 +29,10 @@ export const STRINGS = {
     cuddle: 'Cuddle',
     ball: 'Toss a ball',
     tickle: 'Tickle',
+  },
+  effects: {
+    slowHunger: (percent: number, hours: number) =>
+      `Tummy empties ${percent}% slower for ${hours} hours`,
   },
   minigames: {
     catchTreats: 'Catch treats',
