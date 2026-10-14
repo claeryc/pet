@@ -1,0 +1,580 @@
+/* Soft, cozy colours. These match the pixel palette in src/render/palette.ts. */
+:root {
+  --bg: #fde8ef;
+  --card: #fff7ec;
+  --ink: #2b2140;
+  --accent: #f48fb1;
+  --accent-dark: #e05a7a;
+  --good: #6cc19a;
+  --low: #e05a7a;
+  --track: #d9c8ee;
+  --lilac: #a68bc9;
+  --plum: #5b3f6e;
+  --lavender: #d9c8ee;
+  --butter: #ffe596;
+  --leaf-dark: #4a9a76;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: ui-rounded, 'Nunito', system-ui, sans-serif;
+  display: flex;
+  justify-content: center;
+}
+
+#app {
+  width: 100%;
+  max-width: 420px; /* phone-shaped, even on desktop */
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+h1 {
+  margin: 4px 0;
+  text-align: center;
+  font-size: 1.4rem;
+}
+
+/* The canvas is tiny; CSS scales it up with chunky pixels. */
+.room {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  image-rendering: pixelated;
+  border-radius: 20px;
+  border: 4px solid var(--card);
+  box-shadow: 0 4px 0 rgba(43, 33, 64, 0.12);
+}
+
+.mood {
+  margin: 0;
+  text-align: center;
+  min-height: 1.4em;
+}
+
+.stats {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stat {
+  display: grid;
+  grid-template-columns: 4.5em 1fr 2.2em;
+  align-items: center;
+  gap: 8px;
+}
+
+.stat-track {
+  height: 12px;
+  background: var(--track);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.stat-fill {
+  height: 100%;
+  background: var(--good);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.stat-fill.low {
+  background: var(--low);
+}
+
+.stat-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- The action row ----
+   Feed, Play, lights and gear sit side by side. When a Feed/Play panel
+   opens, the row gets data-open="feed" (or "play"): that button slides wide
+   and everything else shrinks to nothing. Spacing uses margin instead of gap
+   so it can shrink away too. */
+.actions {
+  --snap: cubic-bezier(0.34, 1.4, 0.64, 1); /* quick with a tiny bounce */
+  display: flex;
+  align-items: flex-start;
+}
+
+.actions > * {
+  min-width: 0;
+  flex-shrink: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  /* Closing: wait for the panel to fold up, then slide back. */
+  transition:
+    flex-grow 0.32s var(--snap) 0.16s,
+    flex-basis 0.32s var(--snap) 0.16s,
+    margin 0.32s var(--snap) 0.16s,
+    opacity 0.2s ease 0.2s;
+}
+
+.actions > * + * {
+  margin-left: 12px;
+}
+
+.actions[data-open] > * {
+  /* Opening: slide wide straight away. */
+  transition:
+    flex-grow 0.32s var(--snap),
+    flex-basis 0.32s var(--snap),
+    margin 0.32s var(--snap),
+    opacity 0.12s ease;
+}
+
+.actions[data-open] > :not(.is-open) {
+  flex-grow: 0;
+  flex-basis: 0;
+  margin-left: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.actions[data-open] > .is-open {
+  flex-grow: 1;
+  margin-left: 0;
+}
+
+.btn {
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 700;
+  padding: 14px;
+  border: none;
+  border-radius: 16px;
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 4px 0 var(--accent-dark);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--accent-dark);
+}
+
+.btn-icon {
+  flex: 0 0 56px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: var(--lilac);
+  box-shadow: 0 4px 0 var(--plum);
+}
+
+.btn-icon:active {
+  box-shadow: 0 1px 0 var(--plum);
+}
+
+/* The slide-up menu. */
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(43, 33, 64, 0.35);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 10;
+}
+
+.menu-backdrop[hidden] {
+  display: none;
+}
+
+.menu-panel {
+  width: 100%;
+  max-width: 420px;
+  background: var(--card);
+  border-radius: 24px 24px 0 0;
+  padding: 12px 16px calc(20px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: slide-up 0.2s ease-out;
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+.menu-header {
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.menu-header h2 {
+  margin: 0;
+  text-align: center;
+  font-size: 1.15rem;
+}
+
+.menu-header-btn {
+  font: inherit;
+  font-size: 1.6rem;
+  line-height: 1;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.menu-item {
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-align: left;
+  padding: 14px 16px;
+  border: none;
+  border-radius: 14px;
+  background: var(--bg);
+  color: var(--ink);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.menu-item:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.menu-soon {
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+.menu-item-danger {
+  color: var(--accent-dark);
+}
+
+/* ---- Milestone 2: clock, banner, toast, testing tools ---- */
+
+.clock {
+  margin: -8px 0 0;
+  text-align: center;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.banner {
+  background: var(--card);
+  border: 2px solid var(--butter);
+  border-radius: 16px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.banner[hidden] {
+  display: none;
+}
+
+.banner p {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.banner[data-kind='sick'] {
+  border-color: var(--accent-dark);
+}
+
+.btn-medicine {
+  background: var(--good);
+  box-shadow: 0 4px 0 var(--leaf-dark);
+}
+
+.btn-medicine[hidden] {
+  display: none;
+}
+
+.dim {
+  opacity: 0.5;
+}
+
+/* ---- Feed / Play panels ("drawers") ---- */
+.drawer {
+  flex: 1 1 0;
+  background: var(--accent);
+  border-radius: 16px;
+  box-shadow: 0 4px 0 var(--accent-dark);
+}
+
+.drawer-head {
+  position: relative;
+  width: 100%;
+  height: 52px;
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 700;
+  border: none;
+  background: transparent;
+  color: white;
+  text-align: center;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.drawer-head:active .drawer-label {
+  display: inline-block;
+  transform: scale(0.94);
+}
+
+/* A little arrow that appears on the right once the panel is open. */
+.drawer-chevron {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-right: 3px solid white;
+  border-bottom: 3px solid white;
+  transform: translateY(-30%) rotate(225deg) scale(0);
+  transition: transform 0.25s var(--snap);
+}
+
+.drawer.is-open .drawer-chevron {
+  transform: translateY(-30%) rotate(225deg) scale(1);
+  transition-delay: 0.2s;
+}
+
+/* Height animation: rows go from 0fr (folded) to 1fr (full height). */
+.drawer-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.22s ease-in;
+}
+
+.drawer.is-open .drawer-body {
+  grid-template-rows: 1fr;
+  /* Wait until the button has slid wide, then grow down. */
+  transition: grid-template-rows 0.34s var(--snap) 0.26s;
+}
+
+.drawer-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* The soft white-pink inside, framed by the pink button. It's a list
+   that scrolls if there are more rows than fit. */
+.drawer-options {
+  margin: 0 6px 6px;
+  padding: 8px;
+  border-radius: 12px;
+  background: #fff5f8;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 268px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  white-space: normal;
+}
+
+/* One row: [icon] [name ............] [effects] */
+.drawer-option {
+  font: inherit;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 6px 10px 6px 8px;
+  border: 2px solid var(--lavender);
+  border-radius: 14px;
+  background: white;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  /* Rows pop in one after another once the panel opens. */
+  opacity: 0;
+  transform: translateY(6px) scale(0.96);
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s ease;
+}
+
+.drawer.is-open .drawer-option {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.2s ease calc(0.4s + var(--i) * 0.04s),
+    transform 0.28s var(--snap) calc(0.4s + var(--i) * 0.04s);
+}
+
+.drawer-option:active:not(:disabled) {
+  transform: scale(0.97);
+  border-color: var(--accent);
+}
+
+.drawer-option:disabled {
+  cursor: default;
+  background: transparent;
+  border-style: dashed;
+}
+
+.drawer.is-open .drawer-option:disabled {
+  opacity: 0.55;
+}
+
+.drawer-option-icon {
+  flex: 0 0 36px;
+  height: 36px;
+  display: flex;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.drawer-option-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.drawer-option-label {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.drawer-option-effects {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.drawer-option-effects.soon {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+/* A small rounded pill: [stat icon] +20 */
+.chip-effect {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 7px 3px 5px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.chip-effect svg {
+  width: 14px;
+  height: 14px;
+}
+
+.chip-up {
+  background: #e3f6ec;
+  color: #2f7a57;
+}
+
+.chip-down {
+  background: #fde4ea;
+  color: #b83d5c;
+}
+
+.chip-timer {
+  background: #ece4f7;
+  color: var(--plum);
+}
+
+/* Respect the "reduce motion" setting on phones and computers. */
+@media (prefers-reduced-motion: reduce) {
+  .actions *,
+  .actions > * {
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+  }
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translate(-50%, 20px);
+  max-width: min(380px, calc(100% - 32px));
+  background: var(--ink);
+  color: white;
+  padding: 10px 16px;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 20;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.debug {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 2px dashed var(--track);
+}
+
+.debug h3 {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+}
+
+.debug p {
+  margin: 4px 0;
+  font-size: 0.85rem;
+}
+
+.debug-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 999px;
+  background: var(--lavender);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.debug-info {
+  opacity: 0.7;
+}
