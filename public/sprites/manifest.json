@@ -1,5 +1,5 @@
 {
-  "_help": "Lists every sprite sheet the game can use. See docs/ART_GUIDE.md. Each sheet is a PNG (path relative to this folder) where every frame is frameWidth x frameHeight pixels, each ROW is one animation, and frames go left to right. 'animations' says which row holds which animation; a sheet can override it (like the egg below). If a sheet is missing an animation, the game uses 'idle' instead. Sheet names here are what src/data/characters.json points at.",
+  "_help": "Lists every sprite sheet the game can use. See docs/ART_GUIDE.md. Each sheet is a PNG (path relative to this folder) where every frame is frameWidth x frameHeight pixels, each ROW is one animation, and frames go left to right. 'animations' says which row holds which animation; a sheet can override it (like the egg below). If a sheet is missing an animation, the game uses 'idle' instead. Sheet names here are what src/data/characters.json points at. 'head' (on pet sheets) is where a hat sits: the pixel in the first idle frame where the bottom middle of the hat goes, and whether the small or large hat fits. Hat sheets are 16x16 with the small hat on the left and the large one on the right.",
   "frameWidth": 32,
   "frameHeight": 32,
   "animations": {
@@ -46,37 +46,116 @@
       }
     },
     "baby": {
-      "file": "stages/baby.png"
+      "file": "stages/baby.png",
+      "head": {
+        "x": 16,
+        "y": 19,
+        "size": "small"
+      }
     },
     "teen": {
-      "file": "stages/teen.png"
+      "file": "stages/teen.png",
+      "head": {
+        "x": 16,
+        "y": 14,
+        "size": "large"
+      }
     },
     "dumpling": {
-      "file": "characters/basic/dumpling.png"
+      "file": "characters/basic/dumpling.png",
+      "head": {
+        "x": 16,
+        "y": 15,
+        "size": "large"
+      }
     },
     "cloudlet": {
-      "file": "characters/basic/cloudlet.png"
+      "file": "characters/basic/cloudlet.png",
+      "head": {
+        "x": 16,
+        "y": 13,
+        "size": "large"
+      }
     },
     "sprig": {
-      "file": "characters/nature/sprig.png"
+      "file": "characters/nature/sprig.png",
+      "head": {
+        "x": 16,
+        "y": 14,
+        "size": "large"
+      }
     },
     "fernwhisk": {
-      "file": "characters/nature/fernwhisk.png"
+      "file": "characters/nature/fernwhisk.png",
+      "head": {
+        "x": 16,
+        "y": 12,
+        "size": "large"
+      }
     },
     "pebblit": {
-      "file": "characters/cave/pebblit.png"
+      "file": "characters/cave/pebblit.png",
+      "head": {
+        "x": 16,
+        "y": 15,
+        "size": "large"
+      }
     },
     "pebblit-amber": {
-      "file": "characters/cave/pebblit-amber.png"
+      "file": "characters/cave/pebblit-amber.png",
+      "head": {
+        "x": 16,
+        "y": 15,
+        "size": "large"
+      }
     },
     "geodon": {
-      "file": "characters/cave/geodon.png"
+      "file": "characters/cave/geodon.png",
+      "head": {
+        "x": 16,
+        "y": 12,
+        "size": "large"
+      }
     },
     "glimmer": {
-      "file": "characters/sparkle/glimmer.png"
+      "file": "characters/sparkle/glimmer.png",
+      "head": {
+        "x": 16,
+        "y": 15,
+        "size": "small"
+      }
     },
     "starwisp": {
-      "file": "characters/sparkle/starwisp.png"
+      "file": "characters/sparkle/starwisp.png",
+      "head": {
+        "x": 16,
+        "y": 12,
+        "size": "large"
+      }
+    },
+    "hat-beanie": {
+      "file": "hats/beanie.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "animations": {}
+    },
+    "hat-party": {
+      "file": "hats/party-hat.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "animations": {}
+    },
+    "hat-flower-crown": {
+      "file": "hats/flower-crown.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "animations": {}
+    },
+    "hat-tiny-crown": {
+      "file": "hats/tiny-crown.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "animations": {}
     }
   }
 }

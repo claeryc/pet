@@ -590,3 +590,147 @@ h1 {
 .debug-info {
   opacity: 0.7;
 }
+
+/* ---- Milestone 3: gold, shop and inventory ---- */
+
+#app {
+  position: relative;
+}
+
+/* [coin] 120 */
+.gold-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px 3px 6px;
+  border-radius: 999px;
+  background: #fff3c4;
+  color: #7a5a1e;
+  font-weight: 800;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.gold-pill svg {
+  width: 14px;
+  height: 14px;
+}
+
+.home-gold {
+  position: absolute;
+  top: 20px;
+  right: 16px;
+}
+
+.menu-panel {
+  max-height: 85vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.menu-gold {
+  display: flex;
+  justify-content: center;
+  margin: -6px 0 2px;
+}
+
+.shop-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.shop-section {
+  margin: 8px 2px 0;
+  font-size: 0.9rem;
+  opacity: 0.75;
+}
+
+.shop-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 6px 8px;
+  border: 2px solid var(--lavender);
+  border-radius: 14px;
+  background: white;
+}
+
+.shop-row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.shop-row-text b {
+  font-size: 0.95rem;
+}
+
+.shop-row-text small {
+  font-size: 0.78rem;
+  opacity: 0.7;
+}
+
+.shop-btn {
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 999px;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.shop-btn .gold-pill {
+  background: transparent;
+  color: white;
+  padding: 0;
+}
+
+.shop-btn:active {
+  transform: scale(0.95);
+}
+
+.shop-btn.too-pricey,
+.shop-btn-soft {
+  background: var(--lavender);
+  color: var(--ink);
+}
+
+.shop-btn.too-pricey .gold-pill {
+  color: var(--ink);
+}
+
+.shop-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+/* A hat picture: the large version, the right half of its 32x16 sheet. */
+.hat-icon {
+  width: 100%;
+  height: 100%;
+  background-size: 200% 100%;
+  background-position: right center;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+
+/* Feed list: "x 2" next to the name, faded when there's none left. */
+.drawer-option-note {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  opacity: 0.6;
+}
+
+.drawer.is-open .drawer-option.faded {
+  opacity: 0.55;
+}

@@ -98,7 +98,9 @@ describe('actions', () => {
   });
 
   it('hearty stew slows hunger by 20% for 6 hours, then wears off', () => {
-    let s = feed(freshGame(), START, 'heartyStew').state; // tummy 80 -> 100
+    const game = freshGame();
+    game.inventory.food.heartyStew = 1;
+    let s = feed(game, START, 'heartyStew').state; // tummy 80 -> 100
     s = simulate(s, START + 6 * HOUR);
     const slowed = 100 - 6 * CONFIG.decayPerHour.hunger * 0.8;
     expect(s.pet.stats.hunger).toBeCloseTo(slowed);

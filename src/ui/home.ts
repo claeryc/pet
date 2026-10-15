@@ -7,17 +7,18 @@ import { CONFIG } from '../game/config';
 import { getLook, isNight, isRecovering } from '../game/stats';
 import { getCharacter, getVariant, stageLengthMs } from '../game/growth';
 import type { GameState, PetStats } from '../game/state';
-import { createMenu, type DebugCallbacks } from './menu';
+import { createMenu, type MenuCallbacks } from './menu';
+import { goldPill } from './shop';
+import { foodCount } from '../game/economy';
 import { createDrawer, type DrawerOption, type Effect } from './drawer';
 import { ITEM_ICONS, STAT_ICONS } from './icons';
 import type { ActivityId, Food, FoodId } from '../game/actions';
 
-export interface HomeCallbacks extends DebugCallbacks {
+export interface HomeCallbacks extends MenuCallbacks {
   onFeed: (food: FoodId) => void;
   onPlay: (activity: ActivityId) => void;
   onLights: () => void;
   onMedicine: () => void;
-  onReset: () => void;
 }
 
 export interface HomeScreen {
@@ -89,6 +90,10 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
 
   const title = document.createElement('h1');
   title.textContent = STRINGS.title;
+
+  // How much gold you have, in the top corner.
+  const gold = document.createElement('div');
+  gold.className = 'home-gold';
 
   const clock = document.createElement('p');
   clock.className = 'clock';
@@ -202,7 +207,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     toastTimer = window.setTimeout(() => toastEl.classList.remove('show'), 2500);
   }
 
-  root.append(title, clock, age, canvas, mood, banner, stats, actions, menu.el, toastEl);
+  root.append(gold, title, clock, age, canvas, mood, banner, stats, actions, menu.el, toastEl);
 
   return {
     canvas,
@@ -213,6 +218,12 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       const isEgg = pet.stage === 'egg';
       petIsEgg = isEgg;
       for (const key of Object.keys(bars) as (keyof PetStats)[]) bars[key].set(pet.stats[key]);
+      gold.replaceChildren(goldPill(state.gold));
+      // How many of each food you have ("Free" for food that never runs out).
+      CONFIG.foods.forEach((f, i) => {
+        const count = foodCount(state, f.id);
+        feedDrawer.setNote(i, count === Infinity ? STRINGS.shop.free : `× ${count}`, count === 0);
+      });
       stats.hidden = isEgg; // an egg has no needs yet
       clock.textContent = formatClock(now);
       // Adults show their character and rarity instead of "Adult".

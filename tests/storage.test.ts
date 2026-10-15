@@ -37,4 +37,12 @@ describe('save migration', () => {
     const out = migrate({ version: 4, state: { pet: { stage: 'teen', formId: 'teen' } } });
     expect(out.state.pet.character).toBeNull();
   });
+
+  it('gives old saves gold, an inventory and no hat', () => {
+    const out = migrate({ version: 5, state: { pet: { stage: 'teen', character: null } } });
+    expect(out.version).toBe(SAVE_VERSION);
+    expect(out.state.gold).toBeGreaterThan(0);
+    expect(out.state.inventory.hats).toEqual([]);
+    expect(out.state.pet.hat).toBeNull();
+  });
 });

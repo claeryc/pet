@@ -108,13 +108,14 @@ export const CONFIG = {
   // What's inside the Feed panel. Each food changes stats by these amounts.
   // A food can also have a timed effect: `slowHunger` makes the tummy empty
   // more slowly (by `percent`) for a number of `hours`.
-  // (In Milestone 3 these will come from your inventory and the shop.)
+  // `price` is the cost in gold in the Shop. Food with price 0 is free and
+  // never runs out; other food comes from your inventory, one per meal.
   foods: [
-    { id: 'riceBall', hunger: 20, happiness: 0, health: 0 },
-    { id: 'heartyStew', hunger: 20, happiness: 0, health: 0, slowHunger: { percent: 20, hours: 6 } },
-    { id: 'strawberry', hunger: 10, happiness: 6, health: 0 },
-    { id: 'warmMilk', hunger: 12, happiness: 0, health: 3 },
-    { id: 'cookie', hunger: 6, happiness: 12, health: -2 },
+    { id: 'riceBall', price: 0, hunger: 20, happiness: 0, health: 0 },
+    { id: 'heartyStew', price: 25, hunger: 20, happiness: 0, health: 0, slowHunger: { percent: 20, hours: 6 } },
+    { id: 'strawberry', price: 10, hunger: 10, happiness: 6, health: 0 },
+    { id: 'warmMilk', price: 12, hunger: 12, happiness: 0, health: 3 },
+    { id: 'cookie', price: 8, hunger: 6, happiness: 12, health: -2 },
   ],
 
   // What's inside the Play panel. Playing costs energy and makes the pet a
@@ -125,10 +126,25 @@ export const CONFIG = {
     { id: 'tickle', happiness: 14, hunger: -2, energy: -5 },
   ],
 
+  // Gold. It's earned (mini-games arrive in Milestone 4, plus check-in
+  // bonuses) and spent in the Shop. It can never be bought with real money.
+  economy: {
+    startingGold: 50,
+    // Food in a brand new pet's pantry.
+    startingFood: { strawberry: 2, cookie: 1 },
+    // Coming back to check on your pet earns a little gold: more for the
+    // first visit of the day, a bit for later visits at least
+    // `minHoursBetween` apart, up to `maxPerDay` rewards a day.
+    checkIn: { firstOfDay: 20, later: 5, minHoursBetween: 3, maxPerDay: 4 },
+  },
+
   // Testing helpers shown in Settings. Turn off before releasing the game.
   debug: {
     showTools: true,
     fastForwardHours: [1, 6, 24],
+    addGold: 100,
+    // Buttons that set the Care Score, to test which characters appear.
+    careScores: [10, 60, 90],
   },
 } as const;
 

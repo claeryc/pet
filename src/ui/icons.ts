@@ -181,6 +181,16 @@ export const ITEM_ICONS: Record<string, string> = {
 
 // Small icons (8x8) used next to the numbers.
 export const STAT_ICONS = {
+  gold: pixelIcon([
+    '..kkkk..',
+    '.kyyyyk.',
+    'kyywyyyk',
+    'kywyyyck',
+    'kyyyyyck',
+    'kyyyycck',
+    '.kcccck.',
+    '..kkkk..',
+  ]),
   hunger: pixelIcon([
     '....g...',
     '.kkgkk..',

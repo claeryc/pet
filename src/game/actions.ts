@@ -7,9 +7,10 @@ import { CONFIG } from './config';
 import { simulate } from './simulate';
 import { clampStat } from './stats';
 import { stageLengthMs } from './growth';
+import { useFood } from './economy';
 import type { GameState, Pet } from './state';
 
-export type BlockReason = 'egg' | 'asleep' | 'tooTired' | 'notSick';
+export type BlockReason = 'egg' | 'asleep' | 'tooTired' | 'notSick' | 'noFood';
 
 export interface ActionResult {
   state: GameState;
@@ -34,8 +35,10 @@ export function feed(state: GameState, now: number, foodId: FoodId = 'riceBall')
   if (s.pet.stage === 'egg') return { state: s, blocked: 'egg' };
   if (s.pet.asleep) return { state: s, blocked: 'asleep' };
   const food: Food = CONFIG.foods.find((f) => f.id === foodId)!;
+  const stocked = useFood(s, foodId); // one fewer in the inventory
+  if (!stocked) return { state: s, blocked: 'noFood' };
   return {
-    state: withPet(s, (pet) => {
+    state: withPet(stocked, (pet) => {
       pet.stats.hunger = clampStat(pet.stats.hunger + food.hunger);
       pet.stats.happiness = clampStat(pet.stats.happiness + food.happiness);
       pet.stats.health = clampStat(pet.stats.health + food.health);
