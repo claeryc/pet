@@ -6,6 +6,12 @@
   --accent: #f48fb1;
   --accent-dark: #e05a7a;
   --good: #6cc19a;
+  --good-light: #c2f2d6;
+  --good-dark: #4a9a76;
+  --low-light: #fbc2cf;
+  --low-dark: #b23a5a;
+  --seg-empty: #efe6f7;
+  --seg-empty-shade: #d3c2e6;
   --low: #e05a7a;
   --track: #d9c8ee;
   --lilac: #a68bc9;
@@ -86,27 +92,39 @@ h1 {
   height: 100%;
 }
 
-/* 10 little blocks with small gaps between them. */
+/* 10 little blocks packed tight inside one dark-outlined bar, pixel style.
+   Each lit block has a light strip on top and a darker shade at the bottom. */
 .stat-segments {
   flex: 1;
   display: grid;
   grid-template-columns: repeat(10, 1fr);
-  gap: 3px;
+  gap: 1px;
+  padding: 2px;
+  border: 2px solid var(--plum);
+  border-radius: 3px;
+  background: var(--plum);
+  box-shadow: 0 2px 0 rgba(91, 63, 110, 0.25);
 }
 
 .stat-seg {
-  height: 14px;
-  border-radius: 4px;
-  background: var(--track);
-  transition: background-color 0.3s ease;
+  height: 10px;
+  background: var(--seg-empty);
+  box-shadow: inset 0 2px 0 var(--seg-empty-shade);
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .stat-seg.on {
   background: var(--good);
+  box-shadow:
+    inset 0 2px 0 var(--good-light),
+    inset 0 -2px 0 var(--good-dark);
 }
 
 .stat-seg.on.low {
   background: var(--low);
+  box-shadow:
+    inset 0 2px 0 var(--low-light),
+    inset 0 -2px 0 var(--low-dark);
 }
 
 /* ---- The action row ----
