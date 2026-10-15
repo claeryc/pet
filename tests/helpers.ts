@@ -6,7 +6,6 @@ import { createNewGame, type GameState } from '../src/game/state';
 export function newTeen(now: number): GameState {
   const s = createNewGame(now);
   s.pet.stage = 'teen';
-  s.pet.formId = 'teen';
   s.pet.stageStartedAt = now;
   return s;
 }

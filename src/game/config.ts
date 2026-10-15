@@ -41,6 +41,20 @@ export const CONFIG = {
     },
   },
 
+  // Which character a teen grows into. First the game rolls a star rarity
+  // using the Care Score at that moment, then picks a theme at random among
+  // the characters of that rarity (see src/data/characters.json).
+  // Each row: the lowest Care Score for that row, then the chance (percent)
+  // of 1, 2 and 3 stars. If no character has the rolled rarity yet, the
+  // next lower rarity is used, so today (only 1 and 3 star characters)
+  // a 2-star roll becomes 1 star.
+  rarity: [
+    { minCare: 80, odds: { 1: 10, 2: 40, 3: 50 } },
+    { minCare: 50, odds: { 1: 30, 2: 50, 3: 20 } },
+    { minCare: 20, odds: { 1: 60, 2: 35, 3: 5 } },
+    { minCare: 0, odds: { 1: 90, 2: 10, 3: 0 } },
+  ],
+
   // How many points each stat loses per hour while awake, when nothing else
   // is going on. 4/hour means a full tummy empties in about 25 hours.
   decayPerHour: {

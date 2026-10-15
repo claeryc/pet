@@ -56,7 +56,7 @@ export const STRINGS = {
     condition: 'Condition',
     resetClock: 'Back to real time',
     growNow: 'Grow up now',
-    form: 'Form',
+    character: 'Character',
   },
   stages: {
     egg: 'Egg',
@@ -68,9 +68,12 @@ export const STRINGS = {
     egg: (name: string) => `${name} is an egg.`,
     baby: (name: string) => `${name} hatched! Say hello!`,
     teen: (name: string) => `${name} grew into a teen!`,
-    adult: (name: string, form: string) => `${name} grew up into a ${form}!`,
+    adult: (name: string, character: string, stars: string) => `${name} grew up into a ${character}! ${stars}`,
   },
   age: (stage: string, age: string) => `${stage} · ${age} old`,
+  stars: (count: number) => '★'.repeat(count),
+  // "Pebblit", or "Pebblit (Amber)" for a colour variant.
+  characterName: (name: string, variant?: string) => (variant ? `${name} (${variant})` : name),
   status_egg: (timeLeft: string) =>
     `Your egg is staying warm and cozy. It will hatch in ${timeLeft}.`,
   clock: {

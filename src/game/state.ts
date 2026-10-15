@@ -27,7 +27,10 @@ export interface Pet {
   bornAt: number; // timestamp in milliseconds
   stats: PetStats;
   stage: Stage; // egg, baby, teen or adult
-  formId: string; // which look it has (an id from src/data/creatures.json)
+  // Which character it grew into, and its colour variant (ids from
+  // src/data/characters.json). Both stay null until it becomes an adult.
+  character: string | null;
+  variant: string | null;
   stageStartedAt: number; // when it entered its current stage
   asleep: boolean; // true while the lights are off
   condition: Condition;
@@ -60,7 +63,8 @@ export function createNewGame(now: number): GameState {
       bornAt: now,
       stats: { ...CONFIG.startingStats },
       stage: 'egg', // every pet starts life as an egg
-      formId: 'egg',
+      character: null,
+      variant: null,
       stageStartedAt: now,
       asleep: false,
       condition: 'healthy',

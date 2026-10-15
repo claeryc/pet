@@ -1,29 +1,55 @@
 // Growing up: egg -> baby -> teen -> adult.
 //
-// Each stage lasts a set time (CONFIG.growth.stageHours). When the time is
-// up the pet moves to the next stage, and the game picks which *form* (look)
-// it grows into from src/data/creatures.json, based on the hidden Care Score.
-// A well looked-after pet grows into a rarer adult form.
+// Each stage lasts a set time (CONFIG.growth.stageHours). Every egg, baby
+// and teen looks the same. When the teen grows up, the game picks which
+// *character* it becomes from src/data/characters.json:
+//   1. roll a star rarity, with better odds for a higher Care Score,
+//   2. pick a character of that rarity (any theme),
+//   3. maybe pick one of that character's colour variants.
+// The rolls are based on the pet's id, so reloading never changes them.
 
 import { CONFIG } from './config';
-import creatures from '../data/creatures.json';
+import data from '../data/characters.json';
 import type { Pet } from './state';
 
 export type Stage = 'egg' | 'baby' | 'teen' | 'adult';
 export const STAGES: Stage[] = ['egg', 'baby', 'teen', 'adult'];
 
-export interface Form {
+export type Stars = 1 | 2 | 3;
+
+export interface Variant {
   id: string;
-  stage: Stage;
   name: string;
-  sprite: string; // sheet name in public/sprites/manifest.json
-  minCare: number; // lowest Care Score that can grow into this form
+  sheet: string; // sheet name in public/sprites/manifest.json
+  chance: number; // percent chance a pet of this character gets this variant
 }
 
-export const FORMS = creatures.forms as Form[];
+export interface Character {
+  id: string;
+  theme: string; // a key of THEMES
+  stars: Stars;
+  name: string;
+  sheet: string; // sheet name in public/sprites/manifest.json
+  variants?: Variant[];
+}
 
-export function getForm(id: string): Form {
-  return FORMS.find((f) => f.id === id) ?? FORMS[0];
+export const CHARACTERS = data.characters as Character[];
+export const THEMES: Record<string, string> = data.themes;
+const STAGE_SHEETS: Record<Exclude<Stage, 'adult'>, string> = data.stages;
+
+export function getCharacter(id: string | null): Character | undefined {
+  return CHARACTERS.find((c) => c.id === id);
+}
+
+export function getVariant(character: Character | undefined, id: string | null): Variant | undefined {
+  return character?.variants?.find((v) => v.id === id);
+}
+
+// The sprite sheet the pet should be drawn with right now.
+export function sheetFor(pet: Pet): string {
+  if (pet.stage !== 'adult') return STAGE_SHEETS[pet.stage];
+  const character = getCharacter(pet.character);
+  return getVariant(character, pet.variant)?.sheet ?? character?.sheet ?? '';
 }
 
 export function nextStage(stage: Stage): Stage | null {
@@ -37,21 +63,47 @@ export function stageLengthMs(stage: Stage): number {
   return CONFIG.growth.stageHours[stage] * 3_600_000;
 }
 
-// A small number made from the pet's id, so the same pet always picks the
-// same variation (instead of a different one every time you reload).
-function idHash(id: string): number {
-  let h = 0;
-  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return h;
+// A number from 0 (inclusive) to 1 (exclusive) made from the pet's id and a
+// label. The same pet and label always give the same number, and different
+// labels give unrelated numbers, so each roll is independent.
+export function seededRoll(petId: string, label: string): number {
+  let h = 0x811c9dc5;
+  for (const ch of `${petId}:${label}`) h = Math.imul(h ^ ch.charCodeAt(0), 0x01000193);
+  // Mix the bits well so similar ids don't give similar numbers.
+  h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4_294_967_296;
 }
 
-// Picks which form a pet grows into when it enters `stage`.
-export function chooseForm(stage: Stage, careScore: number, petId: string): Form {
-  const options = FORMS.filter((f) => f.stage === stage && careScore >= f.minCare);
-  if (options.length === 0) return FORMS.find((f) => f.stage === stage) ?? FORMS[0];
-  const best = Math.max(...options.map((f) => f.minCare));
-  const top = options.filter((f) => f.minCare === best);
-  return top[idHash(petId) % top.length];
+// Picks an item from a list where each item has a chance in percent. Returns
+// null when the roll lands outside all the chances.
+function pickByChance<T>(items: [T, number][], roll: number): T | null {
+  let total = 0;
+  for (const [item, chance] of items) {
+    total += chance / 100;
+    if (roll < total) return item;
+  }
+  return null;
+}
+
+// Rolls a star rarity for a Care Score.
+export function rollStars(careScore: number, petId: string): Stars {
+  const band = CONFIG.rarity.find((r) => careScore >= r.minCare) ?? CONFIG.rarity[CONFIG.rarity.length - 1];
+  const odds = ([1, 2, 3] as Stars[]).map((s): [Stars, number] => [s, band.odds[s]]);
+  return pickByChance(odds, seededRoll(petId, 'stars')) ?? 1;
+}
+
+// Picks the character (and maybe a colour variant) a teen grows into.
+export function chooseCharacter(careScore: number, petId: string): { character: Character; variant: Variant | null } {
+  // If nobody has the rolled rarity yet, step down (then up) until someone does.
+  const rolled = rollStars(careScore, petId);
+  const order = [rolled, ...([3, 2, 1] as Stars[]).filter((s) => s < rolled), ...([1, 2, 3] as Stars[]).filter((s) => s > rolled)];
+  const stars = order.find((s) => CHARACTERS.some((c) => c.stars === s)) ?? 1;
+  const options = CHARACTERS.filter((c) => c.stars === stars);
+  const character = options[Math.floor(seededRoll(petId, 'character') * options.length)];
+  const variants = (character.variants ?? []).map((v): [Variant, number] => [v, v.chance]);
+  return { character, variant: pickByChance(variants, seededRoll(petId, 'variant')) };
 }
 
 // Moves the pet into its next stage at time `t` (changes `pet` in place).
@@ -59,10 +111,14 @@ export function growUp(pet: Pet, t: number): void {
   const next = nextStage(pet.stage);
   if (!next) return;
   pet.stage = next;
-  pet.formId = chooseForm(next, pet.careScore, pet.id).id;
   pet.stageStartedAt = t;
   if (next === 'baby') {
     // Freshly hatched: start with comfy stats.
     pet.stats = { ...CONFIG.startingStats };
+  }
+  if (next === 'adult') {
+    const { character, variant } = chooseCharacter(pet.careScore, pet.id);
+    pet.character = character.id;
+    pet.variant = variant?.id ?? null;
   }
 }

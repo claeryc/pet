@@ -1,24 +1,82 @@
 {
-  "_help": "Lists every sprite sheet the game can use. See docs/ART_GUIDE.md. Each sheet is a PNG where every frame is frameWidth x frameHeight pixels, each ROW is one animation, and frames go left to right. 'animations' says which row holds which animation; a sheet can override it (like the egg below). If a sheet is missing an animation, the game uses 'idle' instead.",
+  "_help": "Lists every sprite sheet the game can use. See docs/ART_GUIDE.md. Each sheet is a PNG (path relative to this folder) where every frame is frameWidth x frameHeight pixels, each ROW is one animation, and frames go left to right. 'animations' says which row holds which animation; a sheet can override it (like the egg below). If a sheet is missing an animation, the game uses 'idle' instead. Sheet names here are what src/data/characters.json points at.",
   "frameWidth": 32,
   "frameHeight": 32,
   "animations": {
-    "idle": { "row": 0, "frames": 4, "frameMs": 220 },
-    "sad": { "row": 1, "frames": 4, "frameMs": 400 },
-    "sleep": { "row": 2, "frames": 4, "frameMs": 600 },
-    "sick": { "row": 3, "frames": 4, "frameMs": 350 },
-    "eat": { "row": 4, "frames": 4, "frameMs": 180 },
-    "happy": { "row": 5, "frames": 4, "frameMs": 140 }
+    "idle": {
+      "row": 0,
+      "frames": 4,
+      "frameMs": 220
+    },
+    "sad": {
+      "row": 1,
+      "frames": 4,
+      "frameMs": 400
+    },
+    "sleep": {
+      "row": 2,
+      "frames": 4,
+      "frameMs": 600
+    },
+    "sick": {
+      "row": 3,
+      "frames": 4,
+      "frameMs": 350
+    },
+    "eat": {
+      "row": 4,
+      "frames": 4,
+      "frameMs": 180
+    },
+    "happy": {
+      "row": 5,
+      "frames": 4,
+      "frameMs": 140
+    }
   },
   "sheets": {
     "egg": {
-      "file": "egg.png",
-      "animations": { "idle": { "row": 0, "frames": 4, "frameMs": 300 } }
+      "file": "stages/egg.png",
+      "animations": {
+        "idle": {
+          "row": 0,
+          "frames": 4,
+          "frameMs": 300
+        }
+      }
     },
-    "baby": { "file": "baby.png" },
-    "teen": { "file": "teen.png" },
-    "adult-sunny": { "file": "adult-sunny.png" },
-    "adult-puffy": { "file": "adult-puffy.png" },
-    "adult-mossy": { "file": "adult-mossy.png" }
+    "baby": {
+      "file": "stages/baby.png"
+    },
+    "teen": {
+      "file": "stages/teen.png"
+    },
+    "dumpling": {
+      "file": "characters/basic/dumpling.png"
+    },
+    "cloudlet": {
+      "file": "characters/basic/cloudlet.png"
+    },
+    "sprig": {
+      "file": "characters/nature/sprig.png"
+    },
+    "fernwhisk": {
+      "file": "characters/nature/fernwhisk.png"
+    },
+    "pebblit": {
+      "file": "characters/cave/pebblit.png"
+    },
+    "pebblit-amber": {
+      "file": "characters/cave/pebblit-amber.png"
+    },
+    "geodon": {
+      "file": "characters/cave/geodon.png"
+    },
+    "glimmer": {
+      "file": "characters/sparkle/glimmer.png"
+    },
+    "starwisp": {
+      "file": "characters/sparkle/starwisp.png"
+    }
   }
 }
