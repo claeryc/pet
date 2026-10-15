@@ -38,11 +38,12 @@ export function canPlayMinigames(pet: Pet, now: number): boolean {
 }
 
 // Which animation to show for the pet right now.
-export type Look = 'idle' | 'sad' | 'sleep' | 'sick';
+export type Look = 'idle' | 'cheerful' | 'sad' | 'sleep' | 'sick';
 
 export function getLook(pet: Pet): Look {
   if (pet.asleep) return 'sleep';
   if (pet.condition === 'sick') return 'sick';
   if (pet.condition === 'warning' || isNeglected(pet.stats)) return 'sad';
+  if (pet.stats.happiness >= CONFIG.cheerfulHappiness) return 'cheerful';
   return 'idle';
 }

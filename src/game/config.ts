@@ -71,6 +71,10 @@ export const CONFIG = {
   // A stat at or above this counts as "well looked after".
   goodStatThreshold: 50,
 
+  // When happiness is at least this (and nothing is wrong), the pet shows
+  // its calm "cheerful" animation instead of the normal idle one.
+  cheerfulHappiness: 70,
+
   sleep: {
     bedtimeHour: 21, // night starts at 9pm (your device's local time)
     wakeHour: 8, // and ends at 8am; a sleeping pet wakes up by itself then

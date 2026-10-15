@@ -98,7 +98,7 @@ class PixelCanvas {
 
 // ---------- The creatures ----------
 
-type Face = 'happy' | 'sad' | 'sleep' | 'sick' | 'eat' | 'joy';
+type Face = 'happy' | 'sad' | 'sleep' | 'sick' | 'eat' | 'joy' | 'cheerful';
 type Topper = 'none' | 'nubs' | 'ears' | 'sprout' | 'fluff' | 'spikes' | 'crystals' | 'leaves' | 'antenna' | 'halo';
 type Extra = 'spots' | 'wings' | 'twinkle';
 
@@ -123,7 +123,8 @@ const ROWS: [tag: string, face: Face, frameMs: number, frames: Frame[]][] = [
   ['sleep', 'sleep', 600, [[0, 1, 0], [0, 1, 1], [0, 0, 2], [0, 0, 3]]],
   ['sick', 'sick', 350, [[0, 1, 0], [0, 2, 1], [0, 1, 2], [0, 2, 3]]],
   ['eat', 'eat', 180, [[0, 1, 0], [0, 0, 1], [0, 1, 0], [0, 0, 1]]], // mouth open/closed
-  ['happy', 'joy', 140, [[0, 2, 0], [3, 0, 0], [5, 0, 0], [2, 0, 0]]], // big hop
+  ['happy', 'joy', 140, [[0, 2, 0], [3, 0, 0], [4, 0, 0], [2, 0, 0]]], // big hop
+  ['cheerful', 'cheerful', 320, [[0, 1, 0], [0, 0, 1], [0, 0, 2], [0, 1, 3]]], // calm and happy, no jump
 ];
 
 // Adds a dark 1-pixel outline around everything drawn on the canvas.
@@ -244,6 +245,15 @@ function drawCreature(look: Look, face: Face, [bounce, squash, extra]: Frame, co
       px(mx, eyeY + 4, 2, 1, PALETTE.ink);
       px(mx + 2, eyeY + 3, 1, 1, PALETTE.ink);
     }
+  } else if (face === 'cheerful') {
+    for (const ex of [eyeL, eyeR]) {
+      px(ex, eyeY + 1, 1, 1, PALETTE.ink); // soft ^ ^ eyes
+      px(ex + 1, eyeY, 1, 1, PALETTE.ink);
+      px(ex + 2, eyeY + 1, 1, 1, PALETTE.ink);
+    }
+    px(mx - 1, eyeY + 3, 1, 1, PALETTE.ink); // gentle smile
+    px(mx, eyeY + 4, 2, 1, PALETTE.ink);
+    px(mx + 2, eyeY + 3, 1, 1, PALETTE.ink);
   } else if (face === 'joy') {
     for (const ex of [eyeL, eyeR]) {
       px(ex, eyeY + 1, 1, 1, PALETTE.ink); // ^ ^ eyes
@@ -290,6 +300,14 @@ function drawCreature(look: Look, face: Face, [bounce, squash, extra]: Frame, co
     px(zx, zy + 3, 4, 1, PALETTE.white);
   } else if (face === 'sick') {
     px(left + bw - 3, top + 1 + extra, 1, 2, PALETTE.ocean); // sweat drop
+  } else if (face === 'cheerful' && extra > 0) {
+    const hx = Math.min(left + bw, FRAME - 6);
+    const hy = Math.max(0, top + 2 - extra * 2); // a little heart floats up
+    px(hx, hy, 2, 1, PALETTE.pink);
+    px(hx + 3, hy, 2, 1, PALETTE.pink);
+    px(hx, hy + 1, 5, 1, PALETTE.pink);
+    px(hx + 1, hy + 2, 3, 1, PALETTE.pink);
+    px(hx + 2, hy + 3, 1, 1, PALETTE.pink);
   } else if (face === 'joy' && extra === 0 && bounce > 0) {
     px(left + bw + 1, top - 2, 1, 1, PALETTE.butter); // sparkle
   }
@@ -343,6 +361,11 @@ function creatureArt(look: Look | null): Art {
       frameMs.push(ms);
       if (!look) return cels.push(null);
       const frame = drawCreature(look, face, f, col);
+      for (let x = 0; x < FRAME; x++)
+        if (!frame.isEmpty(x, 0)) {
+          console.warn(`Warning: a ${tag} frame touches the top edge; hats can't follow it.`);
+          break;
+        }
       png.blit(frame, col * FRAME, row * FRAME);
       cels.push(frame.data);
     });
@@ -473,10 +496,10 @@ const LOOKS: Record<string, Look> = {
   // Cave: spiky and rocky.
   'characters/cave/pebblit': { body: PALETTE.lilac, shade: PALETTE.plum, detail: PALETTE.plum, width: 20, height: 15, topper: 'spikes', extras: ['spots'] },
   'characters/cave/pebblit-amber': { body: PALETTE.butter, shade: PALETTE.cocoa, detail: PALETTE.cocoa, width: 20, height: 15, topper: 'spikes', extras: ['spots'] },
-  'characters/cave/geodon': { body: PALETTE.ocean, shade: PALETTE.plum, detail: PALETTE.lavender, width: 24, height: 18, topper: 'crystals', extras: ['spots'] },
+  'characters/cave/geodon': { body: PALETTE.ocean, shade: PALETTE.plum, detail: PALETTE.lavender, width: 24, height: 16, topper: 'crystals', extras: ['spots'] },
   // Sparkle: shiny and magical.
-  'characters/sparkle/glimmer': { body: PALETTE.butter, shade: PALETTE.peach, width: 18, height: 15, topper: 'antenna' },
-  'characters/sparkle/starwisp': { body: PALETTE.sky, shade: PALETTE.lilac, width: 24, height: 18, topper: 'halo', extras: ['twinkle'] },
+  'characters/sparkle/glimmer': { body: PALETTE.butter, shade: PALETTE.peach, width: 18, height: 13, topper: 'antenna' },
+  'characters/sparkle/starwisp': { body: PALETTE.sky, shade: PALETTE.lilac, width: 24, height: 16, topper: 'halo', extras: ['twinkle'] },
 };
 
 const force = process.argv.includes('--force');
