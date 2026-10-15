@@ -35,8 +35,11 @@ export interface Drawer {
 
 export interface DrawerSetup {
   id: string; // used by the CSS, e.g. "feed"
-  label: string;
-  options: DrawerOption[];
+  label: string; // the button text (or, with an icon, its name for screen readers)
+  icon?: string; // SVG markup: shows this icon on the button instead of the text
+  options?: DrawerOption[]; // a list of choices...
+  content?: HTMLElement; // ...or anything else to show inside the panel
+  onOpen?: () => void; // called each time the panel opens
   row: HTMLElement; // the row of buttons this drawer lives in
   comingSoon: string;
   // Called before opening. Return a message to show instead of opening
@@ -54,7 +57,13 @@ export function createDrawer(setup: DrawerSetup): Drawer {
   head.className = 'drawer-head';
   head.setAttribute('aria-expanded', 'false');
   head.innerHTML = `<span class="drawer-label"></span><span class="drawer-chevron" aria-hidden="true"></span>`;
-  head.querySelector('.drawer-label')!.textContent = setup.label;
+  const headLabel = head.querySelector<HTMLElement>('.drawer-label')!;
+  if (setup.icon) {
+    headLabel.innerHTML = setup.icon;
+    head.setAttribute('aria-label', setup.label);
+  } else {
+    headLabel.textContent = setup.label;
+  }
 
   // The body uses a CSS trick (grid rows going from 0fr to 1fr) so it can
   // animate to exactly the height of its contents.
@@ -64,12 +73,16 @@ export function createDrawer(setup: DrawerSetup): Drawer {
   inner.className = 'drawer-inner';
   const options = document.createElement('div');
   options.className = 'drawer-options';
+  if (setup.content) {
+    options.classList.add('drawer-content');
+    options.append(setup.content);
+  }
   inner.append(options);
   body.append(inner);
   el.append(head, body);
 
   // Each option is one row: picture, name, then its effects on the right.
-  setup.options.forEach((opt, i) => {
+  (setup.options ?? []).forEach((opt, i) => {
     const b = document.createElement('button');
     b.className = 'drawer-option';
     b.style.setProperty('--i', String(i)); // used to stagger the pop-in
@@ -117,6 +130,7 @@ export function createDrawer(setup: DrawerSetup): Drawer {
   function open(): void {
     const blocked = setup.beforeOpen();
     if (blocked) return setup.onBlocked(blocked);
+    setup.onOpen?.();
     setup.row.dataset.open = setup.id;
     el.classList.add('is-open');
     head.setAttribute('aria-expanded', 'true');

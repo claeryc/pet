@@ -41,21 +41,41 @@ const SUN_ICON = `
     <path fill="currentColor" d="M5 0h2v2H5zM1 1h2v2H1zM9 1h2v2H9zM4 3h4v1H4zM3 4h6v4H3zM4 8h4v1H4zM0 5h2v2H0zM10 5h2v2h-2zM1 9h2v2H1zM9 9h2v2H9zM5 10h2v2H5z"/>
   </svg>`;
 
-function statBar(label: string): { el: HTMLElement; set: (v: number) => void } {
+// One stat: its icon, then a bar of 10 little blocks. Each block is 10
+// points, and a block lights up as soon as the stat reaches into it.
+const STAT_SEGMENTS = 10;
+
+function statBar(label: string, icon: string): { el: HTMLElement; set: (v: number) => void } {
   const el = document.createElement('div');
   el.className = 'stat';
-  el.innerHTML = `
-    <span class="stat-label">${label}</span>
-    <div class="stat-track"><div class="stat-fill"></div></div>
-    <span class="stat-value"></span>`;
-  const fill = el.querySelector<HTMLElement>('.stat-fill')!;
-  const value = el.querySelector<HTMLElement>('.stat-value')!;
+  el.setAttribute('role', 'meter');
+  el.setAttribute('aria-label', label);
+  el.setAttribute('aria-valuemin', '0');
+  el.setAttribute('aria-valuemax', '100');
+  el.title = label;
+  const iconEl = document.createElement('span');
+  iconEl.className = 'stat-icon';
+  iconEl.innerHTML = icon;
+  const track = document.createElement('div');
+  track.className = 'stat-segments';
+  const segments = Array.from({ length: STAT_SEGMENTS }, () => {
+    const seg = document.createElement('span');
+    seg.className = 'stat-seg';
+    return seg;
+  });
+  track.append(...segments);
+  el.append(iconEl, track);
   return {
     el,
     set(v: number) {
-      fill.style.width = `${v}%`;
-      fill.classList.toggle('low', v < CONFIG.lowStatThreshold);
-      value.textContent = String(Math.round(v));
+      const lit = Math.ceil(v / (100 / STAT_SEGMENTS));
+      const low = v < CONFIG.lowStatThreshold;
+      segments.forEach((seg, i) => {
+        seg.classList.toggle('on', i < lit);
+        seg.classList.toggle('low', low);
+      });
+      el.setAttribute('aria-valuenow', String(Math.round(v)));
+      el.title = `${label}: ${Math.round(v)}`;
     },
   };
 }
@@ -116,10 +136,10 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   banner.append(bannerText, medicine);
 
   const bars: Record<keyof PetStats, ReturnType<typeof statBar>> = {
-    hunger: statBar(STRINGS.stats.hunger),
-    happiness: statBar(STRINGS.stats.happiness),
-    health: statBar(STRINGS.stats.health),
-    energy: statBar(STRINGS.stats.energy),
+    hunger: statBar(STRINGS.stats.hunger, STAT_ICONS.hunger),
+    happiness: statBar(STRINGS.stats.happiness, STAT_ICONS.happiness),
+    health: statBar(STRINGS.stats.health, STAT_ICONS.health),
+    energy: statBar(STRINGS.stats.energy, STAT_ICONS.energy),
   };
   const stats = document.createElement('div');
   stats.className = 'stats';
@@ -186,15 +206,23 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
 
   const feedDrawer = createDrawer({ id: 'feed', label: STRINGS.buttons.feed, options: feedOptions, ...drawerSetup });
   const playDrawer = createDrawer({ id: 'play', label: STRINGS.buttons.play, options: playOptions, ...drawerSetup });
+
+  // The gear button opens the menu (shop, inventory, settings and more) the
+  // same way Feed and Play open. It always opens, even for an egg.
+  let menuDrawer: ReturnType<typeof createDrawer> | null = null;
+  const menu = createMenu(cb, () => menuDrawer?.isOpen() ?? false, () => menuDrawer?.close());
+  menuDrawer = createDrawer({
+    ...drawerSetup,
+    id: 'menu',
+    label: STRINGS.buttons.menu,
+    icon: GEAR_ICON,
+    content: menu.el,
+    onOpen: menu.reset,
+    beforeOpen: () => null,
+  });
   const lights = button('', 'btn btn-icon', cb.onLights);
 
-  // The gear button opens the menu (settings, shop and more).
-  const menu = createMenu(cb);
-  const gear = button('', 'btn btn-icon', menu.open);
-  gear.setAttribute('aria-label', STRINGS.buttons.menu);
-  gear.innerHTML = GEAR_ICON;
-
-  actions.append(feedDrawer.el, playDrawer.el, lights, gear);
+  actions.append(feedDrawer.el, playDrawer.el, menuDrawer.el, lights);
 
   // A short message that pops up and fades, e.g. "Mochi is asleep".
   const toastEl = document.createElement('div');
@@ -207,7 +235,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     toastTimer = window.setTimeout(() => toastEl.classList.remove('show'), 2500);
   }
 
-  root.append(gold, title, clock, age, canvas, mood, banner, stats, actions, menu.el, toastEl);
+  root.append(gold, title, clock, age, canvas, mood, banner, stats, actions, toastEl);
 
   return {
     canvas,

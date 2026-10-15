@@ -1,5 +1,6 @@
-// The menu that slides up when you tap the gear button. It has a main list
-// (Shop, Inventory, Mini-games, Family Tree, Settings) and a page for each.
+// The menu inside the gear button's panel (it opens like Feed and Play). It
+// has a main list (Shop, Inventory, Mini-games, Family Tree, Settings) and a
+// page for each.
 // Items for features we haven't built yet are shown greyed out with
 // "Coming soon".
 
@@ -21,8 +22,8 @@ export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks {
 }
 
 export interface Menu {
-  el: HTMLElement;
-  open: () => void;
+  el: HTMLElement; // the menu's contents, placed inside the gear panel
+  reset: () => void; // go back to the main list
   update: (state: GameState) => void;
 }
 
@@ -43,59 +44,40 @@ function item(label: string, onClick?: () => void): HTMLButtonElement {
   return b;
 }
 
-export function createMenu(cb: MenuCallbacks): Menu {
-  // A see-through backdrop covering the screen, with the panel on top.
-  const el = document.createElement('div');
-  el.className = 'menu-backdrop';
-  el.hidden = true;
-
+// `isOpen` says whether the panel is showing; `close` folds it up.
+export function createMenu(cb: MenuCallbacks, isOpen: () => boolean, close: () => void): Menu {
   const panel = document.createElement('div');
   panel.className = 'menu-panel';
-  panel.setAttribute('role', 'dialog');
-  el.append(panel);
-
-  const close = () => (el.hidden = true);
 
   // The Shop and Inventory pages redraw whenever the game changes (after
   // buying something, for example), so we remember which page is showing.
   let state: GameState | null = null;
   let page: 'main' | 'settings' | 'shop' | 'inventory' = 'main';
-  // Tapping outside the panel closes the menu.
-  el.addEventListener('click', (e) => {
-    if (e.target === el) close();
-  });
 
   // Live readout for the testing tools, refreshed by update().
   const debugInfo = document.createElement('p');
   debugInfo.className = 'debug-info';
 
-  function header(title: string, onBack?: () => void): HTMLElement {
+  // "‹  Shop" at the top of a page, with a button back to the main list.
+  // (Tapping the gear bar above closes the whole panel.)
+  function header(title: string, onBack: () => void): HTMLElement {
     const h = document.createElement('div');
     h.className = 'menu-header';
-    const left = document.createElement('button');
-    left.className = 'menu-header-btn';
-    if (onBack) {
-      left.textContent = '‹';
-      left.setAttribute('aria-label', STRINGS.menu.back);
-      left.addEventListener('click', onBack);
-    } else {
-      left.style.visibility = 'hidden';
-    }
+    const back = document.createElement('button');
+    back.className = 'menu-header-btn';
+    back.textContent = '‹';
+    back.setAttribute('aria-label', STRINGS.menu.back);
+    back.addEventListener('click', onBack);
     const t = document.createElement('h2');
     t.textContent = title;
-    const x = document.createElement('button');
-    x.className = 'menu-header-btn';
-    x.textContent = '×';
-    x.setAttribute('aria-label', STRINGS.menu.close);
-    x.addEventListener('click', close);
-    h.append(left, t, x);
+    const spacer = document.createElement('span');
+    h.append(back, t, spacer);
     return h;
   }
 
   function showMain(): void {
     page = 'main';
     panel.replaceChildren(
-      header(STRINGS.menu.title),
       item(STRINGS.menu.shop, showShop),
       item(STRINGS.menu.inventory, showInventory),
       item(STRINGS.menu.minigames),
@@ -184,20 +166,18 @@ export function createMenu(cb: MenuCallbacks): Menu {
     if (CONFIG.debug.showTools) panel.append(debugSection());
   }
 
+  showMain();
   return {
-    el,
-    open() {
-      showMain();
-      el.hidden = false;
-    },
+    el: panel,
+    reset: showMain,
     update(next) {
       // Only redraw the Shop or Inventory when something in it changed, so
       // the list doesn't jump while you scroll.
       const key = (s: GameState | null) => s && JSON.stringify([s.gold, s.inventory, s.pet.hat, s.pet.stage]);
       const changed = key(state) !== key(next);
       state = next;
-      if (changed && !el.hidden && page === 'shop') showShop();
-      if (changed && !el.hidden && page === 'inventory') showInventory();
+      if (changed && isOpen() && page === 'shop') showShop();
+      if (changed && isOpen() && page === 'inventory') showInventory();
       const p = next.pet;
       debugInfo.textContent = `${STRINGS.debug.careScore}: ${p.careScore.toFixed(1)} · ${STRINGS.debug.condition}: ${p.condition} · ${STRINGS.debug.character}: ${p.character ?? '-'}${p.variant ? ` (${p.variant})` : ''}`;
     },
