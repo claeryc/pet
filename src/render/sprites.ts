@@ -23,6 +23,7 @@ interface ManifestSheet {
   frameWidth?: number; // only if different from the shared size (hats)
   frameHeight?: number;
   head?: Head;
+  headOffsets?: Record<string, number[]>; // optional fix for the automatic tracking
 }
 
 interface ManifestFile {
@@ -79,7 +80,8 @@ export async function loadSprites(): Promise<SpriteLibrary> {
           animations: sheet.animations ?? manifest.animations,
           head: sheet.head,
         };
-        if (loaded.head) loaded.headOffsets = findHeadOffsets(loaded, loaded.head);
+        // Hand-written offsets in the manifest win over the automatic ones.
+        if (loaded.head) loaded.headOffsets = { ...findHeadOffsets(loaded, loaded.head), ...sheet.headOffsets };
         library.set(name, loaded);
       } catch (err) {
         console.warn(err);
@@ -89,10 +91,12 @@ export async function loadSprites(): Promise<SpriteLibrary> {
   return library;
 }
 
-// For every frame, finds the highest see-through-free pixel in a thin
-// column around the head point, and compares it with the first idle frame.
-// Effects to the side (Zs, sparkles) are outside that column, so they don't
-// confuse it.
+// For every frame, works out how far the top of the head has moved compared
+// with the first idle frame. It looks at a few columns around the head
+// point, finds the top of the picture in each, and takes the lowest one:
+// spikes, ears or a sprout only raise some columns, so the lowest top is
+// the head itself. Effects to the side (Zs, sparkles, hearts) are outside
+// those columns, so they don't confuse it.
 function findHeadOffsets(sheet: SpriteSheet, head: Head): Record<string, number[]> {
   const canvas = document.createElement('canvas');
   canvas.width = sheet.image.width;
@@ -103,10 +107,13 @@ function findHeadOffsets(sheet: SpriteSheet, head: Head): Record<string, number[
   const topOf = (row: number, frame: number): number => {
     const ox = frame * sheet.frameWidth;
     const oy = row * sheet.frameHeight;
-    for (let y = 0; y < sheet.frameHeight; y++)
-      for (let x = head.x - 1; x <= head.x + 1; x++)
-        if (data[((oy + y) * width + ox + x) * 4 + 3] > 0) return y;
-    return sheet.frameHeight;
+    let lowest = 0;
+    for (let x = head.x - 2; x <= head.x + 2; x++) {
+      let y = 0;
+      while (y < sheet.frameHeight && data[((oy + y) * width + ox + x) * 4 + 3] === 0) y++;
+      lowest = Math.max(lowest, y);
+    }
+    return lowest;
   };
   const idle = sheet.animations.idle;
   const base = idle ? topOf(idle.row, 0) : 0;

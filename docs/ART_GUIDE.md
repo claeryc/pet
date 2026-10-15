@@ -54,9 +54,10 @@ Keep `art/` and `public/sprites/` mirrored: `art/characters/cave/pebblit.aseprit
 | 2 | `sleep` | lights off | 4 |
 | 3 | `sick` | sick | 4 |
 | 4 | `eat` | right after you feed it | 4 |
-| 5 | `happy` | right after you play, or when it grows up | 4 |
+| 5 | `happy` | right after you play, or when it grows up (a big jump) | 4 |
+| 6 | `cheerful` | very happy and nothing wrong: calm, smiling, no jump | 4 |
 
-So a full sheet is 128 x 192 pixels. The egg only has an `idle` row. If a sheet is missing an animation, the game uses `idle` instead, so you can start with just `idle` and add the rest later.
+So a full sheet is 128 x 224 pixels. The egg only has an `idle` row. If a sheet is missing an animation, the game uses `idle` instead, so you can start with just `idle` and add the rest later.
 
 ## The palette
 
@@ -102,6 +103,8 @@ Any hat fits any character, so you draw each hat only once (in two sizes), and n
 
 **How it works:** every pet sheet in `manifest.json` has a `head` point, e.g. `"head": { "x": 16, "y": 14, "size": "large" }`. That's the pixel in the first `idle` frame where the bottom middle of a hat should sit, and whether the character has a small or large head. In every other frame the game finds how far the top of the head has moved (by looking at the picture) and moves the hat with it, so the hat hops, squashes and sleeps along with the pet.
 
+**If a hat doesn't follow an animation properly**, you can tell the game exactly how far the head moves in each frame of that animation, in pixels compared to the first idle frame (negative is up). Add it to the sheet in `manifest.json`, for example `"headOffsets": { "happy": [1, -4, -5, -3] }`.
+
 **Setting the head point for a character:** open its sheet, look at the first idle frame, and find the column in the middle of the head (`x`) and the row just below the top of the head (`y`). Use `"size": "small"` for small heads (babies, tiny characters) and `"large"` for the rest. If a hat sits a little too high or low, change `y` by 1.
 
 **Drawing a hat:**
@@ -137,6 +140,7 @@ File → Export Sprite Sheet (Ctrl+E):
 - **A dark outline** (the `ink` colour) around the pet, so it stands out on any background.
 - **Same silhouette across frames.** Only small changes between frames (a hop, a blink).
 - **Feet on row 28**, with a 1-pixel shadow on row 29. **Centred** horizontally.
+- **Keep the top row empty** in every frame, even at the top of a jump. If the head (or its spikes, antenna...) runs off the top, hats can't follow it.
 - **Original designs only.** Don't copy existing game characters.
 
 ## Getting your art into the game

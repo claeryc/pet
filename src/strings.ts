@@ -85,6 +85,7 @@ export const STRINGS = {
   },
   mood: {
     idle: (name: string) => `${name} is feeling cozy.`,
+    cheerful: (name: string) => `${name} is feeling cheerful!`,
     egg: (name: string) => `${name} is wiggling inside the egg...`,
     sad: (name: string) => `${name} needs some love...`,
     sleep: (name: string) => `${name} is sleeping. Shh...`,
