@@ -5,7 +5,7 @@
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import { getLook, isNight, isRecovering } from '../game/stats';
-import { stageLengthMs } from '../game/growth';
+import { getCharacter, getVariant, stageLengthMs } from '../game/growth';
 import type { GameState, PetStats } from '../game/state';
 import { createMenu, type DebugCallbacks } from './menu';
 import { createDrawer, type DrawerOption, type Effect } from './drawer';
@@ -93,7 +93,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const clock = document.createElement('p');
   clock.className = 'clock';
 
-  // "Mochi · Baby · 3h old"
+  // "Mochi · Baby · 3h old", or "Mochi · Geodon ★★★ · 4d old"
   const age = document.createElement('p');
   age.className = 'age';
 
@@ -215,7 +215,12 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       for (const key of Object.keys(bars) as (keyof PetStats)[]) bars[key].set(pet.stats[key]);
       stats.hidden = isEgg; // an egg has no needs yet
       clock.textContent = formatClock(now);
-      age.textContent = `${pet.name} · ${STRINGS.age(STRINGS.stages[pet.stage], formatDuration(now - pet.bornAt))}`;
+      // Adults show their character and rarity instead of "Adult".
+      const character = getCharacter(pet.character);
+      const stageLabel = character
+        ? `${STRINGS.characterName(character.name, getVariant(character, pet.variant)?.name)} ${STRINGS.stars(character.stars)}`
+        : STRINGS.stages[pet.stage];
+      age.textContent = `${pet.name} · ${STRINGS.age(stageLabel, formatDuration(now - pet.bornAt))}`;
       mood.textContent = isEgg ? STRINGS.mood.egg(pet.name) : STRINGS.mood[getLook(pet)](pet.name);
 
       // Banner: hatching countdown, or sick beats recovering beats warning.

@@ -9,7 +9,7 @@ const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 export interface SaveFile {
   version: number;
@@ -46,6 +46,16 @@ export function migrate(save: SaveFile): SaveFile {
     save.state.pet.formId = 'baby';
     save.state.pet.stageStartedAt = save.state.lastUpdated;
     save.version = 4;
+  }
+  // Version 4 -> 5: adults became characters with themes and rarity. Old
+  // adult forms move to the closest new character.
+  if (save.version === 4) {
+    const pet = save.state.pet;
+    const oldAdults: Record<string, string> = { sunny: 'starwisp', puffy: 'cloudlet', mossy: 'sprig' };
+    pet.character = pet.stage === 'adult' ? (oldAdults[pet.formId] ?? 'dumpling') : null;
+    pet.variant = null;
+    delete pet.formId;
+    save.version = 5;
   }
   return save;
 }

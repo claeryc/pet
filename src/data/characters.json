@@ -1,0 +1,31 @@
+{
+  "_help": "Every character a pet can grow into. See docs/ART_GUIDE.md. 'stages' lists the sheet used by every egg, baby and teen. Each adult character has a theme, a star rarity (1 = common, 3 = rare) and a sprite sheet from public/sprites/manifest.json. 'variants' are optional colour versions: each has its own sheet and a chance (in percent) of appearing; otherwise the pet uses the character's normal sheet. Adding a character is one new entry here plus its sheet in the manifest.",
+  "stages": {
+    "egg": "egg",
+    "baby": "baby",
+    "teen": "teen"
+  },
+  "themes": {
+    "basic": "Basic",
+    "nature": "Nature",
+    "cave": "Cave",
+    "sparkle": "Sparkle"
+  },
+  "characters": [
+    { "id": "dumpling", "theme": "basic", "stars": 1, "name": "Dumpling", "sheet": "dumpling" },
+    { "id": "cloudlet", "theme": "basic", "stars": 3, "name": "Cloudlet", "sheet": "cloudlet" },
+    { "id": "sprig", "theme": "nature", "stars": 1, "name": "Sprig", "sheet": "sprig" },
+    { "id": "fernwhisk", "theme": "nature", "stars": 3, "name": "Fernwhisk", "sheet": "fernwhisk" },
+    {
+      "id": "pebblit",
+      "theme": "cave",
+      "stars": 1,
+      "name": "Pebblit",
+      "sheet": "pebblit",
+      "variants": [{ "id": "amber", "name": "Amber", "sheet": "pebblit-amber", "chance": 25 }]
+    },
+    { "id": "geodon", "theme": "cave", "stars": 3, "name": "Geodon", "sheet": "geodon" },
+    { "id": "glimmer", "theme": "sparkle", "stars": 1, "name": "Glimmer", "sheet": "glimmer" },
+    { "id": "starwisp", "theme": "sparkle", "stars": 3, "name": "Starwisp", "sheet": "starwisp" }
+  ]
+}

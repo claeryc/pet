@@ -1,22 +1,48 @@
-# Art guide: making your own pet sprites
+# Art guide: making your own pet characters
 
-This explains how the pet's art works, how to draw your own in Aseprite, and how to get it into the game. You never need to change any code to add or replace art.
+This explains how the pet's art is organised, how to draw a character in Aseprite, and how to get it into the game. You never need to change any code to add or replace art.
 
-## How the game finds art
+## How characters work
 
-Three files work together:
+- Every pet looks the same as an **egg**, a **baby** and a **teen**.
+- When the teen grows up, it becomes an adult **character**. Each character has a **theme** (Basic, Nature, Cave, Sparkle) and a **rarity** of 1 to 3 stars.
+- Good care during the baby and teen days raises the chance of a rarer character. The odds are in `src/game/config.ts` under `rarity`.
+- A character can have **colour variants** (for example an Amber Pebblit). A variant is just another sheet with a chance of appearing.
 
-1. **`public/sprites/*.png`**: the sprite sheets (the pictures).
-2. **`public/sprites/manifest.json`**: a list of every sheet, its frame size, and which row holds which animation.
-3. **`src/data/creatures.json`**: every form (look) a pet can grow into, and which sheet each one uses.
+Today each theme has a common (★) and a rare (★★★) character:
 
-The game loads art only through `manifest.json`. If a sheet is missing or misnamed, the pet shows a small purple "?" box instead, so it's easy to spot.
+| Theme | ★ | ★★★ |
+| --- | --- | --- |
+| Basic | Dumpling | Cloudlet |
+| Nature | Sprig | Fernwhisk |
+| Cave | Pebblit (and Amber variant) | Geodon |
+| Sparkle | Glimmer | Starwisp |
+
+All of these are placeholders, made to be painted over.
+
+## Where everything lives
+
+```
+art/                               your Aseprite files (the game never loads these)
+  _template.aseprite               blank file for a new character
+  stages/egg.aseprite, baby, teen
+  characters/<theme>/<id>.aseprite
+
+public/sprites/                    exported PNGs the game loads
+  manifest.json                    list of every sheet
+  stages/egg.png, baby.png, teen.png
+  characters/<theme>/<id>.png
+
+src/data/characters.json           every character: theme, stars, name, sheet, variants
+```
+
+Keep `art/` and `public/sprites/` mirrored: `art/characters/cave/pebblit.aseprite` exports to `public/sprites/characters/cave/pebblit.png`.
 
 ## What a sprite sheet looks like
 
 - Every frame is **32 x 32 pixels**.
 - Each **row** is one animation, and its frames go **left to right**.
-- The standard rows, top to bottom:
+- The rows, top to bottom:
 
 | Row | Animation | When it plays | Frames |
 | --- | --- | --- | --- |
@@ -27,66 +53,72 @@ The game loads art only through `manifest.json`. If a sheet is missing or misnam
 | 4 | `eat` | right after you feed it | 4 |
 | 5 | `happy` | right after you play, or when it grows up | 4 |
 
-So a full sheet is 128 x 192 pixels (4 frames x 6 rows). The egg is the exception: it only has an `idle` row (a wobble), and `manifest.json` says so for that sheet. If a sheet is missing an animation, the game uses `idle` instead, so you can start small.
-
-Open any placeholder PNG in `public/sprites/` to see the layout.
+So a full sheet is 128 x 192 pixels. The egg only has an `idle` row. If a sheet is missing an animation, the game uses `idle` instead, so you can start with just `idle` and add the rest later.
 
 ## The palette
 
-All art uses one shared 16-colour palette, so everything looks like it belongs together. The colours are defined in `src/render/palette.ts`, and **`docs/palette.gpl`** has the same colours as a palette file Aseprite can load.
+All art uses one shared 16-colour palette (`src/render/palette.ts`). It's already loaded in every `.aseprite` file in `art/`, and `docs/palette.gpl` has it as a separate palette file.
 
-## Drawing a sprite in Aseprite, step by step
+## Editing an existing character
 
-1. **New file:** File → New. Set Width 32, Height 32, Color Mode **RGBA**, Background **Transparent**.
-2. **Load the palette:** in the Palette panel, click the menu (☰) → Load Palette, and pick `docs/palette.gpl`. Use only these colours.
-3. **Use crisp pixels:** draw with the **Pencil** tool (B) and tick **Pixel-perfect** in the top bar. Never use blur, soft brushes or smoothing.
-4. **Add frames:** show the timeline (Tab), then Frame → New Frame (Alt+N) for each new frame. Make 4 frames per animation.
-5. **Name each animation with a tag:** select the 4 frames of one animation in the timeline, then Frame → Tags → New Tag. Name it exactly `idle`, `sad`, `sleep`, `sick`, `eat` or `happy`. Keep the tags in that order from left to right.
-6. **Save your work** as a `.aseprite` file somewhere safe (not in `public/`), so you can edit it later.
-7. **Export the sheet:** File → Export Sprite Sheet (Ctrl+E):
-   - **Layout** tab: Sheet type **By Rows**.
-   - **Sprite** tab: tick **Split Tags**, so each tag gets its own row.
-   - **Borders** tab: all padding and spacing at **0**.
-   - **Output** tab: tick **Output File**, name it something like `adult-starry.png`, and untick JSON Data (the game uses `manifest.json` instead).
-   - Click Export.
+1. Open its file in `art/`, for example `art/characters/cave/geodon.aseprite`.
+2. Paint on the **pet** layer. The **guides** layer shows the feet line (pink), the shadow row (purple) and the centre (blue). It's a reference layer, so it never shows up in the export.
+3. Export (see below) over the matching PNG in `public/sprites/`, same name and folder.
 
-**Tip:** to start from a placeholder instead, use File → Import Sprite Sheet on one of the PNGs in `public/sprites/` with a 32 x 32 grid.
+That's it. No other file changes, and existing pets pick up the new look.
+
+## Making a new character
+
+1. **Copy the template:** duplicate `art/_template.aseprite` into the theme folder and rename it, for example `art/characters/cave/stalagbun.aseprite`. It already has the size, palette, guides, all 24 frames and the six animation tags (`idle`, `sad`, `sleep`, `sick`, `eat`, `happy`), each with the right speed.
+2. **Draw** each frame on the **pet** layer with the **Pencil** (B) and **Pixel-perfect** ticked. Never use blur or soft brushes. Keep the feet on the pink line and the pet centred.
+3. **Export** the sheet to `public/sprites/characters/cave/stalagbun.png` (see below).
+4. **List the sheet** in `public/sprites/manifest.json` under `"sheets"`:
+   ```json
+   "stalagbun": { "file": "characters/cave/stalagbun.png" }
+   ```
+5. **Add the character** to `src/data/characters.json`:
+   ```json
+   { "id": "stalagbun", "theme": "cave", "stars": 2, "name": "Stalagbun", "sheet": "stalagbun" }
+   ```
+
+A new **theme** is one more line under `"themes"` in `characters.json`, then characters can use it. Characters of the same rarity share that rarity's chance equally, whatever their theme.
+
+## Adding a colour variant
+
+1. Save a copy of the character's file, for example `art/characters/cave/geodon-frost.aseprite`, and recolour it (Edit → Replace Color helps).
+2. Export it to `public/sprites/characters/cave/geodon-frost.png` and add it to `manifest.json`.
+3. In `characters.json`, give the character a `variants` list. `chance` is the percent of these characters that get the variant:
+   ```json
+   { "id": "geodon", "theme": "cave", "stars": 3, "name": "Geodon", "sheet": "geodon",
+     "variants": [{ "id": "frost", "name": "Frost", "sheet": "geodon-frost", "chance": 20 }] }
+   ```
+
+## Exporting a sheet from Aseprite
+
+File → Export Sprite Sheet (Ctrl+E):
+
+- **Layout** tab: Sheet type **By Rows**.
+- **Sprite** tab: Layers **Visible layers**, and tick **Split Tags**, so each tag gets its own row.
+- **Borders** tab: all padding and spacing at **0**.
+- **Output** tab: tick **Output File** and pick the PNG in `public/sprites/`. Untick JSON Data (the game uses `manifest.json`).
+- Click Export.
 
 ## Consistency rules (especially for AI-generated art)
 
-If you generate sprites with an AI tool, clean them up in Aseprite (or Piskel) so they follow these rules:
-
 - **Only palette colours.** Use Sprite → Color Mode → Indexed with the palette loaded to snap stray colours.
-- **No anti-aliasing or blur.** Edges should be hard, pixel to pixel.
-- **Same silhouette across frames.** Only small changes between frames (a hop, a blink), so the animation doesn't flicker.
-- **Feet on the same line.** Keep the bottom of the pet around row 28 of the frame, with a 1-pixel shadow on row 29.
-- **Centred.** Keep the pet horizontally centred in the 32 x 32 frame.
+- **No anti-aliasing or blur.** Hard edges, pixel to pixel.
+- **A dark outline** (the `ink` colour) around the pet, so it stands out on any background.
+- **Same silhouette across frames.** Only small changes between frames (a hop, a blink).
+- **Feet on row 28**, with a 1-pixel shadow on row 29. **Centred** horizontally.
 - **Original designs only.** Don't copy existing game characters.
 
 ## Getting your art into the game
 
-1. **Add the PNG** to `public/sprites/`. Use a new name, because `npm run sprites` overwrites the placeholder files.
-2. **List it in `public/sprites/manifest.json`** under `"sheets"`:
-   ```json
-   "adult-starry": { "file": "adult-starry.png" }
-   ```
-   If your sheet uses fewer frames or a different row order, give it its own `"animations"`, like the egg entry.
-3. **Use it in `src/data/creatures.json`**. Either point an existing form's `"sprite"` at your sheet (to replace its look), or add a new form:
-   ```json
-   { "id": "starry", "stage": "adult", "name": "Starry", "sprite": "adult-starry", "minCare": 70 }
-   ```
+- **On the GitHub website:** open the repository, go to the right folder, choose Add file → Upload files, and commit. Edit `manifest.json` and `characters.json` there with the pencil icon. Upload the `.aseprite` file to `art/` too, so it's kept safe.
+- **Ask Claude:** attach your PNG (or `.aseprite`) in the project thread and say its theme and rarity. Claude adds it.
 
-### How forms and variations are picked
-
-When the pet grows into a stage, the game takes the forms for that stage whose `minCare` the pet's Care Score reaches, and keeps the ones with the highest `minCare`. If several forms share that `minCare`, each pet gets one of them, always the same one for the same pet. So adding a second form with `"minCare": 70` means about half of well-cared-for pets grow into it.
-
-### Two ways to upload
-
-- **On the GitHub website:** open the repository, go to `public/sprites`, choose Add file → Upload files, and commit. Then edit `manifest.json` and `creatures.json` there with the pencil icon.
-- **Ask Claude:** attach your PNG in the project thread, say which stage and Care Score it's for, and Claude will add it.
-
-To try it on your computer, run `npm run dev` and use **Settings → Testing tools → Grow up now** to jump through the stages. The testing tools also show the Care Score and the current form.
+To try it on your computer, run `npm run dev` and use **Settings → Testing tools → Grow up now**. The testing tools show the Care Score and the character. Start over to roll a new pet.
 
 ## Regenerating the placeholders
 
-`npm run sprites` redraws the placeholder sheets from `scripts/make-placeholder-sprites.ts`. It needs Node.js 22.18 or newer. It only writes these files: `egg.png`, `baby.png`, `teen.png`, `adult-sunny.png`, `adult-puffy.png` and `adult-mossy.png`.
+`npm run sprites` makes any placeholder PNG or `.aseprite` file that is **missing**. It never overwrites a file that exists, so your own art is safe. `npm run sprites -- --force` replaces everything with placeholders again. It needs Node.js 22.18 or newer.

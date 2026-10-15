@@ -15,7 +15,7 @@ import {
   toggleLights,
   type ActionResult,
 } from './game/actions';
-import { getForm } from './game/growth';
+import { getCharacter, getVariant, sheetFor } from './game/growth';
 import { getLook, isNight } from './game/stats';
 import { clearSave, loadGame, saveGame } from './storage/storage';
 import { setupCanvas, drawRoom } from './render/canvas';
@@ -43,8 +43,14 @@ function setState(next: GameState): void {
   saveGame(state);
   home.update(state, gameNow());
   if (state.pet.stage !== before) {
-    const form = getForm(state.pet.formId);
-    home.toast(STRINGS.growth[state.pet.stage](state.pet.name, form.name));
+    const { pet } = state;
+    if (pet.stage === 'adult') {
+      const character = getCharacter(pet.character);
+      const name = STRINGS.characterName(character?.name ?? '?', getVariant(character, pet.variant)?.name);
+      home.toast(STRINGS.growth.adult(pet.name, name, STRINGS.stars(character?.stars ?? 1)));
+    } else {
+      home.toast(STRINGS.growth[pet.stage](pet.name));
+    }
     react('happy');
   }
 }
@@ -98,7 +104,7 @@ const home = createHomeScreen(root, {
 home.update(state, gameNow());
 
 // Draw the pet every animation frame (about 60 times a second). The sprite
-// sheet comes from the pet's current form (see src/data/creatures.json).
+// sheet comes from the pet's stage or character (see src/data/characters.json).
 const ctx = setupCanvas(home.canvas);
 let sprites: SpriteLibrary = new Map();
 loadSprites().then((lib) => (sprites = lib));
@@ -109,7 +115,7 @@ function render(timeMs: number): void {
   if (reaction && timeMs < reaction.until && !pet.asleep) animation = reaction.animation;
   drawRoom(
     ctx,
-    sprites.get(getForm(pet.formId).sprite),
+    sprites.get(sheetFor(pet)),
     { animation, night: isNight(gameNow()), lightsOff: pet.asleep },
     timeMs,
   );

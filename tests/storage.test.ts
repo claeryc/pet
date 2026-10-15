@@ -20,4 +20,21 @@ describe('save migration', () => {
     expect(out.state.pet.buffs).toEqual([]);
     expect(out.state.pet.stage).toBe('baby');
   });
+
+  it('moves an old adult form to a new character', () => {
+    const v4 = {
+      version: 4,
+      state: { pet: { id: 'x', stage: 'adult', formId: 'sunny' }, lastUpdated: 1 },
+    };
+    const out = migrate(v4);
+    expect(out.version).toBe(SAVE_VERSION);
+    expect(out.state.pet.character).toBe('starwisp');
+    expect(out.state.pet.variant).toBeNull();
+    expect(out.state.pet.formId).toBeUndefined();
+  });
+
+  it('keeps young pets without a character', () => {
+    const out = migrate({ version: 4, state: { pet: { stage: 'teen', formId: 'teen' } } });
+    expect(out.state.pet.character).toBeNull();
+  });
 });
