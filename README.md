@@ -20,6 +20,7 @@ Want to draw your own pet? See [docs/ART_GUIDE.md](docs/ART_GUIDE.md).
 
 - `src/game/` — the rules of the game (stats, time passing, growing up). `config.ts` holds every tuning number.
 - `src/data/characters.json` — every character the pet can grow into (theme, rarity, sprite sheet).
+- `src/data/hats.json` — the hats sold in the Shop.
 - `art/` — editable Aseprite files for all the art, plus `art/_template.aseprite` for new characters.
 - `public/sprites/` — the sprite sheets and `manifest.json`, which lists them.
 - `src/render/` — drawing the pet on the canvas, the colour palette and sprites.

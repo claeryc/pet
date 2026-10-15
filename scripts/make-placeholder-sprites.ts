@@ -126,6 +126,17 @@ const ROWS: [tag: string, face: Face, frameMs: number, frames: Frame[]][] = [
   ['happy', 'joy', 140, [[0, 2, 0], [3, 0, 0], [5, 0, 0], [2, 0, 0]]], // big hop
 ];
 
+// Adds a dark 1-pixel outline around everything drawn on the canvas.
+function addOutline(c: PixelCanvas): void {
+  const outline: [number, number][] = [];
+  for (let y = 0; y < c.height; y++)
+    for (let x = 0; x < c.width; x++)
+      if (c.isEmpty(x, y) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => !c.isEmpty(x + dx, y + dy)))
+        outline.push([x, y]);
+  c.fillStyle = PALETTE.ink;
+  for (const [x, y] of outline) c.fillRect(x, y, 1, 1);
+}
+
 // Draws one 32x32 frame of a creature.
 function drawCreature(look: Look, face: Face, [bounce, squash, extra]: Frame, col: number): PixelCanvas {
   const c = new PixelCanvas(FRAME, FRAME);
@@ -267,12 +278,7 @@ function drawCreature(look: Look, face: Face, [bounce, squash, extra]: Frame, co
 
   // A dark outline around everything drawn so far, so the pet stands out
   // on any background.
-  const outline: [number, number][] = [];
-  for (let y = 0; y < FRAME; y++)
-    for (let x = 0; x < FRAME; x++)
-      if (c.isEmpty(x, y) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => !c.isEmpty(x + dx, y + dy)))
-        outline.push([x, y]);
-  for (const [x, y] of outline) px(x, y, 1, 1, PALETTE.ink);
+  addOutline(c);
 
   // Floating effects, drawn on top without an outline.
   if (face === 'sleep') {
@@ -387,6 +393,71 @@ function eggArt(): Art {
   };
 }
 
+
+// ---------- Hats ----------
+// A hat picture is 16x16. Its bottom middle (x 8, last row) sits on the
+// pet's head point. Each hat comes in a small and a large size.
+
+type HatKind = 'beanie' | 'party-hat' | 'flower-crown' | 'tiny-crown';
+const HAT = 16;
+
+function drawHat(kind: HatKind, large: boolean): PixelCanvas {
+  const c = new PixelCanvas(HAT, HAT);
+  const px = (x: number, y: number, w: number, h: number, color: string) => {
+    c.fillStyle = color;
+    c.fillRect(x, y, w, h);
+  };
+  const w = large ? 12 : 8; // brim width
+  const left = 8 - w / 2;
+  const bottom = HAT - 1; // last row the hat may use (the outline goes around it)
+  if (kind === 'beanie') {
+    const h = large ? 5 : 4;
+    for (let i = 0; i < h; i++) {
+      const inset = [3, 1][i] ?? 0;
+      px(left + inset, bottom - h + i, w - inset * 2, 1, PALETTE.rose);
+    }
+    px(left, bottom - 1, w, 2, PALETTE.cream); // folded band
+    px(7, bottom - h - 2, 2, 2, PALETTE.white); // pom-pom
+  } else if (kind === 'party-hat') {
+    const h = large ? 9 : 7;
+    for (let i = 0; i < h; i++) {
+      const rowW = Math.max(1, Math.round(((i + 1) / h) * (w - 2)));
+      px(8 - Math.ceil(rowW / 2), bottom - h + i, rowW, 1, i % 3 === 1 ? PALETTE.butter : PALETTE.sky);
+    }
+    px(7, bottom - h - 2, 2, 2, PALETTE.pink); // pom-pom on the tip
+  } else if (kind === 'flower-crown') {
+    px(left, bottom - 1, w, 2, PALETTE.leaf);
+    const colors = [PALETTE.pink, PALETTE.butter, PALETTE.white, PALETTE.pink];
+    const step = large ? 3 : 2;
+    for (let x = left, i = 0; x + 1 < left + w; x += step, i++) px(x + (large ? 1 : 0), bottom - 3, 2, 2, colors[i % colors.length]);
+  } else {
+    const h = large ? 5 : 4;
+    px(left + 1, bottom - 2, w - 2, 3, PALETTE.butter);
+    for (let x = left + 1; x < left + w - 1; x += large ? 3 : 2) px(x, bottom - h, 1, h - 2, PALETTE.butter); // points
+    px(left + w - 2, bottom - h, 1, h - 2, PALETTE.butter);
+    px(7, bottom - 1, 2, 1, PALETTE.rose); // gem
+  }
+  addOutline(c);
+  return c;
+}
+
+function hatArt(kind: HatKind): Art {
+  const small = drawHat(kind, false);
+  const big = drawHat(kind, true);
+  const png = new PixelCanvas(HAT * 2, HAT);
+  png.blit(small, 0, 0);
+  png.blit(big, HAT, 0);
+  return {
+    png,
+    layers: [{ name: 'hat', cels: [small.data, big.data] }],
+    frameMs: [500, 500],
+    tags: [
+      { name: 'small', from: 0, to: 0 },
+      { name: 'large', from: 1, to: 1 },
+    ],
+  };
+}
+
 // ---------- Which files to make ----------
 
 // Path (without .png / .aseprite) -> look. Paths must match manifest.json.
@@ -419,16 +490,17 @@ function save(path: string, make: () => Buffer): void {
   writeFileSync(full, make());
   written.push(path);
 }
-function saveArt(path: string, art: Art): void {
+function saveArt(path: string, art: Art, size = FRAME): void {
   save(`public/sprites/${path}.png`, () => art.png.toPNG());
   save(`art/${path}.aseprite`, () =>
-    writeAseprite({ width: FRAME, height: FRAME, palette, frameMs: art.frameMs, layers: art.layers, tags: art.tags }),
+    writeAseprite({ width: size, height: size, palette, frameMs: art.frameMs, layers: art.layers, tags: art.tags }),
   );
 }
 
 const palette = Object.entries(PALETTE).map(([name, hex]) => ({ name, hex }));
 saveArt('stages/egg', eggArt());
 for (const [path, look] of Object.entries(LOOKS)) saveArt(path, creatureArt(look));
+for (const kind of ['beanie', 'party-hat', 'flower-crown', 'tiny-crown'] as HatKind[]) saveArt(`hats/${kind}`, hatArt(kind), HAT);
 // A blank file with the right size, tags, palette and guides.
 const blank = creatureArt(null);
 save('art/_template.aseprite', () =>

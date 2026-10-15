@@ -16,6 +16,7 @@ import {
   type ActionResult,
 } from './game/actions';
 import { getCharacter, getVariant, sheetFor } from './game/growth';
+import { buyFood, buyHat, checkIn, earn, getHat, wearHat, type ShopResult } from './game/economy';
 import { getLook, isNight } from './game/stats';
 import { clearSave, loadGame, saveGame } from './storage/storage';
 import { setupCanvas, drawRoom } from './render/canvas';
@@ -74,6 +75,25 @@ function runAction(
   else if (animation) react(animation);
 }
 
+// Shop and inventory actions: show a message for what happened.
+function runShop(result: ShopResult, success?: string): void {
+  setState(result.state);
+  if (result.blocked === 'notEnoughGold') home.toast(STRINGS.shop.notEnoughGold);
+  else if (result.blocked === 'alreadyOwned') home.toast(STRINGS.shop.alreadyOwned);
+  else if (result.blocked === 'egg') home.toast(STRINGS.inventory.eggNoHat(state.pet.name));
+  else if (!result.blocked && success) home.toast(success);
+}
+
+// Gives the check-in bonus if one is due (on opening the game or coming back).
+function tryCheckIn(): void {
+  const { state: next, reward } = checkIn(simulate(state, gameNow()), gameNow());
+  setState(next);
+  if (reward > 0) home.toast(STRINGS.gold.checkIn(reward));
+}
+
+// The sprite sheets, filled in once they've loaded.
+let sprites: SpriteLibrary = new Map();
+
 const home = createHomeScreen(root, {
   onFeed: (food) => runAction((s, now) => feed(s, now, food), 'eat'),
   onPlay: (activity) => runAction((s, now) => play(s, now, activity), 'happy'),
@@ -87,6 +107,12 @@ const home = createHomeScreen(root, {
   },
   onFastForward: (hours) => setState(fastForward(state, Date.now(), hours)),
   onGrowNow: () => setState(growNow(state, gameNow())),
+  onAddGold: () => setState(earn(state, CONFIG.debug.addGold)),
+  onSetCare: (careScore) => setState({ ...state, pet: { ...state.pet, careScore } }),
+  onBuyFood: (food) => runShop(buyFood(state, food), STRINGS.shop.bought(STRINGS.foods[food])),
+  onBuyHat: (id) => runShop(buyHat(state, id), STRINGS.shop.bought(getHat(id)?.name ?? '')),
+  onWearHat: (id) => runShop(wearHat(state, id)),
+  hatImage: (id) => sprites.get(getHat(id)?.sheet ?? '')?.image.src,
   // Going back to real time can't undo what happened, so we keep the pet as
   // it is and just restart the clock from now. Timers the pet is waiting on
   // are moved back by the same amount, so they still finish on time.
@@ -102,11 +128,11 @@ const home = createHomeScreen(root, {
   },
 });
 home.update(state, gameNow());
+tryCheckIn();
 
 // Draw the pet every animation frame (about 60 times a second). The sprite
 // sheet comes from the pet's stage or character (see src/data/characters.json).
 const ctx = setupCanvas(home.canvas);
-let sprites: SpriteLibrary = new Map();
 loadSprites().then((lib) => (sprites = lib));
 
 function render(timeMs: number): void {
@@ -118,6 +144,7 @@ function render(timeMs: number): void {
     sprites.get(sheetFor(pet)),
     { animation, night: isNight(gameNow()), lightsOff: pet.asleep },
     timeMs,
+    sprites.get(getHat(pet.hat)?.sheet ?? ''),
   );
   requestAnimationFrame(render);
 }
@@ -128,5 +155,5 @@ setInterval(() => setState(simulate(state, gameNow())), CONFIG.liveUpdateSeconds
 
 // ...and catch up straight away when you come back to the tab or app.
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') setState(simulate(state, gameNow()));
+  if (document.visibilityState === 'visible') tryCheckIn();
 });

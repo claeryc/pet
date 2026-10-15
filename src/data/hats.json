@@ -1,0 +1,9 @@
+{
+  "_help": "Hats the pet can wear. Each hat is bought once in the Shop and then lives in the inventory. 'sheet' is a sheet in public/sprites/manifest.json with two 16x16 pictures side by side: a small version (left) for small heads and a large version (right). See docs/ART_GUIDE.md.",
+  "hats": [
+    { "id": "beanie", "name": "Cozy Beanie", "price": 60, "sheet": "hat-beanie" },
+    { "id": "partyHat", "name": "Party Hat", "price": 80, "sheet": "hat-party" },
+    { "id": "flowerCrown", "name": "Flower Crown", "price": 120, "sheet": "hat-flower-crown" },
+    { "id": "tinyCrown", "name": "Tiny Crown", "price": 250, "sheet": "hat-tiny-crown" }
+  ]
+}

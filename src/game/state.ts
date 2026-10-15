@@ -38,6 +38,20 @@ export interface Pet {
   recoveryUntil: number | null; // resting after medicine until this time
   careScore: number; // hidden 0-100 long-term care rating
   buffs: Buff[]; // active timed effects
+  hat: string | null; // the hat it's wearing (an id from src/data/hats.json)
+}
+
+// Everything the player owns.
+export interface Inventory {
+  food: Record<string, number>; // food id -> how many
+  hats: string[]; // ids of hats bought (each is bought once)
+}
+
+// Keeps track of the daily check-in bonus.
+export interface CheckIn {
+  day: string; // the local date of the last reward, e.g. "2026-10-15"
+  count: number; // rewards given that day
+  lastAt: number; // when the last reward was given
 }
 
 export interface GameState {
@@ -48,6 +62,9 @@ export interface GameState {
   // Extra time added by the debug fast-forward button, in milliseconds.
   // The game's clock is always: real time + clockOffsetMs.
   clockOffsetMs: number;
+  gold: number;
+  inventory: Inventory;
+  checkIn: CheckIn;
 }
 
 // Makes a random id. crypto.randomUUID exists in all modern browsers and Node.
@@ -72,8 +89,12 @@ export function createNewGame(now: number): GameState {
       recoveryUntil: null,
       careScore: CONFIG.careScore.start,
       buffs: [],
+      hat: null,
     },
     lastUpdated: now,
     clockOffsetMs: 0,
+    gold: CONFIG.economy.startingGold,
+    inventory: { food: { ...CONFIG.economy.startingFood }, hats: [] },
+    checkIn: { day: '', count: 0, lastAt: 0 },
   };
 }

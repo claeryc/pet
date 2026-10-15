@@ -28,6 +28,9 @@ export interface Drawer {
   open: () => void;
   close: () => void;
   setDim: (dim: boolean) => void;
+  // Small text next to an option's name, e.g. "x2", and whether that
+  // option looks faded (e.g. none left).
+  setNote: (index: number, note: string, faded?: boolean) => void;
 }
 
 export interface DrawerSetup {
@@ -78,6 +81,9 @@ export function createDrawer(setup: DrawerSetup): Drawer {
     const label = document.createElement('span');
     label.className = 'drawer-option-label';
     label.textContent = opt.label;
+    const note = document.createElement('small');
+    note.className = 'drawer-option-note';
+    label.append(note);
 
     const effects = document.createElement('span');
     effects.className = 'drawer-option-effects';
@@ -134,5 +140,11 @@ export function createDrawer(setup: DrawerSetup): Drawer {
     open,
     close,
     setDim: (dim) => el.classList.toggle('dim', dim),
+    setNote(index, text, faded = false) {
+      const row = options.children[index] as HTMLElement | undefined;
+      if (!row) return;
+      row.querySelector('.drawer-option-note')!.textContent = text;
+      row.classList.toggle('faded', faded);
+    },
   };
 }

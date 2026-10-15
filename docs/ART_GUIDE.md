@@ -27,13 +27,16 @@ art/                               your Aseprite files (the game never loads the
   _template.aseprite               blank file for a new character
   stages/egg.aseprite, baby, teen
   characters/<theme>/<id>.aseprite
+  hats/<hat>.aseprite
 
 public/sprites/                    exported PNGs the game loads
   manifest.json                    list of every sheet
   stages/egg.png, baby.png, teen.png
   characters/<theme>/<id>.png
+  hats/<hat>.png
 
 src/data/characters.json           every character: theme, stars, name, sheet, variants
+src/data/hats.json                 every hat: name, price, sheet
 ```
 
 Keep `art/` and `public/sprites/` mirrored: `art/characters/cave/pebblit.aseprite` exports to `public/sprites/characters/cave/pebblit.png`.
@@ -93,6 +96,30 @@ A new **theme** is one more line under `"themes"` in `characters.json`, then cha
      "variants": [{ "id": "frost", "name": "Frost", "sheet": "geodon-frost", "chance": 20 }] }
    ```
 
+## Hats
+
+Any hat fits any character, so you draw each hat only once (in two sizes), and never per character.
+
+**How it works:** every pet sheet in `manifest.json` has a `head` point, e.g. `"head": { "x": 16, "y": 14, "size": "large" }`. That's the pixel in the first `idle` frame where the bottom middle of a hat should sit, and whether the character has a small or large head. In every other frame the game finds how far the top of the head has moved (by looking at the picture) and moves the hat with it, so the hat hops, squashes and sleeps along with the pet.
+
+**Setting the head point for a character:** open its sheet, look at the first idle frame, and find the column in the middle of the head (`x`) and the row just below the top of the head (`y`). Use `"size": "small"` for small heads (babies, tiny characters) and `"large"` for the rest. If a hat sits a little too high or low, change `y` by 1.
+
+**Drawing a hat:**
+
+1. Copy any file in `art/hats/`, for example `beanie.aseprite`. It's 16 x 16 with two frames: tag `small` (about 8 pixels wide) and tag `large` (about 12 pixels wide).
+2. Draw the hat with its bottom edge on the last row and centred around column 8. Give it the dark outline.
+3. Export with **Sheet type: Horizontal Strip** (small on the left, large on the right), to `public/sprites/hats/<name>.png`, so the PNG is 32 x 16.
+4. Add it to `manifest.json`:
+   ```json
+   "hat-scarf": { "file": "hats/scarf.png", "frameWidth": 16, "frameHeight": 16, "animations": {} }
+   ```
+5. Add it to `src/data/hats.json` with a name and a price:
+   ```json
+   { "id": "scarf", "name": "Snug Scarf", "price": 90, "sheet": "hat-scarf" }
+   ```
+
+It then shows up in the Shop. Glasses could work the same way later with an `eyes` point.
+
 ## Exporting a sheet from Aseprite
 
 File → Export Sprite Sheet (Ctrl+E):
@@ -117,7 +144,7 @@ File → Export Sprite Sheet (Ctrl+E):
 - **On the GitHub website:** open the repository, go to the right folder, choose Add file → Upload files, and commit. Edit `manifest.json` and `characters.json` there with the pencil icon. Upload the `.aseprite` file to `art/` too, so it's kept safe.
 - **Ask Claude:** attach your PNG (or `.aseprite`) in the project thread and say its theme and rarity. Claude adds it.
 
-To try it on your computer, run `npm run dev` and use **Settings → Testing tools → Grow up now**. The testing tools show the Care Score and the character. Start over to roll a new pet.
+To try it on your computer, run `npm run dev` and use **Settings → Testing tools**: set the Care Score (10, 60 or 90), then **Grow up now** until it's an adult. Start over to roll a new pet. **+100 gold** helps for trying hats from the Shop.
 
 ## Regenerating the placeholders
 

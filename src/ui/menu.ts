@@ -1,18 +1,22 @@
 // The menu that slides up when you tap the gear button. It has a main list
-// (Settings, Shop, Mini-games, Family Tree) and a Settings page. Items for
-// features we haven't built yet are shown greyed out with "Coming soon".
+// (Shop, Inventory, Mini-games, Family Tree, Settings) and a page for each.
+// Items for features we haven't built yet are shown greyed out with
+// "Coming soon".
 
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import type { GameState } from '../game/state';
+import { goldPill, inventoryPage, shopPage, type ShopCallbacks } from './shop';
 
 export interface DebugCallbacks {
   onFastForward: (hours: number) => void;
   onResetClock: () => void;
   onGrowNow: () => void;
+  onAddGold: () => void;
+  onSetCare: (score: number) => void;
 }
 
-export interface MenuCallbacks extends DebugCallbacks {
+export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks {
   onReset: () => void;
 }
 
@@ -51,6 +55,11 @@ export function createMenu(cb: MenuCallbacks): Menu {
   el.append(panel);
 
   const close = () => (el.hidden = true);
+
+  // The Shop and Inventory pages redraw whenever the game changes (after
+  // buying something, for example), so we remember which page is showing.
+  let state: GameState | null = null;
+  let page: 'main' | 'settings' | 'shop' | 'inventory' = 'main';
   // Tapping outside the panel closes the menu.
   el.addEventListener('click', (e) => {
     if (e.target === el) close();
@@ -84,13 +93,39 @@ export function createMenu(cb: MenuCallbacks): Menu {
   }
 
   function showMain(): void {
+    page = 'main';
     panel.replaceChildren(
       header(STRINGS.menu.title),
-      item(STRINGS.menu.settings, showSettings),
-      item(STRINGS.menu.shop),
+      item(STRINGS.menu.shop, showShop),
+      item(STRINGS.menu.inventory, showInventory),
       item(STRINGS.menu.minigames),
       item(STRINGS.menu.familyTree),
+      item(STRINGS.menu.settings, showSettings),
     );
+  }
+
+  // The gold you have, shown at the top of the Shop and Inventory.
+  function goldLine(): HTMLElement {
+    const p = document.createElement('div');
+    p.className = 'menu-gold';
+    p.append(goldPill(state?.gold ?? 0));
+    return p;
+  }
+
+  function showShop(): void {
+    page = 'shop';
+    const list = document.createElement('div');
+    list.className = 'shop-list';
+    if (state) list.append(...shopPage(state, cb));
+    panel.replaceChildren(header(STRINGS.shop.title, showMain), goldLine(), list);
+  }
+
+  function showInventory(): void {
+    page = 'inventory';
+    const list = document.createElement('div');
+    list.className = 'shop-list';
+    if (state) list.append(...inventoryPage(state, cb));
+    panel.replaceChildren(header(STRINGS.inventory.title, showMain), goldLine(), list);
   }
 
   function debugSection(): HTMLElement {
@@ -117,12 +152,29 @@ export function createMenu(cb: MenuCallbacks): Menu {
     grow.className = 'chip';
     grow.textContent = STRINGS.debug.growNow;
     grow.addEventListener('click', cb.onGrowNow);
-    row.append(back, grow);
-    section.append(h, label, row, debugInfo);
+    const gold = document.createElement('button');
+    gold.className = 'chip';
+    gold.textContent = STRINGS.debug.addGold(CONFIG.debug.addGold);
+    gold.addEventListener('click', cb.onAddGold);
+    row.append(back, grow, gold);
+    // Care Score presets, to try out which characters appear.
+    const careLabel = document.createElement('p');
+    careLabel.textContent = STRINGS.debug.setCare;
+    const careRow = document.createElement('div');
+    careRow.className = 'debug-row';
+    for (const score of CONFIG.debug.careScores) {
+      const b = document.createElement('button');
+      b.className = 'chip';
+      b.textContent = String(score);
+      b.addEventListener('click', () => cb.onSetCare(score));
+      careRow.append(b);
+    }
+    section.append(h, label, row, careLabel, careRow, debugInfo);
     return section;
   }
 
   function showSettings(): void {
+    page = 'settings';
     const reset = item(STRINGS.buttons.reset, () => {
       close();
       cb.onReset();
@@ -138,8 +190,15 @@ export function createMenu(cb: MenuCallbacks): Menu {
       showMain();
       el.hidden = false;
     },
-    update(state) {
-      const p = state.pet;
+    update(next) {
+      // Only redraw the Shop or Inventory when something in it changed, so
+      // the list doesn't jump while you scroll.
+      const key = (s: GameState | null) => s && JSON.stringify([s.gold, s.inventory, s.pet.hat, s.pet.stage]);
+      const changed = key(state) !== key(next);
+      state = next;
+      if (changed && !el.hidden && page === 'shop') showShop();
+      if (changed && !el.hidden && page === 'inventory') showInventory();
+      const p = next.pet;
       debugInfo.textContent = `${STRINGS.debug.careScore}: ${p.careScore.toFixed(1)} · ${STRINGS.debug.condition}: ${p.condition} · ${STRINGS.debug.character}: ${p.character ?? '-'}${p.variant ? ` (${p.variant})` : ''}`;
     },
   };

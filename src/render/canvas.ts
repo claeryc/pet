@@ -59,6 +59,7 @@ export function drawRoom(
   sheet: SpriteSheet | undefined,
   scene: Scene,
   timeMs: number,
+  hat?: SpriteSheet, // the hat's sheet, if the pet wears one
 ): void {
   // Wall and floor (the wall is a little bluer at night).
   ctx.fillStyle = scene.night ? PALETTE.lavender : PALETTE.cream;
@@ -72,10 +73,19 @@ export function drawRoom(
   // The pet, centred and standing on the floor.
   if (sheet) {
     const { frameWidth: w, frameHeight: h } = sheet;
-    const { sx, sy } = frameFor(sheet, scene.animation, timeMs);
+    const { sx, sy, headOffset } = frameFor(sheet, scene.animation, timeMs);
     const dx = Math.floor((ROOM_WIDTH - w) / 2);
     const dy = 40 - h;
     ctx.drawImage(sheet.image, sx, sy, w, h, dx, dy, w, h);
+    // The hat: its bottom middle sits on the head point, moved up or down
+    // with the head. The left picture is the small size, the right the large.
+    if (hat && sheet.head) {
+      const { frameWidth: hw, frameHeight: hh } = hat;
+      const col = sheet.head.size === 'large' ? 1 : 0;
+      const hx = dx + sheet.head.x - Math.floor(hw / 2);
+      const hy = dy + sheet.head.y + headOffset - hh;
+      ctx.drawImage(hat.image, col * hw, 0, hw, hh, hx, hy, hw, hh);
+    }
   } else {
     // The sprite is missing (or still loading): draw a little "?" box so
     // it's obvious something needs fixing in manifest.json.
