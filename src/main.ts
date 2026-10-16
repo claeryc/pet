@@ -21,6 +21,7 @@ import { buyFood, buyHat, checkIn, earn, getHat, wearHat, type ShopResult } from
 import { getLook, isNight } from './game/stats';
 import { cast, land } from './game/fishing';
 import { cook } from './game/cooking';
+import { markSeen, updateProgress } from './game/unlocks';
 import { clearSave, loadGame, saveGame } from './storage/storage';
 import { setupCanvas, drawRoom } from './render/canvas';
 import { loadSprites, type SpriteLibrary } from './render/sprites';
@@ -36,14 +37,16 @@ function gameNow(): number {
 
 // Load the saved game (or start a new one) and catch it up to right now.
 let state: GameState = loadGame() ?? createNewGame(Date.now());
-state = simulate(state, gameNow());
+state = updateProgress(simulate(state, gameNow())).state;
 saveGame(state);
 
 // Replaces the current state, saves it and refreshes the screen. If the pet
-// just grew into a new stage, celebrate it.
+// just grew into a new stage, celebrate it, and say if anything new opened
+// up.
 function setState(next: GameState): void {
   const before = state.pet.stage;
-  state = next;
+  const progress = updateProgress(next);
+  state = progress.state;
   saveGame(state);
   home.update(state, gameNow());
   if (state.pet.stage !== before) {
@@ -57,6 +60,7 @@ function setState(next: GameState): void {
     }
     react('happy');
   }
+  for (const id of progress.unlocked) home.notice(STRINGS.unlocked[id]);
 }
 
 // A short animation the pet plays in response to something (eating,
@@ -83,7 +87,7 @@ function runShop(result: ShopResult, success?: string): void {
   setState(result.state);
   if (result.blocked === 'notEnoughGold') home.toast(STRINGS.shop.notEnoughGold);
   else if (result.blocked === 'alreadyOwned') home.toast(STRINGS.shop.alreadyOwned);
-  else if (result.blocked === 'egg') home.toast(STRINGS.inventory.eggNoHat(state.pet.name));
+  else if (result.blocked === 'egg') home.toast(STRINGS.wardrobe.eggNoHat(state.pet.name));
   else if (!result.blocked && success) home.toast(success);
 }
 
@@ -97,9 +101,28 @@ function tryCheckIn(): void {
 // The sprite sheets, filled in once they've loaded.
 let sprites: SpriteLibrary = new Map();
 
+// A character's picture for the Collection: the first idle frame of its
+// sheet, cut out once and kept.
+const portraits = new Map<string, string>();
+function characterImage(sheetName: string): string | undefined {
+  const cached = portraits.get(sheetName);
+  if (cached) return cached;
+  const sheet = sprites.get(sheetName);
+  if (!sheet) return undefined;
+  const { frameWidth: w, frameHeight: h } = sheet;
+  const cut = document.createElement('canvas');
+  cut.width = w;
+  cut.height = h;
+  cut.getContext('2d')!.drawImage(sheet.image, 0, (sheet.animations.idle?.row ?? 0) * h, w, h, 0, 0, w, h);
+  const url = cut.toDataURL();
+  portraits.set(sheetName, url);
+  return url;
+}
+
 const home = createHomeScreen(root, {
   onFeed: (food) => runAction((s, now) => feed(s, now, food), 'eat'),
   onPlay: (activity) => runAction((s, now) => play(s, now, activity), 'happy'),
+  onPetTap: () => runAction((s, now) => play(s, now, 'cuddle'), 'happy'),
   onLights: () => runAction(toggleLights),
   onMedicine: () => runAction(giveMedicine),
   onCast: () => {
@@ -145,9 +168,12 @@ const home = createHomeScreen(root, {
   onAddGold: () => setState(earn(state, CONFIG.debug.addGold)),
   onSetCare: (careScore) => setState({ ...state, pet: { ...state.pet, careScore } }),
   onBuyFood: (food) => runShop(buyFood(state, food), STRINGS.shop.bought(STRINGS.foods[food])),
-  onBuyHat: (id) => runShop(buyHat(state, id), STRINGS.shop.bought(getHat(id)?.name ?? '')),
+  onBuyHat: (id) => runShop(buyHat(state, id), STRINGS.shop.boughtHat(getHat(id)?.name ?? '', state.pet.name)),
   onWearHat: (id) => runShop(wearHat(state, id)),
   hatImage: (id) => sprites.get(getHat(id)?.sheet ?? '')?.image.src,
+  characterImage,
+  onSeen: (id) => setState(markSeen(state, id)),
+  onShowAllMenus: (showAllMenus) => setState({ ...state, showAllMenus }),
   // Going back to real time can't undo what happened, so we keep the pet as
   // it is and just restart the clock from now. Timers the pet is waiting on
   // are moved back by the same amount, so they still finish on time.

@@ -817,7 +817,7 @@ body {
   font-size: 1.05rem;
 }
 
-/* ---- Shop and Inventory: gold in the header, folding categories ---- */
+/* ---- Shop, Wardrobe and Collection: gold in the header, folding categories ---- */
 
 /* The back button on the left, gold on the right, lined up with the price
    buttons in the rows below (row border + padding = 10px). */
@@ -1497,4 +1497,81 @@ body {
 .recipe-need.missing svg {
   filter: grayscale(1);
   opacity: 0.35;
+}
+
+/* ---- Unlocking: "new" dots ---- */
+
+/* On a menu entry, at the end of the row. */
+.new-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* On the Feed or gear button (which are pink): a yellow dot in the top
+   corner. */
+.drawer-head.has-new::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ffd36e;
+  box-shadow: 0 0 0 2px white;
+}
+
+/* On a row inside a panel (the cooking pot), on the right. */
+.drawer-option.has-new .drawer-option-effects::after {
+  content: '';
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* ---- Tapping and holding the pet ---- */
+
+.room {
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none; /* no "save image" pop-up on a long press */
+}
+
+/* ---- Collection ---- */
+
+/* A character's picture: its first idle frame. */
+.portrait {
+  width: 100%;
+  height: 100%;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+
+.shop-cat-tile .portrait {
+  flex: none;
+  width: 30px;
+  height: 30px;
+}
+
+/* ---- Testing tools ---- */
+
+.debug-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  font-size: 0.85rem;
+}
+
+/* While the panel is open the dot would sit on the arrow, so hide it. */
+.drawer.is-open .drawer-head.has-new::after {
+  display: none;
 }

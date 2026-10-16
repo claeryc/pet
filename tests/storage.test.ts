@@ -52,3 +52,23 @@ describe('save migration', () => {
     expect(out.state.recipesFound).toEqual([]);
   });
 });
+
+describe('save migration to unlockable menus', () => {
+  it('keeps what an existing player already had open, without "new" dots', () => {
+    const out = migrate({
+      version: 7,
+      state: {
+        pet: { stage: 'adult', character: 'sprig', variant: null },
+        inventory: { food: { salmon: 2 }, hats: [] },
+        recipesFound: [],
+      },
+    });
+    expect(out.version).toBe(SAVE_VERSION);
+    expect(out.state.caught).toEqual(['salmon']);
+    expect(out.state.charactersFound).toEqual(['sprig']);
+    expect(out.state.unlocked).toEqual(expect.arrayContaining(['shop', 'cooking', 'collection', 'familyTree']));
+    expect(out.state.seen).toEqual(out.state.unlocked);
+    expect(out.state.recentFoods).toEqual([]);
+    expect(out.state.showAllMenus).toBe(false);
+  });
+});

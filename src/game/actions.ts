@@ -40,8 +40,9 @@ export function feed(state: GameState, now: number, foodId: FoodId = 'riceBall')
   const food: Food = CONFIG.foods.find((f) => f.id === foodId)!;
   const stocked = useFood(s, foodId); // one fewer in the inventory
   if (!stocked) return { state: s, blocked: 'noFood' };
+  const recentFoods = [foodId, ...stocked.recentFoods.filter((id) => id !== foodId)];
   return {
-    state: withPet(stocked, (pet) => {
+    state: withPet({ ...stocked, recentFoods }, (pet) => {
       pet.stats.hunger = clampStat(pet.stats.hunger + food.hunger);
       pet.stats.happiness = clampStat(pet.stats.happiness + food.happiness);
       pet.stats.health = clampStat(pet.stats.health + food.health);
@@ -57,7 +58,7 @@ export function feed(state: GameState, now: number, foodId: FoodId = 'riceBall')
   };
 }
 
-export function play(state: GameState, now: number, activityId: ActivityId = 'ball'): ActionResult {
+export function play(state: GameState, now: number, activityId: ActivityId = 'cuddle'): ActionResult {
   const s = simulate(state, now);
   if (s.pet.stage === 'egg') return { state: s, blocked: 'egg' };
   if (s.pet.asleep) return { state: s, blocked: 'asleep' };
