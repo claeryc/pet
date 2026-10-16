@@ -304,3 +304,14 @@ describe('save version 10', () => {
     expect(out.state.inventory).toEqual({ food: { cookie: 2 }, hats: [], seeds: {}, supplies: {} });
   });
 });
+
+describe('the garden room', () => {
+  it('tapping a pot in the room picks it', async () => {
+    const { potAt } = await import('../src/render/garden');
+    expect(potAt(35, 38)).toBe(0);
+    expect(potAt(46, 30)).toBe(1);
+    expect(potAt(57, 44)).toBe(2);
+    expect(potAt(14, 38)).toBe(-1); // the pet
+    expect(potAt(46, 5)).toBe(-1); // the sky
+  });
+});

@@ -323,7 +323,13 @@ function render(timeMs: number): void {
   drawRoom(
     ctx,
     sprites.get(sheetFor(pet)),
-    { animation, night: isNight(gameNow()), lightsOff: pet.asleep, fishing: home.fishingPhase() },
+    {
+      animation,
+      night: isNight(gameNow()),
+      lightsOff: pet.asleep,
+      fishing: home.fishingPhase(),
+      garden: home.gardenScene(),
+    },
     timeMs,
     sprites.get(getHat(pet.hat)?.sheet ?? ''),
   );

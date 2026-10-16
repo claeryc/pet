@@ -19,6 +19,7 @@ import { createGarden, GARDEN_OUT_MS } from './garden';
 import type { CropId } from '../game/garden';
 import { isNew, isUnlocked } from '../game/unlocks';
 import { isOnPet, ROOM_HEIGHT, ROOM_WIDTH } from '../render/canvas';
+import { potAt, type GardenScene } from '../render/garden';
 import { formatDuration } from './time';
 
 export interface HomeCallbacks extends MenuCallbacks {
@@ -45,6 +46,7 @@ export interface HomeScreen {
   // Like toast, but waits for the message showing now to finish first.
   notice: (message: string) => void;
   fishingPhase: () => FishingPhase; // so the room can draw the line and bobber
+  gardenScene: () => GardenScene | null; // so the room can turn into the garden
 }
 
 // Pixel icons drawn on a 12x12 grid, so they match the pixel-art style.
@@ -295,9 +297,16 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   let holdTimer = 0;
   let press: { x: number; y: number; held: boolean } | null = null;
   let lastCuddle = -Infinity;
-  const onPetAt = (e: PointerEvent) => {
+  const roomPoint = (e: PointerEvent) => {
     const rect = canvas.getBoundingClientRect();
-    return isOnPet(((e.clientX - rect.left) / rect.width) * ROOM_WIDTH, ((e.clientY - rect.top) / rect.height) * ROOM_HEIGHT);
+    return {
+      x: ((e.clientX - rect.left) / rect.width) * ROOM_WIDTH,
+      y: ((e.clientY - rect.top) / rect.height) * ROOM_HEIGHT,
+    };
+  };
+  const onPetAt = (e: PointerEvent) => {
+    const { x, y } = roomPoint(e);
+    return isOnPet(x, y);
   };
   function cuddle(): void {
     const now = performance.now();
@@ -306,6 +315,13 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     cb.onPetTap();
   }
   canvas.addEventListener('pointerdown', (e) => {
+    // In the garden, tapping a pot picks it.
+    if (garden.active()) {
+      const { x, y } = roomPoint(e);
+      const pot = potAt(x, y);
+      if (pot >= 0) garden.select(pot);
+      return;
+    }
     if (actions.hidden || !onPetAt(e)) return;
     press = { x: e.clientX, y: e.clientY, held: false };
     clearTimeout(holdTimer);
@@ -525,5 +541,6 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     toast: showToast,
     notice: showNotice,
     fishingPhase: fishing.phase,
+    gardenScene: () => garden.scene(),
   };
 }

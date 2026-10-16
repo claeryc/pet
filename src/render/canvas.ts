@@ -5,6 +5,7 @@ import { PALETTE } from './palette';
 import { frameFor } from './animations';
 import type { SpriteSheet } from './sprites';
 import type { FishingPhase } from '../ui/fishing';
+import { drawGardenBackground, drawGardenPots, type GardenScene } from './garden';
 
 export const ROOM_WIDTH = 64;
 export const ROOM_HEIGHT = 48;
@@ -15,6 +16,7 @@ export interface Scene {
   night: boolean; // night-time outside the window
   lightsOff: boolean; // the room is dark (pet is sleeping)
   fishing?: FishingPhase; // draws a little pond, rod and bobber while fishing
+  garden?: GardenScene | null; // while gardening: the garden, with the pet on the left
 }
 
 export function setupCanvas(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
@@ -89,21 +91,26 @@ export function drawRoom(
   timeMs: number,
   hat?: SpriteSheet, // the hat's sheet, if the pet wears one
 ): void {
-  // Wall and floor (the wall is a little bluer at night).
-  ctx.fillStyle = scene.night ? PALETTE.lavender : PALETTE.cream;
-  ctx.fillRect(0, 0, ROOM_WIDTH, ROOM_HEIGHT);
-  ctx.fillStyle = PALETTE.peach;
-  ctx.fillRect(0, 34, ROOM_WIDTH, ROOM_HEIGHT - 34);
-  ctx.fillStyle = PALETTE.butter;
-  ctx.fillRect(0, 34, ROOM_WIDTH, 1);
-  drawWindow(ctx, scene.night, timeMs);
+  if (scene.garden) {
+    drawGardenBackground(ctx, ROOM_WIDTH, ROOM_HEIGHT, scene.night, timeMs);
+  } else {
+    // Wall and floor (the wall is a little bluer at night).
+    ctx.fillStyle = scene.night ? PALETTE.lavender : PALETTE.cream;
+    ctx.fillRect(0, 0, ROOM_WIDTH, ROOM_HEIGHT);
+    ctx.fillStyle = PALETTE.peach;
+    ctx.fillRect(0, 34, ROOM_WIDTH, ROOM_HEIGHT - 34);
+    ctx.fillStyle = PALETTE.butter;
+    ctx.fillRect(0, 34, ROOM_WIDTH, 1);
+    drawWindow(ctx, scene.night, timeMs);
+  }
   if (scene.fishing && scene.fishing !== 'off') drawFishing(ctx, scene.fishing, timeMs);
 
-  // The pet, centred and standing on the floor.
+  // The pet, centred and standing on the floor (on the left in the garden,
+  // to make room for the pots).
   if (sheet) {
     const { frameWidth: w, frameHeight: h } = sheet;
     const { sx, sy, headOffset } = frameFor(sheet, scene.animation, timeMs);
-    const dx = Math.floor((ROOM_WIDTH - w) / 2);
+    const dx = scene.garden ? -2 : Math.floor((ROOM_WIDTH - w) / 2);
     const dy = 40 - h;
     ctx.drawImage(sheet.image, sx, sy, w, h, dx, dy, w, h);
     // The hat: its bottom middle sits on the head point, moved up or down
@@ -126,6 +133,8 @@ export function drawRoom(
     ctx.fillRect(31, 29, 2, 1);
     ctx.fillRect(31, 32, 2, 2);
   }
+
+  if (scene.garden) drawGardenPots(ctx, scene.garden, timeMs);
 
   // Lights off: dim the whole room.
   if (scene.lightsOff) {
