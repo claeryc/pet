@@ -1,9 +1,9 @@
 // A Feed or Play button that opens into a panel of choices.
 //
 // How it looks: tap the button and it slides wider to fill the whole row
-// (the other buttons shrink away), then it grows taller to reveal a soft
+// (the other buttons shrink away), then it grows upward to reveal a soft
 // white-pink area with the options inside, framed by the pink button. Tap
-// the top part again to close it. The animation itself lives in style.css
+// the button part (at the bottom) again to close it. The animation itself lives in style.css
 // (look for "drawer"); this file just builds the pieces and flips a few
 // data attributes that the CSS reacts to.
 
