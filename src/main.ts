@@ -20,6 +20,7 @@ import { getCharacter, getVariant, sheetFor } from './game/growth';
 import { buyFood, buyHat, checkIn, earn, getHat, wearHat, type ShopResult } from './game/economy';
 import { getLook, isNight } from './game/stats';
 import { cast, land } from './game/fishing';
+import { cook } from './game/cooking';
 import { clearSave, loadGame, saveGame } from './storage/storage';
 import { setupCanvas, drawRoom } from './render/canvas';
 import { loadSprites, type SpriteLibrary } from './render/sprites';
@@ -118,6 +119,20 @@ const home = createHomeScreen(root, {
     } else {
       home.toast(grade === 'miss' ? label : STRINGS.fishing.slipped(label));
     }
+  },
+  onCook: (items) => {
+    const result = cook(simulate(state, gameNow()), items);
+    setState(result.state);
+    if (result.blocked) {
+      home.toast(result.blocked === 'noFood' ? STRINGS.blocked.noFood(state.pet.name) : STRINGS.cooking.emptyPot);
+      return null;
+    }
+    const name = STRINGS.foods[result.dish];
+    const stars = STRINGS.stars((CONFIG.foods as readonly Food[]).find((f) => f.id === result.dish)?.stars ?? 0);
+    if (!result.recipe) home.toast(STRINGS.cooking.mess);
+    else home.toast((result.discovered ? STRINGS.cooking.discovered : STRINGS.cooking.made)(name, stars));
+    if (result.discovered) react('happy');
+    return result.dish;
   },
   onReset: () => {
     if (confirm(STRINGS.confirmReset)) {

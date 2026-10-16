@@ -45,4 +45,10 @@ describe('save migration', () => {
     expect(out.state.inventory.hats).toEqual([]);
     expect(out.state.pet.hat).toBeNull();
   });
+
+  it('gives old saves an empty recipe book', () => {
+    const out = migrate({ version: 6, state: { pet: {}, inventory: { food: {}, hats: [] } } });
+    expect(out.version).toBe(SAVE_VERSION);
+    expect(out.state.recipesFound).toEqual([]);
+  });
 });

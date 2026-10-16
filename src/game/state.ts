@@ -65,6 +65,9 @@ export interface GameState {
   gold: number;
   inventory: Inventory;
   checkIn: CheckIn;
+  // Dishes you've cooked at least once (food ids). They show up by name in
+  // the recipe book; the rest stay "???".
+  recipesFound: string[];
 }
 
 // Makes a random id. crypto.randomUUID exists in all modern browsers and Node.
@@ -96,5 +99,6 @@ export function createNewGame(now: number): GameState {
     gold: CONFIG.economy.startingGold,
     inventory: { food: { ...CONFIG.economy.startingFood }, hats: [] },
     checkIn: { day: '', count: 0, lastAt: 0 },
+    recipesFound: [],
   };
 }
