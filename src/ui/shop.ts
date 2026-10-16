@@ -73,10 +73,12 @@ function label(text: string): HTMLElement {
 
 // One item in a category: its full row, and its little picture for the
 // folded-up grid. `mark` highlights the picture (e.g. the hat being worn),
-// `faded` dims it (e.g. a hat you already own, in the Shop).
+// `faded` dims it (e.g. a hat you already own, in the Shop), and `count`
+// shows a small number in its corner (how many of a food you have).
 interface Entry {
   icon: string;
   row: HTMLElement;
+  count?: string;
   mark?: boolean;
   faded?: boolean;
 }
@@ -102,6 +104,12 @@ function category(id: string, title: string, entries: Entry[], open: Set<string>
     b.innerHTML = e.icon;
     b.classList.toggle('mark', !!e.mark);
     b.classList.toggle('faded', !!e.faded);
+    if (e.count) {
+      const c = document.createElement('span');
+      c.className = 'shop-cat-count';
+      c.textContent = e.count;
+      b.append(c);
+    }
     const name = e.row.querySelector('b')?.textContent ?? '';
     b.title = name;
     b.setAttribute('aria-label', name);
@@ -128,11 +136,18 @@ function category(id: string, title: string, entries: Entry[], open: Set<string>
   return el;
 }
 
+// The number in a picture's corner: nothing for none, ∞ for free food.
+function countBadge(count: number): string | undefined {
+  if (count === 0) return undefined;
+  return count === Infinity ? '∞' : String(count);
+}
+
 export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>): HTMLElement[] {
   const food: Entry[] = CONFIG.foods
     .filter((f) => f.price > 0) // free food isn't sold
     .map((f) => ({
       icon: ITEM_ICONS[f.id],
+      count: countBadge(foodCount(state, f.id)),
       row: row(ITEM_ICONS[f.id], STRINGS.foods[f.id], STRINGS.shop.have(foodCount(state, f.id)),
         priceButton(f.price, state.gold, () => cb.onBuyFood(f.id))),
     }));
@@ -167,6 +182,7 @@ export function inventoryPage(state: GameState, cb: ShopCallbacks, open: Set<str
     .filter(({ count }) => count > 0)
     .map(({ f, count }) => ({
       icon: ITEM_ICONS[f.id],
+      count: countBadge(count),
       row: row(ITEM_ICONS[f.id], STRINGS.foods[f.id], '', label(count === Infinity ? STRINGS.shop.free : `× ${count}`)),
     }));
   return [

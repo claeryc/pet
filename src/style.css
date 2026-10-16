@@ -679,7 +679,18 @@ body {
   touch-action: manipulation;
 }
 
+/* Every button in a row is the same width, whether the price has one, two
+   or three digits, so the column of prices lines up. */
+.shop-btn {
+  min-width: 72px;
+  display: inline-flex;
+  justify-content: center;
+}
+
 .shop-btn .gold-pill {
+  /* coin on the left, number on the right, so coins and digits line up */
+  width: 100%;
+  justify-content: space-between;
   background: transparent;
   color: white;
   padding: 0;
@@ -860,6 +871,29 @@ body {
 .shop-cat-tile .hat-icon {
   width: 100%;
   height: 100%;
+}
+
+.shop-cat-tile {
+  position: relative;
+}
+
+/* How many you have, in the bottom-right corner of the picture. */
+.shop-cat-count {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 18px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 2px #fff5f8;
 }
 
 .shop-cat-tile.mark {
