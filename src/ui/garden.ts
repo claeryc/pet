@@ -55,7 +55,8 @@ export interface GardenCallbacks {
 
 export interface Garden {
   row: HTMLElement; // the buttons, shown in place of the normal button row
-  beds: HTMLElement; // the pots, shown in place of the stat bars
+  beds: HTMLElement; // the plant panel, shown in place of the stat bars
+  pour: HTMLElement; // the pour meter, shown below the panel while watering
   start: () => void;
   stop: () => void;
   active: () => boolean;
@@ -187,7 +188,8 @@ export function createGarden(cb: GardenCallbacks): Garden {
   details.append(name, grow, status);
   info.append(waterTank.el, fertTank.el, face, details);
 
-  // The pour meter, along the bottom of the bed while you hold Water.
+  // The pour meter, shown just below the panel while you hold Water, so
+  // it never covers the tanks.
   const pour = document.createElement('div');
   pour.className = 'catch-bar pour-bar';
   pour.hidden = true;
@@ -202,7 +204,7 @@ export function createGarden(cb: GardenCallbacks): Garden {
   pourFill.className = 'pour-fill';
   pourTrack.append(pourFill);
   pour.append(pourTrack);
-  beds.append(tabs, info, pour);
+  beds.append(tabs, info);
 
   // ---- The buttons ----
   const row = document.createElement('div');
@@ -410,6 +412,7 @@ export function createGarden(cb: GardenCallbacks): Garden {
   return {
     row,
     beds,
+    pour,
     start() {
       active = true;
       // Start on the pot that most needs you, or the first one.

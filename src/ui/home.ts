@@ -459,7 +459,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     else showToast(message);
   }
 
-  root.append(canvas, banner, statSlot, actions, fishing.row, cooking.row, garden.row, toastEl);
+  root.append(canvas, banner, statSlot, garden.pour, actions, fishing.row, cooking.row, garden.row, toastEl);
 
   return {
     canvas,
