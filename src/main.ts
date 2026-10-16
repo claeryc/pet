@@ -18,6 +18,7 @@ import {
 import { getCharacter, getVariant, sheetFor } from './game/growth';
 import { buyFood, buyHat, checkIn, earn, getHat, wearHat, type ShopResult } from './game/economy';
 import { getLook, isNight } from './game/stats';
+import { cast, land } from './game/fishing';
 import { clearSave, loadGame, saveGame } from './storage/storage';
 import { setupCanvas, drawRoom } from './render/canvas';
 import { loadSprites, type SpriteLibrary } from './render/sprites';
@@ -99,6 +100,19 @@ const home = createHomeScreen(root, {
   onPlay: (activity) => runAction((s, now) => play(s, now, activity), 'happy'),
   onLights: () => runAction(toggleLights),
   onMedicine: () => runAction(giveMedicine),
+  onCast: () => {
+    const result = cast(state, gameNow());
+    setState(result.state);
+    if (result.blocked) home.toast(STRINGS.blocked[result.blocked](state.pet.name));
+    return !result.blocked;
+  },
+  onLand: (grade) => {
+    const { state: next, fish } = land(state, grade, Math.random());
+    setState(next);
+    const label = STRINGS.fishing.grades[grade];
+    home.toast(fish > 0 ? STRINGS.fishing.landed(label, fish) : grade === 'miss' ? label : STRINGS.fishing.slipped(label));
+    if (fish > 0) react('happy');
+  },
   onReset: () => {
     if (confirm(STRINGS.confirmReset)) {
       clearSave();
@@ -142,7 +156,7 @@ function render(timeMs: number): void {
   drawRoom(
     ctx,
     sprites.get(sheetFor(pet)),
-    { animation, night: isNight(gameNow()), lightsOff: pet.asleep },
+    { animation, night: isNight(gameNow()), lightsOff: pet.asleep, fishing: home.fishingPhase() },
     timeMs,
     sprites.get(getHat(pet.hat)?.sheet ?? ''),
   );

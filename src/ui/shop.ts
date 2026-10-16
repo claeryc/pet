@@ -6,7 +6,7 @@ import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import { HATS, foodCount } from '../game/economy';
 import type { GameState } from '../game/state';
-import type { FoodId } from '../game/actions';
+import type { Food, FoodId } from '../game/actions';
 import { ITEM_ICONS, STAT_ICONS } from './icons';
 
 export interface ShopCallbacks {
@@ -144,7 +144,7 @@ function countBadge(count: number): string | undefined {
 
 export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>): HTMLElement[] {
   const food: Entry[] = CONFIG.foods
-    .filter((f) => f.price > 0) // free food isn't sold
+    .filter((f: Food) => f.price > 0 && !f.caughtOnly) // free and caught food isn't sold
     .map((f) => ({
       icon: ITEM_ICONS[f.id],
       count: countBadge(foodCount(state, f.id)),
