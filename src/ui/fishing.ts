@@ -37,7 +37,7 @@ const RESULT_MS = 900;
 // How long the water takes to rise and to drain away (matches .pond in
 // style.css). The fizzy edge shows for that long.
 const RISE_MS = 700;
-const DRAIN_MS = 450;
+export const DRAIN_MS = 450;
 
 export function createFishing(cb: FishingCallbacks): Fishing {
   const row = document.createElement('div');

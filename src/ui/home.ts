@@ -13,7 +13,7 @@ import { createDrawer, type DrawerOption, type Effect } from './drawer';
 import { ITEM_ICONS, STAT_ICONS } from './icons';
 import type { ActivityId, Food, FoodId } from '../game/actions';
 import type { CatchGrade } from '../game/fishing';
-import { createFishing, type FishingPhase } from './fishing';
+import { createFishing, DRAIN_MS, type FishingPhase } from './fishing';
 
 export interface HomeCallbacks extends MenuCallbacks {
   onFeed: (food: FoodId) => void;
@@ -49,7 +49,19 @@ const SUN_ICON = `
 // points, and a block lights up as soon as the stat reaches into it.
 const STAT_SEGMENTS = 10;
 
-function statBar(label: string, icon: string): { el: HTMLElement; set: (v: number) => void } {
+// After a mini-game closes, the bars start empty and fill back up one block
+// at a time, this many ms per block: a full bar takes 3 seconds, a bar at
+// 10% just a moment.
+const REFILL_MS_PER_SEGMENT = 300;
+
+interface StatBar {
+  el: HTMLElement;
+  set: (v: number) => void;
+  // Empties the bar, waits `delayMs`, then fills it back up to its value.
+  refill: (delayMs: number) => void;
+}
+
+function statBar(label: string, icon: string): StatBar {
   const el = document.createElement('div');
   el.className = 'stat';
   el.setAttribute('role', 'meter');
@@ -69,17 +81,42 @@ function statBar(label: string, icon: string): { el: HTMLElement; set: (v: numbe
   });
   track.append(...segments);
   el.append(iconEl, track);
+  let value = 0;
+  let filling = false; // true while refilling: shown blocks count up on their own
+  let timer = 0;
+  const litFor = (v: number) => Math.ceil(v / (100 / STAT_SEGMENTS));
+  function show(lit: number): void {
+    const low = value < CONFIG.lowStatThreshold;
+    segments.forEach((seg, i) => {
+      seg.classList.toggle('on', i < lit);
+      seg.classList.toggle('low', low);
+    });
+  }
   return {
     el,
     set(v: number) {
-      const lit = Math.ceil(v / (100 / STAT_SEGMENTS));
-      const low = v < CONFIG.lowStatThreshold;
-      segments.forEach((seg, i) => {
-        seg.classList.toggle('on', i < lit);
-        seg.classList.toggle('low', low);
-      });
+      value = v;
+      if (!filling) show(litFor(v));
       el.setAttribute('aria-valuenow', String(Math.round(v)));
       el.title = `${label}: ${Math.round(v)}`;
+    },
+    refill(delayMs) {
+      clearTimeout(timer);
+      filling = true;
+      show(0);
+      let lit = 0;
+      // One more block each step, until it reaches the bar's value (which
+      // may change while it fills).
+      const step = () => {
+        if (lit >= litFor(value)) {
+          filling = false;
+          show(litFor(value));
+          return;
+        }
+        show(++lit);
+        timer = window.setTimeout(step, REFILL_MS_PER_SEGMENT);
+      };
+      timer = window.setTimeout(step, delayMs);
     },
   };
 }
@@ -120,7 +157,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const medicine = button(STRINGS.buttons.medicine, 'btn btn-medicine', cb.onMedicine);
   banner.append(bannerText, medicine);
 
-  const bars: Record<keyof PetStats, ReturnType<typeof statBar>> = {
+  const bars: Record<keyof PetStats, StatBar> = {
     hunger: statBar(STRINGS.stats.hunger, STAT_ICONS.hunger),
     happiness: statBar(STRINGS.stats.happiness, STAT_ICONS.happiness),
     health: statBar(STRINGS.stats.health, STAT_ICONS.health),
@@ -238,9 +275,13 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     fishing.stop();
     showActions();
   }
-  // Back to the normal buttons, which pop back up.
+  // Back to the normal buttons, which pop back up. The stat bars appear
+  // empty as the water drains and then fill back up to their values.
   function showActions(): void {
     stats.removeAttribute('aria-hidden');
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      for (const bar of Object.values(bars)) bar.refill(DRAIN_MS);
+    }
     actions.hidden = false;
     actions.classList.remove('rise-in');
     void actions.offsetHeight;
