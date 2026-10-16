@@ -144,7 +144,7 @@ function countBadge(count: number): string | undefined {
 
 export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>): HTMLElement[] {
   const food: Entry[] = CONFIG.foods
-    .filter((f: Food) => f.price > 0 && !f.caughtOnly) // free and caught food isn't sold
+    .filter((f: Food) => f.price > 0 && !f.caughtOnly && !f.cookedOnly) // free, caught and cooked food isn't sold
     .map((f) => ({
       icon: ITEM_ICONS[f.id],
       count: countBadge(foodCount(state, f.id)),

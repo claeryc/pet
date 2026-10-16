@@ -14,6 +14,7 @@ import { ITEM_ICONS, STAT_ICONS } from './icons';
 import type { ActivityId, Food, FoodId } from '../game/actions';
 import type { CatchGrade } from '../game/fishing';
 import { createFishing, DRAIN_MS, type FishingPhase } from './fishing';
+import { createCooking, KITCHEN_OUT_MS } from './cooking';
 
 export interface HomeCallbacks extends MenuCallbacks {
   onFeed: (food: FoodId) => void;
@@ -22,6 +23,7 @@ export interface HomeCallbacks extends MenuCallbacks {
   onMedicine: () => void;
   onCast: () => boolean; // throws the fishing line; false if refused
   onLand: (grade: CatchGrade) => void;
+  onCook: (items: FoodId[]) => FoodId | null; // the dish made, or null if refused
 }
 
 export interface HomeScreen {
@@ -214,6 +216,13 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       onPick: () => cb.onFeed(f.id),
     };
   });
+  // The last row of the Feed panel opens the cooking pot.
+  feedOptions.push({
+    icon: ITEM_ICONS.cooking,
+    label: STRINGS.cooking.open,
+    effects: [],
+    onPick: () => startCooking(),
+  });
   const playOptions: DrawerOption[] = [
     ...CONFIG.activities.map((a) => ({
       icon: ITEM_ICONS[a.id],
@@ -257,7 +266,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const fishing = createFishing({
     onCast: cb.onCast,
     onLand: cb.onLand,
-    onExit: () => showActions(),
+    onExit: () => showActions(DRAIN_MS),
     toast: (msg) => showToast(msg),
   });
   // The latest state, so Fishing can check the pet is up for it.
@@ -270,6 +279,19 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     stats.setAttribute('aria-hidden', 'true'); // under water for now
     fishing.start();
   }
+  // Cooking works the same way: its own [Close] [Recipes] [Cook] row, and a
+  // kitchen counter that slides up over the stat bars.
+  const cooking = createCooking({
+    onCook: cb.onCook,
+    onExit: () => showActions(KITCHEN_OUT_MS),
+    toast: (msg) => showToast(msg),
+  });
+  function startCooking(): void {
+    actions.hidden = true;
+    stats.setAttribute('aria-hidden', 'true'); // covered by the counter for now
+    if (latest) cooking.update(latest.state);
+    cooking.start();
+  }
   function stopFishing(): void {
     if (fishing.phase() === 'off') return;
     fishing.stop();
@@ -277,10 +299,10 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   }
   // Back to the normal buttons, which pop back up. The stat bars appear
   // empty as the water drains and then fill back up to their values.
-  function showActions(): void {
+  function showActions(delayMs = DRAIN_MS): void {
     stats.removeAttribute('aria-hidden');
     if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      for (const bar of Object.values(bars)) bar.refill(DRAIN_MS);
+      for (const bar of Object.values(bars)) bar.refill(delayMs);
     }
     actions.hidden = false;
     actions.classList.remove('rise-in');
@@ -288,10 +310,11 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     actions.classList.add('rise-in');
   }
 
-  // The stat bars and the pond share one spot: the pond rises over the bars.
+  // The stat bars, the pond and the kitchen counter share one spot: the
+  // pond rises over the bars, and so does the counter.
   const statSlot = document.createElement('div');
   statSlot.className = 'stat-slot';
-  statSlot.append(stats, fishing.pond);
+  statSlot.append(stats, fishing.pond, cooking.kitchen);
 
   // A short message that pops up and fades, e.g. "Mochi is asleep".
   const toastEl = document.createElement('div');
@@ -304,7 +327,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     toastTimer = window.setTimeout(() => toastEl.classList.remove('show'), 2500);
   }
 
-  root.append(canvas, banner, statSlot, actions, fishing.row, toastEl);
+  root.append(canvas, banner, statSlot, actions, fishing.row, cooking.row, toastEl);
 
   return {
     canvas,
@@ -317,12 +340,15 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       petIsEgg = isEgg;
       for (const key of Object.keys(bars) as (keyof PetStats)[]) bars[key].set(pet.stats[key]);
       // How many of each food you have ("Free" for food that never runs out).
-      // Caught fish also show their stars.
+      // Caught fish and cooked dishes also show their stars. Dishes only
+      // show up once you have some, to keep the list short.
       CONFIG.foods.forEach((f: Food, i) => {
         const count = foodCount(state, f.id);
         const stars = f.stars ? `${STRINGS.stars(f.stars)}  ` : '';
         feedDrawer.setNote(i, count === Infinity ? STRINGS.shop.free : `${stars}× ${count}`, count === 0);
+        feedDrawer.setHidden(i, !!f.cookedOnly && count === 0);
       });
+      cooking.update(state);
       stats.hidden = isEgg; // an egg has no needs yet
       canvas.setAttribute('aria-label', isEgg ? STRINGS.mood.egg(pet.name) : STRINGS.mood[getLook(pet)](pet.name));
 

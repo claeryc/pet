@@ -116,6 +116,9 @@ export const CONFIG = {
   // never runs out; other food comes from your inventory, one per meal.
   // `caughtOnly` food isn't sold in the Shop: you get it by fishing. Its
   // `stars` (1-3) say how rare and good it is.
+  // `cookedOnly` food isn't sold either: you make it in the cooking pot
+  // (see `cooking` below). Cooked dishes are worth more than eating their
+  // ingredients one by one.
   foods: [
     { id: 'riceBall', price: 0, hunger: 20, happiness: 0, health: 0 },
     { id: 'heartyStew', price: 25, hunger: 20, happiness: 0, health: 0, slowHunger: { percent: 20, hours: 6 } },
@@ -125,6 +128,17 @@ export const CONFIG = {
     { id: 'shrimp', price: 10, hunger: 10, happiness: 4, health: 0, caughtOnly: true, stars: 1 },
     { id: 'salmon', price: 20, hunger: 20, happiness: 6, health: 3, caughtOnly: true, stars: 2 },
     { id: 'lobster', price: 40, hunger: 28, happiness: 14, health: 5, caughtOnly: true, stars: 3 },
+    { id: 'grilledShrimp', price: 14, hunger: 16, happiness: 6, health: 2, cookedOnly: true, stars: 1 },
+    { id: 'shrimpOnigiri', price: 18, hunger: 36, happiness: 6, health: 2, cookedOnly: true, stars: 1 },
+    { id: 'strawberryMilk', price: 26, hunger: 26, happiness: 12, health: 4, cookedOnly: true, stars: 1 },
+    { id: 'grilledSalmon', price: 26, hunger: 28, happiness: 8, health: 5, cookedOnly: true, stars: 2 },
+    { id: 'salmonSushi', price: 30, hunger: 46, happiness: 10, health: 5, cookedOnly: true, stars: 2 },
+    { id: 'fishSoup', price: 38, hunger: 38, happiness: 8, health: 10, cookedOnly: true, stars: 2, slowHunger: { percent: 15, hours: 4 } },
+    { id: 'berryShortcake', price: 36, hunger: 30, happiness: 26, health: 2, cookedOnly: true, stars: 2 },
+    { id: 'lobsterBisque', price: 60, hunger: 46, happiness: 20, health: 12, cookedOnly: true, stars: 3, slowHunger: { percent: 20, hours: 6 } },
+    { id: 'seafoodPlatter', price: 85, hunger: 66, happiness: 30, health: 12, cookedOnly: true, stars: 3, slowHunger: { percent: 30, hours: 8 } },
+    // What you get when the pot holds a mix that isn't a recipe.
+    { id: 'mushyMess', price: 1, hunger: 8, happiness: 0, health: 0, cookedOnly: true },
   ],
 
   // What's inside the Play panel. Playing costs energy and makes the pet a
@@ -159,6 +173,29 @@ export const CONFIG = {
     // How many fish one successful catch gives. A food buff could raise this
     // later on (e.g. a chance of an extra fish).
     fishPerCatch: 1,
+  },
+
+  // Cooking (the last row of the Feed panel). Put up to `slots` foods from
+  // your inventory in the pot and tap Cook. If they match a recipe (in any
+  // order) you get that dish, and the recipe shows up in the recipe book;
+  // any other mix makes a Mushy mess. Each recipe's id is the dish it makes
+  // (a food above).
+  cooking: {
+    slots: 3,
+    // The foods that can go in the pot, in the order they're shown.
+    ingredients: ['riceBall', 'strawberry', 'warmMilk', 'cookie', 'shrimp', 'salmon', 'lobster'],
+    recipes: [
+      { id: 'grilledShrimp', ingredients: ['shrimp'] },
+      { id: 'shrimpOnigiri', ingredients: ['riceBall', 'shrimp'] },
+      { id: 'strawberryMilk', ingredients: ['strawberry', 'warmMilk'] },
+      { id: 'grilledSalmon', ingredients: ['salmon'] },
+      { id: 'salmonSushi', ingredients: ['riceBall', 'salmon'] },
+      { id: 'fishSoup', ingredients: ['salmon', 'warmMilk'] },
+      { id: 'berryShortcake', ingredients: ['cookie', 'strawberry', 'warmMilk'] },
+      { id: 'lobsterBisque', ingredients: ['lobster', 'warmMilk'] },
+      { id: 'seafoodPlatter', ingredients: ['shrimp', 'salmon', 'lobster'] },
+    ],
+    mess: 'mushyMess',
   },
 
   // Gold. It's earned (mini-games arrive in Milestone 4, plus check-in

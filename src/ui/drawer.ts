@@ -31,6 +31,8 @@ export interface Drawer {
   // Small text next to an option's name, e.g. "x2", and whether that
   // option looks faded (e.g. none left).
   setNote: (index: number, note: string, faded?: boolean) => void;
+  // Hides or shows an option (e.g. a dish you haven't cooked yet).
+  setHidden: (index: number, hidden: boolean) => void;
 }
 
 export interface DrawerSetup {
@@ -159,6 +161,10 @@ export function createDrawer(setup: DrawerSetup): Drawer {
       if (!row) return;
       row.querySelector('.drawer-option-note')!.textContent = text;
       row.classList.toggle('faded', faded);
+    },
+    setHidden(index, hidden) {
+      const row = options.children[index] as HTMLElement | undefined;
+      if (row) row.hidden = hidden;
     },
   };
 }
