@@ -10,7 +10,7 @@
 
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
-import { createPond } from '../render/pond';
+import { createFroth, createPond } from '../render/pond';
 import { biteDelayMs, gradeAt, markerAt, placeZones, sweptOut, type CatchGrade, type CatchZones } from '../game/fishing';
 
 // ready: line in, waiting for you to cast. waiting: line out, no bite yet.
@@ -34,7 +34,9 @@ export interface Fishing {
 
 // How long the bar stays up after Catch, showing where the marker stopped.
 const RESULT_MS = 900;
-// How long the water takes to drain away (matches .pond in style.css).
+// How long the water takes to rise and to drain away (matches .pond in
+// style.css). The fizzy edge shows for that long.
+const RISE_MS = 700;
 const DRAIN_MS = 450;
 
 export function createFishing(cb: FishingCallbacks): Fishing {
@@ -65,12 +67,21 @@ export function createFishing(cb: FishingCallbacks): Fishing {
   const pond = document.createElement('div');
   pond.className = 'pond';
   pond.hidden = true;
-  pond.append(pondView.canvas, bar);
+  const froth = createFroth();
+  pond.append(froth.canvas, pondView.canvas, bar);
+  // Shows the fizzy edge for a while, then fades it out.
+  let frothTimer = 0;
+  function fizz(ms: number): void {
+    pond.classList.add('fizzing');
+    clearTimeout(frothTimer);
+    frothTimer = window.setTimeout(() => pond.classList.remove('fizzing'), ms);
+  }
   // Keeps the pond moving while fishing (and while it drains away).
   let pondFrame = 0;
   let drainTimer = 0;
   const animatePond = (t: number) => {
     pondView.draw(phase === 'off' ? 'ready' : phase, t);
+    froth.draw(t); // cheap, and keeps fizzing while it fades out
     pondFrame = requestAnimationFrame(animatePond);
   };
 
@@ -193,6 +204,7 @@ export function createFishing(cb: FishingCallbacks): Fishing {
     delete bar.dataset.grade;
     // Let the water drain away, then stop drawing it.
     pond.classList.remove('is-in');
+    fizz(DRAIN_MS);
     clearTimeout(drainTimer);
     drainTimer = window.setTimeout(() => {
       cancelAnimationFrame(pondFrame);
@@ -214,6 +226,7 @@ export function createFishing(cb: FishingCallbacks): Fishing {
       // Start below the stat bars, then rise up over them on the next frame.
       void pond.offsetHeight;
       pond.classList.add('is-in');
+      fizz(RISE_MS);
       cb.toast(STRINGS.fishing.start);
     },
     stop,

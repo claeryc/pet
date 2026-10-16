@@ -1047,7 +1047,6 @@ body {
   position: absolute;
   inset: 0;
   border-radius: 16px;
-  overflow: hidden;
   background: #9ad3f0;
   transform: translateY(100%);
   /* Draining: a little quicker, easing in. */
@@ -1090,7 +1089,28 @@ body {
   display: block;
   width: 100%;
   height: 100%;
+  border-radius: 16px;
   image-rendering: pixelated;
+}
+
+/* The fizzy bubble edge riding on top of the water while it rises or
+   drains. It sits just above the pond and fades out once the water has
+   settled. */
+.pond-froth {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% - 4px);
+  width: 100%;
+  aspect-ratio: 96 / 14;
+  image-rendering: pixelated;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+
+.pond.fizzing .pond-froth {
+  opacity: 1;
+  transition: none;
 }
 
 /* The catch bar sits along the bottom of the pond. */

@@ -283,3 +283,71 @@ export function createPond(): Pond {
 
   return { canvas, resize, draw };
 }
+
+// The fizzy edge of the water while it rises over the stat bars (and while
+// it drains away): bubbles bob up from the surface and pop, with foam caps
+// along it. Drawn on a thin strip of its own that sits on top of the pond.
+export const FROTH_HEIGHT = 14;
+
+export interface Froth {
+  canvas: HTMLCanvasElement;
+  draw: (timeMs: number) => void;
+}
+
+export function createFroth(): Froth {
+  const canvas = document.createElement('canvas');
+  canvas.className = 'pond-froth';
+  canvas.width = POND_WIDTH;
+  canvas.height = FROTH_HEIGHT;
+  const ctx = canvas.getContext('2d')!;
+  const bottom = FROTH_HEIGHT - 1; // the water's surface
+  const bubbles: Bubble[] = [];
+  const caps: Foam[] = [];
+  let lastMs = 0;
+
+  function draw(timeMs: number): void {
+    const dt = lastMs ? Math.min(0.1, (timeMs - lastMs) / 1000) : 0;
+    lastMs = timeMs;
+
+    // Lots of bubbles all along the surface, each popping a little way up.
+    const spawn = Math.round(dt * 120) || (Math.random() < 0.5 ? 1 : 0);
+    for (let i = 0; i < spawn; i++) {
+      bubbles.push({ sprite: pick(BUBBLES), x: rand(-2, POND_WIDTH), y: bottom - 2, vy: rand(8, 22), phase: rand(0, 6) });
+    }
+    if (Math.random() < dt * 30) {
+      const sprite = pick(FOAM);
+      caps.push({ sprite, x: rand(-3, POND_WIDTH), y: bottom - sprite.length + 1, life: rand(0.15, 0.4) });
+    }
+    for (let i = bubbles.length - 1; i >= 0; i--) {
+      const b = bubbles[i];
+      b.y -= b.vy * dt;
+      b.phase += dt * 6;
+      if (b.y < rand(-2, 4)) bubbles.splice(i, 1); // pop
+    }
+    for (let i = caps.length - 1; i >= 0; i--) {
+      caps[i].life -= dt;
+      if (caps[i].life <= 0) caps.splice(i, 1);
+    }
+
+    ctx.clearRect(0, 0, POND_WIDTH, FROTH_HEIGHT);
+    // A white foamy line hugging the surface.
+    ctx.fillStyle = PALETTE.white;
+    for (let x = 0; x < POND_WIDTH; x++) {
+      if (Math.sin(x * 1.7 + timeMs / 70) > -0.3) ctx.fillRect(x, bottom, 1, 1);
+    }
+    // Foam caps: white with a light blue shadow so they show against the
+    // cream stat panel behind them.
+    for (const c of caps) {
+      drawSprite(ctx, c.sprite, c.x, c.y + 1, { w: PALETTE.sky });
+      drawSprite(ctx, c.sprite, c.x, c.y, { w: PALETTE.white });
+    }
+    // Bubbles: blue rings with a white glint.
+    for (const b of bubbles) {
+      const x = b.x + Math.round(Math.sin(b.phase));
+      drawSprite(ctx, b.sprite, x, b.y, { w: PALETTE.sky });
+      if (b.sprite.length > 1) drawSprite(ctx, ['w'], x + 1, b.y + 1, { w: PALETTE.white });
+    }
+  }
+
+  return { canvas, draw };
+}
