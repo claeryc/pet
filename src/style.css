@@ -771,7 +771,11 @@ body {
 
 .drawer-content {
   display: block;
-  max-height: 380px;
+  /* Always the same height as the Feed and Play lists, whichever menu page
+     is showing, so the panel doesn't jump when you switch pages. Longer
+     pages (like Settings) scroll inside. */
+  height: 268px;
+  max-height: none;
 }
 
 .drawer .menu-panel {
@@ -787,7 +791,7 @@ body {
 }
 
 .menu-panel .menu-item {
-  padding: 12px 14px;
+  padding: 10px 14px; /* so all five fit without scrolling */
   border: 2px solid var(--lavender);
   background: white;
   font-size: 1rem;
