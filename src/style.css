@@ -850,13 +850,16 @@ body {
 /* Folded: just the pictures, in a small grid. */
 .shop-cat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
-  gap: 6px;
+  /* Fixed square tiles: stretchy columns plus aspect-ratio made the tiles
+     (and the pictures in them) taller than wide in some browsers. */
+  grid-template-columns: repeat(auto-fill, 44px);
+  gap: 8px;
 }
 
 .shop-cat-tile {
-  aspect-ratio: 1;
-  padding: 5px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
   border: 2px solid var(--lavender);
   border-radius: 10px;
   background: white;
@@ -869,8 +872,9 @@ body {
 
 .shop-cat-tile svg,
 .shop-cat-tile .hat-icon {
-  width: 100%;
-  height: 100%;
+  flex: none;
+  width: 30px;
+  height: 30px;
 }
 
 .shop-cat-tile {
