@@ -2074,3 +2074,278 @@ body {
   flex: 1;
   min-width: 0;
 }
+
+/* A mix that can only make a Mushy mess: the pot shows the mess, dimmed,
+   and wobbles slowly instead of wiggling "tap me". */
+.pot-result[data-kind='mush'] svg {
+  opacity: 0.55;
+}
+
+.pot-result[data-kind='mush'] {
+  background: var(--lavender);
+  animation: pot-mush 2.4s ease-in-out infinite;
+}
+
+@keyframes pot-mush {
+  0%, 100% { transform: scaleX(1) scaleY(1); }
+  50% { transform: scaleX(1.06) scaleY(0.94); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pot-result[data-kind='mush'] {
+    animation: none;
+  }
+}
+
+/* ---- Garden ---- */
+
+.garden[hidden],
+.pour-bar[hidden],
+.garden-row > [hidden] {
+  display: none;
+}
+
+/* [Cancel] plus the buttons for the picked pot, all one height. */
+.garden-row .btn {
+  height: 52px;
+  padding: 0 14px;
+  flex: 1 1 0;
+}
+
+.garden-row .btn-soft {
+  flex: 0 0 auto;
+}
+
+.garden-row .btn.faded {
+  opacity: 0.6;
+}
+
+.garden-row[data-open] > .btn {
+  padding: 0;
+  flex-shrink: 1;
+}
+
+.garden-row .drawer-content,
+.garden-row .drawer-options {
+  max-height: var(--fit, 268px);
+  overflow-y: auto;
+}
+
+/* Water is held down: it stays pressed while pouring, and the page
+   doesn't select text or scroll under the finger. */
+.garden-water {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: none;
+}
+
+.garden-water.pouring {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--accent-dark);
+  background: var(--ocean, #5a8fd6);
+}
+
+/* The bed slides up over the stat bars like the kitchen counter: a strip
+   of grass along the top, soil below. */
+.garden {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background:
+    repeating-linear-gradient(90deg, var(--leaf-dark) 0 4px, var(--good) 4px 8px) 0 0 / 100% 6px no-repeat,
+    linear-gradient(var(--good) 6px, transparent 6px),
+    repeating-conic-gradient(#e9d7c0 0 25%, #e2ccb1 0 50%) 0 0 / 12px 12px;
+  transform: translateY(100%);
+  transition: transform 0.45s cubic-bezier(0.5, 0, 0.9, 0.6);
+  padding: 12px 10px 6px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.garden.is-in {
+  transform: translateY(0);
+  transition: transform 0.6s cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .garden,
+  .garden.is-in {
+    transition: none;
+  }
+}
+
+.garden-pots {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+/* One pot: the plant, a clay pot, the moisture meter and a status line.
+   The picked pot gets a white outline. */
+.garden-pot {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 110px;
+  font: inherit;
+  color: var(--ink);
+  background: transparent;
+  border: 3px solid transparent;
+  border-radius: 14px;
+  padding: 4px 4px 3px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.garden-pot.selected {
+  border-color: white;
+  background: rgba(255, 255, 255, 0.45);
+  box-shadow: 0 3px 0 rgba(91, 63, 110, 0.25);
+}
+
+.garden-plant {
+  width: 40px;
+  height: 40px;
+  display: block;
+}
+
+.garden-plant svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.garden-pot[data-stage='ready'] .garden-plant {
+  animation: plant-ready 1.4s ease-in-out infinite;
+}
+
+@keyframes plant-ready {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+/* The clay pot: a pixel-ish trapezoid with a rim. */
+.garden-pot-body {
+  width: 46px;
+  height: 22px;
+  margin-top: -2px;
+  background:
+    linear-gradient(#b07a5c 0 6px, transparent 6px),
+    var(--cocoa);
+  clip-path: polygon(0 0, 100% 0, 100% 6px, 88% 6px, 80% 100%, 20% 100%, 12% 6px, 0 6px);
+}
+
+.garden-pot.fertilized .garden-pot-body {
+  box-shadow: inset 0 -4px 0 var(--butter);
+}
+
+/* Moisture: a little blue bar under the pot that empties as it dries. */
+.garden-moisture {
+  width: 46px;
+  height: 6px;
+  margin-top: 4px;
+  background: var(--seg-empty);
+  box-shadow: 0 0 0 2px var(--plum);
+}
+
+.garden-moisture > span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: #5a8fd6;
+  transition: width 0.4s ease;
+}
+
+.garden-pot[data-stage='empty'] .garden-moisture,
+.garden-pot[data-stage='ready'] .garden-moisture,
+.garden-pot[data-stage='dead'] .garden-moisture {
+  visibility: hidden;
+}
+
+.garden-status {
+  margin-top: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.garden-pot[data-stage='ready'] .garden-status {
+  color: var(--good-dark);
+}
+
+.garden-pot[data-stage='sick'] .garden-status,
+.garden-pot[data-stage='dead'] .garden-status {
+  color: var(--low-dark);
+}
+
+/* A drop hovering over a pot that needs water. */
+.garden-badge {
+  position: absolute;
+  top: 2px;
+  right: 6px;
+  width: 16px;
+  height: 16px;
+}
+
+.garden-badge svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.garden-pot.dry .garden-badge {
+  animation: drop-bob 1s ease-in-out infinite;
+}
+
+@keyframes drop-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .garden-pot[data-stage='ready'] .garden-plant,
+  .garden-pot.dry .garden-badge {
+    animation: none;
+  }
+}
+
+/* The pour meter: blue, with the green "just right" band, filling with
+   water from the left while Water is held. */
+.pour-bar {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 8px;
+}
+
+.pour-track {
+  background: linear-gradient(
+    to right,
+    var(--catch-miss) 0 var(--band-start),
+    var(--catch-weak) var(--band-start) var(--band-end),
+    var(--catch-miss) var(--band-end) 100%
+  );
+}
+
+.pour-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  background: rgba(43, 33, 64, 0.35);
+  box-shadow: inset -3px 0 0 white;
+}
+
+.pour-bar[data-result='perfect'] .pour-fill {
+  animation: catch-blink 0.15s steps(1) 4;
+}

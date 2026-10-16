@@ -116,18 +116,22 @@ export const CONFIG = {
   // never runs out; other food comes from your inventory, one per meal.
   // `caughtOnly` food isn't sold in the Shop: you get it by fishing. Its
   // `stars` (1-3) say how rare and good it is.
+  // `grownOnly` food isn't sold either: you grow it in the garden (see
+  // `garden` below).
   // `cookedOnly` food isn't sold either: you make it in the cooking pot
   // (see `cooking` below). Cooked dishes are worth more than eating their
   // ingredients one by one.
   foods: [
     { id: 'riceBall', price: 0, hunger: 20, happiness: 0, health: 0 },
-    { id: 'heartyStew', price: 25, hunger: 20, happiness: 0, health: 0, slowHunger: { percent: 20, hours: 6 } },
     { id: 'strawberry', price: 10, hunger: 10, happiness: 6, health: 0 },
     { id: 'warmMilk', price: 12, hunger: 12, happiness: 0, health: 3 },
     { id: 'cookie', price: 8, hunger: 6, happiness: 12, health: -2 },
     { id: 'shrimp', price: 10, hunger: 10, happiness: 4, health: 0, caughtOnly: true, stars: 1 },
     { id: 'salmon', price: 20, hunger: 20, happiness: 6, health: 3, caughtOnly: true, stars: 2 },
     { id: 'lobster', price: 40, hunger: 28, happiness: 14, health: 5, caughtOnly: true, stars: 3 },
+    { id: 'carrot', price: 10, hunger: 10, happiness: 0, health: 3, grownOnly: true, stars: 1 },
+    { id: 'pumpkin', price: 20, hunger: 20, happiness: 6, health: 4, grownOnly: true, stars: 2 },
+    { id: 'dragonFruit', price: 40, hunger: 16, happiness: 16, health: 6, grownOnly: true, stars: 3 },
     { id: 'grilledShrimp', price: 14, hunger: 16, happiness: 6, health: 2, cookedOnly: true, stars: 1 },
     { id: 'shrimpOnigiri', price: 18, hunger: 36, happiness: 6, health: 2, cookedOnly: true, stars: 1 },
     { id: 'strawberryMilk', price: 26, hunger: 26, happiness: 12, health: 4, cookedOnly: true, stars: 1 },
@@ -136,6 +140,13 @@ export const CONFIG = {
     { id: 'fishSoup', price: 38, hunger: 38, happiness: 8, health: 10, cookedOnly: true, stars: 2, slowHunger: { percent: 15, hours: 4 } },
     { id: 'berryShortcake', price: 36, hunger: 30, happiness: 26, health: 2, cookedOnly: true, stars: 2 },
     { id: 'lobsterBisque', price: 60, hunger: 46, happiness: 20, health: 12, cookedOnly: true, stars: 3, slowHunger: { percent: 20, hours: 6 } },
+    { id: 'veggieOnigiri', price: 16, hunger: 30, happiness: 0, health: 4, cookedOnly: true, stars: 1 },
+    { id: 'carrotSoup', price: 18, hunger: 24, happiness: 0, health: 8, cookedOnly: true, stars: 1 },
+    { id: 'pumpkinSoup', price: 32, hunger: 34, happiness: 6, health: 10, cookedOnly: true, stars: 2 },
+    { id: 'pumpkinPie', price: 40, hunger: 34, happiness: 24, health: 4, cookedOnly: true, stars: 2 },
+    { id: 'heartyStew', price: 55, hunger: 54, happiness: 8, health: 12, cookedOnly: true, stars: 2, slowHunger: { percent: 20, hours: 6 } },
+    { id: 'dragonFruitTart', price: 60, hunger: 30, happiness: 34, health: 6, cookedOnly: true, stars: 3 },
+    { id: 'dragonFruitSmoothie', price: 70, hunger: 34, happiness: 30, health: 14, cookedOnly: true, stars: 3 },
     { id: 'seafoodPlatter', price: 85, hunger: 66, happiness: 30, health: 12, cookedOnly: true, stars: 3, slowHunger: { percent: 30, hours: 8 } },
     // What you get when the pot holds a mix that isn't a recipe.
     { id: 'mushyMess', price: 1, hunger: 8, happiness: 0, health: 0, cookedOnly: true },
@@ -191,7 +202,11 @@ export const CONFIG = {
   cooking: {
     slots: 3,
     // The foods that can go in the pot, in the order they're shown.
-    ingredients: ['riceBall', 'strawberry', 'warmMilk', 'cookie', 'shrimp', 'salmon', 'lobster'],
+    ingredients: [
+      'riceBall', 'strawberry', 'warmMilk', 'cookie',
+      'shrimp', 'salmon', 'lobster',
+      'carrot', 'pumpkin', 'dragonFruit',
+    ],
     recipes: [
       { id: 'grilledShrimp', ingredients: ['shrimp'] },
       { id: 'shrimpOnigiri', ingredients: ['riceBall', 'shrimp'] },
@@ -202,8 +217,55 @@ export const CONFIG = {
       { id: 'berryShortcake', ingredients: ['cookie', 'strawberry', 'warmMilk'] },
       { id: 'lobsterBisque', ingredients: ['lobster', 'warmMilk'] },
       { id: 'seafoodPlatter', ingredients: ['shrimp', 'salmon', 'lobster'] },
+      { id: 'veggieOnigiri', ingredients: ['carrot', 'riceBall'] },
+      { id: 'carrotSoup', ingredients: ['carrot', 'warmMilk'] },
+      { id: 'pumpkinSoup', ingredients: ['pumpkin', 'warmMilk'] },
+      { id: 'pumpkinPie', ingredients: ['pumpkin', 'cookie', 'warmMilk'] },
+      { id: 'heartyStew', ingredients: ['carrot', 'pumpkin', 'salmon'] },
+      { id: 'dragonFruitTart', ingredients: ['dragonFruit', 'cookie'] },
+      { id: 'dragonFruitSmoothie', ingredients: ['dragonFruit', 'strawberry', 'warmMilk'] },
     ],
     mess: 'mushyMess',
+  },
+
+  // The garden (in the Play panel): pots to grow crops in. Plants grow in
+  // real time, even while the game is closed. Times are in hours.
+  garden: {
+    plots: 3,
+    // What you can grow. `id` is the food you harvest and `harvest` is how
+    // many. `seedPrice` is the seed's price in the Shop (0: not sold, you
+    // only find it by luck).
+    crops: [
+      { id: 'carrot', hours: 16, harvest: 3, seedPrice: 10 },
+      { id: 'pumpkin', hours: 32, harvest: 2, seedPrice: 0 },
+      { id: 'dragonFruit', hours: 48, harvest: 2, seedPrice: 0 },
+    ],
+    // Watering is free. The soil stays moist for `moistHours`, longer after
+    // a perfect pour (`perfectPourBonus` is the share added, 0.1 = 10%).
+    moistHours: 8,
+    perfectPourBonus: 0.1,
+    // Hold Water to pour: a meter fills in `fillSeconds`, and letting go
+    // inside `band` (shares of the meter) is a perfect pour.
+    pour: { fillSeconds: 1.6, band: { start: 0.62, end: 0.82 } },
+    // Once the soil is dry, every `dryHoursPerRoll` hours there's a chance
+    // the plant gets sick (lower while fertilized). A sick plant stops
+    // growing until it's cured, and dies after `daysUntilDead` days.
+    dryHoursPerRoll: 6,
+    sickChance: 0.5,
+    sickChanceFertilized: 0.25,
+    daysUntilDead: 3,
+    // Fertilizer: one pot grows `speedUp` faster for `hours` hours.
+    fertilizer: { hours: 6, speedUp: 0.25 },
+    // Prices in the Shop.
+    supplies: { fertilizer: 15, plantCure: 20 },
+    // The chance (0-1) of finding a seed: per landed fish, and per cuddle
+    // or tickle. Which seed is picked by `seedOdds` (in percent); a perfect
+    // catch makes the rarer ones more likely.
+    seedChance: { fishing: 0.03, play: 0.01 },
+    seedOdds: {
+      perfect: { carrot: 40, pumpkin: 40, dragonFruit: 20 },
+      other: { carrot: 60, pumpkin: 30, dragonFruit: 10 },
+    },
   },
 
   // Gold. It's earned (mini-games arrive in Milestone 4, plus check-in

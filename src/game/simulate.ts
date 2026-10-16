@@ -11,6 +11,7 @@
 import { CONFIG } from './config';
 import { clampStat, isNeglected, isNight, isWellFed } from './stats';
 import { growUp, stageLengthMs } from './growth';
+import { growGarden } from './garden';
 import type { GameState, Pet } from './state';
 
 const MS_PER_MINUTE = 60_000;
@@ -39,7 +40,9 @@ export function simulate(state: GameState, now: number): GameState {
     tick(pet, t, wasNight);
   }
 
-  return { ...state, pet, lastUpdated: t };
+  // The garden grows on its own clock, so it catches up in one go.
+  const garden = growGarden(state.garden, state.lastUpdated, t);
+  return { ...state, pet, garden, lastUpdated: t };
 }
 
 // Advances the pet by one tick ending at time `t`. Changes `pet` in place

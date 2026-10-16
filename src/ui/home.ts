@@ -15,8 +15,11 @@ import type { ActivityId, Food, FoodId } from '../game/actions';
 import type { CatchGrade } from '../game/fishing';
 import { createFishing, DRAIN_MS, type FishingPhase } from './fishing';
 import { createCooking, KITCHEN_OUT_MS } from './cooking';
+import { createGarden, GARDEN_OUT_MS } from './garden';
+import type { CropId } from '../game/garden';
 import { isNew, isUnlocked } from '../game/unlocks';
 import { isOnPet, ROOM_HEIGHT, ROOM_WIDTH } from '../render/canvas';
+import { formatDuration } from './time';
 
 export interface HomeCallbacks extends MenuCallbacks {
   onFeed: (food: FoodId) => void;
@@ -26,6 +29,12 @@ export interface HomeCallbacks extends MenuCallbacks {
   onCast: () => boolean; // throws the fishing line; false if refused
   onLand: (grade: CatchGrade) => void;
   onCook: (items: FoodId[]) => FoodId | null; // the dish made, or null if refused
+  onPlant: (pot: number, crop: CropId) => void;
+  onWater: (pot: number, perfect: boolean) => void;
+  onFertilize: (pot: number) => void;
+  onCure: (pot: number) => void;
+  onHarvest: (pot: number) => void;
+  onClear: (pot: number) => void;
   onPetTap: () => void; // a quick cuddle
 }
 
@@ -136,16 +145,6 @@ function button(label: string, className: string, onClick: () => void): HTMLButt
   return b;
 }
 
-// "4h 12m" style text for a length of time.
-function formatDuration(ms: number): string {
-  const totalMinutes = Math.max(0, Math.ceil(ms / 60_000));
-  const d = Math.floor(totalMinutes / 1440);
-  const h = Math.floor((totalMinutes % 1440) / 60);
-  const m = totalMinutes % 60;
-  if (d > 0) return `${d}d ${h}h`;
-  return h > 0 ? `${h}h ${m}m` : `${m}m`;
-}
-
 export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScreen {
   root.innerHTML = '';
 
@@ -249,11 +248,18 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       effects: statEffects({ energy: -CONFIG.fishing.energyPerCast }), // per cast
       onPick: () => startFishing(),
     },
+    {
+      icon: ITEM_ICONS.garden,
+      label: STRINGS.minigames.garden,
+      effects: [],
+      onPick: () => startGarden(),
+    },
     // More mini-games arrive in Milestone 4.
     { icon: ITEM_ICONS.catchTreats, label: STRINGS.minigames.catchTreats, effects: [] },
     { icon: ITEM_ICONS.memoryMatch, label: STRINGS.minigames.memoryMatch, effects: [] },
   ];
 
+  const GARDEN_ROW = CONFIG.activities.length + 1; // after Fishing
   const feedDrawer = createDrawer({ id: 'feed', label: STRINGS.buttons.feed, options: feedOptions, ...drawerSetup });
   const playDrawer = createDrawer({ id: 'play', label: STRINGS.buttons.play, options: playOptions, ...drawerSetup });
 
@@ -374,6 +380,25 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     if (latest) cooking.update(latest.state);
     cooking.start();
   }
+  // The garden too: its own buttons, and a bed of pots that slides up over
+  // the stat bars.
+  const garden = createGarden({
+    onPlant: cb.onPlant,
+    onWater: cb.onWater,
+    onFertilize: cb.onFertilize,
+    onCure: cb.onCure,
+    onHarvest: cb.onHarvest,
+    onClear: cb.onClear,
+    onExit: () => showActions(GARDEN_OUT_MS),
+    toast: (msg) => showToast(msg),
+  });
+  function startGarden(): void {
+    cb.onSeen('garden');
+    actions.hidden = true;
+    stats.setAttribute('aria-hidden', 'true'); // covered by the garden for now
+    if (latest) garden.update(latest.state, latest.now);
+    garden.start();
+  }
   function stopFishing(): void {
     if (fishing.phase() === 'off') return;
     fishing.stop();
@@ -392,11 +417,11 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     actions.classList.add('rise-in');
   }
 
-  // The stat bars, the pond and the kitchen counter share one spot: the
-  // pond rises over the bars, and so does the counter.
+  // The stat bars, the pond, the kitchen counter and the garden share one
+  // spot: each of them rises over the bars.
   const statSlot = document.createElement('div');
   statSlot.className = 'stat-slot';
-  statSlot.append(stats, fishing.pond, cooking.kitchen);
+  statSlot.append(stats, fishing.pond, cooking.kitchen, garden.beds);
 
   // A short message that pops up and fades, e.g. "Mochi is asleep".
   const toastEl = document.createElement('div');
@@ -418,7 +443,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     else showToast(message);
   }
 
-  root.append(canvas, banner, statSlot, actions, fishing.row, cooking.row, toastEl);
+  root.append(canvas, banner, statSlot, actions, fishing.row, cooking.row, garden.row, toastEl);
 
   return {
     canvas,
@@ -456,6 +481,11 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
         feedDrawer.setOrder(order);
       }
       cooking.update(state);
+      garden.update(state, now);
+      playDrawer.setHidden(GARDEN_ROW, !isUnlocked(state, 'garden'));
+      const gardenIsNew = isNew(state, 'garden');
+      playDrawer.setOptionNew(GARDEN_ROW, gardenIsNew);
+      playDrawer.setNew(gardenIsNew);
       stats.hidden = isEgg; // an egg has no needs yet
       canvas.setAttribute('aria-label', isEgg ? STRINGS.mood.egg : STRINGS.mood[getLook(pet)](pet.name));
 

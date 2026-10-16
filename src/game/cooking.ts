@@ -5,7 +5,8 @@
 // How it works: put up to CONFIG.cooking.slots foods in the pot and tap
 // Cook. The ingredients are used up. If they match a recipe (in any order)
 // you get that dish and the recipe goes in your recipe book; any other mix
-// makes a Mushy mess, which still fills the tummy a little.
+// makes a Mushy mess, which still fills the tummy a little. A single food
+// that isn't a recipe on its own isn't cooked at all.
 
 import { CONFIG } from './config';
 import { foodCount } from './economy';
@@ -54,7 +55,17 @@ export function knowsRecipe(state: GameState, id: FoodId): boolean {
   return state.recipesFound.includes(id);
 }
 
-export type CookBlock = 'emptyPot' | 'tooMany' | 'notIngredient' | 'noFood';
+// True if these foods are a recipe, or could still become one by adding
+// more. When it's false, cooking will only make a Mushy mess.
+export function couldBeRecipe(items: readonly FoodId[]): boolean {
+  const have = tally(items);
+  return RECIPES.some((r) => {
+    const need = tally(r.ingredients);
+    return [...have].every(([id, n]) => (need.get(id) ?? 0) >= n);
+  });
+}
+
+export type CookBlock = 'emptyPot' | 'tooMany' | 'notIngredient' | 'noFood' | 'needMore';
 
 export type CookResult =
   | { state: GameState; dish: FoodId; recipe: Recipe | null; discovered: boolean; blocked?: undefined }
@@ -67,6 +78,8 @@ export function cook(state: GameState, items: readonly FoodId[]): CookResult {
   if (items.length > CONFIG.cooking.slots) return { state, blocked: 'tooMany' };
   if (!items.every((id) => INGREDIENTS.includes(id))) return { state, blocked: 'notIngredient' };
   if (!haveAll(state, items)) return { state, blocked: 'noFood' };
+  // One food on its own isn't cooked unless it's a recipe by itself.
+  if (items.length === 1 && !matchRecipe(items)) return { state, blocked: 'needMore' };
 
   const food = { ...state.inventory.food };
   for (const [id, need] of tally(items)) {

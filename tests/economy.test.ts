@@ -19,16 +19,16 @@ describe('gold and the shop', () => {
 
   it('buying food costs gold and adds it to the inventory', () => {
     const s = createNewGame(START);
-    const r = buyFood(s, 'heartyStew');
+    const r = buyFood(s, 'warmMilk');
     expect(r.blocked).toBeUndefined();
-    expect(r.state.gold).toBe(s.gold - 25);
-    expect(foodCount(r.state, 'heartyStew')).toBe(1);
+    expect(r.state.gold).toBe(s.gold - 12);
+    expect(foodCount(r.state, 'warmMilk')).toBe(1);
   });
 
   it("can't buy what you can't afford", () => {
     const s = { ...createNewGame(START), gold: 5 };
-    expect(buyFood(s, 'heartyStew').blocked).toBe('notEnoughGold');
-    expect(buyFood(s, 'heartyStew').state.gold).toBe(5);
+    expect(buyFood(s, 'warmMilk').blocked).toBe('notEnoughGold');
+    expect(buyFood(s, 'warmMilk').state.gold).toBe(5);
   });
 
   it('feeding uses up stocked food, but rice balls are always free', () => {

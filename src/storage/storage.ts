@@ -5,12 +5,13 @@
 import { CONFIG } from '../game/config';
 import type { GameState } from '../game/state';
 import { characterKey, unlocksFor } from '../game/unlocks';
+import { newGarden } from '../game/garden';
 
 const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 9;
+export const SAVE_VERSION = 10;
 
 export interface SaveFile {
   version: number;
@@ -97,6 +98,12 @@ export function migrate(save: SaveFile): SaveFile {
     save.state.owner = '';
     save.state.family = [];
     save.version = 9;
+  }
+  // Version 9 -> 10: the garden, with seeds and garden supplies.
+  if (save.version === 9) {
+    save.state.garden = newGarden();
+    save.state.inventory = { food: {}, hats: [], ...save.state.inventory, seeds: {}, supplies: {} };
+    save.version = 10;
   }
   return save;
 }

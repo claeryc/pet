@@ -4,7 +4,9 @@
 //
 // The counter shows the pot: three spots for food, then "=" and the pot
 // itself. Tap the pot to cook. When the spots hold a recipe you know, the
-// pot shows the dish it will make; any other mix shows a "?".
+// pot shows the dish it will make. A mix that can't become any recipe,
+// even with more added, shows a Mushy mess as a warning; anything else
+// shows a "?".
 //
 // Food and Recipes open upward like Feed and Play, stopping short of the
 // pot so you can watch it fill:
@@ -20,7 +22,7 @@
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import { foodCount } from '../game/economy';
-import { haveAll, ingredientsFor, INGREDIENTS, knowsRecipe, matchRecipe, RECIPES } from '../game/cooking';
+import { couldBeRecipe, haveAll, ingredientsFor, INGREDIENTS, knowsRecipe, matchRecipe, RECIPES } from '../game/cooking';
 import type { Food, FoodId } from '../game/actions';
 import type { GameState } from '../game/state';
 import { createDrawer } from './drawer';
@@ -252,8 +254,13 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     // a "?" for anything else, or the empty pot.
     const known = matchRecipe(pot);
     const preview = justMade ?? (known && knowsRecipe(s, known.id) ? known.id : null);
-    potIcon.innerHTML = preview ? ITEM_ICONS[preview] : pot.length > 0 ? ITEM_ICONS.unknown : ITEM_ICONS.cooking;
-    potBtn.dataset.kind = justMade ? 'done' : preview ? 'known' : pot.length > 0 ? 'mystery' : 'empty';
+    const mush = !preview && pot.length > 0 && !couldBeRecipe(pot);
+    potIcon.innerHTML =
+      preview ? ITEM_ICONS[preview]
+      : mush ? ITEM_ICONS[CONFIG.cooking.mess]
+      : pot.length > 0 ? ITEM_ICONS.unknown
+      : ITEM_ICONS.cooking;
+    potBtn.dataset.kind = justMade ? 'done' : preview ? 'known' : mush ? 'mush' : pot.length > 0 ? 'mystery' : 'empty';
     potBtn.setAttribute(
       'aria-label',
       justMade
@@ -262,8 +269,11 @@ export function createCooking(cb: CookingCallbacks): Cooking {
           ? STRINGS.cooking.emptyPotLabel
           : preview
             ? STRINGS.cooking.cookInto(foodName(preview))
-            : STRINGS.cooking.cookMystery,
+            : mush
+              ? STRINGS.cooking.cookMush
+              : STRINGS.cooking.cookMystery,
     );
+    potBtn.title = mush ? STRINGS.cooking.cookMush : '';
 
     for (const p of pantryItems) {
       const n = left(p.id);

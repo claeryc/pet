@@ -3,6 +3,7 @@
 
 import { CONFIG } from './config';
 import type { Stage } from './growth';
+import { newGarden } from './garden';
 
 export interface PetStats {
   hunger: number; // 0-100, higher is better (a full tummy)
@@ -51,6 +52,23 @@ export interface Pet {
 export interface Inventory {
   food: Record<string, number>; // food id -> how many
   hats: string[]; // ids of hats bought (each is bought once)
+  seeds: Record<string, number>; // crop id -> how many seeds
+  supplies: Record<string, number>; // 'fertilizer' / 'plantCure' -> how many
+}
+
+// One pot in the garden (see src/game/garden.ts). Times are timestamps.
+export interface Plot {
+  crop: string | null; // what's planted (a crop id), or null if empty
+  growth: number; // how much growing it has done, in milliseconds
+  moistUntil: number; // the soil is wet until this time
+  // Sickness rolls happen every few hours from max(rollsFrom, moistUntil);
+  // `rolls` counts the ones done since then.
+  rollsFrom: number;
+  rolls: number;
+  luck: number; // 0-1, set when watered: decides the sickness rolls
+  fertilizedUntil: number;
+  sickSince: number | null; // when it got sick (null while healthy)
+  dead: boolean;
 }
 
 // A pet from an earlier generation, as it's remembered in the Family Tree.
@@ -106,6 +124,8 @@ export interface GameState {
   owner: string;
   // Earlier generations of the pet's family (the pet itself isn't in here).
   family: FamilyMember[];
+  // The garden's pots, left to right.
+  garden: Plot[];
 }
 
 // Makes a random id. crypto.randomUUID exists in all modern browsers and Node.
@@ -138,7 +158,7 @@ export function createNewGame(now: number): GameState {
     lastUpdated: now,
     clockOffsetMs: 0,
     gold: CONFIG.economy.startingGold,
-    inventory: { food: { ...CONFIG.economy.startingFood }, hats: [] },
+    inventory: { food: { ...CONFIG.economy.startingFood }, hats: [], seeds: {}, supplies: {} },
     checkIn: { day: '', count: 0, lastAt: 0 },
     recipesFound: [],
     recentFoods: [],
@@ -149,5 +169,6 @@ export function createNewGame(now: number): GameState {
     showAllMenus: false,
     owner: '',
     family: [],
+    garden: newGarden(),
   };
 }
