@@ -50,9 +50,9 @@ const SUN_ICON = `
 const STAT_SEGMENTS = 10;
 
 // After a mini-game closes, the bars start empty and fill back up one block
-// at a time, this many ms per block: a full bar takes 3 seconds, a bar at
+// at a time, this many ms per block: a full bar takes 1.5 seconds, a bar at
 // 10% just a moment.
-const REFILL_MS_PER_SEGMENT = 300;
+const REFILL_MS_PER_SEGMENT = 150;
 
 interface StatBar {
   el: HTMLElement;
