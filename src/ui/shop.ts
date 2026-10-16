@@ -27,13 +27,6 @@ export function goldPill(gold: number): HTMLElement {
   return el;
 }
 
-function section(title: string): HTMLElement {
-  const h = document.createElement('h3');
-  h.className = 'shop-section';
-  h.textContent = title;
-  return h;
-}
-
 function hatIcon(url: string | undefined): string {
   // Shows the large version (the right half of the hat's sheet).
   return url ? `<span class="hat-icon" style="background-image:url('${url}')"></span>` : '';
@@ -78,43 +71,122 @@ function label(text: string): HTMLElement {
   return el;
 }
 
-export function shopPage(state: GameState, cb: ShopCallbacks): HTMLElement[] {
-  const items: HTMLElement[] = [section(STRINGS.shop.food)];
-  for (const f of CONFIG.foods) {
-    if (f.price === 0) continue; // free food isn't sold
-    items.push(
-      row(ITEM_ICONS[f.id], STRINGS.foods[f.id], STRINGS.shop.have(foodCount(state, f.id)),
-        priceButton(f.price, state.gold, () => cb.onBuyFood(f.id))),
-    );
-  }
-  items.push(section(STRINGS.shop.hats));
-  for (const h of HATS) {
-    const owned = state.inventory.hats.includes(h.id);
-    items.push(
-      row(hatIcon(cb.hatImage(h.id)), h.name, owned ? STRINGS.shop.owned : '',
-        owned ? label(STRINGS.shop.owned) : priceButton(h.price, state.gold, () => cb.onBuyHat(h.id))),
-    );
-  }
-  return items;
+// One item in a category: its full row, and its little picture for the
+// folded-up grid. `mark` highlights the picture (e.g. the hat being worn),
+// `faded` dims it (e.g. a hat you already own, in the Shop), and `count`
+// shows a small number in its corner (how many of a food you have).
+interface Entry {
+  icon: string;
+  row: HTMLElement;
+  count?: string;
+  mark?: boolean;
+  faded?: boolean;
 }
 
-export function inventoryPage(state: GameState, cb: ShopCallbacks): HTMLElement[] {
-  const items: HTMLElement[] = [section(STRINGS.inventory.hats)];
-  const owned = HATS.filter((h) => state.inventory.hats.includes(h.id));
-  if (owned.length === 0) items.push(label(STRINGS.inventory.noHats));
-  for (const h of owned) {
+// A category such as "Food" or "Hats". Folded up (the default) it shows
+// only the items' pictures in a small grid; tap the title, or any picture,
+// to unfold it into the full rows. `open` remembers which categories are
+// unfolded, so they stay that way when the page redraws after buying.
+function category(id: string, title: string, entries: Entry[], open: Set<string>, empty?: string): HTMLElement {
+  const el = document.createElement('section');
+  el.className = 'shop-cat';
+
+  const head = document.createElement('button');
+  head.className = 'shop-cat-head';
+  head.innerHTML = `<span></span><span class="shop-cat-chevron" aria-hidden="true"></span>`;
+  head.firstElementChild!.textContent = title;
+
+  const grid = document.createElement('div');
+  grid.className = 'shop-cat-grid';
+  for (const e of entries) {
+    const b = document.createElement('button');
+    b.className = 'shop-cat-tile';
+    b.innerHTML = e.icon;
+    b.classList.toggle('mark', !!e.mark);
+    b.classList.toggle('faded', !!e.faded);
+    if (e.count) {
+      const c = document.createElement('span');
+      c.className = 'shop-cat-count';
+      c.textContent = e.count;
+      b.append(c);
+    }
+    const name = e.row.querySelector('b')?.textContent ?? '';
+    b.title = name;
+    b.setAttribute('aria-label', name);
+    b.addEventListener('click', () => setOpen(true));
+    grid.append(b);
+  }
+
+  const rows = document.createElement('div');
+  rows.className = 'shop-cat-rows';
+  rows.append(...entries.map((e) => e.row));
+
+  el.append(head);
+  if (entries.length === 0 && empty) el.append(label(empty));
+  else el.append(grid, rows);
+
+  function setOpen(isOpen: boolean): void {
+    if (isOpen) open.add(id);
+    else open.delete(id);
+    el.classList.toggle('is-open', isOpen);
+    head.setAttribute('aria-expanded', String(isOpen));
+  }
+  head.addEventListener('click', () => setOpen(!open.has(id)));
+  setOpen(open.has(id));
+  return el;
+}
+
+// The number in a picture's corner: nothing for none, ∞ for free food.
+function countBadge(count: number): string | undefined {
+  if (count === 0) return undefined;
+  return count === Infinity ? '∞' : String(count);
+}
+
+export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>): HTMLElement[] {
+  const food: Entry[] = CONFIG.foods
+    .filter((f) => f.price > 0) // free food isn't sold
+    .map((f) => ({
+      icon: ITEM_ICONS[f.id],
+      count: countBadge(foodCount(state, f.id)),
+      row: row(ITEM_ICONS[f.id], STRINGS.foods[f.id], STRINGS.shop.have(foodCount(state, f.id)),
+        priceButton(f.price, state.gold, () => cb.onBuyFood(f.id))),
+    }));
+  const hats: Entry[] = HATS.map((h) => {
+    const owned = state.inventory.hats.includes(h.id);
+    return {
+      icon: hatIcon(cb.hatImage(h.id)),
+      faded: owned,
+      row: row(hatIcon(cb.hatImage(h.id)), h.name, owned ? STRINGS.shop.owned : '',
+        owned ? label(STRINGS.shop.owned) : priceButton(h.price, state.gold, () => cb.onBuyHat(h.id))),
+    };
+  });
+  return [
+    category('food', STRINGS.shop.food, food, open),
+    category('hats', STRINGS.shop.hats, hats, open),
+  ];
+}
+
+export function inventoryPage(state: GameState, cb: ShopCallbacks, open: Set<string>): HTMLElement[] {
+  const hats: Entry[] = HATS.filter((h) => state.inventory.hats.includes(h.id)).map((h) => {
     const wearing = state.pet.hat === h.id;
-    items.push(
-      row(hatIcon(cb.hatImage(h.id)), h.name, wearing ? STRINGS.inventory.wearing : '',
+    return {
+      icon: hatIcon(cb.hatImage(h.id)),
+      mark: wearing,
+      row: row(hatIcon(cb.hatImage(h.id)), h.name, wearing ? STRINGS.inventory.wearing : '',
         button(wearing ? STRINGS.inventory.takeOff : STRINGS.inventory.wear,
           () => cb.onWearHat(wearing ? null : h.id), wearing ? 'shop-btn shop-btn-soft' : 'shop-btn')),
-    );
-  }
-  items.push(section(STRINGS.inventory.food));
-  for (const f of CONFIG.foods) {
-    const count = foodCount(state, f.id);
-    if (count === 0) continue;
-    items.push(row(ITEM_ICONS[f.id], STRINGS.foods[f.id], '', label(count === Infinity ? STRINGS.shop.free : `× ${count}`)));
-  }
-  return items;
+    };
+  });
+  const food: Entry[] = CONFIG.foods
+    .map((f) => ({ f, count: foodCount(state, f.id) }))
+    .filter(({ count }) => count > 0)
+    .map(({ f, count }) => ({
+      icon: ITEM_ICONS[f.id],
+      count: countBadge(count),
+      row: row(ITEM_ICONS[f.id], STRINGS.foods[f.id], '', label(count === Infinity ? STRINGS.shop.free : `× ${count}`)),
+    }));
+  return [
+    category('hats', STRINGS.inventory.hats, hats, open, STRINGS.inventory.noHats),
+    category('food', STRINGS.inventory.food, food, open, STRINGS.inventory.noFood),
+  ];
 }

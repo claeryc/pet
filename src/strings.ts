@@ -2,7 +2,6 @@
 // things or translate the game later.
 
 export const STRINGS = {
-  title: 'Cozy Pixel Pet',
   stats: {
     hunger: 'Tummy',
     happiness: 'Joy',
@@ -61,28 +60,17 @@ export const STRINGS = {
     addGold: (gold: number) => `+${gold} gold`,
     setCare: 'Set Care Score (before growing up)',
   },
-  stages: {
-    egg: 'Egg',
-    baby: 'Baby',
-    teen: 'Teen',
-    adult: 'Adult',
-  },
   growth: {
     egg: (name: string) => `${name} is an egg.`,
     baby: (name: string) => `${name} hatched! Say hello!`,
     teen: (name: string) => `${name} grew into a teen!`,
     adult: (name: string, character: string, stars: string) => `${name} grew up into a ${character}! ${stars}`,
   },
-  age: (stage: string, age: string) => `${stage} · ${age} old`,
   stars: (count: number) => '★'.repeat(count),
   // "Pebblit", or "Pebblit (Amber)" for a colour variant.
   characterName: (name: string, variant?: string) => (variant ? `${name} (${variant})` : name),
   status_egg: (timeLeft: string) =>
     `Your egg is staying warm and cozy. It will hatch in ${timeLeft}.`,
-  clock: {
-    day: 'Day',
-    night: 'Night',
-  },
   mood: {
     idle: (name: string) => `${name} is feeling cozy.`,
     cheerful: (name: string) => `${name} is feeling cheerful!`,

@@ -44,11 +44,6 @@ body {
   gap: 12px;
 }
 
-h1 {
-  margin: 4px 0;
-  text-align: center;
-  font-size: 1.4rem;
-}
 
 /* The canvas is tiny; CSS scales it up with chunky pixels. */
 .room {
@@ -60,11 +55,6 @@ h1 {
   box-shadow: 0 4px 0 rgba(43, 33, 64, 0.12);
 }
 
-.mood {
-  margin: 0;
-  text-align: center;
-  min-height: 1.4em;
-}
 
 .stats {
   background: var(--card);
@@ -249,7 +239,7 @@ h1 {
 
 .menu-header {
   display: grid;
-  grid-template-columns: 40px 1fr 40px;
+  grid-template-columns: 1fr auto 1fr; /* title stays centred */
   align-items: center;
   margin-bottom: 4px;
 }
@@ -303,22 +293,9 @@ h1 {
   color: var(--accent-dark);
 }
 
-/* ---- Milestone 2: clock, banner, toast, testing tools ---- */
+/* ---- Milestone 2: banner, toast, testing tools ---- */
 
-.clock {
-  margin: -8px 0 0;
-  text-align: center;
-  font-size: 0.85rem;
-  opacity: 0.7;
-}
 
-.age {
-  margin: -10px 0 0;
-  text-align: center;
-  font-size: 0.85rem;
-  font-weight: 700;
-  opacity: 0.75;
-}
 
 .stats[hidden] {
   display: none;
@@ -648,17 +625,7 @@ h1 {
   height: 14px;
 }
 
-.home-gold {
-  position: absolute;
-  top: 20px;
-  right: 16px;
-}
 
-.menu-gold {
-  display: flex;
-  justify-content: center;
-  margin: -6px 0 2px;
-}
 
 .shop-list {
   display: flex;
@@ -712,7 +679,18 @@ h1 {
   touch-action: manipulation;
 }
 
+/* Every button in a row is the same width, whether the price has one, two
+   or three digits, so the column of prices lines up. */
+.shop-btn {
+  min-width: 72px;
+  display: inline-flex;
+  justify-content: center;
+}
+
 .shop-btn .gold-pill {
+  /* coin on the left, number on the right, so coins and digits line up */
+  width: 100%;
+  justify-content: space-between;
   background: transparent;
   color: white;
   padding: 0;
@@ -806,8 +784,133 @@ h1 {
 
 .menu-panel .menu-header {
   margin-bottom: 0;
+  /* Stays at the top while the list scrolls, so the gold is always in view. */
+  position: sticky;
+  top: -8px; /* the list's top padding */
+  z-index: 1;
+  margin-top: -8px;
+  padding-top: 8px;
+  background: #fff5f8;
 }
 
 .menu-panel .menu-header h2 {
   font-size: 1.05rem;
+}
+
+/* ---- Shop and Inventory: gold in the header, folding categories ---- */
+
+/* The back button on the left, gold on the right, lined up with the price
+   buttons in the rows below (row border + padding = 10px). */
+.menu-header-btn {
+  justify-self: start;
+}
+
+.menu-header-end {
+  justify-self: end;
+  padding-right: 10px;
+}
+
+.shop-cat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.shop-cat-head {
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  opacity: 0.8;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* A small pixel chevron: points down when folded, up when open. */
+.shop-cat-chevron {
+  width: 10px;
+  height: 6px;
+  background: currentColor;
+  clip-path: polygon(0 0, 20% 0, 50% 50%, 80% 0, 100% 0, 100% 34%, 50% 100%, 0 34%);
+  transition: transform 0.2s ease;
+}
+
+.shop-cat.is-open .shop-cat-chevron {
+  transform: rotate(180deg);
+}
+
+/* Folded: just the pictures, in a small grid. */
+.shop-cat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+  gap: 6px;
+}
+
+.shop-cat-tile {
+  aspect-ratio: 1;
+  padding: 5px;
+  border: 2px solid var(--lavender);
+  border-radius: 10px;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.shop-cat-tile svg,
+.shop-cat-tile .hat-icon {
+  width: 100%;
+  height: 100%;
+}
+
+.shop-cat-tile {
+  position: relative;
+}
+
+/* How many you have, in the bottom-right corner of the picture. */
+.shop-cat-count {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 18px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 2px #fff5f8;
+}
+
+.shop-cat-tile.mark {
+  border-color: var(--accent);
+}
+
+.shop-cat-tile.faded {
+  opacity: 0.45;
+}
+
+.shop-cat-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.shop-cat:not(.is-open) .shop-cat-rows,
+.shop-cat.is-open .shop-cat-grid {
+  display: none;
 }
