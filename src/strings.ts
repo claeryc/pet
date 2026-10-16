@@ -23,7 +23,9 @@ export const STRINGS = {
     strawberry: 'Strawberry',
     warmMilk: 'Warm milk',
     cookie: 'Cookie',
-    fish: 'Fish',
+    shrimp: 'Shrimp',
+    salmon: 'Salmon',
+    lobster: 'Lobster',
   },
   activities: {
     cuddle: 'Cuddle',
@@ -50,7 +52,8 @@ export const STRINGS = {
     gotAway: 'The fish got away...',
     slack: 'The line went slack. The fish swam off.',
     grades: { perfect: 'Perfect catch!', good: 'Good catch!', weak: 'Weak catch...', miss: 'No catch.' },
-    landed: (grade: string, count: number) => `${grade} You got ${count === 1 ? 'a fish' : `${count} fish`}!`,
+    landed: (grade: string, name: string, count: number, stars: string) =>
+      `${grade} You got ${count === 1 ? `a ${name}` : `${count} × ${name}`}! ${stars}`,
     slipped: (grade: string) => `${grade} The fish slipped off the hook.`,
   },
   menu: {

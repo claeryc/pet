@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { CONFIG } from '../src/game/config';
-import { feed } from '../src/game/actions';
+import { feed, type Food } from '../src/game/actions';
 import { foodCount } from '../src/game/economy';
-import { biteDelayMs, cast, gradeAt, land, markerAt, placeZones, sweptOut } from '../src/game/fishing';
+import { biteDelayMs, cast, gradeAt, land, markerAt, pickCatch, placeZones, sweptOut } from '../src/game/fishing';
 import { createNewGame } from '../src/game/state';
 import { newTeen } from './helpers';
 
@@ -60,27 +60,44 @@ describe('the catch bar', () => {
 describe('landing a fish', () => {
   it('uses the chance for each kind of catch', () => {
     const s = newTeen(START);
-    expect(land(s, 'perfect', 0.999).fish).toBe(1);
-    expect(land(s, 'good', 0.74).fish).toBe(1);
-    expect(land(s, 'good', 0.75).fish).toBe(0);
-    expect(land(s, 'weak', 0.29).fish).toBe(1);
-    expect(land(s, 'weak', 0.3).fish).toBe(0);
-    expect(land(s, 'miss', 0).fish).toBe(0);
+    expect(land(s, 'perfect', 0.999, 0).count).toBe(1);
+    expect(land(s, 'good', 0.74, 0).count).toBe(1);
+    expect(land(s, 'good', 0.75, 0).caught).toBeNull();
+    expect(land(s, 'weak', 0.29, 0).count).toBe(1);
+    expect(land(s, 'weak', 0.3, 0).caught).toBeNull();
+    expect(land(s, 'miss', 0, 0).caught).toBeNull();
   });
 
-  it('puts the fish in the inventory, where the pet can eat it', () => {
+  it('catches shrimp, salmon or lobster by the odds', () => {
+    const other = f.catchOdds.other;
+    expect(pickCatch('good', 0)).toBe('shrimp');
+    expect(pickCatch('good', (other.shrimp - 1) / 100)).toBe('shrimp');
+    expect(pickCatch('good', (other.shrimp + 1) / 100)).toBe('salmon');
+    expect(pickCatch('weak', 0.999)).toBe('lobster');
+    // A perfect catch makes lobster more likely.
+    const perfect = f.catchOdds.perfect;
+    expect(pickCatch('perfect', 1 - (perfect.lobster - 1) / 100)).toBe('lobster');
+    expect(pickCatch('good', 1 - (perfect.lobster - 1) / 100)).toBe('salmon');
+  });
+
+  it('the three catches are 1, 2 and 3 stars and are not sold in the Shop', () => {
+    const caught = (CONFIG.foods as readonly Food[]).filter((x) => x.caughtOnly);
+    expect(caught.map((x) => [x.id, x.stars])).toEqual([['shrimp', 1], ['salmon', 2], ['lobster', 3]]);
+  });
+
+  it('puts the catch in the inventory, where the pet can eat it', () => {
     let s = newTeen(START);
-    s = land(s, 'perfect', 0).state;
-    s = land(s, 'perfect', 0).state;
-    expect(foodCount(s, 'fish')).toBe(2);
-    const fed = feed(s, START, 'fish');
+    s = land(s, 'perfect', 0, 0.999).state; // a lobster
+    s = land(s, 'perfect', 0, 0.999).state;
+    expect(foodCount(s, 'lobster')).toBe(2);
+    const fed = feed(s, START, 'lobster');
     expect(fed.blocked).toBeUndefined();
-    expect(foodCount(fed.state, 'fish')).toBe(1);
+    expect(foodCount(fed.state, 'lobster')).toBe(1);
   });
 
   it('a slipped fish changes nothing', () => {
     const s = newTeen(START);
-    expect(land(s, 'weak', 0.9).state).toBe(s);
+    expect(land(s, 'weak', 0.9, 0).state).toBe(s);
   });
 });
 

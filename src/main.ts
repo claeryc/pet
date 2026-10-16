@@ -14,6 +14,7 @@ import {
   play,
   toggleLights,
   type ActionResult,
+  type Food,
 } from './game/actions';
 import { getCharacter, getVariant, sheetFor } from './game/growth';
 import { buyFood, buyHat, checkIn, earn, getHat, wearHat, type ShopResult } from './game/economy';
@@ -107,11 +108,16 @@ const home = createHomeScreen(root, {
     return !result.blocked;
   },
   onLand: (grade) => {
-    const { state: next, fish } = land(state, grade, Math.random());
+    const { state: next, caught, count } = land(state, grade, Math.random(), Math.random());
     setState(next);
     const label = STRINGS.fishing.grades[grade];
-    home.toast(fish > 0 ? STRINGS.fishing.landed(label, fish) : grade === 'miss' ? label : STRINGS.fishing.slipped(label));
-    if (fish > 0) react('happy');
+    if (caught) {
+      const stars = (CONFIG.foods as readonly Food[]).find((f) => f.id === caught)?.stars ?? 1;
+      home.toast(STRINGS.fishing.landed(label, STRINGS.foods[caught], count, STRINGS.stars(stars)));
+      react('happy');
+    } else {
+      home.toast(grade === 'miss' ? label : STRINGS.fishing.slipped(label));
+    }
   },
   onReset: () => {
     if (confirm(STRINGS.confirmReset)) {

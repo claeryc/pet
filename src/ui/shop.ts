@@ -177,13 +177,13 @@ export function inventoryPage(state: GameState, cb: ShopCallbacks, open: Set<str
           () => cb.onWearHat(wearing ? null : h.id), wearing ? 'shop-btn shop-btn-soft' : 'shop-btn')),
     };
   });
-  const food: Entry[] = CONFIG.foods
+  const food: Entry[] = (CONFIG.foods as readonly Food[])
     .map((f) => ({ f, count: foodCount(state, f.id) }))
     .filter(({ count }) => count > 0)
     .map(({ f, count }) => ({
       icon: ITEM_ICONS[f.id],
       count: countBadge(count),
-      row: row(ITEM_ICONS[f.id], STRINGS.foods[f.id], '', label(count === Infinity ? STRINGS.shop.free : `× ${count}`)),
+      row: row(ITEM_ICONS[f.id], STRINGS.foods[f.id], f.stars ? STRINGS.stars(f.stars) : '', label(count === Infinity ? STRINGS.shop.free : `× ${count}`)),
     }));
   return [
     category('hats', STRINGS.inventory.hats, hats, open, STRINGS.inventory.noHats),

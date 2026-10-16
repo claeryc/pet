@@ -83,15 +83,35 @@ export function cast(state: GameState, now: number): ActionResult {
   return { state: withPet(s, (pet) => (pet.stats.energy = clampStat(pet.stats.energy - cost))) };
 }
 
-// Tries to land the fish. `random` (0-1) is rolled against the grade's
-// chance; a landed fish goes into the inventory as food.
+// The kinds of fish you can catch (ids of foods in CONFIG.foods).
+export type CatchId = keyof typeof CONFIG.fishing.catchOdds.other;
+
+// Which kind of fish bit, from a random number (0-1). A perfect catch
+// makes the rarer ones more likely.
+export function pickCatch(grade: CatchGrade, random: number): CatchId {
+  const odds = grade === 'perfect' ? CONFIG.fishing.catchOdds.perfect : CONFIG.fishing.catchOdds.other;
+  const entries = Object.entries(odds) as [CatchId, number][];
+  const total = entries.reduce((sum, [, p]) => sum + p, 0);
+  let roll = random * total;
+  for (const [id, p] of entries) {
+    if (roll < p) return id;
+    roll -= p;
+  }
+  return entries[entries.length - 1][0];
+}
+
+// Tries to land the fish. `landRoll` (0-1) is rolled against the grade's
+// chance, and `kindRoll` (0-1) picks which fish it was. A landed fish goes
+// into the inventory as food.
 export function land(
   state: GameState,
   grade: CatchGrade,
-  random: number,
-): { state: GameState; fish: number } {
-  if (random >= CONFIG.fishing.catchChance[grade]) return { state, fish: 0 };
-  const fish = CONFIG.fishing.fishPerCatch;
-  const food = { ...state.inventory.food, fish: (state.inventory.food.fish ?? 0) + fish };
-  return { state: { ...state, inventory: { ...state.inventory, food } }, fish };
+  landRoll: number,
+  kindRoll: number,
+): { state: GameState; caught: CatchId | null; count: number } {
+  if (landRoll >= CONFIG.fishing.catchChance[grade]) return { state, caught: null, count: 0 };
+  const caught = pickCatch(grade, kindRoll);
+  const count = CONFIG.fishing.fishPerCatch;
+  const food = { ...state.inventory.food, [caught]: (state.inventory.food[caught] ?? 0) + count };
+  return { state: { ...state, inventory: { ...state.inventory, food } }, caught, count };
 }

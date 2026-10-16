@@ -268,9 +268,11 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       petIsEgg = isEgg;
       for (const key of Object.keys(bars) as (keyof PetStats)[]) bars[key].set(pet.stats[key]);
       // How many of each food you have ("Free" for food that never runs out).
-      CONFIG.foods.forEach((f, i) => {
+      // Caught fish also show their stars.
+      CONFIG.foods.forEach((f: Food, i) => {
         const count = foodCount(state, f.id);
-        feedDrawer.setNote(i, count === Infinity ? STRINGS.shop.free : `× ${count}`, count === 0);
+        const stars = f.stars ? `${STRINGS.stars(f.stars)}  ` : '';
+        feedDrawer.setNote(i, count === Infinity ? STRINGS.shop.free : `${stars}× ${count}`, count === 0);
       });
       stats.hidden = isEgg || fishing.phase() !== 'off'; // an egg has no needs yet
       canvas.setAttribute('aria-label', isEgg ? STRINGS.mood.egg(pet.name) : STRINGS.mood[getLook(pet)](pet.name));
