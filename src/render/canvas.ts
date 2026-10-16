@@ -4,6 +4,7 @@
 import { PALETTE } from './palette';
 import { frameFor } from './animations';
 import type { SpriteSheet } from './sprites';
+import type { FishingPhase } from '../ui/fishing';
 
 export const ROOM_WIDTH = 64;
 export const ROOM_HEIGHT = 48;
@@ -13,6 +14,7 @@ export interface Scene {
   animation: string; // which pet animation to play
   night: boolean; // night-time outside the window
   lightsOff: boolean; // the room is dark (pet is sleeping)
+  fishing?: FishingPhase; // draws a little pond, rod and bobber while fishing
 }
 
 export function setupCanvas(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
@@ -54,6 +56,52 @@ function drawWindow(ctx: CanvasRenderingContext2D, night: boolean, timeMs: numbe
   ctx.fillRect(x, y + h / 2, w, 1);
 }
 
+// The fishing pond on the right of the floor, with the rod and line once
+// it's cast. The bobber bobs gently while waiting, and dips with a splash
+// and a "!" when a fish bites.
+function drawFishing(ctx: CanvasRenderingContext2D, phase: FishingPhase, timeMs: number): void {
+  // Pond: a rounded blue puddle with a lighter ripple.
+  ctx.fillStyle = PALETTE.ocean;
+  ctx.fillRect(48, 38, 14, 8);
+  ctx.fillRect(47, 39, 16, 6);
+  ctx.fillStyle = PALETTE.sky;
+  ctx.fillRect(50, 40, 3, 1);
+  ctx.fillRect(57, 43, 3, 1);
+  if (phase === 'ready') return;
+
+  // Rod held at the pet's side, then the line down to the bobber.
+  ctx.fillStyle = PALETTE.cocoa;
+  for (let i = 0; i < 7; i++) ctx.fillRect(42 + i, 29 - i, 1, 1);
+  const bite = phase === 'bite';
+  const reeling = phase === 'reeling';
+  const bob = bite || reeling ? 1 : Math.floor(timeMs / 500) % 2;
+  const bx = 55, by = 40 + bob;
+  ctx.fillStyle = PALETTE.ink;
+  const tipX = 48, tipY = 23;
+  const steps = by - tipY;
+  for (let i = 0; i < steps; i++) {
+    ctx.fillRect(Math.round(tipX + ((bx - tipX) * i) / steps), tipY + i, 1, 1);
+  }
+  // Bobber: red top, white bottom.
+  ctx.fillStyle = PALETTE.rose;
+  ctx.fillRect(bx, by, 2, 1);
+  ctx.fillStyle = PALETTE.white;
+  ctx.fillRect(bx, by + 1, 2, 1);
+  if (bite || reeling) {
+    // Splash drops either side.
+    const flick = Math.floor(timeMs / 150) % 2;
+    ctx.fillStyle = PALETTE.white;
+    ctx.fillRect(bx - 2, by - 1 - flick, 1, 1);
+    ctx.fillRect(bx + 3, by - 2 + flick, 1, 1);
+  }
+  if (bite) {
+    // A big "!" above the bobber.
+    ctx.fillStyle = PALETTE.rose;
+    ctx.fillRect(bx, by - 10, 2, 5);
+    ctx.fillRect(bx, by - 4, 2, 2);
+  }
+}
+
 export function drawRoom(
   ctx: CanvasRenderingContext2D,
   sheet: SpriteSheet | undefined,
@@ -69,6 +117,7 @@ export function drawRoom(
   ctx.fillStyle = PALETTE.butter;
   ctx.fillRect(0, 34, ROOM_WIDTH, 1);
   drawWindow(ctx, scene.night, timeMs);
+  if (scene.fishing && scene.fishing !== 'off') drawFishing(ctx, scene.fishing, timeMs);
 
   // The pet, centred and standing on the floor.
   if (sheet) {
