@@ -8,10 +8,12 @@ import { HATS, foodCount } from '../game/economy';
 import type { GameState } from '../game/state';
 import type { Food, FoodId } from '../game/actions';
 import { ITEM_ICONS, STAT_ICONS } from './icons';
+import { SEEDS_FOR_SALE, SUPPLIES, priceOf, seedCount, supplyCount, type ShopItem } from '../game/garden';
 
 export interface ShopCallbacks {
   onBuyFood: (food: FoodId) => void;
   onBuyHat: (hat: string) => void;
+  onBuyGardenItem: (item: ShopItem) => void;
   onWearHat: (hat: string | null) => void;
   // The picture of a hat, as a URL (from its sprite sheet), if loaded.
   hatImage: (hat: string) => string | undefined;
@@ -144,7 +146,7 @@ function countBadge(count: number): string | undefined {
 
 export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>): HTMLElement[] {
   const food: Entry[] = CONFIG.foods
-    .filter((f: Food) => f.price > 0 && !f.caughtOnly && !f.cookedOnly) // free, caught and cooked food isn't sold
+    .filter((f: Food) => f.price > 0 && !f.caughtOnly && !f.grownOnly && !f.cookedOnly) // only plain ingredients are sold
     .map((f) => ({
       icon: ITEM_ICONS[f.id],
       count: countBadge(foodCount(state, f.id)),
@@ -160,8 +162,31 @@ export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>)
         owned ? label(STRINGS.shop.owned) : priceButton(h.price, state.gold, () => cb.onBuyHat(h.id))),
     };
   });
+  // Seeds you can buy, then fertilizer and plant cure.
+  const gardenItems: { item: ShopItem; icon: string; name: string; note: string; count: number }[] = [
+    ...SEEDS_FOR_SALE.map((id) => ({
+      item: { kind: 'seed', id } as ShopItem,
+      icon: ITEM_ICONS[`seed_${id}`],
+      name: STRINGS.garden.seedName(STRINGS.foods[id]),
+      note: STRINGS.shop.have(seedCount(state, id)),
+      count: seedCount(state, id),
+    })),
+    ...SUPPLIES.map((id) => ({
+      item: { kind: 'supply', id } as ShopItem,
+      icon: ITEM_ICONS[id],
+      name: STRINGS.garden.supplies[id],
+      note: `${STRINGS.garden.supplyNotes[id]}. ${STRINGS.shop.have(supplyCount(state, id))}`,
+      count: supplyCount(state, id),
+    })),
+  ];
+  const garden: Entry[] = gardenItems.map((g) => ({
+    icon: g.icon,
+    count: countBadge(g.count),
+    row: row(g.icon, g.name, g.note, priceButton(priceOf(g.item), state.gold, () => cb.onBuyGardenItem(g.item))),
+  }));
   return [
     category('food', STRINGS.shop.food, food, open),
+    category('garden', STRINGS.shop.garden, garden, open),
     category('hats', STRINGS.shop.hats, hats, open),
   ];
 }

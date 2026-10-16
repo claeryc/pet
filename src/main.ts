@@ -17,10 +17,21 @@ import {
   type Food,
 } from './game/actions';
 import { getCharacter, getVariant, sheetFor } from './game/growth';
-import { buyFood, buyHat, checkIn, earn, getHat, wearHat, type ShopResult } from './game/economy';
+import { buyFood, buyGardenItem, buyHat, checkIn, earn, getHat, wearHat, type ShopResult } from './game/economy';
 import { getLook, isNight } from './game/stats';
 import { cast, land } from './game/fishing';
 import { cook } from './game/cooking';
+import {
+  clearPlot,
+  cure,
+  fertilize,
+  findSeed,
+  harvest,
+  plant,
+  water,
+  type CropId,
+  type GardenResult,
+} from './game/garden';
 import { markSeen, updateProgress } from './game/unlocks';
 import { namePet, needsName, setOwner, suggestName } from './game/family';
 import { clearSave, loadGame, saveGame } from './storage/storage';
@@ -130,6 +141,40 @@ function runShop(result: ShopResult, success?: string): void {
   else if (!result.blocked && success) home.toast(success);
 }
 
+// The stars a food has (0 if none), shown after its name in messages.
+const starsOf = (id: string) => STRINGS.stars((CONFIG.foods as readonly Food[]).find((f) => f.id === id)?.stars ?? 0);
+
+// A lucky seed found while fishing or playing.
+function luckySeed(source: 'fishing' | 'play', perfect = false): void {
+  const found = findSeed(state, source, Math.random(), Math.random(), perfect);
+  if (!found.seed) return;
+  setState(found.state);
+  home.notice(STRINGS.garden.foundSeed(STRINGS.foods[found.seed], starsOf(found.seed)));
+}
+
+// Playing with the pet: a cuddle or tickle might turn up a seed.
+function playWith(activity: 'cuddle' | 'tickle'): void {
+  const result = play(state, gameNow(), activity);
+  setState(result.state);
+  if (result.blocked) return home.toast(STRINGS.blocked[result.blocked](state.pet.name));
+  react('happy');
+  luckySeed('play');
+}
+
+// Garden actions: catch the garden up first, then show what happened.
+function runGarden(action: (s: GameState, now: number) => GardenResult, success?: string): boolean {
+  const now = gameNow();
+  const result = action(simulate(state, now), now);
+  setState(result.state);
+  if (result.blocked) {
+    const message = STRINGS.garden.blocked[result.blocked];
+    if (message) home.toast(message);
+    return false;
+  }
+  if (success) home.toast(success);
+  return true;
+}
+
 // Gives the check-in bonus if one is due (on opening the game or coming back).
 function tryCheckIn(): void {
   const { state: next, reward } = checkIn(simulate(state, gameNow()), gameNow());
@@ -160,8 +205,8 @@ function characterImage(sheetName: string): string | undefined {
 
 const home = createHomeScreen(root, {
   onFeed: (food) => runAction((s, now) => feed(s, now, food), 'eat'),
-  onPlay: (activity) => runAction((s, now) => play(s, now, activity), 'happy'),
-  onPetTap: () => runAction((s, now) => play(s, now, 'cuddle'), 'happy'),
+  onPlay: (activity) => playWith(activity),
+  onPetTap: () => playWith('cuddle'),
   onLights: () => runAction(toggleLights),
   onMedicine: () => runAction(giveMedicine),
   onCast: () => {
@@ -178,6 +223,7 @@ const home = createHomeScreen(root, {
       const stars = (CONFIG.foods as readonly Food[]).find((f) => f.id === caught)?.stars ?? 1;
       home.toast(STRINGS.fishing.landed(label, STRINGS.foods[caught], count, STRINGS.stars(stars)));
       react('happy');
+      luckySeed('fishing', grade === 'perfect');
     } else {
       home.toast(grade === 'miss' ? label : STRINGS.fishing.slipped(label));
     }
@@ -186,7 +232,11 @@ const home = createHomeScreen(root, {
     const result = cook(simulate(state, gameNow()), items);
     setState(result.state);
     if (result.blocked) {
-      home.toast(result.blocked === 'noFood' ? STRINGS.blocked.noFood(state.pet.name) : STRINGS.cooking.emptyPot);
+      home.toast(
+        result.blocked === 'noFood' ? STRINGS.blocked.noFood(state.pet.name)
+        : result.blocked === 'needMore' ? STRINGS.cooking.needMore(STRINGS.foods[items[0]])
+        : STRINGS.cooking.emptyPot,
+      );
       return null;
     }
     const name = STRINGS.foods[result.dish];
@@ -196,6 +246,26 @@ const home = createHomeScreen(root, {
     if (result.discovered) react('happy');
     return result.dish;
   },
+  onPlant: (pot, crop) =>
+    runGarden((s, now) => plant(s, pot, crop, now, Math.random()), STRINGS.garden.planted(STRINGS.foods[crop])),
+  onWater: (pot, perfect) =>
+    runGarden((s, now) => water(s, pot, now, perfect, Math.random()),
+      perfect ? STRINGS.garden.perfectPour : STRINGS.garden.watered),
+  onFertilize: (pot) => runGarden((s, now) => fertilize(s, pot, now), STRINGS.garden.fertilizedNow),
+  onCure: (pot) => runGarden((s, now) => cure(s, pot, now), STRINGS.garden.cured),
+  onHarvest: (pot) => {
+    const now = gameNow();
+    const result = harvest(simulate(state, now), pot);
+    setState(result.state);
+    if (result.blocked || !result.crop) return;
+    home.toast(STRINGS.garden.harvested(result.count ?? 0, STRINGS.foods[result.crop as CropId], starsOf(result.crop)));
+    react('happy');
+  },
+  onClear: (pot) => runGarden((s) => clearPlot(s, pot), STRINGS.garden.cleared),
+  onBuyGardenItem: (item) =>
+    runShop(buyGardenItem(state, item), STRINGS.shop.bought(
+      item.kind === 'seed' ? STRINGS.garden.seedName(STRINGS.foods[item.id]) : STRINGS.garden.supplies[item.id],
+    )),
   onReset: () => {
     if (confirm(STRINGS.confirmReset)) {
       clearSave();
@@ -226,7 +296,14 @@ const home = createHomeScreen(root, {
       recoveryUntil: state.pet.recoveryUntil === null ? null : state.pet.recoveryUntil - off,
       buffs: state.pet.buffs.map((b) => ({ ...b, until: b.until - off })),
     };
-    setState({ ...state, pet, clockOffsetMs: 0, lastUpdated: Date.now() });
+    const garden = state.garden.map((p) => ({
+      ...p,
+      moistUntil: p.moistUntil - off,
+      rollsFrom: p.rollsFrom - off,
+      fertilizedUntil: p.fertilizedUntil - off,
+      sickSince: p.sickSince === null ? null : p.sickSince - off,
+    }));
+    setState({ ...state, pet, garden, clockOffsetMs: 0, lastUpdated: Date.now() });
   },
 });
 // Made after the home screen, which clears the page when it starts.
@@ -246,7 +323,13 @@ function render(timeMs: number): void {
   drawRoom(
     ctx,
     sprites.get(sheetFor(pet)),
-    { animation, night: isNight(gameNow()), lightsOff: pet.asleep, fishing: home.fishingPhase() },
+    {
+      animation,
+      night: isNight(gameNow()),
+      lightsOff: pet.asleep,
+      fishing: home.fishingPhase(),
+      garden: home.gardenScene(),
+    },
     timeMs,
     sprites.get(getHat(pet.hat)?.sheet ?? ''),
   );

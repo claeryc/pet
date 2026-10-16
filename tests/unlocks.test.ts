@@ -14,9 +14,10 @@ describe('menus that open up as you play', () => {
     expect(isUnlocked(s, 'shop')).toBe(false);
   });
 
-  it('the Shop opens once the egg hatches, with a "new" dot until seen', () => {
+  it('the Shop and the Garden open once the egg hatches, with a "new" dot until seen', () => {
     const { state, unlocked } = updateProgress(newTeen(START));
-    expect(unlocked).toEqual(['shop']);
+    expect(unlocked).toEqual(['shop', 'garden']);
+    expect(isNew(state, 'garden')).toBe(true);
     expect(isNew(state, 'shop')).toBe(true);
     expect(isNew(markSeen(state, 'shop'), 'shop')).toBe(false);
     // Already open: not reported again.

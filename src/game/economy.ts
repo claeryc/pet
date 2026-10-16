@@ -7,6 +7,7 @@ import { CONFIG } from './config';
 import hatData from '../data/hats.json';
 import type { GameState } from './state';
 import type { Food, FoodId } from './actions';
+import { priceOf, type ShopItem } from './garden';
 
 export interface Hat {
   id: string;
@@ -61,6 +62,16 @@ export function buyFood(state: GameState, id: FoodId): ShopResult {
   if (!canAfford(state, price)) return { state, blocked: 'notEnoughGold' };
   const food = { ...state.inventory.food, [id]: (state.inventory.food[id] ?? 0) + 1 };
   return { state: { ...state, gold: state.gold - price, inventory: { ...state.inventory, food } } };
+}
+
+// Buys a seed, fertilizer or plant cure.
+export function buyGardenItem(state: GameState, item: ShopItem): ShopResult {
+  const price = priceOf(item);
+  if (price <= 0) return { state }; // not sold
+  if (!canAfford(state, price)) return { state, blocked: 'notEnoughGold' };
+  const kind = item.kind === 'seed' ? 'seeds' : 'supplies';
+  const stock = { ...state.inventory[kind], [item.id]: (state.inventory[kind][item.id] ?? 0) + 1 };
+  return { state: { ...state, gold: state.gold - price, inventory: { ...state.inventory, [kind]: stock } } };
 }
 
 export function buyHat(state: GameState, id: string): ShopResult {

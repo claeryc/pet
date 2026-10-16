@@ -5,6 +5,7 @@ import { PALETTE } from './palette';
 import { frameFor } from './animations';
 import type { SpriteSheet } from './sprites';
 import type { FishingPhase } from '../ui/fishing';
+import { drawGardenBackground, drawGardenPots, type GardenScene } from './garden';
 
 export const ROOM_WIDTH = 64;
 export const ROOM_HEIGHT = 48;
@@ -15,6 +16,7 @@ export interface Scene {
   night: boolean; // night-time outside the window
   lightsOff: boolean; // the room is dark (pet is sleeping)
   fishing?: FishingPhase; // draws a little pond, rod and bobber while fishing
+  garden?: GardenScene | null; // while gardening: the garden, with the pet on the left
 }
 
 export function setupCanvas(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
@@ -82,6 +84,42 @@ export function isOnPet(x: number, y: number): boolean {
   return x >= 12 && x <= ROOM_WIDTH - 12 && y >= 4 && y <= 44;
 }
 
+// Turning into the garden and back: the garden grows up from the bottom of
+// the room with a grassy edge, like the water rising for fishing, while
+// the pet walks over to the left. It takes as long as the garden panel
+// takes to slide in and out under the room (see .garden in style.css).
+const GARDEN_IN_MS = 700;
+const GARDEN_OUT_MS = 450;
+let gardenMix = 0; // 0 = the room, 1 = the garden
+let lastGarden: GardenScene | null = null; // kept while the garden sinks away
+let lastFrameMs = 0;
+
+const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
+
+// Moves the swap along by one frame and returns how far along it is (0-1,
+// eased) and the garden to draw.
+function stepGarden(scene: Scene, timeMs: number): { mix: number; garden: GardenScene | null } {
+  const dt = lastFrameMs ? Math.max(0, timeMs - lastFrameMs) : 0;
+  lastFrameMs = timeMs;
+  if (scene.garden) lastGarden = scene.garden;
+  const target = scene.garden ? 1 : 0;
+  const instant = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const step = instant ? 1 : dt / (target ? GARDEN_IN_MS : GARDEN_OUT_MS);
+  gardenMix = target > gardenMix ? Math.min(target, gardenMix + step) : Math.max(target, gardenMix - step);
+  return { mix: easeInOut(gardenMix), garden: gardenMix > 0 ? lastGarden : null };
+}
+
+// Clips drawing to everything below a grassy edge `edge` pixels down.
+function clipBelowGrass(ctx: CanvasRenderingContext2D, edge: number, timeMs: number): void {
+  const sway = Math.floor(timeMs / 120) % 3;
+  ctx.beginPath();
+  for (let x = 0; x < ROOM_WIDTH; x += 2) {
+    const tuft = [0, 2, 1][(x / 2 + sway) % 3];
+    ctx.rect(x, Math.round(edge) - tuft, 2, ROOM_HEIGHT);
+  }
+  ctx.clip();
+}
+
 export function drawRoom(
   ctx: CanvasRenderingContext2D,
   sheet: SpriteSheet | undefined,
@@ -89,21 +127,35 @@ export function drawRoom(
   timeMs: number,
   hat?: SpriteSheet, // the hat's sheet, if the pet wears one
 ): void {
-  // Wall and floor (the wall is a little bluer at night).
-  ctx.fillStyle = scene.night ? PALETTE.lavender : PALETTE.cream;
-  ctx.fillRect(0, 0, ROOM_WIDTH, ROOM_HEIGHT);
-  ctx.fillStyle = PALETTE.peach;
-  ctx.fillRect(0, 34, ROOM_WIDTH, ROOM_HEIGHT - 34);
-  ctx.fillStyle = PALETTE.butter;
-  ctx.fillRect(0, 34, ROOM_WIDTH, 1);
-  drawWindow(ctx, scene.night, timeMs);
-  if (scene.fishing && scene.fishing !== 'off') drawFishing(ctx, scene.fishing, timeMs);
+  const { mix, garden } = stepGarden(scene, timeMs);
+  if (mix < 1) {
+    // Wall and floor (the wall is a little bluer at night).
+    ctx.fillStyle = scene.night ? PALETTE.lavender : PALETTE.cream;
+    ctx.fillRect(0, 0, ROOM_WIDTH, ROOM_HEIGHT);
+    ctx.fillStyle = PALETTE.peach;
+    ctx.fillRect(0, 34, ROOM_WIDTH, ROOM_HEIGHT - 34);
+    ctx.fillStyle = PALETTE.butter;
+    ctx.fillRect(0, 34, ROOM_WIDTH, 1);
+    drawWindow(ctx, scene.night, timeMs);
+    if (scene.fishing && scene.fishing !== 'off') drawFishing(ctx, scene.fishing, timeMs);
+  }
+  if (garden) {
+    // The garden, rising up from the bottom (or all of it, once it's in).
+    const edge = (ROOM_HEIGHT + 3) * (1 - mix);
+    ctx.save();
+    if (mix < 1) clipBelowGrass(ctx, edge, timeMs);
+    drawGardenBackground(ctx, ROOM_WIDTH, ROOM_HEIGHT, scene.night, timeMs);
+    drawGardenPots(ctx, garden, timeMs);
+    ctx.restore();
+  }
 
-  // The pet, centred and standing on the floor.
+  // The pet, centred and standing on the floor (on the left in the garden,
+  // to make room for the pots; it slides over as the garden grows in).
   if (sheet) {
     const { frameWidth: w, frameHeight: h } = sheet;
     const { sx, sy, headOffset } = frameFor(sheet, scene.animation, timeMs);
-    const dx = Math.floor((ROOM_WIDTH - w) / 2);
+    const centre = Math.floor((ROOM_WIDTH - w) / 2);
+    const dx = Math.round(centre + (-2 - centre) * mix);
     const dy = 40 - h;
     ctx.drawImage(sheet.image, sx, sy, w, h, dx, dy, w, h);
     // The hat: its bottom middle sits on the head point, moved up or down

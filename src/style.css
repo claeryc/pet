@@ -2074,3 +2074,375 @@ body {
   flex: 1;
   min-width: 0;
 }
+
+/* A mix that can only make a Mushy mess: the pot shows the mess, dimmed,
+   and wobbles slowly instead of wiggling "tap me". */
+.pot-result[data-kind='mush'] svg {
+  opacity: 0.55;
+}
+
+.pot-result[data-kind='mush'] {
+  background: var(--lavender);
+  animation: pot-mush 2.4s ease-in-out infinite;
+}
+
+@keyframes pot-mush {
+  0%, 100% { transform: scaleX(1) scaleY(1); }
+  50% { transform: scaleX(1.06) scaleY(0.94); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pot-result[data-kind='mush'] {
+    animation: none;
+  }
+}
+
+/* ---- Garden ---- */
+
+.garden[hidden],
+.pour-bar[hidden],
+.garden-row > [hidden] {
+  display: none;
+}
+
+/* [Cancel] plus the buttons for the picked pot, all one height. */
+.garden-row .btn {
+  height: 52px;
+  padding: 0 14px;
+  flex: 1 1 0;
+}
+
+.garden-row .btn-soft {
+  flex: 0 0 auto;
+}
+
+.garden-row .btn.faded {
+  opacity: 0.6;
+}
+
+.garden-row[data-open] > .btn {
+  padding: 0;
+  flex-shrink: 1;
+}
+
+.garden-row .drawer-content,
+.garden-row .drawer-options {
+  max-height: var(--fit, 268px);
+  overflow-y: auto;
+}
+
+/* Water is held down: it stays pressed while pouring, and the page
+   doesn't select text or scroll under the finger. */
+.garden-water {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: none;
+}
+
+.garden-water.pouring {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--accent-dark);
+  background: var(--ocean, #5a8fd6);
+}
+
+/* The bed slides up over the stat bars like the kitchen counter: a strip
+   of grass along the top, soil below. */
+.garden {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background:
+    repeating-linear-gradient(90deg, var(--leaf-dark) 0 4px, var(--good) 4px 8px) 0 0 / 100% 6px no-repeat,
+    linear-gradient(var(--good) 6px, transparent 6px),
+    repeating-conic-gradient(#e9d7c0 0 25%, #e2ccb1 0 50%) 0 0 / 12px 12px;
+  transform: translateY(100%);
+  transition: transform 0.45s cubic-bezier(0.5, 0, 0.9, 0.6);
+  padding: 12px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.garden.is-in {
+  transform: translateY(0);
+  /* Growing in: the same time and easing as the garden growing up in the
+     room above. */
+  transition: transform 0.7s cubic-bezier(0.45, 0, 0.55, 1);
+}
+
+/* A row of grass blades poking out of the panel's top edge while it grows
+   in or sinks away (once it's in, the slot hides them). */
+.garden::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -6px;
+  height: 6px;
+  background:
+    repeating-linear-gradient(90deg, var(--good) 0 3px, transparent 3px 5px, var(--leaf-dark) 5px 7px, transparent 7px 10px);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .garden,
+  .garden.is-in {
+    transition: none;
+  }
+}
+
+/* Tabs for the three pots along the top: a number, a little picture of
+   what's growing, and a drop when it needs water. */
+.garden-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.garden-tab {
+  position: relative;
+  flex: 1 1 0;
+  height: 34px;
+  font: inherit;
+  font-weight: 800;
+  color: var(--plum);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 3px solid transparent;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.garden-tab.selected {
+  border-color: white;
+  background: white;
+  box-shadow: 0 3px 0 rgba(91, 63, 110, 0.25);
+}
+
+.garden-tab-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.garden-tab-icon svg,
+.garden-tab-drop svg,
+.garden-face svg,
+.garden-tank-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.garden-tab-drop {
+  position: absolute;
+  top: 3px;
+  right: 6px;
+  width: 12px;
+  height: 12px;
+  display: none;
+}
+
+.garden-tab.dry .garden-tab-drop {
+  display: block;
+  animation: drop-bob 1s ease-in-out infinite;
+}
+
+@keyframes drop-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(2px); }
+}
+
+/* The picked plant: [water tank] [fertilizer tank] [face] [name, growth bar,
+   status]. */
+.garden-info {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  min-height: 0;
+}
+
+.garden-tank {
+  flex: 0 0 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+/* The glass: a pixel-framed tube that fills from the bottom. */
+.garden-tank-glass {
+  position: relative;
+  width: 16px;
+  flex: 1 1 auto;
+  min-height: 44px;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 0 0 3px var(--plum);
+  margin-top: 3px;
+  overflow: hidden;
+}
+
+.garden-tank-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0;
+  transition: height 0.4s ease;
+}
+
+.garden-tank.water .garden-tank-fill {
+  background: repeating-linear-gradient(#5a8fd6 0 4px, #6f9fe0 4px 6px);
+}
+
+.garden-tank.fert .garden-tank-fill {
+  background: repeating-linear-gradient(var(--butter) 0 4px, #f3d472 4px 6px);
+}
+
+.garden-tank-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.garden-tank.empty .garden-tank-icon {
+  opacity: 0.45;
+}
+
+/* The plant's face: big, and it wobbles when it's unhappy. */
+.garden-face {
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+  align-self: center;
+  padding: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 0 0 3px white;
+}
+
+.garden-face[data-mood='happy'] {
+  animation: face-happy 1.6s ease-in-out infinite;
+}
+
+.garden-face[data-mood='sad'],
+.garden-face[data-mood='ill'] {
+  animation: face-wobble 1.2s ease-in-out infinite;
+}
+
+.garden-face[data-mood='empty'] {
+  opacity: 0.6;
+}
+
+@keyframes face-happy {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+@keyframes face-wobble {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-5deg); }
+  75% { transform: rotate(5deg); }
+}
+
+.garden-details {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+}
+
+.garden-name {
+  font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* How far along the plant is: a pixel-framed bar like the stat bars. */
+.garden-grow {
+  height: 12px;
+  background: var(--seg-empty);
+  box-shadow: 0 0 0 3px var(--plum);
+  margin: 0 3px;
+}
+
+.garden-grow[hidden] {
+  display: none;
+}
+
+.garden-grow-fill {
+  height: 100%;
+  width: 0;
+  background: repeating-linear-gradient(90deg, var(--good) 0 8px, var(--good-dark) 8px 10px);
+  transition: width 0.4s ease;
+}
+
+.garden[data-stage='sick'] .garden-grow-fill,
+.garden[data-stage='dead'] .garden-grow-fill {
+  background: var(--cocoa);
+}
+
+.garden-status {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--plum);
+}
+
+.garden[data-stage='ready'] .garden-status {
+  color: var(--good-dark);
+}
+
+.garden[data-stage='sick'] .garden-status,
+.garden[data-stage='dead'] .garden-status {
+  color: var(--low-dark);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .garden-tab.dry .garden-tab-drop,
+  .garden-face[data-mood] {
+    animation: none;
+  }
+}
+
+/* The pour meter: blue, with the green "just right" band, filling with
+   water from the left while Water is held. It pops up just below the
+   plant panel, so the tanks stay in view. */
+.pour-bar {
+  flex: 0 0 auto;
+  animation: pop-in 0.2s cubic-bezier(0.34, 1.6, 0.64, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pour-bar {
+    animation: none;
+  }
+}
+
+.pour-track {
+  background: linear-gradient(
+    to right,
+    var(--catch-miss) 0 var(--band-start),
+    var(--catch-weak) var(--band-start) var(--band-end),
+    var(--catch-miss) var(--band-end) 100%
+  );
+}
+
+.pour-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  background: rgba(43, 33, 64, 0.35);
+  box-shadow: inset -3px 0 0 white;
+}
+
+.pour-bar[data-result='perfect'] .pour-fill {
+  animation: catch-blink 0.15s steps(1) 4;
+}

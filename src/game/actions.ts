@@ -27,6 +27,7 @@ export function withPet(state: GameState, change: (pet: Pet) => void): GameState
 export type Food = (typeof CONFIG.foods)[number] & {
   slowHunger?: { percent: number; hours: number };
   caughtOnly?: boolean;
+  grownOnly?: boolean;
   cookedOnly?: boolean;
   stars?: number;
 };

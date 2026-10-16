@@ -7,7 +7,7 @@
 
 import type { GameState } from './state';
 
-export type UnlockId = 'shop' | 'cooking' | 'collection' | 'familyTree';
+export type UnlockId = 'shop' | 'cooking' | 'collection' | 'familyTree' | 'garden';
 
 const RULES: Record<UnlockId, (s: GameState) => boolean> = {
   // Once the egg hatches and there's someone to buy things for.
@@ -18,6 +18,8 @@ const RULES: Record<UnlockId, (s: GameState) => boolean> = {
   collection: (s) => s.recipesFound.length > 0 || s.charactersFound.length > 0,
   // Once the pet is all grown up.
   familyTree: (s) => s.pet.stage === 'adult',
+  // Once the egg hatches, along with the Shop that sells the first seeds.
+  garden: (s) => s.pet.stage !== 'egg',
 };
 
 export const UNLOCKS = Object.keys(RULES) as UnlockId[];
