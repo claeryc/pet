@@ -12,7 +12,7 @@ import type { GameState } from '../game/state';
 import { isNew, isUnlocked, type UnlockId } from '../game/unlocks';
 import { goldPill, shopPage, wardrobePage, type ShopCallbacks } from './shop';
 import { collectionPage } from './collection';
-import { familyTreePage, type FamilyCallbacks } from './family';
+import { familyTreePage, type FamilyCallbacks, type TreeView } from './family';
 import { OWNER_MAX } from '../game/family';
 
 export interface DebugCallbacks {
@@ -124,12 +124,16 @@ export function createMenu(cb: MenuCallbacks, isOpen: () => boolean, close: () =
   // each time you go into a page, and stays as you left it while the page
   // redraws.
   const openCategories = new Set<string>();
+  // List or Tree, and whose tree, in the Family Tree. The choice of view
+  // stays while the game is open; the tree starts at your pet each time.
+  const treeView: TreeView = { mode: 'list', focus: null };
 
   // The Shop, Wardrobe and Collection: a header (with gold on the right in
   // the Shop, lined up with the prices), then the list.
   function showList(which: 'shop' | 'wardrobe' | 'collection' | 'familyTree', fresh: boolean): void {
     if (fresh) {
       openCategories.clear();
+      treeView.focus = null;
       toTop();
     }
     page = which;
@@ -141,7 +145,10 @@ export function createMenu(cb: MenuCallbacks, isOpen: () => boolean, close: () =
       else if (which === 'collection') list.append(...collectionPage(state, cb, openCategories));
       else {
         list.classList.add('tree');
-        list.append(...familyTreePage(state, cb));
+        list.append(...familyTreePage(state, cb, treeView, () => {
+          showFamilyTree(false);
+          toTop();
+        }));
       }
     }
     const title = {

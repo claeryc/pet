@@ -1890,3 +1890,198 @@ body {
   font-size: 0.85rem;
   opacity: 0.7;
 }
+
+/* Another player's pet: a blue-ish border and a name tag. */
+.tree-card.is-friend {
+  border-color: #9cc8e8;
+}
+
+.tree-friend {
+  flex: none;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #dcefff;
+  color: #2f5f86;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+/* [ List | Tree ] */
+.tree-switch {
+  display: flex;
+  align-self: center;
+  margin-bottom: 10px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--lavender);
+}
+
+.tree-switch-btn {
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.9rem;
+  min-width: 84px;
+  padding: 6px 16px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--plum);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.tree-switch-btn[aria-pressed='true'] {
+  background: white;
+  color: var(--ink);
+  box-shadow: 0 2px 0 var(--lilac);
+}
+
+/* ---- Tree view ----
+   A 4-column grid: grandparents in the top row, parents in the middle
+   (two columns each), the pet at the bottom. Each pair is joined by a
+   ⊔-shaped line with a heart on it and a short line down. */
+.tree-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0 4px;
+}
+
+.tree-grid .span-2 {
+  grid-column: span 2;
+}
+
+.tree-grid .span-4 {
+  grid-column: span 4;
+}
+
+.tree-cell {
+  display: flex;
+  justify-content: center;
+}
+
+.tree-node {
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  max-width: 76px;
+  justify-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 2px;
+  border: 2px solid var(--lavender);
+  border-radius: 12px;
+  background: white;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.tree-node:active {
+  transform: scale(0.95);
+}
+
+.tree-node.is-current {
+  border-color: var(--accent);
+}
+
+.tree-node.is-friend {
+  border-color: #9cc8e8;
+}
+
+.tree-node.is-unknown {
+  border-style: dashed;
+  background: transparent;
+  opacity: 0.6;
+  cursor: default;
+}
+
+.tree-node-pic {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  padding: 2px;
+  border-radius: 9px;
+  background: var(--bg);
+}
+
+.tree-node-pic svg {
+  width: 100%;
+  height: 100%;
+}
+
+.tree-node-name {
+  max-width: 100%;
+  font-size: 0.75rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-node-tag {
+  max-width: 100%;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #2f5f86;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The line joining a pair: from the middle of one to the middle of the
+   other, then down to their little one. */
+.tree-couple {
+  position: relative;
+  isolation: isolate; /* the heart stays under the page's sticky header */
+  height: 14px;
+  margin: 0 25% 14px;
+  border: 3px solid var(--lavender);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+}
+
+.tree-couple::after {
+  content: '';
+  position: absolute;
+  left: calc(50% - 1.5px);
+  top: 100%;
+  width: 3px;
+  height: 14px;
+  background: var(--lavender);
+}
+
+.tree-heart {
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  transform: translateX(-50%);
+  z-index: 1;
+  font-size: 0.8rem;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.tree-note {
+  margin: 8px 0 0;
+  text-align: center;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.tree-node-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px 4px;
+}
+
+.shop-list.tree .tree-gen-title {
+  margin-top: 12px;
+}
+
+.tree-back {
+  align-self: center;
+  margin-top: 14px;
+  min-width: 0;
+  padding: 8px 18px;
+}

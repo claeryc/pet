@@ -6,6 +6,7 @@ import {
   familyGenerations,
   namePet,
   needsName,
+  pedigree,
   rememberPet,
   setOwner,
   suggestName,
@@ -74,7 +75,7 @@ describe('the Family Tree', () => {
   it('puts earlier generations first, and parents can come from other players', () => {
     const s = newTeen(START);
     const grandma = { ...rememberPet(createNewGame(START).pet, 'siye'), name: 'Nori', character: 'pebblit' };
-    const friend = { ...rememberPet(createNewGame(START).pet, 'alex'), name: 'Fig' };
+    const friend = { ...rememberPet(createNewGame(START).pet, 'alex'), name: 'Fig', fromFriend: true };
     const mum = { ...rememberPet(createNewGame(START + 1).pet, 'siye'), name: 'Bean', generation: 2, parents: [grandma.id, friend.id] };
     s.family = [mum, grandma, friend];
     s.pet.generation = 3;
@@ -89,6 +90,55 @@ describe('the Family Tree', () => {
   it('counts age in whole days', () => {
     expect(ageInDays(START, START + 3_600_000)).toBe(0);
     expect(ageInDays(START, START + 2.5 * 86_400_000)).toBe(2);
+  });
+});
+
+describe('the Tree view', () => {
+  // Nori + Fig (alex's) -> Bean and Tofu; Bean + Kiwi -> the pet you have now.
+  function family() {
+    const s = namePet(newTeen(START), 'Pip').state;
+    const pet = (name: string, generation: number, parents: string[] = [], fromFriend = false) => ({
+      ...rememberPet(createNewGame(START + generation).pet, fromFriend ? 'alex' : ''),
+      name, generation, parents, fromFriend,
+    });
+    const nori = pet('Nori', 1);
+    const fig = pet('Fig', 1, [], true);
+    const bean = pet('Bean', 2, [nori.id, fig.id]);
+    const tofu = pet('Tofu', 2, [fig.id, nori.id]);
+    const kiwi = pet('Kiwi', 2, [], true);
+    s.family = [nori, fig, bean, tofu, kiwi];
+    s.pet.generation = 3;
+    s.pet.parents = [bean.id, kiwi.id];
+    return { s, nori, fig, bean, tofu, kiwi };
+  }
+
+  it('starts at your pet, with its parents and grandparents', () => {
+    const { s } = family();
+    const p = pedigree(s, null);
+    expect(p.focus.name).toBe('Pip');
+    expect(p.parents.map((m) => m?.name)).toEqual(['Bean', 'Kiwi']);
+    expect(p.grandparents.map((g) => g.map((m) => m?.name))).toEqual([['Nori', 'Fig'], []]);
+    expect(p.siblings).toEqual([]);
+  });
+
+  it('can move to another pet, showing its brothers, sisters and little ones', () => {
+    const { s, bean } = family();
+    const p = pedigree(s, bean.id);
+    expect(p.focus.name).toBe('Bean');
+    expect(p.siblings.map((m) => m.name)).toEqual(['Tofu']); // same parents, in any order
+    expect(p.children.map((m) => m.name)).toEqual(['Pip']);
+  });
+
+  it('shows a parent that was never saved as an empty spot', () => {
+    const { s } = family();
+    s.pet.parents = ['gone', s.family[0].id];
+    expect(pedigree(s, null).parents.map((m) => m?.name ?? null)).toEqual([null, 'Nori']);
+  });
+
+  it('a first pet has no parents', () => {
+    const p = pedigree(newTeen(START), null);
+    expect(p.parents).toEqual([]);
+    expect(p.focus.current).toBe(true);
   });
 });
 

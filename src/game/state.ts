@@ -60,6 +60,7 @@ export interface FamilyMember {
   id: string;
   name: string;
   owner: string; // who raised it ('' if they didn't say)
+  fromFriend: boolean; // another player's pet (once pets can meet)
   bornAt: number;
   character: string | null; // what it grew into (null if it never grew up)
   variant: string | null;

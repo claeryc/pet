@@ -66,6 +66,7 @@ export function rememberPet(pet: Pet, owner: string): FamilyMember {
     id: pet.id,
     name: pet.name,
     owner,
+    fromFriend: false,
     bornAt: pet.bornAt,
     character: pet.character,
     variant: pet.variant,
@@ -91,4 +92,40 @@ export function familyGenerations(state: GameState): Generation[] {
 // Whole days between two moments (0 on the first day).
 export function ageInDays(bornAt: number, now: number): number {
   return Math.max(0, Math.floor((now - bornAt) / 86_400_000));
+}
+
+// Everyone in the tree, the pet you have now included.
+function allMembers(state: GameState): TreeMember[] {
+  return familyGenerations(state).flatMap((g) => g.members);
+}
+
+// What the Tree view shows around one pet: its parents and grandparents
+// above it, and its brothers and sisters and its little ones below. A
+// parent who isn't in the saved family shows as null (an empty spot).
+export interface Pedigree {
+  focus: TreeMember;
+  parents: (TreeMember | null)[]; // [] for the first of the family
+  grandparents: (TreeMember | null)[][]; // each parent's parents, same order
+  siblings: TreeMember[]; // same parents, oldest first
+  children: TreeMember[];
+}
+
+const sameParents = (a: string[], b: string[]) =>
+  a.length > 0 && a.length === b.length && [...a].sort().join() === [...b].sort().join();
+
+// The tree around the pet with id `focusId` (the pet you have now if that
+// id isn't in the family).
+export function pedigree(state: GameState, focusId: string | null): Pedigree {
+  const everyone = allMembers(state);
+  const byId = new Map(everyone.map((m) => [m.id, m]));
+  const focus = (focusId && byId.get(focusId)) || everyone.find((m) => m.current)!;
+  const parentsOf = (m: TreeMember | null) => (m ? m.parents.map((id) => byId.get(id) ?? null) : []);
+  const parents = parentsOf(focus);
+  return {
+    focus,
+    parents,
+    grandparents: parents.map(parentsOf),
+    siblings: everyone.filter((m) => m.id !== focus.id && sameParents(m.parents, focus.parents)),
+    children: everyone.filter((m) => m.parents.includes(focus.id)),
+  };
 }
