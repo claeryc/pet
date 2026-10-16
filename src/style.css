@@ -1575,3 +1575,502 @@ body {
 .drawer.is-open .drawer-head.has-new::after {
   display: none;
 }
+
+/* ---- Naming the pet ---- */
+
+.name-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(43, 33, 64, 0.45);
+}
+
+.name-backdrop[hidden] {
+  display: none;
+}
+
+.name-box {
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px 18px 18px;
+  border-radius: 20px;
+  border: 4px solid var(--lilac);
+  background: var(--card);
+  box-shadow: 0 6px 0 var(--plum);
+  animation: name-pop 0.32s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+@keyframes name-pop {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+}
+
+.name-box h2 {
+  margin: 0;
+  text-align: center;
+  font-size: 1.25rem;
+}
+
+.name-ask {
+  margin: 0;
+  text-align: center;
+  font-size: 0.95rem;
+  opacity: 0.8;
+}
+
+.name-field {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.name-field input,
+.settings-field input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 1.1rem; /* 16px or more, so phones don't zoom in */
+  font-weight: 700;
+  padding: 10px 12px;
+  border: 2px solid var(--lavender);
+  border-radius: 12px;
+  background: white;
+  color: var(--ink);
+}
+
+.name-field input:focus,
+.settings-field input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.name-dice {
+  flex: 0 0 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 12px;
+  background: var(--lavender);
+  color: var(--plum);
+  box-shadow: 0 3px 0 var(--lilac);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.name-dice:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--lilac);
+}
+
+.name-dice.roll svg {
+  animation: dice-roll 0.35s ease-out;
+}
+
+@keyframes dice-roll {
+  from {
+    transform: rotate(-200deg) scale(0.7);
+  }
+}
+
+.name-error {
+  margin: 0;
+  min-height: 1.1em;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent-dark);
+}
+
+.name-error:empty {
+  min-height: 0;
+}
+
+.name-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.name-buttons .shop-btn {
+  font-size: 1rem;
+  padding: 10px 18px;
+  min-width: 96px;
+}
+
+.name-buttons .shop-btn[hidden] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .name-box,
+  .name-dice.roll svg {
+    animation: none;
+  }
+}
+
+/* ---- Settings: your name ---- */
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--bg);
+}
+
+.settings-field b {
+  font-size: 1.05rem;
+}
+
+.settings-field small {
+  font-size: 0.78rem;
+  opacity: 0.7;
+}
+
+/* ---- Family Tree ---- */
+
+.shop-list.tree {
+  gap: 0;
+  align-items: stretch;
+}
+
+.tree-gen-title {
+  margin: 4px 2px 6px;
+  font-size: 0.9rem;
+  opacity: 0.75;
+}
+
+.tree-gen-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tree-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px;
+  border: 2px solid var(--lavender);
+  border-radius: 14px;
+  background: white;
+}
+
+.tree-card.is-current {
+  border-color: var(--accent);
+}
+
+.tree-portrait {
+  flex: 0 0 64px;
+  height: 64px;
+  display: flex;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.tree-portrait svg {
+  width: 100%;
+  height: 100%;
+}
+
+.tree-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.tree-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tree-name b {
+  font-size: 1.05rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-now {
+  flex: none;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.tree-info small {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap; /* a long owner name ends in "…" */
+}
+
+.tree-info .tree-what {
+  font-weight: 700;
+  opacity: 0.9;
+}
+
+.tree-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 10px;
+  margin-top: 6px;
+}
+
+.tree-stat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tree-stat svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+.tree-stat-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--seg-empty);
+  overflow: hidden;
+}
+
+.tree-stat-fill {
+  display: block;
+  height: 100%;
+  background: var(--good);
+}
+
+.tree-rename {
+  flex: none;
+  min-width: 0;
+  margin-left: auto;
+  padding: 4px 12px;
+  font-size: 0.8rem;
+}
+
+/* The line joining one generation to the next. */
+.tree-link {
+  width: 4px;
+  height: 18px;
+  margin: 0 auto;
+  border-radius: 2px;
+  background: var(--lavender);
+}
+
+.tree-link-faded {
+  background: none;
+  border-left: 4px dotted var(--lavender);
+  width: 0;
+}
+
+.tree-future {
+  margin: 0;
+  padding: 12px;
+  border: 2px dashed var(--lavender);
+  border-radius: 14px;
+  text-align: center;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+/* Another player's pet: a blue-ish border. */
+.tree-card.is-friend {
+  border-color: #9cc8e8;
+}
+
+/* [ List | Tree ] */
+.tree-switch {
+  display: flex;
+  align-self: center;
+  margin-bottom: 10px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--lavender);
+}
+
+.tree-switch-btn {
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.9rem;
+  min-width: 84px;
+  padding: 6px 16px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--plum);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.tree-switch-btn[aria-pressed='true'] {
+  background: white;
+  color: var(--ink);
+  box-shadow: 0 2px 0 var(--lilac);
+}
+
+/* ---- Tree view ----
+   A 4-column grid: grandparents in the top row, parents in the middle
+   (two columns each), the pet at the bottom. Each pair is joined by a
+   ⊔-shaped line with a heart on it and a short line down. */
+.tree-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0 4px;
+}
+
+.tree-grid .span-2 {
+  grid-column: span 2;
+}
+
+.tree-grid .span-4 {
+  grid-column: span 4;
+}
+
+.tree-cell {
+  display: flex;
+  justify-content: center;
+}
+
+.tree-node {
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  max-width: 76px;
+  justify-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 2px;
+  border: 2px solid var(--lavender);
+  border-radius: 12px;
+  background: white;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.tree-node:active {
+  transform: scale(0.95);
+}
+
+.tree-node.is-current {
+  border-color: var(--accent);
+}
+
+.tree-node.is-friend {
+  border-color: #9cc8e8;
+}
+
+.tree-node.is-unknown {
+  border-style: dashed;
+  background: transparent;
+  opacity: 0.6;
+  cursor: default;
+}
+
+.tree-node-pic {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  padding: 2px;
+  border-radius: 9px;
+  background: var(--bg);
+}
+
+.tree-node-pic svg {
+  width: 100%;
+  height: 100%;
+}
+
+.tree-node-name {
+  max-width: 100%;
+  font-size: 0.75rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The line joining a pair: from the middle of one to the middle of the
+   other, then down to their little one. */
+.tree-couple {
+  position: relative;
+  isolation: isolate; /* the heart stays under the page's sticky header */
+  height: 14px;
+  margin: 0 25% 14px;
+  border: 3px solid var(--lavender);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+}
+
+.tree-couple::after {
+  content: '';
+  position: absolute;
+  left: calc(50% - 1.5px);
+  top: 100%;
+  width: 3px;
+  height: 14px;
+  background: var(--lavender);
+}
+
+.tree-heart {
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  transform: translateX(-50%);
+  z-index: 1;
+  font-size: 0.8rem;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.tree-note {
+  margin: 8px 0 0;
+  text-align: center;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.tree-node-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px 4px;
+}
+
+.shop-list.tree .tree-gen-title {
+  margin-top: 12px;
+}
+
+.tree-back {
+  align-self: center;
+  margin-top: 14px;
+  min-width: 0;
+  padding: 8px 18px;
+}
+
+/* The pet's card in the Tree view fills the row but never grows past it. */
+.tree-cell > .tree-card {
+  flex: 1;
+  min-width: 0;
+}

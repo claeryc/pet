@@ -276,7 +276,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
 
   // Holding the pet opens the Wardrobe, in the gear panel.
   function openWardrobe(): void {
-    if (petIsEgg) return showToast(STRINGS.wardrobe.eggNoHat(petName));
+    if (petIsEgg) return showToast(STRINGS.wardrobe.eggNoHat);
     feedDrawer.close();
     playDrawer.close();
     if (!menuDrawer!.isOpen()) menuDrawer!.open();
@@ -444,7 +444,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       const cookIsNew = isNew(state, 'cooking');
       feedDrawer.setOptionNew(COOK_ROW, cookIsNew);
       feedDrawer.setNew(cookIsNew);
-      menuDrawer!.setNew(isNew(state, 'shop') || isNew(state, 'collection'));
+      menuDrawer!.setNew(isNew(state, 'shop') || isNew(state, 'collection') || isNew(state, 'familyTree'));
       // The pot, then what you fed most recently, then the rest as listed
       // in the config. Rows only move while the panel is closed.
       const ids = CONFIG.foods.map((f) => f.id as string);
@@ -457,7 +457,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       }
       cooking.update(state);
       stats.hidden = isEgg; // an egg has no needs yet
-      canvas.setAttribute('aria-label', isEgg ? STRINGS.mood.egg(pet.name) : STRINGS.mood[getLook(pet)](pet.name));
+      canvas.setAttribute('aria-label', isEgg ? STRINGS.mood.egg : STRINGS.mood[getLook(pet)](pet.name));
 
       // Banner: hatching countdown, or sick beats recovering beats warning.
       let text = '';
