@@ -6,7 +6,7 @@ import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import { HATS, foodCount } from '../game/economy';
 import type { GameState } from '../game/state';
-import type { FoodId } from '../game/actions';
+import type { Food, FoodId } from '../game/actions';
 import { ITEM_ICONS, STAT_ICONS } from './icons';
 
 export interface ShopCallbacks {
@@ -144,7 +144,7 @@ function countBadge(count: number): string | undefined {
 
 export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>): HTMLElement[] {
   const food: Entry[] = CONFIG.foods
-    .filter((f) => f.price > 0) // free food isn't sold
+    .filter((f: Food) => f.price > 0 && !f.caughtOnly) // free and caught food isn't sold
     .map((f) => ({
       icon: ITEM_ICONS[f.id],
       count: countBadge(foodCount(state, f.id)),
@@ -177,13 +177,13 @@ export function inventoryPage(state: GameState, cb: ShopCallbacks, open: Set<str
           () => cb.onWearHat(wearing ? null : h.id), wearing ? 'shop-btn shop-btn-soft' : 'shop-btn')),
     };
   });
-  const food: Entry[] = CONFIG.foods
+  const food: Entry[] = (CONFIG.foods as readonly Food[])
     .map((f) => ({ f, count: foodCount(state, f.id) }))
     .filter(({ count }) => count > 0)
     .map(({ f, count }) => ({
       icon: ITEM_ICONS[f.id],
       count: countBadge(count),
-      row: row(ITEM_ICONS[f.id], STRINGS.foods[f.id], '', label(count === Infinity ? STRINGS.shop.free : `× ${count}`)),
+      row: row(ITEM_ICONS[f.id], STRINGS.foods[f.id], f.stars ? STRINGS.stars(f.stars) : '', label(count === Infinity ? STRINGS.shop.free : `× ${count}`)),
     }));
   return [
     category('hats', STRINGS.inventory.hats, hats, open, STRINGS.inventory.noHats),

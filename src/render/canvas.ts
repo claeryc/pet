@@ -4,6 +4,7 @@
 import { PALETTE } from './palette';
 import { frameFor } from './animations';
 import type { SpriteSheet } from './sprites';
+import type { FishingPhase } from '../ui/fishing';
 
 export const ROOM_WIDTH = 64;
 export const ROOM_HEIGHT = 48;
@@ -13,6 +14,7 @@ export interface Scene {
   animation: string; // which pet animation to play
   night: boolean; // night-time outside the window
   lightsOff: boolean; // the room is dark (pet is sleeping)
+  fishing?: FishingPhase; // draws a little pond, rod and bobber while fishing
 }
 
 export function setupCanvas(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
@@ -54,6 +56,25 @@ function drawWindow(ctx: CanvasRenderingContext2D, night: boolean, timeMs: numbe
   ctx.fillRect(x, y + h / 2, w, 1);
 }
 
+// While fishing, the pet holds a rod with the line running down out of
+// the room into the pond below it (drawn in src/render/pond.ts). A "!"
+// pops up when a fish bites, and the rod tip shakes while reeling in.
+function drawFishing(ctx: CanvasRenderingContext2D, phase: FishingPhase, timeMs: number): void {
+  const shake = phase === 'reeling' ? Math.floor(timeMs / 80) % 2 : 0;
+  ctx.fillStyle = PALETTE.cocoa;
+  for (let i = 0; i < 9; i++) ctx.fillRect(42 + i, 29 - i + (i > 5 ? shake : 0), 1, 1);
+  if (phase === 'ready') return;
+  // The line, from the rod tip straight down past the bottom of the room.
+  const tipX = 51, tipY = 21 + shake;
+  ctx.fillStyle = PALETTE.ink;
+  ctx.fillRect(tipX, tipY, 1, ROOM_HEIGHT - tipY);
+  if (phase === 'bite') {
+    ctx.fillStyle = PALETTE.rose;
+    ctx.fillRect(tipX + 4, tipY - 2, 2, 5);
+    ctx.fillRect(tipX + 4, tipY + 4, 2, 2);
+  }
+}
+
 export function drawRoom(
   ctx: CanvasRenderingContext2D,
   sheet: SpriteSheet | undefined,
@@ -69,6 +90,7 @@ export function drawRoom(
   ctx.fillStyle = PALETTE.butter;
   ctx.fillRect(0, 34, ROOM_WIDTH, 1);
   drawWindow(ctx, scene.night, timeMs);
+  if (scene.fishing && scene.fishing !== 'off') drawFishing(ctx, scene.fishing, timeMs);
 
   // The pet, centred and standing on the floor.
   if (sheet) {

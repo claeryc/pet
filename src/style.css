@@ -938,3 +938,125 @@ body {
 .shop-cat.is-open .shop-cat-grid {
   display: none;
 }
+
+/* ---- Fishing ---- */
+
+:root {
+  --catch-miss: #9ad3f0; /* blue: no catch */
+  --catch-weak: #6cc19a; /* green: weak catch */
+  --catch-good: #ffe596; /* yellow: good catch */
+  --catch-perfect: #e05a7a; /* red: perfect catch */
+}
+
+.actions[hidden],
+.catch-bar[hidden] {
+  display: none;
+}
+
+/* [Cancel] [Cast / Reel in / Catch] */
+.fishing-row .btn {
+  height: 52px;
+  padding: 0 14px;
+}
+
+.btn-soft {
+  flex: 0 0 auto;
+  background: var(--lilac);
+  box-shadow: 0 4px 0 var(--plum);
+}
+
+.btn-soft:active {
+  box-shadow: 0 1px 0 var(--plum);
+}
+
+.fishing-main {
+  flex: 1 1 0;
+}
+
+.fishing-main:disabled {
+  opacity: 0.6;
+}
+
+/* A fish is biting: the button wiggles to say "now!". */
+.fishing-row[data-phase='bite'] .fishing-main {
+  animation: fishing-bite 0.3s ease-in-out infinite alternate;
+}
+
+@keyframes fishing-bite {
+  from { transform: rotate(-2deg) scale(1.02); }
+  to { transform: rotate(2deg) scale(1.02); }
+}
+
+/* The catch bar under the room, as wide as the room. Pixel style like the
+   stat bars: a plum outline with stepped corners. */
+.catch-bar {
+  --px: 3px;
+  padding: var(--px);
+  background: var(--plum);
+  clip-path: polygon(
+    0 var(--px), var(--px) var(--px), var(--px) 0,
+    calc(100% - var(--px)) 0, calc(100% - var(--px)) var(--px), 100% var(--px),
+    100% calc(100% - var(--px)), calc(100% - var(--px)) calc(100% - var(--px)),
+    calc(100% - var(--px)) 100%, var(--px) 100%, var(--px) calc(100% - var(--px)),
+    0 calc(100% - var(--px))
+  );
+}
+
+.catch-track {
+  position: relative;
+  height: 22px;
+  background: var(--catch-miss);
+}
+
+.catch-marker {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 6px;
+  margin-left: -3px;
+  background: white;
+  box-shadow: 0 0 0 2px var(--ink);
+}
+
+/* After Catch: the marker blinks where it stopped. */
+.catch-bar[data-grade] .catch-marker {
+  animation: catch-blink 0.15s steps(1) 4;
+}
+
+@keyframes catch-blink {
+  50% { background: var(--ink); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fishing-row[data-phase='bite'] .fishing-main,
+  .catch-bar[data-grade] .catch-marker {
+    animation: none;
+  }
+}
+
+/* The pond takes the stat bars' place while fishing, at the same size. */
+.pond {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #9ad3f0;
+}
+
+.pond[hidden] {
+  display: none;
+}
+
+.pond-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+/* The catch bar sits along the bottom of the pond. */
+.pond .catch-bar {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+}

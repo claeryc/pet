@@ -4,7 +4,7 @@
 
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
-import { getLook, isRecovering } from '../game/stats';
+import { canPlayMinigames, getLook, isRecovering } from '../game/stats';
 import { stageLengthMs } from '../game/growth';
 import type { GameState, PetStats } from '../game/state';
 import { createMenu, type MenuCallbacks } from './menu';
@@ -12,18 +12,23 @@ import { foodCount } from '../game/economy';
 import { createDrawer, type DrawerOption, type Effect } from './drawer';
 import { ITEM_ICONS, STAT_ICONS } from './icons';
 import type { ActivityId, Food, FoodId } from '../game/actions';
+import type { CatchGrade } from '../game/fishing';
+import { createFishing, type FishingPhase } from './fishing';
 
 export interface HomeCallbacks extends MenuCallbacks {
   onFeed: (food: FoodId) => void;
   onPlay: (activity: ActivityId) => void;
   onLights: () => void;
   onMedicine: () => void;
+  onCast: () => boolean; // throws the fishing line; false if refused
+  onLand: (grade: CatchGrade) => void;
 }
 
 export interface HomeScreen {
   canvas: HTMLCanvasElement;
   update: (state: GameState, now: number) => void;
   toast: (message: string) => void;
+  fishingPhase: () => FishingPhase; // so the room can draw the line and bobber
 }
 
 // Pixel icons drawn on a 12x12 grid, so they match the pixel-art style.
@@ -179,7 +184,13 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       effects: statEffects({ happiness: a.happiness, energy: a.energy }),
       onPick: () => cb.onPlay(a.id),
     })),
-    // Mini-games arrive in Milestone 4.
+    {
+      icon: ITEM_ICONS.fishing,
+      label: STRINGS.minigames.fishing,
+      effects: statEffects({ energy: -CONFIG.fishing.energyPerCast }), // per cast
+      onPick: () => startFishing(),
+    },
+    // More mini-games arrive in Milestone 4.
     { icon: ITEM_ICONS.catchTreats, label: STRINGS.minigames.catchTreats, effects: [] },
     { icon: ITEM_ICONS.memoryMatch, label: STRINGS.minigames.memoryMatch, effects: [] },
   ];
@@ -204,6 +215,35 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
 
   actions.append(feedDrawer.el, playDrawer.el, menuDrawer.el, lights);
 
+  // Fishing swaps the button row for its own [Cancel] [Cast] row, and the
+  // stat bars for a pond of the same size.
+  const fishing = createFishing({
+    onCast: cb.onCast,
+    onLand: cb.onLand,
+    onExit: () => {
+      actions.hidden = false;
+      stats.hidden = petIsEgg;
+    },
+    toast: (msg) => showToast(msg),
+  });
+  // The latest state, so Fishing can check the pet is up for it.
+  let latest: { state: GameState; now: number } | null = null;
+  function startFishing(): void {
+    if (latest && !canPlayMinigames(latest.state.pet, latest.now)) {
+      return showToast(STRINGS.blocked.resting(petName));
+    }
+    const height = stats.offsetHeight;
+    actions.hidden = true;
+    stats.hidden = true;
+    fishing.start(height);
+  }
+  function stopFishing(): void {
+    if (fishing.phase() === 'off') return;
+    fishing.stop();
+    actions.hidden = false;
+    stats.hidden = petIsEgg;
+  }
+
   // A short message that pops up and fades, e.g. "Mochi is asleep".
   const toastEl = document.createElement('div');
   toastEl.className = 'toast';
@@ -215,11 +255,12 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     toastTimer = window.setTimeout(() => toastEl.classList.remove('show'), 2500);
   }
 
-  root.append(canvas, banner, stats, actions, toastEl);
+  root.append(canvas, banner, stats, fishing.pond, actions, fishing.row, toastEl);
 
   return {
     canvas,
     update(state, now) {
+      latest = { state, now };
       const pet = state.pet;
       petName = pet.name;
       petAsleep = pet.asleep;
@@ -227,11 +268,13 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       petIsEgg = isEgg;
       for (const key of Object.keys(bars) as (keyof PetStats)[]) bars[key].set(pet.stats[key]);
       // How many of each food you have ("Free" for food that never runs out).
-      CONFIG.foods.forEach((f, i) => {
+      // Caught fish also show their stars.
+      CONFIG.foods.forEach((f: Food, i) => {
         const count = foodCount(state, f.id);
-        feedDrawer.setNote(i, count === Infinity ? STRINGS.shop.free : `× ${count}`, count === 0);
+        const stars = f.stars ? `${STRINGS.stars(f.stars)}  ` : '';
+        feedDrawer.setNote(i, count === Infinity ? STRINGS.shop.free : `${stars}× ${count}`, count === 0);
       });
-      stats.hidden = isEgg; // an egg has no needs yet
+      stats.hidden = isEgg || fishing.phase() !== 'off'; // an egg has no needs yet
       canvas.setAttribute('aria-label', isEgg ? STRINGS.mood.egg(pet.name) : STRINGS.mood[getLook(pet)](pet.name));
 
       // Banner: hatching countdown, or sick beats recovering beats warning.
@@ -262,9 +305,12 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
         feedDrawer.close();
         playDrawer.close();
       }
+      // Fishing stops if the pet falls asleep or gets sick.
+      if (!canPlayMinigames(pet, now) || isEgg) stopFishing();
 
       menu.update(state);
     },
     toast: showToast,
+    fishingPhase: fishing.phase,
   };
 }

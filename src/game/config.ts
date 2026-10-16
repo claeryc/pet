@@ -114,12 +114,17 @@ export const CONFIG = {
   // more slowly (by `percent`) for a number of `hours`.
   // `price` is the cost in gold in the Shop. Food with price 0 is free and
   // never runs out; other food comes from your inventory, one per meal.
+  // `caughtOnly` food isn't sold in the Shop: you get it by fishing. Its
+  // `stars` (1-3) say how rare and good it is.
   foods: [
     { id: 'riceBall', price: 0, hunger: 20, happiness: 0, health: 0 },
     { id: 'heartyStew', price: 25, hunger: 20, happiness: 0, health: 0, slowHunger: { percent: 20, hours: 6 } },
     { id: 'strawberry', price: 10, hunger: 10, happiness: 6, health: 0 },
     { id: 'warmMilk', price: 12, hunger: 12, happiness: 0, health: 3 },
     { id: 'cookie', price: 8, hunger: 6, happiness: 12, health: -2 },
+    { id: 'shrimp', price: 10, hunger: 10, happiness: 4, health: 0, caughtOnly: true, stars: 1 },
+    { id: 'salmon', price: 20, hunger: 20, happiness: 6, health: 3, caughtOnly: true, stars: 2 },
+    { id: 'lobster', price: 40, hunger: 28, happiness: 14, health: 5, caughtOnly: true, stars: 3 },
   ],
 
   // What's inside the Play panel. Playing costs energy and makes the pet a
@@ -129,6 +134,32 @@ export const CONFIG = {
     { id: 'ball', happiness: 18, hunger: -4, energy: -8 },
     { id: 'tickle', happiness: 14, hunger: -2, energy: -5 },
   ],
+
+  // The fishing mini-game (in the Play panel). Cast, wait for a bite, tap
+  // Reel in, then tap Catch while the marker sweeping across the bar is on
+  // a good spot.
+  fishing: {
+    energyPerCast: 3, // each cast tires the pet a little
+    biteAfterSeconds: { min: 2, max: 6 }, // how long until a fish bites
+    biteWindowSeconds: 1.6, // how long you have to tap Reel in after a bite
+    sweepSeconds: 1.2, // how long the marker takes to cross the bar once
+    maxSweeps: 4, // after this many crossings the fish swims off
+    // How wide each coloured zone is, as a share of the bar. The red stripe
+    // sits in the middle, with yellow on both sides, then green; the rest of
+    // the bar is blue (no catch).
+    zoneWidths: { perfect: 0.05, good: 0.07, weak: 0.1 },
+    // The chance (0-1) that a fish is landed for each kind of catch.
+    catchChance: { perfect: 1, good: 0.75, weak: 0.3, miss: 0 },
+    // What you catch, in percent. A perfect catch makes the rarer ones
+    // more likely.
+    catchOdds: {
+      perfect: { shrimp: 40, salmon: 40, lobster: 20 },
+      other: { shrimp: 60, salmon: 30, lobster: 10 },
+    },
+    // How many fish one successful catch gives. A food buff could raise this
+    // later on (e.g. a chance of an extra fish).
+    fishPerCatch: 1,
+  },
 
   // Gold. It's earned (mini-games arrive in Milestone 4, plus check-in
   // bonuses) and spent in the Shop. It can never be bought with real money.

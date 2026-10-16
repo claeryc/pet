@@ -10,7 +10,7 @@ import { stageLengthMs } from './growth';
 import { useFood } from './economy';
 import type { GameState, Pet } from './state';
 
-export type BlockReason = 'egg' | 'asleep' | 'tooTired' | 'notSick' | 'noFood';
+export type BlockReason = 'egg' | 'asleep' | 'tooTired' | 'notSick' | 'noFood' | 'resting';
 
 export interface ActionResult {
   state: GameState;
@@ -18,7 +18,7 @@ export interface ActionResult {
 }
 
 // Helper: returns a copy of the state with the pet changed by `change`.
-function withPet(state: GameState, change: (pet: Pet) => void): GameState {
+export function withPet(state: GameState, change: (pet: Pet) => void): GameState {
   const pet: Pet = { ...state.pet, stats: { ...state.pet.stats }, buffs: [...state.pet.buffs] };
   change(pet);
   return { ...state, pet };
@@ -26,6 +26,8 @@ function withPet(state: GameState, change: (pet: Pet) => void): GameState {
 
 export type Food = (typeof CONFIG.foods)[number] & {
   slowHunger?: { percent: number; hours: number };
+  caughtOnly?: boolean;
+  stars?: number;
 };
 export type FoodId = Food['id'];
 export type ActivityId = (typeof CONFIG.activities)[number]['id'];

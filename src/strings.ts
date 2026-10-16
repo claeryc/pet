@@ -23,6 +23,9 @@ export const STRINGS = {
     strawberry: 'Strawberry',
     warmMilk: 'Warm milk',
     cookie: 'Cookie',
+    shrimp: 'Shrimp',
+    salmon: 'Salmon',
+    lobster: 'Lobster',
   },
   activities: {
     cuddle: 'Cuddle',
@@ -34,8 +37,24 @@ export const STRINGS = {
       `Tummy empties ${percent}% slower for ${hours} hours`,
   },
   minigames: {
+    fishing: 'Fishing',
     catchTreats: 'Catch treats',
     memoryMatch: 'Memory match',
+  },
+  fishing: {
+    cast: 'Cast',
+    reelIn: 'Reel in',
+    catch: 'Catch',
+    cancel: 'Cancel',
+    bar: 'Catch bar',
+    start: 'Tap Cast to throw your line!',
+    tooSoon: 'Too soon! Nothing was biting yet.',
+    gotAway: 'The fish got away...',
+    slack: 'The line went slack. The fish swam off.',
+    grades: { perfect: 'Perfect catch!', good: 'Good catch!', weak: 'Weak catch...', miss: 'No catch.' },
+    landed: (grade: string, name: string, count: number, stars: string) =>
+      `${grade} You got ${count === 1 ? `a ${name}` : `${count} × ${name}`}! ${stars}`,
+    slipped: (grade: string) => `${grade} The fish slipped off the hook.`,
   },
   menu: {
     title: 'Menu',
@@ -92,6 +111,7 @@ export const STRINGS = {
     tooTired: (name: string) => `${name} is too sleepy to play. Try a nap with the lights off.`,
     notSick: (name: string) => `${name} isn't sick, no medicine needed.`,
     noFood: (_name: string) => `You're out of that. Get more in the Shop.`,
+    resting: (name: string) => `${name} needs to rest first. No mini-games until ${name} feels better.`,
   },
   shop: {
     title: 'Shop',
