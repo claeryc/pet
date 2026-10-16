@@ -215,12 +215,15 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
 
   actions.append(feedDrawer.el, playDrawer.el, menuDrawer.el, lights);
 
-  // Fishing swaps the button row for its own [Cancel] [Cast] row, and puts
-  // its catch bar under the room.
+  // Fishing swaps the button row for its own [Cancel] [Cast] row, and the
+  // stat bars for a pond of the same size.
   const fishing = createFishing({
     onCast: cb.onCast,
     onLand: cb.onLand,
-    onExit: () => (actions.hidden = false),
+    onExit: () => {
+      actions.hidden = false;
+      stats.hidden = petIsEgg;
+    },
     toast: (msg) => showToast(msg),
   });
   // The latest state, so Fishing can check the pet is up for it.
@@ -229,13 +232,16 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     if (latest && !canPlayMinigames(latest.state.pet, latest.now)) {
       return showToast(STRINGS.blocked.resting(petName));
     }
+    const height = stats.offsetHeight;
     actions.hidden = true;
-    fishing.start();
+    stats.hidden = true;
+    fishing.start(height);
   }
   function stopFishing(): void {
     if (fishing.phase() === 'off') return;
     fishing.stop();
     actions.hidden = false;
+    stats.hidden = petIsEgg;
   }
 
   // A short message that pops up and fades, e.g. "Mochi is asleep".
@@ -249,7 +255,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     toastTimer = window.setTimeout(() => toastEl.classList.remove('show'), 2500);
   }
 
-  root.append(canvas, fishing.bar, banner, stats, actions, fishing.row, toastEl);
+  root.append(canvas, banner, stats, fishing.pond, actions, fishing.row, toastEl);
 
   return {
     canvas,
@@ -266,7 +272,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
         const count = foodCount(state, f.id);
         feedDrawer.setNote(i, count === Infinity ? STRINGS.shop.free : `× ${count}`, count === 0);
       });
-      stats.hidden = isEgg; // an egg has no needs yet
+      stats.hidden = isEgg || fishing.phase() !== 'off'; // an egg has no needs yet
       canvas.setAttribute('aria-label', isEgg ? STRINGS.mood.egg(pet.name) : STRINGS.mood[getLook(pet)](pet.name));
 
       // Banner: hatching countdown, or sick beats recovering beats warning.

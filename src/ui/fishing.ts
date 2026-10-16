@@ -1,13 +1,15 @@
-// The fishing mini-game's buttons and catch bar. It takes over the button
-// row while you fish: [Cancel] [Cast], where Cast turns into Reel in once
-// the line is out, and Reel in turns into Catch once a fish is hooked. The
-// catch bar shows up under the room while you reel in.
+// The fishing mini-game's buttons and pond. While you fish, the button row
+// becomes [Cancel] [Cast], where Cast turns into Reel in once the line is
+// out, and Reel in turns into Catch once a fish is hooked. The stat bars
+// make way for a pond of the same size (see src/render/pond.ts), and the
+// catch bar shows up at the bottom of the pond while you reel in.
 //
 // Only the timing lives here. What a catch is worth, and what casting costs,
 // is decided in src/game/fishing.ts.
 
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
+import { createPond } from '../render/pond';
 import { biteDelayMs, gradeAt, markerAt, placeZones, sweptOut, type CatchGrade, type CatchZones } from '../game/fishing';
 
 // ready: line in, waiting for you to cast. waiting: line out, no bite yet.
@@ -23,8 +25,8 @@ export interface FishingCallbacks {
 
 export interface Fishing {
   row: HTMLElement; // the buttons, shown in place of the normal button row
-  bar: HTMLElement; // the catch bar, placed under the room
-  start: () => void;
+  pond: HTMLElement; // the pond with its catch bar, shown in place of the stat bars
+  start: (height: number) => void; // the pond takes this height (the stat bars')
   stop: () => void;
   phase: () => FishingPhase;
 }
@@ -55,6 +57,18 @@ export function createFishing(cb: FishingCallbacks): Fishing {
   marker.className = 'catch-marker';
   track.append(marker);
   bar.append(track);
+
+  const pondView = createPond();
+  const pond = document.createElement('div');
+  pond.className = 'pond';
+  pond.hidden = true;
+  pond.append(pondView.canvas, bar);
+  // Keeps the pond moving while fishing.
+  let pondFrame = 0;
+  const animatePond = (t: number) => {
+    pondView.draw(phase, t);
+    pondFrame = requestAnimationFrame(animatePond);
+  };
 
   let phase: FishingPhase = 'off';
   let timer = 0;
@@ -169,18 +183,24 @@ export function createFishing(cb: FishingCallbacks): Fishing {
 
   function stop(): void {
     clearTimers();
+    cancelAnimationFrame(pondFrame);
     phase = 'off';
     row.hidden = true;
+    pond.hidden = true;
     bar.hidden = true;
     delete bar.dataset.grade;
   }
 
   return {
     row,
-    bar,
-    start() {
+    pond,
+    start(height) {
       row.hidden = false;
+      pond.style.height = `${height}px`;
+      pond.hidden = false;
+      pondView.resize();
       setPhase('ready');
+      pondFrame = requestAnimationFrame(animatePond);
       cb.toast(STRINGS.fishing.start);
     },
     stop,
