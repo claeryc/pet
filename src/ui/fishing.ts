@@ -1,8 +1,9 @@
 // The fishing mini-game's buttons and pond. While you fish, the button row
 // becomes [Cancel] [Cast], where Cast turns into Reel in once the line is
-// out, and Reel in turns into Catch once a fish is hooked. The stat bars
-// make way for a pond of the same size (see src/render/pond.ts), and the
-// catch bar shows up at the bottom of the pond while you reel in.
+// out, and Reel in turns into Catch once a fish is hooked. Water rises up
+// over the stat bars into a pond of the same size (see src/render/pond.ts),
+// and drains away again when you stop. The catch bar shows up at the
+// bottom of the pond while you reel in.
 //
 // Only the timing lives here. What a catch is worth, and what casting costs,
 // is decided in src/game/fishing.ts.
@@ -26,13 +27,15 @@ export interface FishingCallbacks {
 export interface Fishing {
   row: HTMLElement; // the buttons, shown in place of the normal button row
   pond: HTMLElement; // the pond with its catch bar, shown in place of the stat bars
-  start: (height: number) => void; // the pond takes this height (the stat bars')
+  start: () => void;
   stop: () => void;
   phase: () => FishingPhase;
 }
 
 // How long the bar stays up after Catch, showing where the marker stopped.
 const RESULT_MS = 900;
+// How long the water takes to drain away (matches .pond in style.css).
+const DRAIN_MS = 450;
 
 export function createFishing(cb: FishingCallbacks): Fishing {
   const row = document.createElement('div');
@@ -63,10 +66,11 @@ export function createFishing(cb: FishingCallbacks): Fishing {
   pond.className = 'pond';
   pond.hidden = true;
   pond.append(pondView.canvas, bar);
-  // Keeps the pond moving while fishing.
+  // Keeps the pond moving while fishing (and while it drains away).
   let pondFrame = 0;
+  let drainTimer = 0;
   const animatePond = (t: number) => {
-    pondView.draw(phase, t);
+    pondView.draw(phase === 'off' ? 'ready' : phase, t);
     pondFrame = requestAnimationFrame(animatePond);
   };
 
@@ -183,24 +187,33 @@ export function createFishing(cb: FishingCallbacks): Fishing {
 
   function stop(): void {
     clearTimers();
-    cancelAnimationFrame(pondFrame);
     phase = 'off';
     row.hidden = true;
-    pond.hidden = true;
     bar.hidden = true;
     delete bar.dataset.grade;
+    // Let the water drain away, then stop drawing it.
+    pond.classList.remove('is-in');
+    clearTimeout(drainTimer);
+    drainTimer = window.setTimeout(() => {
+      cancelAnimationFrame(pondFrame);
+      pond.hidden = true;
+    }, DRAIN_MS);
   }
 
   return {
     row,
     pond,
-    start(height) {
+    start() {
       row.hidden = false;
-      pond.style.height = `${height}px`;
+      clearTimeout(drainTimer);
+      cancelAnimationFrame(pondFrame);
       pond.hidden = false;
       pondView.resize();
       setPhase('ready');
       pondFrame = requestAnimationFrame(animatePond);
+      // Start below the stat bars, then rise up over them on the next frame.
+      void pond.offsetHeight;
+      pond.classList.add('is-in');
       cb.toast(STRINGS.fishing.start);
     },
     stop,

@@ -220,10 +220,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const fishing = createFishing({
     onCast: cb.onCast,
     onLand: cb.onLand,
-    onExit: () => {
-      actions.hidden = false;
-      stats.hidden = petIsEgg;
-    },
+    onExit: () => showActions(),
     toast: (msg) => showToast(msg),
   });
   // The latest state, so Fishing can check the pet is up for it.
@@ -232,17 +229,28 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     if (latest && !canPlayMinigames(latest.state.pet, latest.now)) {
       return showToast(STRINGS.blocked.resting(petName));
     }
-    const height = stats.offsetHeight;
     actions.hidden = true;
-    stats.hidden = true;
-    fishing.start(height);
+    stats.setAttribute('aria-hidden', 'true'); // under water for now
+    fishing.start();
   }
   function stopFishing(): void {
     if (fishing.phase() === 'off') return;
     fishing.stop();
-    actions.hidden = false;
-    stats.hidden = petIsEgg;
+    showActions();
   }
+  // Back to the normal buttons, which pop back up.
+  function showActions(): void {
+    stats.removeAttribute('aria-hidden');
+    actions.hidden = false;
+    actions.classList.remove('rise-in');
+    void actions.offsetHeight;
+    actions.classList.add('rise-in');
+  }
+
+  // The stat bars and the pond share one spot: the pond rises over the bars.
+  const statSlot = document.createElement('div');
+  statSlot.className = 'stat-slot';
+  statSlot.append(stats, fishing.pond);
 
   // A short message that pops up and fades, e.g. "Mochi is asleep".
   const toastEl = document.createElement('div');
@@ -255,7 +263,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     toastTimer = window.setTimeout(() => toastEl.classList.remove('show'), 2500);
   }
 
-  root.append(canvas, banner, stats, fishing.pond, actions, fishing.row, toastEl);
+  root.append(canvas, banner, statSlot, actions, fishing.row, toastEl);
 
   return {
     canvas,
@@ -274,7 +282,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
         const stars = f.stars ? `${STRINGS.stars(f.stars)}  ` : '';
         feedDrawer.setNote(i, count === Infinity ? STRINGS.shop.free : `${stars}× ${count}`, count === 0);
       });
-      stats.hidden = isEgg || fishing.phase() !== 'off'; // an egg has no needs yet
+      stats.hidden = isEgg; // an egg has no needs yet
       canvas.setAttribute('aria-label', isEgg ? STRINGS.mood.egg(pet.name) : STRINGS.mood[getLook(pet)](pet.name));
 
       // Banner: hatching countdown, or sick beats recovering beats warning.

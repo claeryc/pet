@@ -140,7 +140,7 @@ export const CONFIG = {
   // a good spot.
   fishing: {
     energyPerCast: 3, // each cast tires the pet a little
-    biteAfterSeconds: { min: 2, max: 6 }, // how long until a fish bites
+    biteAfterSeconds: { min: 4, max: 10 }, // how long until a fish bites
     biteWindowSeconds: 1.6, // how long you have to tap Reel in after a bite
     sweepSeconds: 1.2, // how long the marker takes to cross the bar once
     maxSweeps: 4, // after this many crossings the fish swims off
