@@ -77,8 +77,8 @@ describe('actions', () => {
   });
 
   it('play raises joy and costs a little hunger and energy', () => {
-    const s = play(freshGame(), START, 'ball').state;
-    const a = CONFIG.activities.find((x) => x.id === 'ball')!;
+    const s = play(freshGame(), START, 'tickle').state;
+    const a = CONFIG.activities.find((x) => x.id === 'tickle')!;
     expect(s.pet.stats.happiness).toBe(80 + a.happiness);
     expect(s.pet.stats.hunger).toBe(80 + a.hunger);
     expect(s.pet.stats.energy).toBe(80 + a.energy);
@@ -111,7 +111,7 @@ describe('actions', () => {
 
   it('refuses to play when the pet is too tired', () => {
     const s = freshGame();
-    s.pet.stats.energy = 2;
+    s.pet.stats.energy = 1;
     expect(play(s, START).blocked).toBe('tooTired');
   });
 });

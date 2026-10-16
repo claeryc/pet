@@ -113,5 +113,6 @@ export function land(
   const caught = pickCatch(grade, kindRoll);
   const count = CONFIG.fishing.fishPerCatch;
   const food = { ...state.inventory.food, [caught]: (state.inventory.food[caught] ?? 0) + count };
-  return { state: { ...state, inventory: { ...state.inventory, food } }, caught, count };
+  const kinds = state.caught.includes(caught) ? state.caught : [...state.caught, caught];
+  return { state: { ...state, inventory: { ...state.inventory, food }, caught: kinds }, caught, count };
 }

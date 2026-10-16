@@ -75,6 +75,13 @@ function drawFishing(ctx: CanvasRenderingContext2D, phase: FishingPhase, timeMs:
   }
 }
 
+// True if a point in room pixels (0-64 across, 0-48 down) is on or near the
+// pet, which stands centred on the floor (see drawRoom below). Generous,
+// so small fingers don't miss.
+export function isOnPet(x: number, y: number): boolean {
+  return x >= 12 && x <= ROOM_WIDTH - 12 && y >= 4 && y <= 44;
+}
+
 export function drawRoom(
   ctx: CanvasRenderingContext2D,
   sheet: SpriteSheet | undefined,

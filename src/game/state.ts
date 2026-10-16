@@ -68,6 +68,19 @@ export interface GameState {
   // Dishes you've cooked at least once (food ids). They show up by name in
   // the recipe book; the rest stay "???".
   recipesFound: string[];
+  // Foods fed to the pet, most recent first, so the Feed panel can put
+  // your favourites at the top.
+  recentFoods: string[];
+  // Kinds of fish ever caught, and characters ever grown into ("pebblit",
+  // or "pebblit:amber" for a colour variant). Shown in the Collection.
+  caught: string[];
+  charactersFound: string[];
+  // Parts of the game that have opened up (see src/game/unlocks.ts), and
+  // the ones the player has already looked at (the rest get a "new" dot).
+  unlocked: string[];
+  seen: string[];
+  // Testing tool: show every menu straight away, locked or not.
+  showAllMenus: boolean;
 }
 
 // Makes a random id. crypto.randomUUID exists in all modern browsers and Node.
@@ -100,5 +113,11 @@ export function createNewGame(now: number): GameState {
     inventory: { food: { ...CONFIG.economy.startingFood }, hats: [] },
     checkIn: { day: '', count: 0, lastAt: 0 },
     recipesFound: [],
+    recentFoods: [],
+    caught: [],
+    charactersFound: [],
+    unlocked: [],
+    seen: [],
+    showAllMenus: false,
   };
 }

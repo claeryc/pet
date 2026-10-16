@@ -33,6 +33,12 @@ export interface Drawer {
   setNote: (index: number, note: string, faded?: boolean) => void;
   // Hides or shows an option (e.g. a dish you haven't cooked yet).
   setHidden: (index: number, hidden: boolean) => void;
+  // Shows the options in this order (indexes into `options`). Indexes for
+  // setNote and friends stay the same.
+  setOrder: (order: number[]) => void;
+  // A small "new" dot on the button, or on one option.
+  setNew: (isNew: boolean) => void;
+  setOptionNew: (index: number, isNew: boolean) => void;
 }
 
 export interface DrawerSetup {
@@ -84,6 +90,7 @@ export function createDrawer(setup: DrawerSetup): Drawer {
   el.append(head, body);
 
   // Each option is one row: picture, name, then its effects on the right.
+  const rows: HTMLButtonElement[] = [];
   (setup.options ?? []).forEach((opt, i) => {
     const b = document.createElement('button');
     b.className = 'drawer-option';
@@ -126,6 +133,7 @@ export function createDrawer(setup: DrawerSetup): Drawer {
     } else {
       b.disabled = true;
     }
+    rows.push(b);
     options.append(b);
   });
 
@@ -157,14 +165,26 @@ export function createDrawer(setup: DrawerSetup): Drawer {
     close,
     setDim: (dim) => el.classList.toggle('dim', dim),
     setNote(index, text, faded = false) {
-      const row = options.children[index] as HTMLElement | undefined;
+      const row = rows[index];
       if (!row) return;
       row.querySelector('.drawer-option-note')!.textContent = text;
       row.classList.toggle('faded', faded);
     },
     setHidden(index, hidden) {
-      const row = options.children[index] as HTMLElement | undefined;
+      const row = rows[index];
       if (row) row.hidden = hidden;
+    },
+    setOrder(order) {
+      order.forEach((index, position) => {
+        const row = rows[index];
+        if (!row) return;
+        row.style.setProperty('--i', String(position));
+        options.append(row); // moves it to the end, so they end up in order
+      });
+    },
+    setNew: (isNew) => head.classList.toggle('has-new', isNew),
+    setOptionNew(index, isNew) {
+      rows[index]?.classList.toggle('has-new', isNew);
     },
   };
 }

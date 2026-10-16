@@ -1,13 +1,17 @@
 // The menu inside the gear button's panel (it opens like Feed and Play). It
-// has a main list (Shop, Inventory, Mini-games, Family Tree, Settings) and a
-// page for each.
+// has a main list (Shop, Collection, Family Tree, Settings) and a page for
+// each, plus the Wardrobe, which opens when you hold the pet.
+// Shop, Collection and Family Tree only appear once they've opened up (see
+// src/game/unlocks.ts), with a "new" dot until you've looked at them.
 // Items for features we haven't built yet are shown greyed out with
 // "Coming soon".
 
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import type { GameState } from '../game/state';
-import { goldPill, inventoryPage, shopPage, type ShopCallbacks } from './shop';
+import { isNew, isUnlocked, type UnlockId } from '../game/unlocks';
+import { goldPill, shopPage, wardrobePage, type ShopCallbacks } from './shop';
+import { collectionPage, type CollectionCallbacks } from './collection';
 
 export interface DebugCallbacks {
   onFastForward: (hours: number) => void;
@@ -15,22 +19,31 @@ export interface DebugCallbacks {
   onGrowNow: () => void;
   onAddGold: () => void;
   onSetCare: (score: number) => void;
+  onShowAllMenus: (on: boolean) => void;
 }
 
-export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks {
+export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks, CollectionCallbacks {
   onReset: () => void;
+  onSeen: (id: UnlockId) => void; // the player has looked at something new
 }
 
 export interface Menu {
   el: HTMLElement; // the menu's contents, placed inside the gear panel
   reset: () => void; // go back to the main list
   update: (state: GameState) => void;
+  showWardrobe: () => void;
 }
 
-function item(label: string, onClick?: () => void): HTMLButtonElement {
+function item(label: string, onClick?: () => void, isNew = false): HTMLButtonElement {
   const b = document.createElement('button');
   b.className = 'menu-item';
   b.textContent = label;
+  if (isNew) {
+    const dot = document.createElement('span');
+    dot.className = 'new-dot';
+    dot.setAttribute('aria-label', STRINGS.menu.new);
+    b.append(dot);
+  }
   if (onClick) {
     b.addEventListener('click', onClick);
   } else {
@@ -49,10 +62,10 @@ export function createMenu(cb: MenuCallbacks, isOpen: () => boolean, close: () =
   const panel = document.createElement('div');
   panel.className = 'menu-panel';
 
-  // The Shop and Inventory pages redraw whenever the game changes (after
-  // buying something, for example), so we remember which page is showing.
+  // The pages redraw whenever the game changes (after buying something,
+  // for example), so we remember which page is showing.
   let state: GameState | null = null;
-  let page: 'main' | 'settings' | 'shop' | 'inventory' = 'main';
+  let page: 'main' | 'settings' | 'shop' | 'wardrobe' | 'collection' = 'main';
 
   // Live readout for the testing tools, refreshed by update().
   const debugInfo = document.createElement('p');
@@ -81,26 +94,37 @@ export function createMenu(cb: MenuCallbacks, isOpen: () => boolean, close: () =
   // each newly opened page at the top.
   const toTop = () => panel.parentElement?.scrollTo(0, 0);
 
+  // An entry that only shows once it has opened up. Opening it the first
+  // time clears its "new" dot.
+  function unlockable(id: UnlockId, label: string, onClick?: () => void): HTMLButtonElement[] {
+    if (!state || !isUnlocked(state, id)) return [];
+    return [
+      item(label, onClick && (() => {
+        cb.onSeen(id);
+        onClick();
+      }), !!onClick && isNew(state, id)), // no dot on "coming soon" items
+    ];
+  }
+
   function showMain(): void {
     page = 'main';
     toTop();
     panel.replaceChildren(
-      item(STRINGS.menu.shop, () => showShop()),
-      item(STRINGS.menu.inventory, () => showInventory()),
-      item(STRINGS.menu.minigames),
-      item(STRINGS.menu.familyTree),
+      ...unlockable('shop', STRINGS.menu.shop, () => showShop()),
+      ...unlockable('collection', STRINGS.menu.collection, () => showCollection()),
+      ...unlockable('familyTree', STRINGS.menu.familyTree),
       item(STRINGS.menu.settings, showSettings),
     );
   }
 
-  // Which categories (Food, Hats) are unfolded. Everything starts folded
-  // each time you go into the Shop or Inventory, and stays as you left it
-  // while the page redraws.
+  // Which categories (Food, Hats...) are unfolded. Everything starts folded
+  // each time you go into a page, and stays as you left it while the page
+  // redraws.
   const openCategories = new Set<string>();
 
-  // The Shop and Inventory: gold on the right of the header, lined up with
-  // the prices, then the categories.
-  function showList(which: 'shop' | 'inventory', fresh: boolean): void {
+  // The Shop, Wardrobe and Collection: a header (with gold on the right in
+  // the Shop, lined up with the prices), then the list.
+  function showList(which: 'shop' | 'wardrobe' | 'collection', fresh: boolean): void {
     if (fresh) {
       openCategories.clear();
       toTop();
@@ -108,12 +132,18 @@ export function createMenu(cb: MenuCallbacks, isOpen: () => boolean, close: () =
     page = which;
     const list = document.createElement('div');
     list.className = 'shop-list';
-    if (state) list.append(...(which === 'shop' ? shopPage : inventoryPage)(state, cb, openCategories));
-    const title = which === 'shop' ? STRINGS.shop.title : STRINGS.inventory.title;
-    panel.replaceChildren(header(title, showMain, goldPill(state?.gold ?? 0)), list);
+    if (state) {
+      if (which === 'shop') list.append(...shopPage(state, cb, openCategories));
+      else if (which === 'wardrobe') list.append(...wardrobePage(state, cb));
+      else list.append(...collectionPage(state, cb, openCategories));
+    }
+    const title = { shop: STRINGS.shop.title, wardrobe: STRINGS.wardrobe.title, collection: STRINGS.menu.collection }[which];
+    const right = which === 'shop' ? goldPill(state?.gold ?? 0) : undefined;
+    panel.replaceChildren(header(title, showMain, right), list);
   }
   const showShop = (fresh = true) => showList('shop', fresh);
-  const showInventory = (fresh = true) => showList('inventory', fresh);
+  const showWardrobe = (fresh = true) => showList('wardrobe', fresh);
+  const showCollection = (fresh = true) => showList('collection', fresh);
 
   function debugSection(): HTMLElement {
     const section = document.createElement('div');
@@ -156,7 +186,15 @@ export function createMenu(cb: MenuCallbacks, isOpen: () => boolean, close: () =
       b.addEventListener('click', () => cb.onSetCare(score));
       careRow.append(b);
     }
-    section.append(h, label, row, careLabel, careRow, debugInfo);
+    // Skip unlocking: every menu shows straight away.
+    const allMenus = document.createElement('label');
+    allMenus.className = 'debug-toggle';
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.checked = state?.showAllMenus ?? false;
+    box.addEventListener('change', () => cb.onShowAllMenus(box.checked));
+    allMenus.append(box, STRINGS.debug.showAllMenus);
+    section.append(h, label, row, careLabel, careRow, allMenus, debugInfo);
     return section;
   }
 
@@ -176,14 +214,24 @@ export function createMenu(cb: MenuCallbacks, isOpen: () => boolean, close: () =
   return {
     el: panel,
     reset: showMain,
+    showWardrobe: () => showWardrobe(),
     update(next) {
-      // Only redraw the Shop or Inventory when something in it changed, so
-      // the list doesn't jump while you scroll.
-      const key = (s: GameState | null) => s && JSON.stringify([s.gold, s.inventory, s.pet.hat, s.pet.stage]);
+      // Only redraw a page when something on it changed, so the list
+      // doesn't jump while you scroll.
+      const key = (s: GameState | null) =>
+        s &&
+        JSON.stringify([
+          s.gold, s.inventory, s.pet.hat, s.pet.stage, s.unlocked, s.seen, s.showAllMenus,
+          s.recipesFound, s.caught, s.charactersFound,
+        ]);
       const changed = key(state) !== key(next);
       state = next;
-      if (changed && isOpen() && page === 'shop') showShop(false);
-      if (changed && isOpen() && page === 'inventory') showInventory(false);
+      if (changed) {
+        if (page === 'main') showMain();
+        else if (isOpen() && page === 'shop') showShop(false);
+        else if (isOpen() && page === 'wardrobe') showWardrobe(false);
+        else if (isOpen() && page === 'collection') showCollection(false);
+      }
       const p = next.pet;
       debugInfo.textContent = `${STRINGS.debug.careScore}: ${p.careScore.toFixed(1)} · ${STRINGS.debug.condition}: ${p.condition} · ${STRINGS.debug.character}: ${p.character ?? '-'}${p.variant ? ` (${p.variant})` : ''}`;
     },

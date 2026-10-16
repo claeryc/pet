@@ -35,6 +35,22 @@ function pixelIcon(rows: string[]): string {
   return `<svg viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
 }
 
+// A "?" for things not found yet (in the Collection).
+export const UNKNOWN_ICON = pixelIcon([
+  '............',
+  '....kkkk....',
+  '...kllllk...',
+  '..kllkkllk..',
+  '..kkk.kllk..',
+  '.....kllk...',
+  '....kllk....',
+  '....kllk....',
+  '.....kk.....',
+  '....kllk....',
+  '....kllk....',
+  '.....kk.....',
+]);
+
 // Big icons (12x12) shown at the start of each row.
 export const ITEM_ICONS: Record<string, string> = {
   riceBall: pixelIcon([
@@ -119,20 +135,6 @@ export const ITEM_ICONS: Record<string, string> = {
     '...kppppk...',
     '....kppk....',
     '.....kk.....',
-    '............',
-  ]),
-  ball: pixelIcon([
-    '............',
-    '...kkkkkk...',
-    '..kbbwwrrk..',
-    '.kbbbwwrrrk.',
-    'kbbbbwwrrrrk',
-    'kbbbbwwrrrrk',
-    'kbbbbwwrrrrk',
-    'kbbbbwwrrrrk',
-    '.kbbbwwrrrk.',
-    '..kbbwwrrk..',
-    '...kkkkkk...',
     '............',
   ]),
   tickle: pixelIcon([

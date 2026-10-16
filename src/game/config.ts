@@ -141,13 +141,21 @@ export const CONFIG = {
     { id: 'mushyMess', price: 1, hunger: 8, happiness: 0, health: 0, cookedOnly: true },
   ],
 
-  // What's inside the Play panel. Playing costs energy and makes the pet a
-  // little peckish. Mini-games join this list in Milestone 4.
+  // The quick ones at the top of the Play panel. Playing costs energy and
+  // makes the pet a little peckish. Mini-games like fishing come after.
+  // Tapping the pet cuddles it too.
   activities: [
     { id: 'cuddle', happiness: 10, hunger: 0, energy: -2 },
-    { id: 'ball', happiness: 18, hunger: -4, energy: -8 },
     { id: 'tickle', happiness: 14, hunger: -2, energy: -5 },
   ],
+
+  // Tapping the pet cuddles it; holding it opens the Wardrobe. A tap
+  // within `tapCooldownMs` of the last cuddle is ignored, so a burst of
+  // taps is one cuddle.
+  petting: {
+    holdMs: 500,
+    tapCooldownMs: 1400,
+  },
 
   // The fishing mini-game (in the Play panel). Cast, wait for a bite, tap
   // Reel in, then tap Catch while the marker sweeping across the bar is on

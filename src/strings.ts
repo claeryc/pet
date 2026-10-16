@@ -39,7 +39,6 @@ export const STRINGS = {
   },
   activities: {
     cuddle: 'Cuddle',
-    ball: 'Toss a ball',
     tickle: 'Tickle',
   },
   effects: {
@@ -93,9 +92,9 @@ export const STRINGS = {
     title: 'Menu',
     settings: 'Settings',
     shop: 'Shop',
-    inventory: 'Inventory',
-    minigames: 'Mini-games',
+    collection: 'Collection',
     familyTree: 'Family Tree',
+    new: 'New',
     comingSoon: 'Coming soon',
     back: 'Back',
     close: 'Close',
@@ -111,10 +110,18 @@ export const STRINGS = {
     character: 'Character',
     addGold: (gold: number) => `+${gold} gold`,
     setCare: 'Set Care Score (before growing up)',
+    showAllMenus: 'Show every menu (skip unlocking)',
+  },
+  // Said when part of the game opens up for the first time.
+  unlocked: {
+    shop: 'The Shop is open! Find it in the Menu.',
+    cooking: 'You can cook now! The pot is at the top of Feed.',
+    collection: 'New in the Menu: your Collection!',
+    familyTree: 'New in the Menu: the Family Tree!',
   },
   growth: {
     egg: (name: string) => `${name} is an egg.`,
-    baby: (name: string) => `${name} hatched! Say hello!`,
+    baby: (name: string) => `${name} hatched! Tap ${name} to say hello!`,
     teen: (name: string) => `${name} grew into a teen!`,
     adult: (name: string, character: string, stars: string) => `${name} grew up into a ${character}! ${stars}`,
   },
@@ -154,19 +161,27 @@ export const STRINGS = {
     have: (count: number) => `You have ${count}`,
     free: 'Free',
     bought: (item: string) => `You bought ${item}!`,
+    boughtHat: (item: string, name: string) => `You bought ${item}! Hold ${name} to try it on.`,
     notEnoughGold: 'Not enough gold yet.',
     alreadyOwned: 'You already have that one.',
   },
-  inventory: {
-    title: 'Inventory',
-    food: 'Food',
+  // Opened by holding the pet.
+  wardrobe: {
+    title: 'Wardrobe',
     hats: 'Hats',
     noHats: 'No hats yet. You can buy some in the Shop.',
-    noFood: 'No food stocked. Rice balls are always free!',
     wear: 'Wear',
     takeOff: 'Take off',
     wearing: 'Wearing',
     eggNoHat: (name: string) => `${name} is still an egg. Hats can wait until it hatches!`,
+  },
+  collection: {
+    characters: 'Characters',
+    recipes: 'Recipes',
+    catches: 'Catches',
+    count: (title: string, found: number, total: number) => `${title}  ${found}/${total}`,
+    unknown: '???',
+    notFound: 'Not found yet',
   },
   gold: {
     label: 'Gold',

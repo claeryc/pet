@@ -4,12 +4,13 @@
 
 import { CONFIG } from '../game/config';
 import type { GameState } from '../game/state';
+import { characterKey, unlocksFor } from '../game/unlocks';
 
 const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 
 export interface SaveFile {
   version: number;
@@ -69,6 +70,20 @@ export function migrate(save: SaveFile): SaveFile {
   if (save.version === 6) {
     save.state.recipesFound = [];
     save.version = 7;
+  }
+  // Version 7 -> 8: menus that open up as you play, and the Collection.
+  // Fish in the pantry count as caught, and whatever is already open for
+  // this pet counts as seen, so nothing shows up as "new" by surprise.
+  if (save.version === 7) {
+    const st = save.state;
+    const pet = st.pet;
+    st.recentFoods = [];
+    st.caught = Object.keys(CONFIG.fishing.catchOdds.other).filter((id) => (st.inventory?.food?.[id] ?? 0) > 0);
+    st.charactersFound = pet.stage === 'adult' && pet.character ? [characterKey(pet.character, pet.variant)] : [];
+    st.showAllMenus = false;
+    st.unlocked = unlocksFor(st as GameState);
+    st.seen = [...st.unlocked];
+    save.version = 8;
   }
   return save;
 }

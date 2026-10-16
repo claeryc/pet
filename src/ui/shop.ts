@@ -1,4 +1,4 @@
-// The Shop and Inventory pages inside the gear menu. They only show things
+// The Shop and Wardrobe pages inside the gear menu. They only show things
 // and pass button presses on; the rules (prices, owning, wearing) live in
 // src/game/economy.ts.
 
@@ -33,7 +33,7 @@ function hatIcon(url: string | undefined): string {
 }
 
 // One row: [icon] [name / small note] [button or label]
-function row(icon: string, name: string, note: string, action: HTMLElement): HTMLElement {
+export function row(icon: string, name: string, note: string, action: HTMLElement): HTMLElement {
   const el = document.createElement('div');
   el.className = 'shop-row';
   const i = document.createElement('span');
@@ -64,7 +64,7 @@ function priceButton(price: number, gold: number, onClick: () => void): HTMLButt
   return b;
 }
 
-function label(text: string): HTMLElement {
+export function label(text: string): HTMLElement {
   const el = document.createElement('span');
   el.className = 'shop-label';
   el.textContent = text;
@@ -75,7 +75,7 @@ function label(text: string): HTMLElement {
 // folded-up grid. `mark` highlights the picture (e.g. the hat being worn),
 // `faded` dims it (e.g. a hat you already own, in the Shop), and `count`
 // shows a small number in its corner (how many of a food you have).
-interface Entry {
+export interface Entry {
   icon: string;
   row: HTMLElement;
   count?: string;
@@ -87,7 +87,7 @@ interface Entry {
 // only the items' pictures in a small grid; tap the title, or any picture,
 // to unfold it into the full rows. `open` remembers which categories are
 // unfolded, so they stay that way when the page redraws after buying.
-function category(id: string, title: string, entries: Entry[], open: Set<string>, empty?: string): HTMLElement {
+export function category(id: string, title: string, entries: Entry[], open: Set<string>, empty?: string): HTMLElement {
   const el = document.createElement('section');
   el.className = 'shop-cat';
 
@@ -166,27 +166,15 @@ export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>)
   ];
 }
 
-export function inventoryPage(state: GameState, cb: ShopCallbacks, open: Set<string>): HTMLElement[] {
-  const hats: Entry[] = HATS.filter((h) => state.inventory.hats.includes(h.id)).map((h) => {
+// The Wardrobe (hold the pet to open it): the hats you own, to put on or
+// take off.
+export function wardrobePage(state: GameState, cb: ShopCallbacks): HTMLElement[] {
+  const owned = HATS.filter((h) => state.inventory.hats.includes(h.id));
+  if (owned.length === 0) return [label(STRINGS.wardrobe.noHats)];
+  return owned.map((h) => {
     const wearing = state.pet.hat === h.id;
-    return {
-      icon: hatIcon(cb.hatImage(h.id)),
-      mark: wearing,
-      row: row(hatIcon(cb.hatImage(h.id)), h.name, wearing ? STRINGS.inventory.wearing : '',
-        button(wearing ? STRINGS.inventory.takeOff : STRINGS.inventory.wear,
-          () => cb.onWearHat(wearing ? null : h.id), wearing ? 'shop-btn shop-btn-soft' : 'shop-btn')),
-    };
+    return row(hatIcon(cb.hatImage(h.id)), h.name, wearing ? STRINGS.wardrobe.wearing : '',
+      button(wearing ? STRINGS.wardrobe.takeOff : STRINGS.wardrobe.wear,
+        () => cb.onWearHat(wearing ? null : h.id), wearing ? 'shop-btn shop-btn-soft' : 'shop-btn'));
   });
-  const food: Entry[] = (CONFIG.foods as readonly Food[])
-    .map((f) => ({ f, count: foodCount(state, f.id) }))
-    .filter(({ count }) => count > 0)
-    .map(({ f, count }) => ({
-      icon: ITEM_ICONS[f.id],
-      count: countBadge(count),
-      row: row(ITEM_ICONS[f.id], STRINGS.foods[f.id], f.stars ? STRINGS.stars(f.stars) : '', label(count === Infinity ? STRINGS.shop.free : `× ${count}`)),
-    }));
-  return [
-    category('hats', STRINGS.inventory.hats, hats, open, STRINGS.inventory.noHats),
-    category('food', STRINGS.inventory.food, food, open, STRINGS.inventory.noFood),
-  ];
 }

@@ -15,6 +15,8 @@ import type { ActivityId, Food, FoodId } from '../game/actions';
 import type { CatchGrade } from '../game/fishing';
 import { createFishing, DRAIN_MS, type FishingPhase } from './fishing';
 import { createCooking, KITCHEN_OUT_MS } from './cooking';
+import { isNew, isUnlocked } from '../game/unlocks';
+import { isOnPet, ROOM_HEIGHT, ROOM_WIDTH } from '../render/canvas';
 
 export interface HomeCallbacks extends MenuCallbacks {
   onFeed: (food: FoodId) => void;
@@ -24,12 +26,15 @@ export interface HomeCallbacks extends MenuCallbacks {
   onCast: () => boolean; // throws the fishing line; false if refused
   onLand: (grade: CatchGrade) => void;
   onCook: (items: FoodId[]) => FoodId | null; // the dish made, or null if refused
+  onPetTap: () => void; // a quick cuddle
 }
 
 export interface HomeScreen {
   canvas: HTMLCanvasElement;
   update: (state: GameState, now: number) => void;
   toast: (message: string) => void;
+  // Like toast, but waits for the message showing now to finish first.
+  notice: (message: string) => void;
   fishingPhase: () => FishingPhase; // so the room can draw the line and bobber
 }
 
@@ -146,7 +151,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
 
   // The home screen is kept quiet: just the pet, its bars and the buttons.
   // The pet's name and character are saved for the Family Tree, and gold
-  // shows in the Shop and Inventory. How the pet feels is read out to
+  // shows in the Shop. How the pet feels is read out to
   // screen readers through the room's label.
   const canvas = document.createElement('canvas');
   canvas.className = 'room';
@@ -198,7 +203,19 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     onBlocked: (msg: string) => showToast(msg),
   };
 
-  const feedOptions: DrawerOption[] = CONFIG.foods.map((f: Food) => {
+  // The Feed panel: the cooking pot first (once cooking has opened up),
+  // then the food you have, most recently fed first.
+  const feedOptions: DrawerOption[] = [
+    {
+      icon: ITEM_ICONS.cooking,
+      label: STRINGS.cooking.open,
+      effects: [],
+      onPick: () => startCooking(),
+    },
+  ];
+  const COOK_ROW = 0;
+  const foodRow = (i: number) => i + 1; // the foods come after the pot
+  for (const f of CONFIG.foods as readonly Food[]) {
     const effects = statEffects({ hunger: f.hunger, happiness: f.happiness, health: f.health });
     if (f.slowHunger) {
       const { hours, percent } = f.slowHunger;
@@ -209,20 +226,16 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
         kind: 'timer',
       });
     }
-    return {
+    feedOptions.push({
       icon: ITEM_ICONS[f.id],
       label: STRINGS.foods[f.id],
       effects,
       onPick: () => cb.onFeed(f.id),
-    };
-  });
-  // The last row of the Feed panel opens the cooking pot.
-  feedOptions.push({
-    icon: ITEM_ICONS.cooking,
-    label: STRINGS.cooking.open,
-    effects: [],
-    onPick: () => startCooking(),
-  });
+    });
+  }
+  // The order the Feed rows were last put in, so we only move them when
+  // it changes.
+  let feedOrderKey = '';
   const playOptions: DrawerOption[] = [
     ...CONFIG.activities.map((a) => ({
       icon: ITEM_ICONS[a.id],
@@ -261,6 +274,74 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
 
   actions.append(feedDrawer.el, playDrawer.el, menuDrawer.el, lights);
 
+  // Holding the pet opens the Wardrobe, in the gear panel.
+  function openWardrobe(): void {
+    if (petIsEgg) return showToast(STRINGS.wardrobe.eggNoHat(petName));
+    feedDrawer.close();
+    playDrawer.close();
+    if (!menuDrawer!.isOpen()) menuDrawer!.open();
+    menu.showWardrobe();
+  }
+
+  // Tap the pet to cuddle it; hold it to open the Wardrobe. Only while the
+  // normal buttons are showing (not while fishing or cooking).
+  canvas.tabIndex = 0;
+  let holdTimer = 0;
+  let press: { x: number; y: number; held: boolean } | null = null;
+  let lastCuddle = -Infinity;
+  const onPetAt = (e: PointerEvent) => {
+    const rect = canvas.getBoundingClientRect();
+    return isOnPet(((e.clientX - rect.left) / rect.width) * ROOM_WIDTH, ((e.clientY - rect.top) / rect.height) * ROOM_HEIGHT);
+  };
+  function cuddle(): void {
+    const now = performance.now();
+    if (now - lastCuddle < CONFIG.petting.tapCooldownMs) return; // one cuddle per burst of taps
+    lastCuddle = now;
+    cb.onPetTap();
+  }
+  canvas.addEventListener('pointerdown', (e) => {
+    if (actions.hidden || !onPetAt(e)) return;
+    press = { x: e.clientX, y: e.clientY, held: false };
+    clearTimeout(holdTimer);
+    holdTimer = window.setTimeout(() => {
+      if (!press) return;
+      press.held = true;
+      navigator.vibrate?.(10);
+      openWardrobe();
+    }, CONFIG.petting.holdMs);
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    // Moving a finger away (to scroll, say) cancels the tap or hold.
+    if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 10) {
+      clearTimeout(holdTimer);
+      press = null;
+    }
+  });
+  canvas.addEventListener('pointerup', () => {
+    clearTimeout(holdTimer);
+    if (press && !press.held) cuddle();
+    press = null;
+  });
+  canvas.addEventListener('pointercancel', () => {
+    clearTimeout(holdTimer);
+    press = null;
+  });
+  // A right-click, or the keyboard's menu key, opens the Wardrobe too, and
+  // Enter or Space cuddles.
+  canvas.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    // Some phones send this for a long press too: count it as the hold.
+    if (actions.hidden || press?.held) return;
+    clearTimeout(holdTimer);
+    if (press) press.held = true;
+    openWardrobe();
+  });
+  canvas.addEventListener('keydown', (e) => {
+    if (actions.hidden || (e.key !== 'Enter' && e.key !== ' ')) return;
+    e.preventDefault();
+    cuddle();
+  });
+
   // Fishing swaps the button row for its own [Cancel] [Cast] row, and the
   // stat bars for a pond of the same size.
   const fishing = createFishing({
@@ -287,6 +368,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     toast: (msg) => showToast(msg),
   });
   function startCooking(): void {
+    cb.onSeen('cooking');
     actions.hidden = true;
     stats.setAttribute('aria-hidden', 'true'); // covered by the counter for now
     if (latest) cooking.update(latest.state);
@@ -320,11 +402,20 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const toastEl = document.createElement('div');
   toastEl.className = 'toast';
   let toastTimer = 0;
+  const waiting: string[] = []; // notices waiting their turn
   function showToast(message: string): void {
     toastEl.textContent = message;
     toastEl.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = window.setTimeout(() => toastEl.classList.remove('show'), 2500);
+    toastTimer = window.setTimeout(() => {
+      toastEl.classList.remove('show');
+      const next = waiting.shift();
+      if (next) toastTimer = window.setTimeout(() => showToast(next), 300);
+    }, 2500);
+  }
+  function showNotice(message: string): void {
+    if (toastEl.classList.contains('show')) waiting.push(message);
+    else showToast(message);
   }
 
   root.append(canvas, banner, statSlot, actions, fishing.row, cooking.row, toastEl);
@@ -342,12 +433,28 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       // How many of each food you have ("Free" for food that never runs out).
       // Caught fish and cooked dishes also show their stars. Dishes only
       // show up once you have some, to keep the list short.
+      // Only food you have is listed.
       CONFIG.foods.forEach((f: Food, i) => {
         const count = foodCount(state, f.id);
         const stars = f.stars ? `${STRINGS.stars(f.stars)}  ` : '';
-        feedDrawer.setNote(i, count === Infinity ? STRINGS.shop.free : `${stars}× ${count}`, count === 0);
-        feedDrawer.setHidden(i, !!f.cookedOnly && count === 0);
+        feedDrawer.setNote(foodRow(i), count === Infinity ? STRINGS.shop.free : `${stars}× ${count}`);
+        feedDrawer.setHidden(foodRow(i), count === 0);
       });
+      feedDrawer.setHidden(COOK_ROW, !isUnlocked(state, 'cooking'));
+      const cookIsNew = isNew(state, 'cooking');
+      feedDrawer.setOptionNew(COOK_ROW, cookIsNew);
+      feedDrawer.setNew(cookIsNew);
+      menuDrawer!.setNew(isNew(state, 'shop') || isNew(state, 'collection'));
+      // The pot, then what you fed most recently, then the rest as listed
+      // in the config. Rows only move while the panel is closed.
+      const ids = CONFIG.foods.map((f) => f.id as string);
+      const recent = state.recentFoods.map((id) => ids.indexOf(id)).filter((i) => i >= 0);
+      const order = [COOK_ROW, ...[...recent, ...ids.keys()].filter((i, n, all) => all.indexOf(i) === n).map(foodRow)];
+      const orderKey = order.join();
+      if (orderKey !== feedOrderKey && !feedDrawer.isOpen()) {
+        feedOrderKey = orderKey;
+        feedDrawer.setOrder(order);
+      }
       cooking.update(state);
       stats.hidden = isEgg; // an egg has no needs yet
       canvas.setAttribute('aria-label', isEgg ? STRINGS.mood.egg(pet.name) : STRINGS.mood[getLook(pet)](pet.name));
@@ -386,6 +493,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       menu.update(state);
     },
     toast: showToast,
+    notice: showNotice,
     fishingPhase: fishing.phase,
   };
 }
