@@ -60,7 +60,7 @@ export function createMenu(cb: MenuCallbacks, isOpen: () => boolean, close: () =
 
   // "‹  Shop" at the top of a page, with a button back to the main list.
   // (Tapping the gear bar above closes the whole panel.)
-  function header(title: string, onBack: () => void): HTMLElement {
+  function header(title: string, onBack: () => void, right?: HTMLElement): HTMLElement {
     const h = document.createElement('div');
     h.className = 'menu-header';
     const back = document.createElement('button');
@@ -70,45 +70,42 @@ export function createMenu(cb: MenuCallbacks, isOpen: () => boolean, close: () =
     back.addEventListener('click', onBack);
     const t = document.createElement('h2');
     t.textContent = title;
-    const spacer = document.createElement('span');
-    h.append(back, t, spacer);
+    const end = document.createElement('span');
+    end.className = 'menu-header-end';
+    if (right) end.append(right);
+    h.append(back, t, end);
     return h;
   }
 
   function showMain(): void {
     page = 'main';
     panel.replaceChildren(
-      item(STRINGS.menu.shop, showShop),
-      item(STRINGS.menu.inventory, showInventory),
+      item(STRINGS.menu.shop, () => showShop()),
+      item(STRINGS.menu.inventory, () => showInventory()),
       item(STRINGS.menu.minigames),
       item(STRINGS.menu.familyTree),
       item(STRINGS.menu.settings, showSettings),
     );
   }
 
-  // The gold you have, shown at the top of the Shop and Inventory.
-  function goldLine(): HTMLElement {
-    const p = document.createElement('div');
-    p.className = 'menu-gold';
-    p.append(goldPill(state?.gold ?? 0));
-    return p;
-  }
+  // Which categories (Food, Hats) are unfolded. Everything starts folded
+  // each time you go into the Shop or Inventory, and stays as you left it
+  // while the page redraws.
+  const openCategories = new Set<string>();
 
-  function showShop(): void {
-    page = 'shop';
+  // The Shop and Inventory: gold on the right of the header, lined up with
+  // the prices, then the categories.
+  function showList(which: 'shop' | 'inventory', fresh: boolean): void {
+    if (fresh) openCategories.clear();
+    page = which;
     const list = document.createElement('div');
     list.className = 'shop-list';
-    if (state) list.append(...shopPage(state, cb));
-    panel.replaceChildren(header(STRINGS.shop.title, showMain), goldLine(), list);
+    if (state) list.append(...(which === 'shop' ? shopPage : inventoryPage)(state, cb, openCategories));
+    const title = which === 'shop' ? STRINGS.shop.title : STRINGS.inventory.title;
+    panel.replaceChildren(header(title, showMain, goldPill(state?.gold ?? 0)), list);
   }
-
-  function showInventory(): void {
-    page = 'inventory';
-    const list = document.createElement('div');
-    list.className = 'shop-list';
-    if (state) list.append(...inventoryPage(state, cb));
-    panel.replaceChildren(header(STRINGS.inventory.title, showMain), goldLine(), list);
-  }
+  const showShop = (fresh = true) => showList('shop', fresh);
+  const showInventory = (fresh = true) => showList('inventory', fresh);
 
   function debugSection(): HTMLElement {
     const section = document.createElement('div');
@@ -176,8 +173,8 @@ export function createMenu(cb: MenuCallbacks, isOpen: () => boolean, close: () =
       const key = (s: GameState | null) => s && JSON.stringify([s.gold, s.inventory, s.pet.hat, s.pet.stage]);
       const changed = key(state) !== key(next);
       state = next;
-      if (changed && isOpen() && page === 'shop') showShop();
-      if (changed && isOpen() && page === 'inventory') showInventory();
+      if (changed && isOpen() && page === 'shop') showShop(false);
+      if (changed && isOpen() && page === 'inventory') showInventory(false);
       const p = next.pet;
       debugInfo.textContent = `${STRINGS.debug.careScore}: ${p.careScore.toFixed(1)} · ${STRINGS.debug.condition}: ${p.condition} · ${STRINGS.debug.character}: ${p.character ?? '-'}${p.variant ? ` (${p.variant})` : ''}`;
     },

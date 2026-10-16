@@ -4,11 +4,10 @@
 
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
-import { getLook, isNight, isRecovering } from '../game/stats';
-import { getCharacter, getVariant, stageLengthMs } from '../game/growth';
+import { getLook, isRecovering } from '../game/stats';
+import { stageLengthMs } from '../game/growth';
 import type { GameState, PetStats } from '../game/state';
 import { createMenu, type MenuCallbacks } from './menu';
-import { goldPill } from './shop';
 import { foodCount } from '../game/economy';
 import { createDrawer, type DrawerOption, type Effect } from './drawer';
 import { ITEM_ICONS, STAT_ICONS } from './icons';
@@ -98,35 +97,16 @@ function formatDuration(ms: number): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-function formatClock(time: number): string {
-  const d = new Date(time);
-  const day = d.toLocaleDateString('en', { weekday: 'short' });
-  const hm = d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', hour12: false });
-  return `${day} ${hm} · ${isNight(time) ? STRINGS.clock.night : STRINGS.clock.day}`;
-}
-
 export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScreen {
   root.innerHTML = '';
 
-  const title = document.createElement('h1');
-  title.textContent = STRINGS.title;
-
-  // How much gold you have, in the top corner.
-  const gold = document.createElement('div');
-  gold.className = 'home-gold';
-
-  const clock = document.createElement('p');
-  clock.className = 'clock';
-
-  // "Mochi · Baby · 3h old", or "Mochi · Geodon ★★★ · 4d old"
-  const age = document.createElement('p');
-  age.className = 'age';
-
+  // The home screen is kept quiet: just the pet, its bars and the buttons.
+  // The pet's name and character are saved for the Family Tree, and gold
+  // shows in the Shop and Inventory. How the pet feels is read out to
+  // screen readers through the room's label.
   const canvas = document.createElement('canvas');
   canvas.className = 'room';
-
-  const mood = document.createElement('p');
-  mood.className = 'mood';
+  canvas.setAttribute('role', 'img');
 
   // Warning / sick / recovering banner, hidden when all is well.
   const banner = document.createElement('div');
@@ -235,7 +215,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     toastTimer = window.setTimeout(() => toastEl.classList.remove('show'), 2500);
   }
 
-  root.append(gold, title, clock, age, canvas, mood, banner, stats, actions, toastEl);
+  root.append(canvas, banner, stats, actions, toastEl);
 
   return {
     canvas,
@@ -246,21 +226,13 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       const isEgg = pet.stage === 'egg';
       petIsEgg = isEgg;
       for (const key of Object.keys(bars) as (keyof PetStats)[]) bars[key].set(pet.stats[key]);
-      gold.replaceChildren(goldPill(state.gold));
       // How many of each food you have ("Free" for food that never runs out).
       CONFIG.foods.forEach((f, i) => {
         const count = foodCount(state, f.id);
         feedDrawer.setNote(i, count === Infinity ? STRINGS.shop.free : `× ${count}`, count === 0);
       });
       stats.hidden = isEgg; // an egg has no needs yet
-      clock.textContent = formatClock(now);
-      // Adults show their character and rarity instead of "Adult".
-      const character = getCharacter(pet.character);
-      const stageLabel = character
-        ? `${STRINGS.characterName(character.name, getVariant(character, pet.variant)?.name)} ${STRINGS.stars(character.stars)}`
-        : STRINGS.stages[pet.stage];
-      age.textContent = `${pet.name} · ${STRINGS.age(stageLabel, formatDuration(now - pet.bornAt))}`;
-      mood.textContent = isEgg ? STRINGS.mood.egg(pet.name) : STRINGS.mood[getLook(pet)](pet.name);
+      canvas.setAttribute('aria-label', isEgg ? STRINGS.mood.egg(pet.name) : STRINGS.mood[getLook(pet)](pet.name));
 
       // Banner: hatching countdown, or sick beats recovering beats warning.
       let text = '';
