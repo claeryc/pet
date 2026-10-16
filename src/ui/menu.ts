@@ -11,7 +11,9 @@ import { CONFIG } from '../game/config';
 import type { GameState } from '../game/state';
 import { isNew, isUnlocked, type UnlockId } from '../game/unlocks';
 import { goldPill, shopPage, wardrobePage, type ShopCallbacks } from './shop';
-import { collectionPage, type CollectionCallbacks } from './collection';
+import { collectionPage } from './collection';
+import { familyTreePage, type FamilyCallbacks } from './family';
+import { OWNER_MAX } from '../game/family';
 
 export interface DebugCallbacks {
   onFastForward: (hours: number) => void;
@@ -22,8 +24,9 @@ export interface DebugCallbacks {
   onShowAllMenus: (on: boolean) => void;
 }
 
-export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks, CollectionCallbacks {
+export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks, FamilyCallbacks {
   onReset: () => void;
+  onOwner: (name: string) => void; // the player typed their name in Settings
   onSeen: (id: UnlockId) => void; // the player has looked at something new
 }
 
@@ -65,7 +68,7 @@ export function createMenu(cb: MenuCallbacks, isOpen: () => boolean, close: () =
   // The pages redraw whenever the game changes (after buying something,
   // for example), so we remember which page is showing.
   let state: GameState | null = null;
-  let page: 'main' | 'settings' | 'shop' | 'wardrobe' | 'collection' = 'main';
+  let page: 'main' | 'settings' | 'shop' | 'wardrobe' | 'collection' | 'familyTree' = 'main';
 
   // Live readout for the testing tools, refreshed by update().
   const debugInfo = document.createElement('p');
@@ -112,7 +115,7 @@ export function createMenu(cb: MenuCallbacks, isOpen: () => boolean, close: () =
     panel.replaceChildren(
       ...unlockable('shop', STRINGS.menu.shop, () => showShop()),
       ...unlockable('collection', STRINGS.menu.collection, () => showCollection()),
-      ...unlockable('familyTree', STRINGS.menu.familyTree),
+      ...unlockable('familyTree', STRINGS.menu.familyTree, () => showFamilyTree()),
       item(STRINGS.menu.settings, showSettings),
     );
   }
@@ -124,7 +127,7 @@ export function createMenu(cb: MenuCallbacks, isOpen: () => boolean, close: () =
 
   // The Shop, Wardrobe and Collection: a header (with gold on the right in
   // the Shop, lined up with the prices), then the list.
-  function showList(which: 'shop' | 'wardrobe' | 'collection', fresh: boolean): void {
+  function showList(which: 'shop' | 'wardrobe' | 'collection' | 'familyTree', fresh: boolean): void {
     if (fresh) {
       openCategories.clear();
       toTop();
@@ -135,15 +138,25 @@ export function createMenu(cb: MenuCallbacks, isOpen: () => boolean, close: () =
     if (state) {
       if (which === 'shop') list.append(...shopPage(state, cb, openCategories));
       else if (which === 'wardrobe') list.append(...wardrobePage(state, cb));
-      else list.append(...collectionPage(state, cb, openCategories));
+      else if (which === 'collection') list.append(...collectionPage(state, cb, openCategories));
+      else {
+        list.classList.add('tree');
+        list.append(...familyTreePage(state, cb));
+      }
     }
-    const title = { shop: STRINGS.shop.title, wardrobe: STRINGS.wardrobe.title, collection: STRINGS.menu.collection }[which];
+    const title = {
+      shop: STRINGS.shop.title,
+      wardrobe: STRINGS.wardrobe.title,
+      collection: STRINGS.menu.collection,
+      familyTree: STRINGS.menu.familyTree,
+    }[which];
     const right = which === 'shop' ? goldPill(state?.gold ?? 0) : undefined;
     panel.replaceChildren(header(title, showMain, right), list);
   }
   const showShop = (fresh = true) => showList('shop', fresh);
   const showWardrobe = (fresh = true) => showList('wardrobe', fresh);
   const showCollection = (fresh = true) => showList('collection', fresh);
+  const showFamilyTree = (fresh = true) => showList('familyTree', fresh);
 
   function debugSection(): HTMLElement {
     const section = document.createElement('div');
@@ -198,6 +211,33 @@ export function createMenu(cb: MenuCallbacks, isOpen: () => boolean, close: () =
     return section;
   }
 
+  // "Your name", saved when you leave the box or press Enter.
+  function ownerField(): HTMLElement {
+    const field = document.createElement('label');
+    field.className = 'settings-field';
+    const name = document.createElement('b');
+    name.textContent = STRINGS.settings.owner;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.maxLength = OWNER_MAX * 2; // trimmed to OWNER_MAX letters when saved
+    input.setAttribute('autocomplete', 'nickname');
+    input.placeholder = STRINGS.settings.ownerPlaceholder;
+    input.value = state?.owner ?? '';
+    input.setAttribute('enterkeyhint', 'done');
+    const save = () => {
+      cb.onOwner(input.value);
+      input.value = state?.owner ?? '';
+    };
+    input.addEventListener('change', save);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') input.blur();
+    });
+    const hint = document.createElement('small');
+    hint.textContent = STRINGS.settings.ownerHint;
+    field.append(name, input, hint);
+    return field;
+  }
+
   function showSettings(): void {
     page = 'settings';
     toTop();
@@ -206,7 +246,7 @@ export function createMenu(cb: MenuCallbacks, isOpen: () => boolean, close: () =
       cb.onReset();
     });
     reset.classList.add('menu-item-danger');
-    panel.replaceChildren(header(STRINGS.menu.settings, showMain), reset);
+    panel.replaceChildren(header(STRINGS.menu.settings, showMain), ownerField(), reset);
     if (CONFIG.debug.showTools) panel.append(debugSection());
   }
 
@@ -218,11 +258,13 @@ export function createMenu(cb: MenuCallbacks, isOpen: () => boolean, close: () =
     update(next) {
       // Only redraw a page when something on it changed, so the list
       // doesn't jump while you scroll.
+      // The Family Tree also shows the pet's stats and age.
       const key = (s: GameState | null) =>
         s &&
         JSON.stringify([
           s.gold, s.inventory, s.pet.hat, s.pet.stage, s.unlocked, s.seen, s.showAllMenus,
-          s.recipesFound, s.caught, s.charactersFound,
+          s.recipesFound, s.caught, s.charactersFound, s.pet.name, s.pet.named, s.owner, s.family,
+          page === 'familyTree' && [Object.values(s.pet.stats).map(Math.round), Math.floor(s.lastUpdated / 3_600_000)],
         ]);
       const changed = key(state) !== key(next);
       state = next;
@@ -231,6 +273,7 @@ export function createMenu(cb: MenuCallbacks, isOpen: () => boolean, close: () =
         else if (isOpen() && page === 'shop') showShop(false);
         else if (isOpen() && page === 'wardrobe') showWardrobe(false);
         else if (isOpen() && page === 'collection') showCollection(false);
+        else if (isOpen() && page === 'familyTree') showFamilyTree(false);
       }
       const p = next.pet;
       debugInfo.textContent = `${STRINGS.debug.careScore}: ${p.careScore.toFixed(1)} · ${STRINGS.debug.condition}: ${p.condition} · ${STRINGS.debug.character}: ${p.character ?? '-'}${p.variant ? ` (${p.variant})` : ''}`;

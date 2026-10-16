@@ -23,7 +23,13 @@ export interface Buff {
 
 export interface Pet {
   id: string; // unique id, so pets can later appear in family trees online
-  name: string;
+  name: string; // empty until the player names it, when the egg hatches
+  named: boolean; // false until the player has picked a name
+  // Its place in the Family Tree: generation 1 is a first pet, and a pet's
+  // little ones are one generation after it. `parents` are ids of pets in
+  // GameState.family (none for a first pet).
+  generation: number;
+  parents: string[];
   bornAt: number; // timestamp in milliseconds
   stats: PetStats;
   stage: Stage; // egg, baby, teen or adult
@@ -45,6 +51,20 @@ export interface Pet {
 export interface Inventory {
   food: Record<string, number>; // food id -> how many
   hats: string[]; // ids of hats bought (each is bought once)
+}
+
+// A pet from an earlier generation, as it's remembered in the Family Tree.
+// Kept small: just what the tree shows. Pets from other players (once pets
+// can meet) will be saved the same way.
+export interface FamilyMember {
+  id: string;
+  name: string;
+  owner: string; // who raised it ('' if they didn't say)
+  bornAt: number;
+  character: string | null; // what it grew into (null if it never grew up)
+  variant: string | null;
+  generation: number;
+  parents: string[]; // ids of other family members
 }
 
 // Keeps track of the daily check-in bonus.
@@ -81,6 +101,10 @@ export interface GameState {
   seen: string[];
   // Testing tool: show every menu straight away, locked or not.
   showAllMenus: boolean;
+  // The player's name, shown in the Family Tree ('' if they'd rather not).
+  owner: string;
+  // Earlier generations of the pet's family (the pet itself isn't in here).
+  family: FamilyMember[];
 }
 
 // Makes a random id. crypto.randomUUID exists in all modern browsers and Node.
@@ -92,7 +116,10 @@ export function createNewGame(now: number): GameState {
   return {
     pet: {
       id: makeId(),
-      name: 'Mochi',
+      name: '',
+      named: false,
+      generation: 1,
+      parents: [],
       bornAt: now,
       stats: { ...CONFIG.startingStats },
       stage: 'egg', // every pet starts life as an egg
@@ -119,5 +146,7 @@ export function createNewGame(now: number): GameState {
     unlocked: [],
     seen: [],
     showAllMenus: false,
+    owner: '',
+    family: [],
   };
 }

@@ -22,10 +22,12 @@ import { getLook, isNight } from './game/stats';
 import { cast, land } from './game/fishing';
 import { cook } from './game/cooking';
 import { markSeen, updateProgress } from './game/unlocks';
+import { namePet, needsName, setOwner, suggestName } from './game/family';
 import { clearSave, loadGame, saveGame } from './storage/storage';
 import { setupCanvas, drawRoom } from './render/canvas';
 import { loadSprites, type SpriteLibrary } from './render/sprites';
 import { createHomeScreen } from './ui/home';
+import { createNamingBox } from './ui/naming';
 import { STRINGS } from './strings';
 
 const root = document.getElementById('app')!;
@@ -40,17 +42,21 @@ let state: GameState = loadGame() ?? createNewGame(Date.now());
 state = updateProgress(simulate(state, gameNow())).state;
 saveGame(state);
 
+// Messages waiting until the new pet has a name (what opened up when the
+// egg hatched, for example).
+const afterNaming: string[] = [];
+
 // Replaces the current state, saves it and refreshes the screen. If the pet
 // just grew into a new stage, celebrate it, and say if anything new opened
-// up.
+// up. A freshly hatched pet is asked for its name first.
 function setState(next: GameState): void {
   const before = state.pet.stage;
   const progress = updateProgress(next);
   state = progress.state;
   saveGame(state);
   home.update(state, gameNow());
-  if (state.pet.stage !== before) {
-    const { pet } = state;
+  const { pet } = state;
+  if (pet.stage !== before && pet.stage !== 'egg' && pet.stage !== 'baby') {
     if (pet.stage === 'adult') {
       const character = getCharacter(pet.character);
       const name = STRINGS.characterName(character?.name ?? '?', getVariant(character, pet.variant)?.name);
@@ -60,7 +66,40 @@ function setState(next: GameState): void {
     }
     react('happy');
   }
-  for (const id of progress.unlocked) home.notice(STRINGS.unlocked[id]);
+  const notices = progress.unlocked.map((id) => STRINGS.unlocked[id]);
+  if (needsName(state)) {
+    afterNaming.push(...notices);
+    askName();
+  } else {
+    for (const message of notices) home.notice(message);
+  }
+}
+
+// Asks for the pet's name: once it hatches (it must have one), or to
+// rename it from the Family Tree.
+function askName(): void {
+  if (naming.isOpen()) return;
+  const { pet } = state;
+  const first = !pet.named;
+  const suggest = (current: string) => suggestName(STRINGS.petNames, Math.random(), current);
+  naming.open({
+    title: first ? (pet.stage === 'baby' ? STRINGS.naming.hatched : STRINGS.naming.title) : STRINGS.naming.rename(pet.name),
+    ask: first ? STRINGS.naming.ask : '',
+    value: pet.name || suggest(''),
+    canCancel: !first,
+    suggest,
+    onSave: (name) => {
+      const result = namePet(state, name);
+      if (result.blocked) return STRINGS.naming.empty;
+      setState(result.state);
+      const named = state.pet.name;
+      if (!first) home.toast(STRINGS.naming.renamed(named));
+      else home.toast(pet.stage === 'baby' ? STRINGS.growth.baby(named) : STRINGS.naming.hello(named));
+      for (const message of afterNaming.splice(0)) home.notice(message);
+      react('happy');
+      return null;
+    },
+  });
 }
 
 // A short animation the pet plays in response to something (eating,
@@ -87,7 +126,7 @@ function runShop(result: ShopResult, success?: string): void {
   setState(result.state);
   if (result.blocked === 'notEnoughGold') home.toast(STRINGS.shop.notEnoughGold);
   else if (result.blocked === 'alreadyOwned') home.toast(STRINGS.shop.alreadyOwned);
-  else if (result.blocked === 'egg') home.toast(STRINGS.wardrobe.eggNoHat(state.pet.name));
+  else if (result.blocked === 'egg') home.toast(STRINGS.wardrobe.eggNoHat);
   else if (!result.blocked && success) home.toast(success);
 }
 
@@ -173,6 +212,8 @@ const home = createHomeScreen(root, {
   hatImage: (id) => sprites.get(getHat(id)?.sheet ?? '')?.image.src,
   characterImage,
   onSeen: (id) => setState(markSeen(state, id)),
+  onRename: askName,
+  onOwner: (name) => setState(setOwner(state, name)),
   onShowAllMenus: (showAllMenus) => setState({ ...state, showAllMenus }),
   // Going back to real time can't undo what happened, so we keep the pet as
   // it is and just restart the clock from now. Timers the pet is waiting on
@@ -188,6 +229,8 @@ const home = createHomeScreen(root, {
     setState({ ...state, pet, clockOffsetMs: 0, lastUpdated: Date.now() });
   },
 });
+// Made after the home screen, which clears the page when it starts.
+const naming = createNamingBox(root);
 home.update(state, gameNow());
 tryCheckIn();
 

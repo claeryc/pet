@@ -10,7 +10,7 @@ const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 8;
+export const SAVE_VERSION = 9;
 
 export interface SaveFile {
   version: number;
@@ -84,6 +84,19 @@ export function migrate(save: SaveFile): SaveFile {
     st.unlocked = unlocksFor(st as GameState);
     st.seen = [...st.unlocked];
     save.version = 8;
+  }
+  // Version 8 -> 9: naming the pet, the owner's name and the Family Tree.
+  // Pets that already hatched keep their name, but get asked once whether
+  // they'd like a different one. An egg's name hasn't been picked yet.
+  if (save.version === 8) {
+    const pet = save.state.pet;
+    if (pet.stage === 'egg') pet.name = '';
+    pet.named = false;
+    pet.generation = 1;
+    pet.parents = [];
+    save.state.owner = '';
+    save.state.family = [];
+    save.version = 9;
   }
   return save;
 }
