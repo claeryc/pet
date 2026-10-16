@@ -1130,23 +1130,25 @@ body {
   display: none;
 }
 
-/* [Close] [Recipes] [Cook] */
+/* [Close] [Food] [Recipes]. Close is a plain button the same height as
+   the drawer buttons beside it. */
 .cooking-row .btn {
   height: 52px;
   padding: 0 14px;
 }
 
-.cooking-main {
-  flex: 1 1 0;
+/* Close shrinks away fully while a panel is open. */
+.cooking-row[data-open] > .btn {
+  padding: 0;
+  flex-shrink: 1;
 }
 
-/* Same width whether it says Recipes or Pot, so the row doesn't jump. */
-.cooking-flip {
-  flex: 0 0 6.2em;
-}
-
-.cooking-main:disabled {
-  opacity: 0.6;
+/* The Food and Recipes panels stop short of the pot (--fit is set when
+   they open), and scroll if there's more inside than fits. */
+.cooking-row .drawer-content {
+  height: auto;
+  max-height: var(--fit, 268px);
+  overflow-y: auto;
 }
 
 /* The kitchen counter: it slides up from the bottom over the stat bars,
@@ -1161,9 +1163,10 @@ body {
     repeating-conic-gradient(var(--card) 0 25%, #fbeedd 0 50%) 0 0 / 16px 16px;
   transform: translateY(100%);
   transition: transform 0.45s cubic-bezier(0.5, 0, 0.9, 0.6);
-  padding: 12px 10px 8px;
+  padding: 10px 10px 4px;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .kitchen.is-in {
@@ -1182,25 +1185,9 @@ body {
   --cocoa: #8a5a44;
 }
 
-.kitchen[data-page='pot'] .recipe-book,
-.kitchen[data-page='book'] .pot-page {
-  display: none;
-}
-
-.kitchen-page {
-  flex: 1;
-  min-height: 0;
-}
-
-/* The pot page: [ ] + [ ] + [ ] = (result), then your food below. */
-.pot-page {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 6px;
-}
-
+/* [ ] + [ ] + [ ] = (pot) */
 .pot-row {
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1208,20 +1195,22 @@ body {
 }
 
 .pot-sign {
+  flex: 0 0 auto;
   font-weight: 800;
+  font-size: 1.2rem;
   color: var(--plum);
-  width: 12px;
+  width: 14px;
   text-align: center;
 }
 
 .pot-slot,
 .pot-result {
-  width: 50px;
-  height: 50px;
-  padding: 7px;
+  font: inherit;
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
 }
 
 .pot-slot svg,
@@ -1232,12 +1221,13 @@ body {
 
 /* An empty spot is a dashed outline, a filled one a little white plate. */
 .pot-slot {
-  font: inherit;
+  flex: 0 1 66px;
+  aspect-ratio: 1;
+  min-width: 0;
+  padding: 7px;
   border: 3px dashed var(--lavender);
-  border-radius: 12px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.5);
-  cursor: pointer;
-  touch-action: manipulation;
 }
 
 .pot-slot.filled {
@@ -1257,22 +1247,49 @@ body {
   to { transform: scale(1); }
 }
 
+/* The pot is the Cook button: a round butter-yellow button with a plum
+   rim that presses down when tapped. */
 .pot-result {
   position: relative;
-  width: 58px;
-  height: 58px;
+  flex: 0 0 auto;
+  width: clamp(64px, 21vw, 82px);
+  height: clamp(64px, 21vw, 82px);
+  padding: 10px;
+  margin-left: 2px;
   border-radius: 50%;
   background: var(--butter);
   border: 3px solid var(--plum);
-  margin-left: 2px;
+  box-shadow: 0 4px 0 var(--plum);
+}
+
+.pot-result:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--plum);
+}
+
+.pot-result[data-kind='empty'] {
+  cursor: default;
 }
 
 .pot-result[data-kind='known'] svg,
 .pot-result[data-kind='mystery'] svg {
-  opacity: 0.75;
+  opacity: 0.8;
 }
 
-/* Just cooked: the food drops into the pot, the result hops and steams. */
+/* Something's in the pot: it wiggles to say "tap me to cook". */
+.pot-result[data-kind='known'],
+.pot-result[data-kind='mystery'] {
+  animation: pot-ready 1.2s ease-in-out infinite;
+}
+
+@keyframes pot-ready {
+  0%, 70%, 100% { transform: rotate(0); }
+  76% { transform: rotate(-6deg); }
+  84% { transform: rotate(6deg); }
+  92% { transform: rotate(-3deg); }
+}
+
+/* Just cooked: the pot hops and steams. */
 .pot-row.cooked .pot-result {
   animation: pot-hop 0.5s cubic-bezier(0.34, 1.6, 0.64, 1);
 }
@@ -1283,7 +1300,7 @@ body {
   100% { transform: scale(1) rotate(0); }
 }
 
-/* Two little pixel puffs of steam rising from the result. */
+/* Two little pixel puffs of steam rising from the pot. */
 .pot-steam {
   position: absolute;
   left: 50%;
@@ -1309,26 +1326,28 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .pot-slot.filled,
+  .pot-result[data-kind],
   .pot-row.cooked .pot-result,
   .pot-row.cooked .pot-steam {
     animation: none;
   }
 }
 
-/* Your food, in one row. Each shows how many are left out of the pot. */
+/* The Food panel: a grid of tiles, each with how many are left out of the
+   pot. More ingredients just add more rows. */
 .pantry {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
+  gap: 6px;
 }
 
 .pantry-item {
   font: inherit;
   position: relative;
-  height: 44px;
-  padding: 4px 4px 12px;
+  aspect-ratio: 1;
+  padding: 8px 8px 16px;
   border: 2px solid var(--lavender);
-  border-radius: 10px;
+  border-radius: 12px;
   background: white;
   cursor: pointer;
   touch-action: manipulation;
@@ -1349,8 +1368,8 @@ body {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 1px;
-  font-size: 0.7rem;
+  bottom: 3px;
+  font-size: 0.75rem;
   font-weight: 800;
   line-height: 1;
   text-align: center;
@@ -1370,20 +1389,15 @@ body {
   opacity: 0.5;
 }
 
-/* The recipe book: one row per recipe, scrolling inside the counter. */
+/* The Recipes panel: one row per recipe, like the Feed list. */
 .recipe-book {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  margin: 0 -4px;
-  padding: 0 4px;
+  gap: 6px;
 }
 
 .recipe-book-head {
-  flex-shrink: 0;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 800;
   color: var(--plum);
   text-transform: uppercase;
@@ -1396,11 +1410,11 @@ body {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 32px;
-  padding: 2px 8px 2px 6px;
+  gap: 10px;
+  min-height: 52px;
+  padding: 6px 10px 6px 8px;
   border: 2px solid var(--lavender);
-  border-radius: 12px;
+  border-radius: 14px;
   background: white;
   color: var(--ink);
   text-align: left;
@@ -1422,8 +1436,8 @@ body {
 }
 
 .recipe-icon {
-  flex: 0 0 22px;
-  height: 22px;
+  flex: 0 0 32px;
+  height: 32px;
   display: flex;
 }
 
@@ -1436,8 +1450,7 @@ body {
   flex: 1;
   min-width: 0;
   font-weight: 700;
-  font-size: 0.9rem;
-  line-height: 1.1;
+  line-height: 1.15;
 }
 
 .recipe.unknown .recipe-name {
@@ -1446,15 +1459,15 @@ body {
 }
 
 .recipe-stars {
-  margin-left: 4px;
-  font-size: 0.65rem;
+  display: block;
+  font-size: 0.7rem;
   color: #d9a400;
   letter-spacing: 0.05em;
 }
 
 .recipe-needs {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
@@ -1462,18 +1475,19 @@ body {
    don't have enough. */
 .recipe-need {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 1px;
-  min-width: 30px;
-  font-size: 0.65rem;
+  gap: 2px;
+  min-width: 28px;
+  font-size: 0.7rem;
   font-weight: 800;
   line-height: 1;
   color: var(--good-dark);
 }
 
 .recipe-need svg {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
 }
 
 .recipe-need.missing {
