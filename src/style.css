@@ -38,7 +38,11 @@ body {
 #app {
   width: 100%;
   max-width: 420px; /* phone-shaped, even on desktop */
+  min-height: 100vh;
+  min-height: 100dvh; /* the visible height on phones, without the address bar */
   padding: 16px;
+  /* Keep the buttons clear of the iPhone home bar. */
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -154,7 +158,14 @@ body {
 .actions {
   --snap: cubic-bezier(0.34, 1.4, 0.64, 1); /* quick with a tiny bounce */
   display: flex;
-  align-items: flex-start;
+  /* The row sits at the bottom of the screen, where thumbs are. It stays
+     one button tall: an open panel grows upward out of it and covers the
+     stat bars above, instead of pushing the page longer. */
+  margin-top: auto;
+  height: 56px;
+  align-items: flex-end;
+  position: relative;
+  z-index: 5;
 }
 
 .actions > * {
@@ -340,6 +351,9 @@ body {
 /* ---- Feed / Play panels ("drawers") ---- */
 .drawer {
   flex: 1 1 0;
+  /* Button at the bottom, panel above it. */
+  display: flex;
+  flex-direction: column-reverse;
   background: var(--accent);
   border-radius: 16px;
   box-shadow: 0 4px 0 var(--accent-dark);
@@ -365,7 +379,8 @@ body {
   transform: scale(0.94);
 }
 
-/* A little arrow that appears on the right once the panel is open. */
+/* A little arrow that appears on the right once the panel is open. It
+   points down, the way the panel folds away. */
 .drawer-chevron {
   position: absolute;
   right: 18px;
@@ -374,12 +389,12 @@ body {
   height: 10px;
   border-right: 3px solid white;
   border-bottom: 3px solid white;
-  transform: translateY(-30%) rotate(225deg) scale(0);
+  transform: translateY(-70%) rotate(45deg) scale(0);
   transition: transform 0.25s var(--snap);
 }
 
 .drawer.is-open .drawer-chevron {
-  transform: translateY(-30%) rotate(225deg) scale(1);
+  transform: translateY(-70%) rotate(45deg) scale(1);
   transition-delay: 0.2s;
 }
 
@@ -392,7 +407,7 @@ body {
 
 .drawer.is-open .drawer-body {
   grid-template-rows: 1fr;
-  /* Wait until the button has slid wide, then grow down. */
+  /* Wait until the button has slid wide, then grow up. */
   transition: grid-template-rows 0.34s var(--snap) 0.26s;
 }
 
@@ -404,7 +419,7 @@ body {
 /* The soft white-pink inside, framed by the pink button. It's a list
    that scrolls if there are more rows than fit. */
 .drawer-options {
-  margin: 0 6px 6px;
+  margin: 6px 6px 0;
   padding: 8px;
   border-radius: 12px;
   background: #fff5f8;
@@ -435,7 +450,7 @@ body {
   touch-action: manipulation;
   /* Rows pop in one after another once the panel opens. */
   opacity: 0;
-  transform: translateY(6px) scale(0.96);
+  transform: translateY(-6px) scale(0.96);
   transition:
     opacity 0.12s ease,
     transform 0.12s ease;
@@ -542,7 +557,8 @@ body {
 .toast {
   position: fixed;
   left: 50%;
-  bottom: 24px;
+  /* Just above the buttons, so it never covers them. */
+  bottom: calc(88px + env(safe-area-inset-bottom));
   transform: translate(-50%, 20px);
   max-width: min(380px, calc(100% - 32px));
   background: var(--ink);
