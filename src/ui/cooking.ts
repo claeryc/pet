@@ -1,15 +1,18 @@
 // The cooking pot. While you cook, the button row becomes
-// [Close] [Recipes] [Cook], and a kitchen counter slides up over the stat
+// [Close] [Food] [Recipes], and a kitchen counter slides up over the stat
 // bars into a panel of the same size, just like the pond does for fishing.
 //
-// The counter has two pages:
-//  - the pot: three spots for food, what they will make, and your food
-//    underneath. Tap your food to put it in the pot, tap it in the pot to
-//    take it back out.
-//  - the recipe book: every recipe, with what it needs and how many you
-//    have (missing food is greyed out). Recipes you haven't cooked yet
-//    show as "???" with one ingredient as a hint. Tap a recipe to fill
-//    the pot with it.
+// The counter shows the pot: three spots for food, then "=" and the pot
+// itself. Tap the pot to cook. When the spots hold a recipe you know, the
+// pot shows the dish it will make; any other mix shows a "?".
+//
+// Food and Recipes open upward like Feed and Play, stopping short of the
+// pot so you can watch it fill:
+//  - Food: every ingredient with how many you have. Tap one to put it in
+//    the pot; tap it in the pot to take it back out.
+//  - Recipes: every recipe, with what it needs and how many you have
+//    (missing food is greyed out). Recipes you haven't cooked yet show as
+//    "???" with one ingredient as a hint. Tap a recipe to fill the pot.
 //
 // What a mix makes, and what cooking uses up, is decided in
 // src/game/cooking.ts.
@@ -20,6 +23,7 @@ import { foodCount } from '../game/economy';
 import { haveAll, ingredientsFor, INGREDIENTS, knowsRecipe, matchRecipe, RECIPES } from '../game/cooking';
 import type { Food, FoodId } from '../game/actions';
 import type { GameState } from '../game/state';
+import { createDrawer } from './drawer';
 import { ITEM_ICONS } from './icons';
 
 export interface CookingCallbacks {
@@ -42,8 +46,10 @@ export interface Cooking {
 // How long the counter takes to slide in and out (matches .kitchen in
 // style.css).
 export const KITCHEN_OUT_MS = 450;
-// How long the "just cooked" dish stays in the pot's result spot.
+// How long the "just cooked" dish stays in the pot.
 const DONE_MS = 1400;
+// Space kept between the pot and an open Food or Recipes panel.
+const PANEL_GAP = 12;
 
 const foodName = (id: FoodId) => STRINGS.foods[id];
 const stars = (id: FoodId) => (CONFIG.foods as readonly Food[]).find((f) => f.id === id)?.stars ?? 0;
@@ -52,34 +58,15 @@ const countText = (n: number) => (n === Infinity ? '∞' : String(n));
 export function createCooking(cb: CookingCallbacks): Cooking {
   let state: GameState | null = null;
   let active = false;
-  let page: 'pot' | 'book' = 'pot';
   const pot: FoodId[] = []; // what's in the pot, in the order it went in
   let justMade: FoodId | null = null;
   let doneTimer = 0;
   let outTimer = 0;
 
-  // ---- The buttons ----
-  const row = document.createElement('div');
-  row.className = 'actions cooking-row';
-  row.hidden = true;
-  const close = document.createElement('button');
-  close.className = 'btn btn-soft';
-  close.textContent = STRINGS.cooking.close;
-  const flip = document.createElement('button');
-  flip.className = 'btn btn-soft cooking-flip';
-  const cookBtn = document.createElement('button');
-  cookBtn.className = 'btn cooking-main';
-  cookBtn.textContent = STRINGS.cooking.cook;
-  row.append(close, flip, cookBtn);
-
-  // ---- The counter ----
+  // ---- The counter with the pot ----
   const kitchen = document.createElement('div');
   kitchen.className = 'kitchen';
   kitchen.hidden = true;
-
-  // Page 1: the pot.
-  const potPage = document.createElement('div');
-  potPage.className = 'kitchen-page pot-page';
   const potRow = document.createElement('div');
   potRow.className = 'pot-row';
   const slots = Array.from({ length: CONFIG.cooking.slots }, (_, i) => {
@@ -97,21 +84,38 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     potRow.append(s);
   });
   potRow.append(sign('='));
-  const result = document.createElement('div');
-  result.className = 'pot-result';
-  result.setAttribute('role', 'img');
+  // The pot is the Cook button.
+  const potBtn = document.createElement('button');
+  potBtn.className = 'pot-result';
   const steam = document.createElement('span');
   steam.className = 'pot-steam';
   steam.setAttribute('aria-hidden', 'true');
-  const resultIcon = document.createElement('span');
-  resultIcon.className = 'pot-result-icon';
-  result.append(steam, resultIcon);
-  potRow.append(result);
+  const potIcon = document.createElement('span');
+  potIcon.className = 'pot-result-icon';
+  potBtn.append(steam, potIcon);
+  potBtn.addEventListener('click', cookIt);
+  potRow.append(potBtn);
+  kitchen.append(potRow);
 
+  function sign(text: string): HTMLElement {
+    const s = document.createElement('span');
+    s.className = 'pot-sign';
+    s.textContent = text;
+    s.setAttribute('aria-hidden', 'true');
+    return s;
+  }
+
+  // ---- The buttons: [Close] [Food] [Recipes] ----
+  const row = document.createElement('div');
+  row.className = 'actions cooking-row';
+  row.hidden = true;
+  const close = document.createElement('button');
+  close.className = 'btn btn-soft';
+  close.textContent = STRINGS.cooking.close;
+
+  // Food: a grid of every ingredient and how many are left out of the pot.
   const pantry = document.createElement('div');
   pantry.className = 'pantry';
-  pantry.setAttribute('role', 'group');
-  pantry.setAttribute('aria-label', STRINGS.cooking.pantry);
   const pantryItems = INGREDIENTS.map((id) => {
     const b = document.createElement('button');
     b.className = 'pantry-item';
@@ -123,17 +127,16 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     return { id, b, count };
   });
   pantry.append(...pantryItems.map((p) => p.b));
-  potPage.append(potRow, pantry);
 
-  // Page 2: the recipe book.
+  // Recipes: one row per recipe, the dish on the left and what it needs on
+  // the right.
   const book = document.createElement('div');
-  book.className = 'kitchen-page recipe-book';
-  book.setAttribute('role', 'list');
-  book.setAttribute('aria-label', STRINGS.cooking.book);
+  book.className = 'recipe-book';
+  const bookHead = document.createElement('div');
+  bookHead.className = 'recipe-book-head';
   const bookRows = RECIPES.map((recipe) => {
     const b = document.createElement('button');
     b.className = 'recipe';
-    b.setAttribute('role', 'listitem');
     const icon = document.createElement('span');
     icon.className = 'recipe-icon';
     const label = document.createElement('span');
@@ -144,18 +147,38 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     b.addEventListener('click', () => pickRecipe(recipe.id));
     return { recipe, b, icon, label, needs };
   });
-  const bookHead = document.createElement('div');
-  bookHead.className = 'recipe-book-head';
   book.append(bookHead, ...bookRows.map((r) => r.b));
 
-  kitchen.append(potPage, book);
+  const drawerSetup = {
+    row,
+    comingSoon: STRINGS.menu.comingSoon,
+    beforeOpen: () => null,
+    onBlocked: cb.toast,
+  };
+  const foodDrawer = createDrawer({
+    ...drawerSetup,
+    id: 'cook-food',
+    label: STRINGS.cooking.food,
+    content: pantry,
+    onOpen: () => fitPanel(foodDrawer.el),
+  });
+  const recipeDrawer = createDrawer({
+    ...drawerSetup,
+    id: 'cook-recipes',
+    label: STRINGS.cooking.recipes,
+    content: book,
+    onOpen: () => fitPanel(recipeDrawer.el),
+  });
+  row.append(close, foodDrawer.el, recipeDrawer.el);
 
-  function sign(text: string): HTMLElement {
-    const s = document.createElement('span');
-    s.className = 'pot-sign';
-    s.textContent = text;
-    s.setAttribute('aria-hidden', 'true');
-    return s;
+  // Keeps an open panel below the pot, so the pot stays in view. The
+  // panel's list scrolls if it doesn't all fit.
+  function fitPanel(drawer: HTMLElement): void {
+    const list = drawer.querySelector<HTMLElement>('.drawer-options')!;
+    const room = row.getBoundingClientRect().bottom - kitchen.getBoundingClientRect().bottom - PANEL_GAP;
+    // The panel's button, frame and padding take about this much.
+    const chrome = 52 + 6 + 16;
+    list.style.setProperty('--fit', `${Math.max(120, Math.floor(room - chrome))}px`);
   }
 
   // How many of a food are still out of the pot.
@@ -182,7 +205,8 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     }
     clearDone();
     pot.splice(0, pot.length, ...recipe.ingredients);
-    showPage('pot');
+    recipeDrawer.close();
+    render();
   }
 
   function cookIt(): void {
@@ -201,21 +225,13 @@ export function createCooking(cb: CookingCallbacks): Cooking {
       potRow.classList.remove('cooked');
       render();
     }, DONE_MS);
-    showPage('pot');
+    render();
   }
 
   function clearDone(): void {
     clearTimeout(doneTimer);
     justMade = null;
     potRow.classList.remove('cooked');
-  }
-
-  function showPage(next: 'pot' | 'book'): void {
-    page = next;
-    kitchen.dataset.page = next;
-    flip.textContent = next === 'pot' ? STRINGS.cooking.recipes : STRINGS.cooking.pot;
-    if (next === 'book') book.scrollTop = 0;
-    render();
   }
 
   // Redraws everything from the pot and the latest state.
@@ -232,15 +248,21 @@ export function createCooking(cb: CookingCallbacks): Cooking {
       slot.setAttribute('aria-label', id ? STRINGS.cooking.inPot(foodName(id)) : STRINGS.cooking.emptySlot);
     });
 
-    // The result spot: the dish you just made, the dish a known recipe will
-    // make, a "?" for anything else, or the empty pot.
+    // The pot: the dish you just made, the dish a known recipe will make,
+    // a "?" for anything else, or the empty pot.
     const known = matchRecipe(pot);
     const preview = justMade ?? (known && knowsRecipe(s, known.id) ? known.id : null);
-    resultIcon.innerHTML = preview ? ITEM_ICONS[preview] : pot.length > 0 ? ITEM_ICONS.unknown : ITEM_ICONS.cooking;
-    result.dataset.kind = justMade ? 'done' : preview ? 'known' : pot.length > 0 ? 'mystery' : 'empty';
-    result.setAttribute(
+    potIcon.innerHTML = preview ? ITEM_ICONS[preview] : pot.length > 0 ? ITEM_ICONS.unknown : ITEM_ICONS.cooking;
+    potBtn.dataset.kind = justMade ? 'done' : preview ? 'known' : pot.length > 0 ? 'mystery' : 'empty';
+    potBtn.setAttribute(
       'aria-label',
-      preview ? STRINGS.cooking.willMake(foodName(preview)) : pot.length > 0 ? STRINGS.cooking.mystery : STRINGS.cooking.result,
+      justMade
+        ? foodName(justMade)
+        : pot.length === 0
+          ? STRINGS.cooking.emptyPotLabel
+          : preview
+            ? STRINGS.cooking.cookInto(foodName(preview))
+            : STRINGS.cooking.cookMystery,
     );
 
     for (const p of pantryItems) {
@@ -248,20 +270,19 @@ export function createCooking(cb: CookingCallbacks): Cooking {
       p.count.textContent = countText(n);
       p.b.classList.toggle('faded', n <= 0);
       p.b.setAttribute('aria-label', STRINGS.cooking.addToPot(foodName(p.id), countText(n)));
+      p.b.title = foodName(p.id);
     }
-    cookBtn.disabled = pot.length === 0;
 
     const found = RECIPES.filter((r) => knowsRecipe(s, r.id)).length;
-    bookHead.textContent = `${STRINGS.cooking.book} · ${STRINGS.cooking.found(found, RECIPES.length)}`;
+    bookHead.textContent = STRINGS.cooking.found(found, RECIPES.length);
     for (const r of bookRows) {
       const isKnown = knowsRecipe(s, r.recipe.id);
       const needs = ingredientsFor(s, r.recipe);
-      const ready = isKnown && haveAll(s, r.recipe.ingredients);
       r.b.classList.toggle('unknown', !isKnown);
-      r.b.classList.toggle('ready', ready);
+      r.b.classList.toggle('ready', isKnown && haveAll(s, r.recipe.ingredients));
       r.icon.innerHTML = isKnown ? ITEM_ICONS[r.recipe.id] : ITEM_ICONS.unknown;
-      const n = stars(r.recipe.id);
       r.label.textContent = isKnown ? foodName(r.recipe.id) : STRINGS.cooking.unknown;
+      const n = stars(r.recipe.id);
       if (isKnown && n) {
         const st = document.createElement('small');
         st.className = 'recipe-stars';
@@ -277,8 +298,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
           const hidden = !isKnown && i > 0;
           chip.innerHTML = hidden ? ITEM_ICONS.unknown : ITEM_ICONS[need.id];
           if (!hidden) {
-            const missing = need.have < need.need;
-            chip.classList.toggle('missing', missing);
+            chip.classList.toggle('missing', need.have < need.need);
             if (isKnown) chip.append(`${countText(need.have)}/${need.need}`);
             chip.title = `${foodName(need.id)}: ${countText(need.have)}/${need.need}`;
           }
@@ -294,8 +314,6 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     }
   }
 
-  flip.addEventListener('click', () => showPage(page === 'pot' ? 'book' : 'pot'));
-  cookBtn.addEventListener('click', cookIt);
   close.addEventListener('click', () => {
     stop();
     cb.onExit();
@@ -304,6 +322,8 @@ export function createCooking(cb: CookingCallbacks): Cooking {
   function stop(): void {
     if (!active) return;
     active = false;
+    foodDrawer.close();
+    recipeDrawer.close();
     row.hidden = true;
     clearDone();
     kitchen.classList.remove('is-in');
@@ -320,7 +340,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
       row.hidden = false;
       clearTimeout(outTimer);
       kitchen.hidden = false;
-      showPage('pot');
+      render();
       // Start below the stat bars, then slide up over them on the next frame.
       void kitchen.offsetHeight;
       kitchen.classList.add('is-in');
