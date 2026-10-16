@@ -77,8 +77,13 @@ export function createMenu(cb: MenuCallbacks, isOpen: () => boolean, close: () =
     return h;
   }
 
+  // The panel keeps one height, so a long page scrolls inside it. Start
+  // each newly opened page at the top.
+  const toTop = () => panel.parentElement?.scrollTo(0, 0);
+
   function showMain(): void {
     page = 'main';
+    toTop();
     panel.replaceChildren(
       item(STRINGS.menu.shop, () => showShop()),
       item(STRINGS.menu.inventory, () => showInventory()),
@@ -96,7 +101,10 @@ export function createMenu(cb: MenuCallbacks, isOpen: () => boolean, close: () =
   // The Shop and Inventory: gold on the right of the header, lined up with
   // the prices, then the categories.
   function showList(which: 'shop' | 'inventory', fresh: boolean): void {
-    if (fresh) openCategories.clear();
+    if (fresh) {
+      openCategories.clear();
+      toTop();
+    }
     page = which;
     const list = document.createElement('div');
     list.className = 'shop-list';
@@ -154,6 +162,7 @@ export function createMenu(cb: MenuCallbacks, isOpen: () => boolean, close: () =
 
   function showSettings(): void {
     page = 'settings';
+    toTop();
     const reset = item(STRINGS.buttons.reset, () => {
       close();
       cb.onReset();
