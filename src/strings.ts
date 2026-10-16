@@ -212,7 +212,6 @@ export const STRINGS = {
     future: 'Little ones will appear here when pets can meet.',
     view: 'How to show the family',
     views: { list: 'List', tree: 'Tree' },
-    friendsPet: (owner: string) => `${owner}'s pet`,
     showTreeOf: (name: string) => `Show ${name}'s family`,
     backTo: (name: string) => `Back to ${name}`,
     firstPet: 'First of the family. Parents will show up here for pets born from two others.',

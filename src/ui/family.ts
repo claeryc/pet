@@ -78,7 +78,6 @@ function card(m: TreeMember, state: GameState, cb: FamilyCallbacks): HTMLElement
   const top = el('div', 'tree-name');
   top.append(el('b', '', m.name || '…'));
   if (m.current) top.append(el('span', 'tree-now', STRINGS.family.you));
-  if (m.fromFriend) top.append(el('span', 'tree-friend', STRINGS.family.friendsPet(m.owner)));
   if (m.current && state.pet.named) {
     const rename = el('button', 'shop-btn shop-btn-soft tree-rename', STRINGS.family.rename);
     rename.addEventListener('click', cb.onRename);
@@ -116,7 +115,8 @@ function node(m: TreeMember | null, state: GameState, cb: FamilyCallbacks, onFoc
   const b = el('button', `tree-node${m.current ? ' is-current' : ''}${m.fromFriend ? ' is-friend' : ''}`);
   b.innerHTML = `<span class="tree-node-pic">${portraitHtml(m, state, cb)}</span>`;
   b.append(el('span', 'tree-node-name', m.name || '…'));
-  if (m.fromFriend) b.append(el('span', 'tree-node-tag', STRINGS.family.friendsPet(m.owner)));
+  // Who raised it shows on its card once you tap it; here a blue border
+  // is enough to tell another player's pet apart.
   b.title = STRINGS.family.showTreeOf(m.name);
   b.addEventListener('click', () => onFocus(m.id));
   return b;
