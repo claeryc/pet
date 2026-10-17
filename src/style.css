@@ -2158,7 +2158,7 @@ body {
     repeating-conic-gradient(#e9d7c0 0 25%, #e2ccb1 0 50%) 0 0 / 12px 12px;
   transform: translateY(100%);
   transition: transform 0.45s cubic-bezier(0.5, 0, 0.9, 0.6);
-  padding: 12px 12px 10px;
+  padding: 12px 18px 14px 12px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -2192,58 +2192,63 @@ body {
   }
 }
 
-/* Tabs for the three pots along the top: a number, a little picture of
-   what's growing, and a drop when it needs water. */
+/* The three pots along the top, as one segmented control: a number, a
+   little picture of what's growing, and a drop when it needs water. */
 .garden-tabs {
   display: flex;
-  gap: 6px;
-  margin-bottom: 8px;
+  gap: 2px;
+  padding: 3px;
+  margin-bottom: 6px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: inset 0 0 0 2px rgba(91, 63, 110, 0.12);
 }
 
 .garden-tab {
-  position: relative;
   flex: 1 1 0;
-  height: 34px;
+  height: 30px;
   font: inherit;
   font-weight: 800;
-  color: var(--plum);
+  color: rgba(91, 63, 110, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  border: 3px solid transparent;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.45);
+  gap: 6px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
   cursor: pointer;
   touch-action: manipulation;
 }
 
 .garden-tab.selected {
-  border-color: white;
   background: white;
-  box-shadow: 0 3px 0 rgba(91, 63, 110, 0.25);
+  color: var(--plum);
+  box-shadow: 0 2px 0 rgba(91, 63, 110, 0.2);
 }
 
 .garden-tab-icon {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
 }
 
 .garden-tab-icon svg,
 .garden-tab-drop svg,
-.garden-face svg,
-.garden-tank-icon svg {
+.garden-flower svg,
+.garden-when svg,
+.garden-status svg,
+.garden-meter-icon svg {
   width: 100%;
   height: 100%;
   display: block;
 }
 
+/* Needs water: a small drop tucked against the plant. */
 .garden-tab-drop {
-  position: absolute;
-  top: 3px;
-  right: 6px;
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
+  margin: 5px 0 0 -3px;
+  align-self: flex-start;
   display: none;
 }
 
@@ -2257,83 +2262,33 @@ body {
   50% { transform: translateY(2px); }
 }
 
-/* The picked plant: [water tank] [fertilizer tank] [face] [name, growth bar,
-   status]. */
+/* The picked plant: [sunflower] [name and time left, then the meters (or a
+   line of status)]. */
 .garden-info {
   display: flex;
-  align-items: stretch;
-  gap: 8px;
+  align-items: center;
+  gap: 12px;
   min-height: 0;
 }
 
-.garden-tank {
-  flex: 0 0 22px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-}
-
-/* The glass: a pixel-framed tube that fills from the bottom. */
-.garden-tank-glass {
-  position: relative;
-  width: 16px;
-  flex: 1 1 auto;
-  min-height: 44px;
-  background: rgba(255, 255, 255, 0.7);
-  box-shadow: 0 0 0 3px var(--plum);
-  margin-top: 3px;
-  overflow: hidden;
-}
-
-.garden-tank-fill {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 0;
-  transition: height 0.4s ease;
-}
-
-.garden-tank.water .garden-tank-fill {
-  background: repeating-linear-gradient(#5a8fd6 0 4px, #6f9fe0 4px 6px);
-}
-
-.garden-tank.fert .garden-tank-fill {
-  background: repeating-linear-gradient(var(--butter) 0 4px, #f3d472 4px 6px);
-}
-
-.garden-tank-icon {
-  width: 16px;
-  height: 16px;
-}
-
-.garden-tank.empty .garden-tank-icon {
-  opacity: 0.45;
-}
-
-/* The plant's face: big, and it wobbles when it's unhappy. */
-.garden-face {
+/* The sunflower: its petals are no longer than a stat bar is tall, and it
+   bobs when happy and wobbles when it isn't. */
+.garden-flower {
   flex: 0 0 auto;
-  width: 64px;
-  height: 64px;
-  align-self: center;
-  padding: 6px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.6);
-  box-shadow: 0 0 0 3px white;
+  width: 78px;
+  height: 78px;
 }
 
-.garden-face[data-mood='happy'] {
+.garden-flower[data-mood='happy'] {
   animation: face-happy 1.6s ease-in-out infinite;
 }
 
-.garden-face[data-mood='sad'],
-.garden-face[data-mood='ill'] {
+.garden-flower[data-mood='sad'],
+.garden-flower[data-mood='ill'] {
   animation: face-wobble 1.2s ease-in-out infinite;
 }
 
-.garden-face[data-mood='empty'] {
+.garden-flower[data-mood='empty'] {
   opacity: 0.6;
 }
 
@@ -2354,58 +2309,128 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 6px;
+  gap: 2px;
+}
+
+/* [name ........ hourglass 12h] */
+.garden-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .garden-name {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 1rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* How far along the plant is: a pixel-framed bar like the stat bars. */
-.garden-grow {
-  height: 12px;
-  background: var(--seg-empty);
-  box-shadow: 0 0 0 3px var(--plum);
-  margin: 0 3px;
+.garden-when {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--plum);
 }
 
-.garden-grow[hidden] {
+.garden-when svg {
+  width: 14px;
+  height: 14px;
+}
+
+.garden-when[hidden],
+.garden-status[hidden],
+.garden-meters[hidden] {
   display: none;
 }
 
-.garden-grow-fill {
-  height: 100%;
-  width: 0;
-  background: repeating-linear-gradient(90deg, var(--good) 0 8px, var(--good-dark) 8px 10px);
-  transition: width 0.4s ease;
-}
-
-.garden[data-stage='sick'] .garden-grow-fill,
-.garden[data-stage='dead'] .garden-grow-fill {
-  background: var(--cocoa);
+.garden-when[data-stage='sick'] {
+  color: var(--low-dark);
 }
 
 .garden-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: 0.8rem;
   font-weight: 700;
   color: var(--plum);
+}
+
+.garden-status svg {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
 }
 
 .garden[data-stage='ready'] .garden-status {
   color: var(--good-dark);
 }
 
-.garden[data-stage='sick'] .garden-status,
 .garden[data-stage='dead'] .garden-status {
   color: var(--low-dark);
 }
 
+/* Water and fertilizer: [icon] [glass filling from the left]. */
+.garden-meters {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.garden-meter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 14px;
+}
+
+.garden-meter-icon {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+}
+
+.garden-meter.empty .garden-meter-icon {
+  opacity: 0.45;
+}
+
+.garden-meter-glass {
+  position: relative;
+  flex: 1 1 auto;
+  height: 8px;
+  margin-right: 3px;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 0 0 3px var(--plum);
+  overflow: hidden;
+}
+
+.garden-meter-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  transition: width 0.4s ease;
+}
+
+.garden-meter.water .garden-meter-fill {
+  background: repeating-linear-gradient(90deg, #5a8fd6 0 4px, #6f9fe0 4px 6px);
+}
+
+.garden-meter.fert .garden-meter-fill {
+  background: repeating-linear-gradient(90deg, var(--butter) 0 4px, #f3d472 4px 6px);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .garden-tab.dry .garden-tab-drop,
-  .garden-face[data-mood] {
+  .garden-flower[data-mood] {
     animation: none;
   }
 }
@@ -2447,189 +2472,3 @@ body {
   animation: catch-blink 0.15s steps(1) 4;
 }
 
-/* ---- Garden: sunflower mockup (?sunflower) ----
-   The face becomes a sunflower whose petals light up as the plant grows
-   (each petal no longer than the old growth bar is tall); the tanks lie
-   down as two slim meters beside it, and the pot tabs become one
-   segmented control. */
-.garden.sunflower .garden-tabs {
-  gap: 2px;
-  padding: 3px;
-  margin-bottom: 6px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.5);
-  box-shadow: inset 0 0 0 2px rgba(91, 63, 110, 0.12);
-}
-
-.garden.sunflower .garden-tab {
-  height: 30px;
-  border: 0;
-  border-radius: 11px;
-  background: transparent;
-  gap: 6px;
-  color: rgba(91, 63, 110, 0.7);
-}
-
-.garden.sunflower .garden-tab.selected {
-  background: white;
-  color: var(--plum);
-  box-shadow: 0 2px 0 rgba(91, 63, 110, 0.2);
-}
-
-.garden.sunflower .garden-tab-icon {
-  width: 20px;
-  height: 20px;
-}
-
-/* Needs water: a small drop tucked against the plant, not off in the corner. */
-.garden.sunflower .garden-tab-drop {
-  position: static;
-  width: 11px;
-  height: 11px;
-  margin-left: -3px;
-  align-self: flex-start;
-  margin-top: 5px;
-}
-
-.garden.sunflower .garden-info {
-  align-items: center;
-  gap: 12px;
-}
-
-.garden-flower {
-  flex: 0 0 auto;
-  width: 78px;
-  height: 78px;
-}
-
-.garden-flower svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.garden-flower[data-mood='happy'] {
-  animation: face-happy 1.6s ease-in-out infinite;
-}
-
-.garden-flower[data-mood='sad'],
-.garden-flower[data-mood='ill'] {
-  animation: face-wobble 1.2s ease-in-out infinite;
-}
-
-.garden-flower[data-mood='empty'] {
-  opacity: 0.6;
-}
-
-.garden.sunflower .garden-details {
-  gap: 2px;
-}
-
-.garden-meters {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 6px;
-}
-
-.garden-meters[hidden] {
-  display: none;
-}
-
-/* The tanks, lying down: [icon] [glass filling from the left]. */
-.garden-meters .garden-tank {
-  flex: 0 0 auto;
-  flex-direction: row-reverse;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
-  height: 14px;
-}
-
-.garden-meters .garden-tank-icon {
-  width: 14px;
-  height: 14px;
-}
-
-.garden-meters .garden-tank-glass {
-  flex: 1 1 auto;
-  width: auto;
-  min-height: 0;
-  height: 8px;
-  margin: 0 3px 0 0;
-}
-
-.garden-meters .garden-tank-fill {
-  top: 0;
-  right: auto;
-  height: auto;
-  width: 0;
-  transition: width 0.4s ease;
-}
-
-.garden-meters .garden-tank.water .garden-tank-fill {
-  background: repeating-linear-gradient(90deg, #5a8fd6 0 4px, #6f9fe0 4px 6px);
-}
-
-.garden-meters .garden-tank.fert .garden-tank-fill {
-  background: repeating-linear-gradient(90deg, var(--butter) 0 4px, #f3d472 4px 6px);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .garden-flower[data-mood] {
-    animation: none;
-  }
-}
-
-/* Same height as the stat bars; a little more room on the right and at the
-   bottom, now that the status line is gone. */
-.garden.sunflower {
-  padding: 12px 18px 14px 12px;
-}
-
-/* [name ........ hourglass 12h] */
-.garden-name-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.garden-name-row .garden-name {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.garden-when {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.85rem;
-  color: var(--plum);
-}
-
-.garden-when svg {
-  width: 14px;
-  height: 14px;
-  display: block;
-}
-
-.garden-when[data-stage='sick'],
-.garden-when[data-stage='dead'] {
-  color: var(--low-dark);
-}
-
-.garden-when[data-stage='dead'] svg {
-  width: 18px;
-  height: 18px;
-}
-
-.garden-when[data-stage='ready'] {
-  color: var(--good-dark);
-}
-
-.garden.sunflower .garden-meters {
-  gap: 8px;
-  margin-top: 10px;
-}

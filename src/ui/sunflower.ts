@@ -1,10 +1,10 @@
-// A design mockup: the plant's face as a sunflower head, with its petals
-// lighting up yellow one by one, clockwise from the top, as the plant grows.
-// Turned on with ?sunflower in the address (see src/ui/garden.ts).
+// The plant in the garden panel (src/ui/garden.ts), as a sunflower: its
+// face shows how it feels, and its petals light up yellow one by one,
+// clockwise from the top, as it grows.
 //
-// The flower is drawn as pixel art on a 26×26 grid, shown at 3px a pixel so a petal is
-// no longer than the growth bar is tall, like the icons in
-// src/ui/icons.ts.
+// The flower is drawn as pixel art on a 26×26 grid, like the icons in
+// src/ui/icons.ts. It's shown at 3px a pixel, so a petal is no longer
+// than a stat bar is tall.
 
 import { PALETTE } from '../render/palette';
 
