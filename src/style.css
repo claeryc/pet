@@ -2446,3 +2446,104 @@ body {
 .pour-bar[data-result='perfect'] .pour-fill {
   animation: catch-blink 0.15s steps(1) 4;
 }
+
+/* ---- Garden: sunflower mockup (?sunflower) ----
+   The face becomes a big sunflower whose petals light up as the plant
+   grows; the tanks lie down as two short meters beside it. The panel is
+   taller than the stat bars, so the slot grows while it's up. */
+.stat-slot:has(> .garden.sunflower:not([hidden])) {
+  min-height: 196px;
+}
+
+.garden.sunflower .garden-info {
+  align-items: center;
+  gap: 12px;
+}
+
+.garden-flower {
+  flex: 0 0 auto;
+  width: 128px;
+  height: 128px;
+  margin: 2px 0 0 -2px;
+}
+
+.garden-flower svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.garden-flower[data-mood='happy'] {
+  animation: face-happy 1.6s ease-in-out infinite;
+}
+
+.garden-flower[data-mood='sad'],
+.garden-flower[data-mood='ill'] {
+  animation: face-wobble 1.2s ease-in-out infinite;
+}
+
+.garden-flower[data-mood='empty'] {
+  opacity: 0.6;
+}
+
+.garden.sunflower .garden-details {
+  gap: 4px;
+}
+
+.garden-meters {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+/* The tanks, lying down: [icon] [glass filling from the left]. */
+.garden-meters .garden-tank {
+  flex: 0 0 auto;
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+  gap: 8px;
+  height: 16px;
+}
+
+.garden-meters .garden-tank-glass {
+  flex: 1 1 auto;
+  width: auto;
+  min-height: 0;
+  height: 10px;
+  margin: 0 3px 0 0;
+}
+
+.garden-meters .garden-tank-fill {
+  top: 0;
+  right: auto;
+  height: auto;
+  width: 0;
+  transition: width 0.4s ease;
+}
+
+.garden-meters .garden-tank.water .garden-tank-fill {
+  background: repeating-linear-gradient(90deg, #5a8fd6 0 4px, #6f9fe0 4px 6px);
+}
+
+.garden-meters .garden-tank.fert .garden-tank-fill {
+  background: repeating-linear-gradient(90deg, var(--butter) 0 4px, #f3d472 4px 6px);
+}
+
+@media (max-width: 359px) {
+  .stat-slot:has(> .garden.sunflower:not([hidden])) {
+    min-height: 170px;
+  }
+
+  .garden-flower {
+    width: 104px;
+    height: 104px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .garden-flower[data-mood] {
+    animation: none;
+  }
+}
+.garden-meters[hidden] { display: none; }

@@ -41,6 +41,11 @@ import type { GardenScene } from '../render/garden';
 import { createDrawer } from './drawer';
 import { ITEM_ICONS, STAT_ICONS } from './icons';
 import { formatDuration } from './time';
+import { sunflower } from './sunflower';
+
+// Design mockup: ?sunflower in the address swaps the face and growth bar
+// for a sunflower whose petals fill up as the plant grows.
+const SUNFLOWER = typeof location !== 'undefined' && new URLSearchParams(location.search).has('sunflower');
 
 export interface GardenCallbacks {
   onPlant: (pot: number, crop: CropId) => void;
@@ -123,7 +128,7 @@ function tank(className: string, icon: string, label: string) {
     el,
     set(level: number) {
       const pct = Math.round(Math.max(0, Math.min(1, level)) * 100);
-      fill.style.height = `${pct}%`;
+      fill.style[SUNFLOWER ? 'width' : 'height'] = `${pct}%`;
       el.setAttribute('aria-valuenow', String(pct));
       el.classList.toggle('empty', pct === 0);
     },
@@ -139,7 +144,7 @@ export function createGarden(cb: GardenCallbacks): Garden {
 
   // ---- The panel for the picked pot ----
   const beds = document.createElement('div');
-  beds.className = 'garden';
+  beds.className = SUNFLOWER ? 'garden sunflower' : 'garden';
   beds.hidden = true;
 
   // Tabs: 1 / 2 / 3, each with a little picture of what's growing.
@@ -186,7 +191,18 @@ export function createGarden(cb: GardenCallbacks): Garden {
   const status = document.createElement('small');
   status.className = 'garden-status';
   details.append(name, grow, status);
-  info.append(waterTank.el, fertTank.el, face, details);
+  // The sunflower: [flower] [name, status, water and fertilizer meters].
+  const flower = document.createElement('span');
+  flower.className = 'garden-flower';
+  if (SUNFLOWER) {
+    const meters = document.createElement('div');
+    meters.className = 'garden-meters';
+    meters.append(waterTank.el, fertTank.el);
+    details.replaceChildren(name, status, meters);
+    info.append(flower, details);
+  } else {
+    info.append(waterTank.el, fertTank.el, face, details);
+  }
 
   // The pour meter, shown just below the panel while you hold Water, so
   // it never covers the tanks.
@@ -353,6 +369,13 @@ export function createGarden(cb: GardenCallbacks): Garden {
     face.setAttribute('role', 'img');
     face.setAttribute('aria-label', mood ? STRINGS.garden.moods[mood] : STRINGS.garden.empty);
     face.title = mood ? STRINGS.garden.moods[mood] : '';
+    flower.innerHTML = sunflower(mood ?? 'empty', progress(plot));
+    flower.dataset.mood = mood ?? 'empty';
+    // Only a plant still growing needs the meters; otherwise the text says it all.
+    if (SUNFLOWER) waterTank.el.parentElement!.hidden = !tended;
+    flower.setAttribute('role', 'progressbar');
+    flower.setAttribute('aria-valuenow', String(Math.round(progress(plot) * 100)));
+    flower.setAttribute('aria-label', mood ? STRINGS.garden.moods[mood] : STRINGS.garden.empty);
     const crop = plot.crop;
     name.textContent = crop
       ? `${cropName(crop)} ${STRINGS.stars(cropStars(crop))}`
