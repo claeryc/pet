@@ -112,6 +112,7 @@ export const STRINGS = {
     pot: (n: number) => `Pot ${n}`,
     empty: 'Empty',
     emptyHint: 'Empty. Tap Plant to sow a seed.',
+    readyShort: 'Ready!',
     moods: { happy: 'Happy', sad: 'Thirsty', ill: 'Sick', wilted: 'Wilted' },
     ready: 'Ready to harvest!',
     sick: 'Sick',

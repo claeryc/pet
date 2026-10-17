@@ -802,4 +802,25 @@ export const STAT_ICONS = {
     '.kwwwwk.',
     '..kkkk..',
   ]),
+  // Time left to grow, and time left before a sick plant wilts (garden).
+  hourglass: pixelIcon([
+    'kkkkkkkk',
+    '.kwwwwk.',
+    '.kyyyyk.',
+    '..kyyk..',
+    '..kwwk..',
+    '.kwyywk.',
+    '.kyyyyk.',
+    'kkkkkkkk',
+  ]),
+  skull: pixelIcon([
+    '.kkkkkk.',
+    'kwwwwwwk',
+    'kwkkwkkk',
+    'kwkkwkkk',
+    'kwwwkwwk',
+    '.kwwwwk.',
+    '.kwkwkk.',
+    '..kkkk..',
+  ]),
 };

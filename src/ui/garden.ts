@@ -191,6 +191,9 @@ export function createGarden(cb: GardenCallbacks): Garden {
   const status = document.createElement('small');
   status.className = 'garden-status';
   details.append(name, grow, status);
+  // The time left, as a small icon and whole hours.
+  const when = document.createElement('span');
+  when.className = 'garden-when';
   // The sunflower: [flower] [name, status, water and fertilizer meters].
   const flower = document.createElement('span');
   flower.className = 'garden-flower';
@@ -198,7 +201,12 @@ export function createGarden(cb: GardenCallbacks): Garden {
     const meters = document.createElement('div');
     meters.className = 'garden-meters';
     meters.append(waterTank.el, fertTank.el);
-    details.replaceChildren(name, status, meters);
+    // [name ........ hourglass 12h]: the time sits to the right of the name,
+    // and the face and meters say the rest (dry, fertilized).
+    const top = document.createElement('div');
+    top.className = 'garden-name-row';
+    top.append(name, when);
+    details.replaceChildren(top, status, meters);
     info.append(flower, details);
   } else {
     info.append(waterTank.el, fertTank.el, face, details);
@@ -392,6 +400,19 @@ export function createGarden(cb: GardenCallbacks): Garden {
       : wet <= 0 ? `${STRINGS.garden.timeLeft(formatDuration(timeLeft(plot, now)))} · ${STRINGS.garden.dry}`
       : STRINGS.garden.timeLeft(formatDuration(timeLeft(plot, now)));
     if (crop) grow.title = `${getCrop(crop).hours}h`;
+    if (SUNFLOWER) {
+      const hours = (ms: number) => `${Math.max(1, Math.ceil(ms / 3_600_000))}h`;
+      when.dataset.stage = stage;
+      when.title = status.textContent;
+      when.innerHTML =
+        stage === 'growing' ? `${STAT_ICONS.hourglass}<b>${hours(timeLeft(plot, now))}</b>`
+        : stage === 'sick' ? `${STAT_ICONS.skull}<b>${hours(diesAt(plot)! - now)}</b>`
+        : stage === 'dead' ? STAT_ICONS.skull
+        : stage === 'ready' ? `<b>${STRINGS.garden.readyShort}</b>`
+        : '';
+      // Only the empty pot keeps a line of text, as there's nothing else to show.
+      status.hidden = stage !== 'empty';
+    }
 
     // The buttons for the picked pot.
     plantDrawer.el.hidden = stage !== 'empty';

@@ -2581,13 +2581,55 @@ body {
   }
 }
 
-/* A little more breathing room on the right and at the bottom: the panel
-   grows a few pixels taller (there's free space below it) rather than
-   shrinking the text. */
-.stat-slot:has(> .garden.sunflower:not([hidden])) {
-  min-height: 148px;
+/* Same height as the stat bars; a little more room on the right and at the
+   bottom, now that the status line is gone. */
+.garden.sunflower {
+  padding: 12px 18px 14px 12px;
 }
 
-.garden.sunflower {
-  padding: 12px 18px 16px 12px;
+/* [name ........ hourglass 12h] */
+.garden-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.garden-name-row .garden-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.garden-when {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--plum);
+}
+
+.garden-when svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.garden-when[data-stage='sick'],
+.garden-when[data-stage='dead'] {
+  color: var(--low-dark);
+}
+
+.garden-when[data-stage='dead'] svg {
+  width: 18px;
+  height: 18px;
+}
+
+.garden-when[data-stage='ready'] {
+  color: var(--good-dark);
+}
+
+.garden.sunflower .garden-meters {
+  gap: 8px;
+  margin-top: 10px;
 }
