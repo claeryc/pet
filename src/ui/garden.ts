@@ -4,10 +4,11 @@
 // tabs, to pick it.
 //
 // A panel slides up over the stat bars, like the pond does for fishing,
-// and shows how the picked plant is doing: a water tank that drains as the
-// soil dries, a fertilizer tank that empties as the boost wears off, the
-// plant's face (happy, sad when dry, ill, wilted), and how long until it's
-// ready. The button row becomes [Cancel] plus the buttons for that pot:
+// and shows how the picked plant is doing: a sunflower whose face shows its
+// mood (happy, sad when dry, ill, wilted) and whose petals turn yellow as it
+// grows (src/ui/sunflower.ts), how long until it's ready, a water meter that
+// drains as the soil dries and a fertilizer meter that empties as the boost
+// wears off. The button row becomes [Cancel] plus the buttons for that pot:
 //
 //   empty: Plant (opens your seeds)    growing: Water, Fertilize
 //   sick: Cure, Water                  ready: Harvest
@@ -41,6 +42,7 @@ import type { GardenScene } from '../render/garden';
 import { createDrawer } from './drawer';
 import { ITEM_ICONS, STAT_ICONS } from './icons';
 import { formatDuration } from './time';
+import { sunflower } from './sunflower';
 
 export interface GardenCallbacks {
   onPlant: (pot: number, crop: CropId) => void;
@@ -94,36 +96,29 @@ function moodOf(plot: Plot, stage: PlotStage, now: number): Mood | null {
   if (stage === 'growing' && moisture(plot, now) <= 0) return 'sad';
   return 'happy';
 }
-const FACES: Record<Mood, string> = {
-  happy: ITEM_ICONS.faceHappy,
-  sad: ITEM_ICONS.faceSad,
-  ill: ITEM_ICONS.faceIll,
-  wilted: ITEM_ICONS.faceWilted,
-};
-
-// A small upright tank that fills from the bottom, with an icon under it.
-function tank(className: string, icon: string, label: string) {
+// A slim meter that fills from the left, with an icon before it.
+function meter(className: string, icon: string, label: string) {
   const el = document.createElement('div');
-  el.className = `garden-tank ${className}`;
+  el.className = `garden-meter ${className}`;
   el.setAttribute('role', 'meter');
   el.setAttribute('aria-label', label);
   el.setAttribute('aria-valuemin', '0');
   el.setAttribute('aria-valuemax', '100');
   el.title = label;
-  const glass = document.createElement('div');
-  glass.className = 'garden-tank-glass';
-  const fill = document.createElement('div');
-  fill.className = 'garden-tank-fill';
-  glass.append(fill);
   const i = document.createElement('span');
-  i.className = 'garden-tank-icon';
+  i.className = 'garden-meter-icon';
   i.innerHTML = icon;
-  el.append(glass, i);
+  const glass = document.createElement('div');
+  glass.className = 'garden-meter-glass';
+  const fill = document.createElement('div');
+  fill.className = 'garden-meter-fill';
+  glass.append(fill);
+  el.append(i, glass);
   return {
     el,
     set(level: number) {
       const pct = Math.round(Math.max(0, Math.min(1, level)) * 100);
-      fill.style.height = `${pct}%`;
+      fill.style.width = `${pct}%`;
       el.setAttribute('aria-valuenow', String(pct));
       el.classList.toggle('empty', pct === 0);
     },
@@ -164,32 +159,38 @@ export function createGarden(cb: GardenCallbacks): Garden {
   });
   tabs.append(...tabButtons.map((t) => t.b));
 
-  // The picked plant: tanks, face, name, growth bar and status.
+  // The picked plant: [flower] [name ... time left]
+  //                            [status (only when there are no meters)]
+  //                            [water meter]
+  //                            [fertilizer meter]
   const info = document.createElement('div');
   info.className = 'garden-info';
-  const waterTank = tank('water', STAT_ICONS.drop, STRINGS.garden.moisture);
-  const fertTank = tank('fert', ITEM_ICONS.fertilizer, STRINGS.garden.fertilized);
-  const face = document.createElement('span');
-  face.className = 'garden-face';
+  const flower = document.createElement('span');
+  flower.className = 'garden-flower';
+  flower.setAttribute('role', 'progressbar');
+  flower.setAttribute('aria-valuemin', '0');
+  flower.setAttribute('aria-valuemax', '100');
   const details = document.createElement('div');
   details.className = 'garden-details';
+  const nameRow = document.createElement('div');
+  nameRow.className = 'garden-name-row';
   const name = document.createElement('b');
   name.className = 'garden-name';
-  const grow = document.createElement('div');
-  grow.className = 'garden-grow';
-  grow.setAttribute('role', 'progressbar');
-  grow.setAttribute('aria-valuemin', '0');
-  grow.setAttribute('aria-valuemax', '100');
-  const growFill = document.createElement('div');
-  growFill.className = 'garden-grow-fill';
-  grow.append(growFill);
+  const when = document.createElement('span'); // hourglass (or skull) and hours
+  when.className = 'garden-when';
+  nameRow.append(name, when);
   const status = document.createElement('small');
   status.className = 'garden-status';
-  details.append(name, grow, status);
-  info.append(waterTank.el, fertTank.el, face, details);
+  const meters = document.createElement('div');
+  meters.className = 'garden-meters';
+  const waterMeter = meter('water', STAT_ICONS.drop, STRINGS.garden.moisture);
+  const fertMeter = meter('fert', ITEM_ICONS.fertilizer, STRINGS.garden.fertilized);
+  meters.append(waterMeter.el, fertMeter.el);
+  details.append(nameRow, status, meters);
+  info.append(flower, details);
 
   // The pour meter, shown just below the panel while you hold Water, so
-  // it never covers the tanks.
+  // it never covers the meters.
   const pour = document.createElement('div');
   pour.className = 'catch-bar pour-bar';
   pour.hidden = true;
@@ -343,32 +344,42 @@ export function createGarden(cb: GardenCallbacks): Garden {
     const plot = s.garden[selected];
     const stage = plotStage(plot);
     beds.dataset.stage = stage;
-    const wet = moisture(plot, now);
     const tended = stage === 'growing' || stage === 'sick';
-    waterTank.set(tended ? wet : 0);
-    fertTank.set(stage === 'growing' ? (plot.fertilizedUntil - now) / FERTILIZER_MS : 0);
+    waterMeter.set(tended ? moisture(plot, now) : 0);
+    fertMeter.set(stage === 'growing' ? (plot.fertilizedUntil - now) / FERTILIZER_MS : 0);
     const mood = moodOf(plot, stage, now);
-    face.innerHTML = mood ? FACES[mood] : ITEM_ICONS.garden;
-    face.dataset.mood = mood ?? 'empty';
-    face.setAttribute('role', 'img');
-    face.setAttribute('aria-label', mood ? STRINGS.garden.moods[mood] : STRINGS.garden.empty);
-    face.title = mood ? STRINGS.garden.moods[mood] : '';
+    const grown = progress(plot);
+    flower.innerHTML = sunflower(mood ?? 'empty', grown);
+    flower.dataset.mood = mood ?? 'empty';
+    flower.setAttribute('aria-valuenow', String(Math.round(grown * 100)));
+    flower.setAttribute('aria-label', mood ? STRINGS.garden.moods[mood] : STRINGS.garden.empty);
+    flower.title = mood ? STRINGS.garden.moods[mood] : '';
     const crop = plot.crop;
     name.textContent = crop
       ? `${cropName(crop)} ${STRINGS.stars(cropStars(crop))}`
       : STRINGS.garden.pot(selected + 1);
-    const grown = progress(plot);
-    growFill.style.width = `${Math.round(grown * 100)}%`;
-    grow.setAttribute('aria-valuenow', String(Math.round(grown * 100)));
-    grow.hidden = stage === 'empty';
-    status.textContent =
+
+    // A growing or sick plant: the time left goes beside the name (whole
+    // hours), and its face and meters say the rest. Otherwise there are no
+    // meters, and a line under the name says what's going on.
+    const hours = (ms: number) => `${Math.max(1, Math.ceil(ms / 3_600_000))}h`;
+    meters.hidden = !tended;
+    status.hidden = tended;
+    when.hidden = !tended;
+    when.dataset.stage = stage;
+    if (stage === 'growing') {
+      when.innerHTML = `${STAT_ICONS.hourglass}<b>${hours(timeLeft(plot, now))}</b>`;
+      when.title = STRINGS.garden.timeLeft(formatDuration(timeLeft(plot, now)));
+    } else if (stage === 'sick') {
+      when.innerHTML = `${STAT_ICONS.skull}<b>${hours(diesAt(plot)! - now)}</b>`;
+      when.title = STRINGS.garden.diesIn(formatDuration(diesAt(plot)! - now));
+    }
+    if (crop) name.title = `${getCrop(crop).hours}h`;
+    status.innerHTML =
       stage === 'empty' ? STRINGS.garden.emptyHint
       : stage === 'ready' ? STRINGS.garden.ready
-      : stage === 'dead' ? STRINGS.garden.dead
-      : stage === 'sick' ? STRINGS.garden.diesIn(formatDuration(diesAt(plot)! - now))
-      : wet <= 0 ? `${STRINGS.garden.timeLeft(formatDuration(timeLeft(plot, now)))} · ${STRINGS.garden.dry}`
-      : STRINGS.garden.timeLeft(formatDuration(timeLeft(plot, now)));
-    if (crop) grow.title = `${getCrop(crop).hours}h`;
+      : stage === 'dead' ? `${STAT_ICONS.skull}${STRINGS.garden.dead}`
+      : '';
 
     // The buttons for the picked pot.
     plantDrawer.el.hidden = stage !== 'empty';

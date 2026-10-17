@@ -116,7 +116,6 @@ export const STRINGS = {
     ready: 'Ready to harvest!',
     sick: 'Sick',
     dead: 'Wilted',
-    dry: 'Dry',
     timeLeft: (time: string) => `${time} left`,
     diesIn: (time: string) => `Wilts in ${time}`,
     potLabel: (n: number, what: string, status: string) => `Pot ${n}: ${what}.${status ? ` ${status}` : ''}`,
