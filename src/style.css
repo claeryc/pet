@@ -2580,3 +2580,14 @@ body {
     animation: none;
   }
 }
+
+/* A little more breathing room on the right and at the bottom: the panel
+   grows a few pixels taller (there's free space below it) rather than
+   shrinking the text. */
+.stat-slot:has(> .garden.sunflower:not([hidden])) {
+  min-height: 148px;
+}
+
+.garden.sunflower {
+  padding: 12px 18px 16px 12px;
+}
