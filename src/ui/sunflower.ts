@@ -2,22 +2,23 @@
 // lighting up yellow one by one, clockwise from the top, as the plant grows.
 // Turned on with ?sunflower in the address (see src/ui/garden.ts).
 //
-// The flower is drawn as pixel art on a 32×32 grid, like the icons in
+// The flower is drawn as pixel art on a 26×26 grid, shown at 3px a pixel so a petal is
+// no longer than the growth bar is tall, like the icons in
 // src/ui/icons.ts.
 
 import { PALETTE } from '../render/palette';
 
 export type FlowerMood = 'happy' | 'sad' | 'ill' | 'wilted' | 'empty';
 
-const SIZE = 32;
+const SIZE = 26;
 const C = SIZE / 2; // the middle of the grid
-const PETALS = 12;
-const DISC = 8.6; // the radius of the seed disc
-const PETAL_AT = 12.4; // how far out each petal's middle is
-const PETAL_LONG = 4.4; // a petal's half-length (outwards)
-const PETAL_WIDE = 2.7; // a petal's half-width
+const PETALS = 9;
+const DISC = 7.4; // the radius of the seed disc
+const PETAL_AT = 9.6; // how far out each petal's middle is
+const PETAL_LONG = 2.3; // a petal's half-length (outwards)
+const PETAL_WIDE = 2.1; // a petal's half-width
 
-// What each pixel is: -1 nothing, -2 the disc, or 0..11 a petal (and how
+// What each pixel is: -1 nothing, -2 the disc, or 0..8 a petal (and how
 // far out along it, 0 at its base and 1 at its tip). Worked out once.
 const kind: number[] = [];
 const along: number[] = [];
@@ -50,25 +51,19 @@ const at = (x: number, y: number) => (x < 0 || y < 0 || x >= SIZE || y >= SIZE ?
 
 // The face on the disc, as [x, y, colour] pixels.
 type Px = [number, number, string];
-const eyes: Px[] = [
-  [13, 14, PALETTE.ink], [13, 15, PALETTE.ink],
-  [18, 14, PALETTE.ink], [18, 15, PALETTE.ink],
-];
-const cheeks: Px[] = [[12, 17, PALETTE.pink], [19, 17, PALETTE.pink]];
+const K = PALETTE.ink;
+const eyes: Px[] = [[9, 10, K], [9, 11, K], [14, 10, K], [14, 11, K]];
+const cheeks: Px[] = [[8, 13, PALETTE.pink], [15, 13, PALETTE.pink]];
 const FACES: Record<FlowerMood, Px[]> = {
-  happy: [...eyes, ...cheeks,
-    [14, 18, PALETTE.ink], [15, 19, PALETTE.ink], [16, 19, PALETTE.ink], [17, 18, PALETTE.ink]],
-  sad: [...eyes,
-    [14, 19, PALETTE.ink], [15, 18, PALETTE.ink], [16, 18, PALETTE.ink], [17, 19, PALETTE.ink],
-    [12, 16, PALETTE.sky], [12, 17, PALETTE.sky]],
+  happy: [...eyes, ...cheeks, [10, 13, K], [11, 14, K], [12, 14, K], [13, 13, K]],
+  sad: [...eyes, [10, 14, K], [11, 13, K], [12, 13, K], [13, 14, K], [8, 12, PALETTE.sky], [8, 13, PALETTE.sky]],
   ill: [
-    [12, 13, PALETTE.ink], [14, 13, PALETTE.ink], [13, 14, PALETTE.ink], [12, 15, PALETTE.ink], [14, 15, PALETTE.ink],
-    [17, 13, PALETTE.ink], [19, 13, PALETTE.ink], [18, 14, PALETTE.ink], [17, 15, PALETTE.ink], [19, 15, PALETTE.ink],
-    [13, 19, PALETTE.ink], [14, 18, PALETTE.ink], [15, 19, PALETTE.ink], [16, 18, PALETTE.ink], [17, 19, PALETTE.ink], [18, 18, PALETTE.ink]],
+    [8, 9, K], [10, 9, K], [9, 10, K], [8, 11, K], [10, 11, K],
+    [13, 9, K], [15, 9, K], [14, 10, K], [13, 11, K], [15, 11, K],
+    [9, 14, K], [10, 13, K], [11, 14, K], [12, 13, K], [13, 14, K], [14, 13, K]],
   wilted: [
-    [12, 15, PALETTE.ink], [13, 15, PALETTE.ink], [14, 15, PALETTE.ink],
-    [17, 15, PALETTE.ink], [18, 15, PALETTE.ink], [19, 15, PALETTE.ink],
-    [14, 19, PALETTE.ink], [15, 19, PALETTE.ink], [16, 19, PALETTE.ink], [17, 19, PALETTE.ink]],
+    [8, 11, K], [9, 11, K], [10, 11, K], [13, 11, K], [14, 11, K], [15, 11, K],
+    [10, 14, K], [11, 14, K], [12, 14, K], [13, 14, K]],
   empty: [],
 };
 
@@ -98,15 +93,14 @@ export function sunflower(mood: FlowerMood, grown: number): string {
       } else if (k === -2) {
         px(x, y, n.some((m) => m !== -2) ? PALETTE.ink : disc);
       } else {
-        const edge = n.some((m) => m !== k && m !== -2);
         const t = along[y * SIZE + x];
         const on = k + t < lightUpTo;
         // A lit petal is warmer at its base, like a real sunflower.
-        const fill = on ? (t < 0.3 && lit === PALETTE.butter ? PALETTE.peach : lit) : unlit;
-        px(x, y, edge ? PALETTE.ink : fill);
+        const fill = on ? (t < 0.25 && lit === PALETTE.butter ? PALETTE.peach : lit) : unlit;
+        px(x, y, fill); // outlined by the empty pixels around it
       }
     }
   }
-  for (const [x, y, fill] of FACES[mood]) px(x, y, fill);
+  for (const [x, y, fill] of FACES[mood]) px(x + 1, y + 1, fill); // the faces are drawn for a 24 grid
   return `<svg viewBox="0 0 ${SIZE} ${SIZE}" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
 }
