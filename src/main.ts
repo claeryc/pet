@@ -43,6 +43,8 @@ import { loadSprites, type SpriteLibrary } from './render/sprites';
 import { createHomeScreen } from './ui/home';
 import { createNamingBox } from './ui/naming';
 import { STRINGS } from './strings';
+import { ITEM_ICONS } from './ui/icons';
+import { DONE_MS as COOKED_MS } from './ui/cooking';
 
 const root = document.getElementById('app')!;
 
@@ -110,6 +112,7 @@ function announceMail(old: Message[]): void {
       home.notice(STRINGS.delivery.announced(items.join(', ')));
     } else if (m.kind === 'pickup') {
       home.notice(STRINGS.delivery.pickedUp(m.boxes.filter((b) => b.have >= b.want).length, m.gold));
+      if (m.seed) showGot(m.seed, 1, STRINGS.reveal.fromPercy, true);
     }
   }
 }
@@ -169,15 +172,27 @@ function runShop(result: ShopResult, success?: string): void {
   else if (!result.blocked && success) home.toast(success);
 }
 
-// The stars a food has (0 if none), shown after its name in messages.
-const starsOf = (id: string) => STRINGS.stars((CONFIG.foods as readonly Food[]).find((f) => f.id === id)?.stars ?? 0);
+// The stars a food has (0 if none).
+const starCount = (id: string) => (CONFIG.foods as readonly Food[]).find((f) => f.id === id)?.stars ?? 0;
+
+// Shows off something you just got (a food, or its seed) over the stat bars.
+function showGot(id: string, count: number, caption?: string, seed = false): void {
+  const name = STRINGS.foods[id as FoodId] ?? id;
+  home.reveal({
+    icon: ITEM_ICONS[seed ? `seed_${id}` : id] ?? '',
+    name: seed ? STRINGS.garden.seedName(name) : name,
+    count,
+    stars: starCount(id),
+    caption,
+  });
+}
 
 // A lucky seed found while fishing or playing.
 function luckySeed(source: 'fishing' | 'play', perfect = false): void {
   const found = findSeed(state, source, Math.random(), Math.random(), perfect);
   if (!found.seed) return;
   setState(found.state);
-  home.notice(STRINGS.garden.foundSeed(STRINGS.foods[found.seed], starsOf(found.seed)));
+  showGot(found.seed, 1, STRINGS.reveal.luckySeed, true);
 }
 
 // Playing with the pet: a cuddle or tickle might turn up a seed.
@@ -249,7 +264,17 @@ function characterImage(sheetName: string): string | undefined {
 }
 
 const home = createHomeScreen(root, {
-  onFeed: (food) => runAction((s, now) => feed(s, now, food), 'eat'),
+  onFeed: (food) => {
+    const result = feed(state, gameNow(), food);
+    setState(result.state);
+    if (result.blocked) return home.toast(STRINGS.blocked[result.blocked](state.pet.name));
+    if (result.craved) {
+      home.toast(STRINGS.craving.loved(state.pet.name, result.craved));
+      react('happy');
+    } else {
+      react('eat');
+    }
+  },
   onPlay: (activity) => playWith(activity),
   onPetTap: () => playWith('cuddle'),
   onLights: () => runAction(toggleLights),
@@ -265,8 +290,7 @@ const home = createHomeScreen(root, {
     setState(next);
     const label = STRINGS.fishing.grades[grade];
     if (caught) {
-      const stars = (CONFIG.foods as readonly Food[]).find((f) => f.id === caught)?.stars ?? 1;
-      home.toast(STRINGS.fishing.landed(label, STRINGS.foods[caught], count, STRINGS.stars(stars)));
+      showGot(caught, count, label);
       react('happy');
       luckySeed('fishing', grade === 'perfect');
     } else {
@@ -284,10 +308,10 @@ const home = createHomeScreen(root, {
       );
       return null;
     }
-    const name = STRINGS.foods[result.dish];
-    const stars = STRINGS.stars((CONFIG.foods as readonly Food[]).find((f) => f.id === result.dish)?.stars ?? 0);
+    // The pot bubbles and shows the dish first, then the reveal.
+    const caption = result.discovered ? STRINGS.reveal.newRecipe : undefined;
+    window.setTimeout(() => showGot(result.dish, 1, caption), COOKED_MS);
     if (!result.recipe) home.toast(STRINGS.cooking.mess);
-    else home.toast((result.discovered ? STRINGS.cooking.discovered : STRINGS.cooking.made)(name, stars));
     if (result.discovered) react('happy');
     return result.dish;
   },
@@ -303,7 +327,7 @@ const home = createHomeScreen(root, {
     const result = harvest(simulate(state, now), pot);
     setState(result.state);
     if (result.blocked || !result.crop) return;
-    home.toast(STRINGS.garden.harvested(result.count ?? 0, STRINGS.foods[result.crop as CropId], starsOf(result.crop)));
+    showGot(result.crop, result.count ?? 0, STRINGS.reveal.harvested);
     react('happy');
   },
   onClear: (pot) => runGarden((s) => clearPlot(s, pot), STRINGS.garden.cleared),
@@ -357,7 +381,8 @@ const home = createHomeScreen(root, {
       order: order && { ...order, announcedAt: order.announcedAt - off, pickupAt: order.pickupAt - off },
       nextAt: state.delivery.nextAt - off,
     };
-    setState({ ...state, pet, garden, delivery, clockOffsetMs: 0, lastUpdated: Date.now() });
+    const craving = { ...state.craving, until: state.craving.until - off, nextAt: state.craving.nextAt - off };
+    setState({ ...state, pet, garden, delivery, craving, clockOffsetMs: 0, lastUpdated: Date.now() });
   },
 });
 // Made after the home screen, which clears the page when it starts.

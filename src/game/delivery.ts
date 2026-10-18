@@ -15,6 +15,8 @@ import { CONFIG } from './config';
 import type { Food, FoodId } from './actions';
 import { foodCount, useFood } from './economy';
 import { logMessage } from './messages';
+import { addSeed, type CropId } from './garden';
+import { seededRoll } from './growth';
 import type { GameState, Order, OrderBox, OrderTier } from './state';
 
 const HOUR = 3_600_000;
@@ -152,19 +154,41 @@ export function fillAll(state: GameState): BoxResult {
   return s === state ? { state, blocked: 'noFood' } : { state: s };
 }
 
-// Percy comes by: full boxes are paid for, the rest go back home.
+// The seed Percy leaves after a gold-frame pickup, or null (no seed this
+// time, or not every box was full). The same order always gives the same
+// answer, so it can be tested.
+export function pickupSeed(order: Order, petId: string): CropId | null {
+  if (orderTier(order.boxes) !== 'gold') return null;
+  if (seededRoll(petId, `percy-seed:${order.pickupAt}`) >= D.seedChance) return null;
+  const odds = Object.entries(D.seedOdds) as [CropId, number][];
+  const total = odds.reduce((n, [, p]) => n + p, 0);
+  let roll = seededRoll(petId, `percy-seed-kind:${order.pickupAt}`) * total;
+  for (const [id, p] of odds) {
+    if (roll < p) return id;
+    roll -= p;
+  }
+  return odds[odds.length - 1][0];
+}
+
+// Percy comes by: full boxes are paid for, the rest go back home. With
+// every box full, he may leave a seed too.
 function pickUp(state: GameState, order: Order): GameState {
   const pay = orderPay(order.boxes);
   const gold = pay.boxes + pay.bonus;
   const food = { ...state.inventory.food };
   for (const b of order.boxes) if (!isFull(b) && b.have > 0) food[b.food] = (food[b.food] ?? 0) + b.have;
-  const s: GameState = {
+  const seed = pickupSeed(order, state.pet.id);
+  let s: GameState = {
     ...state,
     gold: state.gold + gold,
     inventory: { ...state.inventory, food },
     delivery: { order: null, nextAt: order.pickupAt + D.nextOrderHours * HOUR },
   };
-  return logMessage(s, { kind: 'pickup', at: order.pickupAt, boxes: order.boxes, gold, tier: orderTier(order.boxes) });
+  if (seed) s = addSeed(s, seed);
+  return logMessage(s, {
+    kind: 'pickup', at: order.pickupAt, boxes: order.boxes, gold, tier: orderTier(order.boxes),
+    ...(seed ? { seed } : {}),
+  });
 }
 
 // Moves orders along to time `now`: a pickup that's due happens, and a new

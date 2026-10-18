@@ -2532,6 +2532,269 @@ body {
   }
 }
 
+/* The pet's craving: a thought bubble above and to the right of its head,
+   with two little dots trailing down towards it. */
+.craving-bubble {
+  position: absolute;
+  left: 56%;
+  top: 3%;
+  width: 52px;
+  height: 58px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  animation: craving-float 2.4s ease-in-out infinite;
+}
+
+.craving-bubble[hidden] {
+  display: none;
+}
+
+.craving-cloud {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 44px;
+  height: 40px;
+  padding: 5px;
+  border-radius: 50% 50% 46% 46%;
+  background: white;
+  box-shadow: 0 0 0 3px var(--lavender), 0 3px 0 3px rgba(43, 33, 64, 0.12);
+}
+
+.craving-cloud svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.craving-dot {
+  position: absolute;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 0 0 2px var(--lavender);
+}
+
+.craving-dot-1 {
+  left: 6px;
+  top: 40px;
+  width: 9px;
+  height: 9px;
+}
+
+.craving-dot-2 {
+  left: 0;
+  top: 51px;
+  width: 5px;
+  height: 5px;
+}
+
+.craving-bubble.pop {
+  animation: craving-pop 0.45s cubic-bezier(0.34, 1.4, 0.64, 1), craving-float 2.4s ease-in-out 0.45s infinite;
+}
+
+.craving-bubble:active .craving-cloud {
+  transform: translateY(2px);
+}
+
+@keyframes craving-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes craving-pop {
+  from { transform: scale(0.2); opacity: 0; transform-origin: 0 100%; }
+  to { transform: scale(1); opacity: 1; transform-origin: 0 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .craving-bubble,
+  .craving-bubble.pop {
+    animation: none;
+  }
+}
+
+/* Tapping the bubble without the food: a little shake, and nothing else. */
+.craving-bubble.nudge .craving-cloud {
+  animation: craving-nudge 0.4s ease-in-out;
+}
+
+@keyframes craving-nudge {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px) rotate(-4deg); }
+  75% { transform: translateX(3px) rotate(4deg); }
+}
+
+/* ---- The item reveal, over the stat bars ---- */
+
+.reveal {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  overflow: hidden;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e9defa;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.reveal[hidden] {
+  display: none;
+}
+
+.reveal.in {
+  animation: reveal-in 0.35s ease-out forwards;
+}
+
+.reveal.out {
+  animation: reveal-out 0.3s ease-in forwards;
+}
+
+@keyframes reveal-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes reveal-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Soft clouds drifting slowly across. */
+.reveal-fog span {
+  position: absolute;
+  width: 46%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: white;
+  filter: blur(14px);
+  opacity: 0.85;
+  animation: reveal-drift 2.4s ease-in-out forwards;
+}
+
+.reveal-fog span:nth-child(1) { left: -12%; top: -30%; }
+.reveal-fog span:nth-child(2) { right: -14%; top: -20%; animation-direction: reverse; }
+.reveal-fog span:nth-child(3) { left: -8%; bottom: -45%; animation-direction: reverse; }
+.reveal-fog span:nth-child(4) { right: -10%; bottom: -40%; }
+.reveal-fog span:nth-child(5) { left: 30%; top: 55%; width: 40%; opacity: 0.6; }
+
+@keyframes reveal-drift {
+  from { transform: translateX(-10px) scale(0.9); }
+  to { transform: translateX(10px) scale(1.05); }
+}
+
+/* Light beams turning slowly behind the item, fading out towards the edges. */
+.reveal-beams {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 420px;
+  height: 420px;
+  margin: -210px 0 0 -210px;
+  background: repeating-conic-gradient(rgba(255, 229, 150, 0.75) 0deg 10deg, rgba(255, 229, 150, 0) 10deg 30deg);
+  -webkit-mask-image: radial-gradient(circle, black 12%, transparent 48%);
+  mask-image: radial-gradient(circle, black 12%, transparent 48%);
+  animation: reveal-spin 9s linear infinite;
+}
+
+@keyframes reveal-spin {
+  to { transform: rotate(360deg); }
+}
+
+.reveal-body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.reveal-body p {
+  margin: 0;
+}
+
+.reveal-caption {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--accent-dark);
+}
+
+.reveal-icon {
+  width: 64px;
+  height: 64px;
+  margin: 2px 0;
+  filter: drop-shadow(0 3px 0 rgba(43, 33, 64, 0.15));
+}
+
+.reveal.in .reveal-icon {
+  animation: reveal-pop 0.5s cubic-bezier(0.34, 1.6, 0.64, 1) both, reveal-bob 1.6s ease-in-out 0.5s infinite;
+}
+
+.reveal-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes reveal-pop {
+  from { transform: scale(0.2); }
+  to { transform: scale(1); }
+}
+
+@keyframes reveal-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.reveal-name {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.reveal-stars {
+  font-size: 13px;
+  color: #d9a520;
+  letter-spacing: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-beams,
+  .reveal-fog span,
+  .reveal.in .reveal-icon {
+    animation: none;
+  }
+}
+
+/* The heart on the craved food's icon in the Feed panel. */
+.drawer-option-icon {
+  position: relative;
+}
+
+.drawer-option-badge {
+  position: absolute;
+  right: -5px;
+  top: -5px;
+  width: 18px;
+  height: 18px;
+  padding: 2px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.drawer-option-badge svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 /* [Close] [Fill all], one height, like the garden's row. */
 .delivery-row:not([hidden]) {
   animation: rise-in 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);

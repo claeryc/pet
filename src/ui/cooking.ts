@@ -48,8 +48,9 @@ export interface Cooking {
 // How long the counter takes to slide in and out (matches .kitchen in
 // style.css).
 export const KITCHEN_OUT_MS = 450;
-// How long the "just cooked" dish stays in the pot.
-const DONE_MS = 1400;
+// How long the "just cooked" dish stays in the pot (the item reveal waits
+// for it, so the pot gets its moment first).
+export const DONE_MS = 1400;
 // Space kept between the pot and an open Food or Recipes panel.
 const PANEL_GAP = 12;
 

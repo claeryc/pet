@@ -86,3 +86,11 @@ describe("save migration to Percy's orders", () => {
     expect(out.state.messagesSeenAt).toBe(0);
   });
 });
+
+describe('save migration to cravings', () => {
+  it('starts with no craving, so the first one comes right away', () => {
+    const out = migrate({ version: 11, state: { pet: { stage: 'teen' } } });
+    expect(out.version).toBe(SAVE_VERSION);
+    expect(out.state.craving).toEqual({ food: null, until: 0, nextAt: 0, last: null });
+  });
+});

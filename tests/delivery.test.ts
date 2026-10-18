@@ -8,6 +8,7 @@ import {
   orderPay,
   orderPool,
   orderTier,
+  pickupSeed,
   pickupTime,
   putInBox,
   stepDelivery,
@@ -185,5 +186,42 @@ describe('Messages', () => {
     s = logMessage(s, { kind: 'pickup', at: START, boxes: [], gold: 0, tier: 'none' });
     s = logMessage(s, { kind: 'unlocked', at: START + 10, id: 'garden' });
     expect(s.messages.map((m) => (m.kind === 'unlocked' ? m.id : m.kind))).toEqual(['shop', 'garden', 'pickup']);
+  });
+});
+
+describe("Percy's seeds", () => {
+  const order = (pickupAt: number, full: boolean): Order => ({
+    announcedAt: pickupAt - 24 * HOUR,
+    pickupAt,
+    boxes: [{ food: 'shrimp', want: 2, have: full ? 2 : 1 }, { food: 'carrot', want: 3, have: 3 }],
+  });
+
+  it('only leaves a seed for a gold-frame order, about half the time, never a carrot', () => {
+    let seeds = 0;
+    const kinds = new Set<string>();
+    for (let i = 0; i < 400; i++) {
+      expect(pickupSeed(order(START + i * HOUR, false), 'pet')).toBeNull();
+      const seed = pickupSeed(order(START + i * HOUR, true), 'pet');
+      if (seed) {
+        seeds++;
+        kinds.add(seed);
+      }
+    }
+    expect(seeds / 400).toBeGreaterThan(D.seedChance - 0.1);
+    expect(seeds / 400).toBeLessThan(D.seedChance + 0.1);
+    expect([...kinds].sort()).toEqual(['dragonFruit', 'pumpkin']);
+  });
+
+  it('puts the seed in your inventory and in the pickup message', () => {
+    // Find a pickup time that gives a seed for this pet.
+    let s = ready();
+    let at = START + 24 * HOUR;
+    while (!pickupSeed(order(at, true), s.pet.id)) at += HOUR;
+    s = { ...s, delivery: { order: order(at, true), nextAt: 0 } };
+    const seed = pickupSeed(order(at, true), s.pet.id)!;
+    const after = stepDelivery(s, at);
+    expect(after.inventory.seeds[seed]).toBe(1);
+    const msg = after.messages.find((m) => m.kind === 'pickup');
+    expect(msg && msg.kind === 'pickup' && msg.seed).toBe(seed);
   });
 });

@@ -283,6 +283,24 @@ export const CONFIG = {
     // above). Filling every box adds `fullBonus` on top (0.25 = 25%).
     payShare: 0.8,
     fullBonus: 0.25,
+    // A gold-frame pickup (every box full) leaves a seed behind `seedChance`
+    // of the time (0.5 = half). Which seed is picked by `seedOdds` (percent):
+    // only the ones the Shop doesn't sell.
+    seedChance: 0.5,
+    seedOdds: { pumpkin: 70, dragonFruit: 30 },
+  },
+
+  // Cravings: now and then the pet would love one particular thing, shown
+  // in a thought bubble over its head. It can be anything you've had
+  // before (a fish you caught, a crop you grew, a dish you cooked) or a
+  // Shop treat, whether you have one right now or not, so keeping a varied
+  // pantry pays off. Feeding it is never required. Times are in hours.
+  craving: {
+    lastsHours: 6, // how long the bubble stays if you don't feed it
+    nextAfterHours: 3, // a new craving comes this long after the last one ends
+    // What feeding the craved food gives on top of the food itself. Rarer
+    // food gives a bigger gold tip, by its stars (0 for Shop food).
+    reward: { happiness: 15, care: 2, gold: { 0: 5, 1: 10, 2: 20, 3: 35 } },
   },
 
   // How many old messages the Messages page keeps.

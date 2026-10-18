@@ -40,7 +40,8 @@ function text(m: Message): string {
     case 'order':
       return STRINGS.delivery.announced(items(m.boxes));
     case 'pickup':
-      return STRINGS.delivery.pickedUp(m.boxes.filter(isFull).length, m.gold);
+      return STRINGS.delivery.pickedUp(m.boxes.filter(isFull).length, m.gold) +
+        (m.seed ? STRINGS.delivery.leftSeed(foodName(m.seed), '') : '');
     case 'unlocked':
       return STRINGS.unlocked[m.id as UnlockId] ?? '';
     case 'growth': {

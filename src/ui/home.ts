@@ -24,6 +24,7 @@ import { isOnPet, ROOM_HEIGHT, ROOM_WIDTH } from '../render/canvas';
 import { potAt, type GardenScene } from '../render/garden';
 import type { DeliveryScene } from '../render/delivery';
 import { formatDuration } from './time';
+import { createReveal, type RevealItem } from './reveal';
 
 export interface HomeCallbacks extends MenuCallbacks {
   onFeed: (food: FoodId) => void;
@@ -51,6 +52,8 @@ export interface HomeScreen {
   toast: (message: string) => void;
   // Like toast, but waits for the message showing now to finish first.
   notice: (message: string) => void;
+  // Shows off something you just got, over the stat bars.
+  reveal: (item: RevealItem) => void;
   fishingPhase: () => FishingPhase; // so the room can draw the line and bobber
   gardenScene: () => GardenScene | null; // so the room can turn into the garden
   deliveryScene: () => DeliveryScene | null; // ...or Percy's meadow, for his order
@@ -175,7 +178,17 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   parcel.title = STRINGS.delivery.open;
   parcel.hidden = true;
   parcel.addEventListener('click', () => startDelivery());
-  roomWrap.append(canvas, parcel);
+  // The pet's craving: a thought bubble over its head with the food in it.
+  // Tapping it opens Feed when you have that food. Where to get it is for
+  // the player to work out (the recipe book helps), so otherwise it just
+  // gives a little shake.
+  const bubble = document.createElement('button');
+  bubble.className = 'craving-bubble';
+  bubble.innerHTML = '<span class="craving-cloud"></span><span class="craving-dot craving-dot-1"></span><span class="craving-dot craving-dot-2"></span>';
+  const bubbleFood = bubble.querySelector<HTMLElement>('.craving-cloud')!;
+  bubble.hidden = true;
+  bubble.addEventListener('click', () => tapBubble());
+  roomWrap.append(canvas, bubble, parcel);
 
   // Warning / sick / recovering banner, hidden when all is well.
   const banner = document.createElement('div');
@@ -256,6 +269,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   // The order the Feed rows were last put in, so we only move them when
   // it changes.
   let feedOrderKey = '';
+  // The food rows wearing the craving heart right now.
+  const cravedRows = new Set<number>();
   const playOptions: DrawerOption[] = [
     ...CONFIG.activities.map((a) => ({
       icon: ITEM_ICONS[a.id],
@@ -463,6 +478,43 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   }
   function refreshParcel(): void {
     parcel.hidden = !latest?.state.delivery.order || actions.hidden || latest.state.pet.stage === 'egg';
+    refreshBubble();
+  }
+  // The bubble shows while the pet is craving something, it's awake and
+  // the normal buttons are up (not while fishing, gardening and so on).
+  let bubbleFor: string | null = null;
+  function refreshBubble(): void {
+    const s = latest?.state;
+    const food = s?.craving.food ?? null;
+    bubble.hidden = !s || !food || actions.hidden || s.pet.asleep || s.pet.stage === 'egg';
+    if (!food) {
+      bubbleFor = null;
+      return;
+    }
+    const label = STRINGS.craving.bubble(petName, STRINGS.foods[food as FoodId]);
+    bubble.setAttribute('aria-label', label);
+    bubble.title = label;
+    if (food === bubbleFor) return;
+    bubbleFor = food;
+    bubbleFood.innerHTML = ITEM_ICONS[food] ?? '';
+    // Pop in again for each new craving.
+    bubble.classList.remove('pop');
+    void bubble.offsetHeight;
+    bubble.classList.add('pop');
+  }
+  function tapBubble(): void {
+    const s = latest?.state;
+    const food = s?.craving.food;
+    if (!s || !food) return;
+    if (foodCount(s, food as FoodId) > 0) {
+      playDrawer.close();
+      menuDrawer!.close();
+      if (!feedDrawer.isOpen()) feedDrawer.open();
+      return;
+    }
+    bubble.classList.remove('nudge');
+    void bubble.offsetHeight;
+    bubble.classList.add('nudge');
   }
   function stopFishing(): void {
     if (fishing.phase() === 'off') return;
@@ -487,7 +539,9 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   // spot: each of them rises over the bars.
   const statSlot = document.createElement('div');
   statSlot.className = 'stat-slot';
-  statSlot.append(stats, fishing.pond, cooking.kitchen, garden.beds, delivery.panel);
+  // The item reveal plays over all of them.
+  const reveal = createReveal();
+  statSlot.append(stats, fishing.pond, cooking.kitchen, garden.beds, delivery.panel, reveal.el);
 
   // A short message that pops up and fades, e.g. "Mochi is asleep".
   const toastEl = document.createElement('div');
@@ -530,6 +584,13 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
         const stars = f.stars ? `${STRINGS.stars(f.stars)}  ` : '';
         feedDrawer.setNote(foodRow(i), count === Infinity ? STRINGS.shop.free : `${stars}× ${count}`);
         feedDrawer.setHidden(foodRow(i), count === 0);
+        // A heart on what the pet is craving.
+        const craved = state.craving.food === f.id;
+        if (craved !== cravedRows.has(i)) {
+          feedDrawer.setOptionBadge(foodRow(i), craved ? STAT_ICONS.happiness : null);
+          if (craved) cravedRows.add(i);
+          else cravedRows.delete(i);
+        }
       });
       feedDrawer.setHidden(COOK_ROW, !isUnlocked(state, 'cooking'));
       const cookIsNew = isNew(state, 'cooking');
@@ -539,10 +600,12 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
         isNew(state, 'shop') || isNew(state, 'collection') || isNew(state, 'familyTree') ||
           isNew(state, 'messages') || unreadMail(state) > 0,
       );
-      // The pot, then what you fed most recently, then the rest as listed
-      // in the config. Rows only move while the panel is closed.
+      // The pot, then what the pet is craving, then what you fed most
+      // recently, then the rest as listed in the config. Rows only move
+      // while the panel is closed.
       const ids = CONFIG.foods.map((f) => f.id as string);
-      const recent = state.recentFoods.map((id) => ids.indexOf(id)).filter((i) => i >= 0);
+      const recent = [...(state.craving.food ? [state.craving.food] : []), ...state.recentFoods]
+        .map((id) => ids.indexOf(id)).filter((i) => i >= 0);
       const order = [COOK_ROW, ...[...recent, ...ids.keys()].filter((i, n, all) => all.indexOf(i) === n).map(foodRow)];
       const orderKey = order.join();
       if (orderKey !== feedOrderKey && !feedDrawer.isOpen()) {
@@ -596,6 +659,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     },
     toast: showToast,
     notice: showNotice,
+    reveal: reveal.show,
     fishingPhase: fishing.phase,
     gardenScene: () => garden.scene(),
     deliveryScene: () => delivery.scene(),

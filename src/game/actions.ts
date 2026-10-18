@@ -8,6 +8,7 @@ import { simulate } from './simulate';
 import { clampStat } from './stats';
 import { stageLengthMs } from './growth';
 import { useFood } from './economy';
+import { satisfyCraving } from './craving';
 import type { GameState, Pet } from './state';
 
 export type BlockReason = 'egg' | 'asleep' | 'tooTired' | 'notSick' | 'noFood' | 'resting';
@@ -15,6 +16,7 @@ export type BlockReason = 'egg' | 'asleep' | 'tooTired' | 'notSick' | 'noFood' |
 export interface ActionResult {
   state: GameState;
   blocked?: BlockReason;
+  craved?: number; // fed what the pet was craving: the gold tip it gave
 }
 
 // Helper: returns a copy of the state with the pet changed by `change`.
@@ -42,21 +44,22 @@ export function feed(state: GameState, now: number, foodId: FoodId = 'riceBall')
   const stocked = useFood(s, foodId); // one fewer in the inventory
   if (!stocked) return { state: s, blocked: 'noFood' };
   const recentFoods = [foodId, ...stocked.recentFoods.filter((id) => id !== foodId)];
-  return {
-    state: withPet({ ...stocked, recentFoods }, (pet) => {
-      pet.stats.hunger = clampStat(pet.stats.hunger + food.hunger);
-      pet.stats.happiness = clampStat(pet.stats.happiness + food.happiness);
-      pet.stats.health = clampStat(pet.stats.health + food.health);
-      if (food.slowHunger) {
-        // Eating it again restarts the timer (effects don't stack).
-        const until = now + food.slowHunger.hours * 3_600_000;
-        pet.buffs = [
-          ...pet.buffs.filter((b) => b.stat !== 'hunger'),
-          { stat: 'hunger', percent: food.slowHunger.percent, until },
-        ];
-      }
-    }),
-  };
+  const fed = withPet({ ...stocked, recentFoods }, (pet) => {
+    pet.stats.hunger = clampStat(pet.stats.hunger + food.hunger);
+    pet.stats.happiness = clampStat(pet.stats.happiness + food.happiness);
+    pet.stats.health = clampStat(pet.stats.health + food.health);
+    if (food.slowHunger) {
+      // Eating it again restarts the timer (effects don't stack).
+      const until = now + food.slowHunger.hours * 3_600_000;
+      pet.buffs = [
+        ...pet.buffs.filter((b) => b.stat !== 'hunger'),
+        { stat: 'hunger', percent: food.slowHunger.percent, until },
+      ];
+    }
+  });
+  // Just what it was craving? A little extra on top.
+  const { state: next, tip } = satisfyCraving(fed, foodId, now);
+  return tip > 0 ? { state: next, craved: tip } : { state: next };
 }
 
 export function play(state: GameState, now: number, activityId: ActivityId = 'cuddle'): ActionResult {

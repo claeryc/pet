@@ -71,8 +71,6 @@ export const STRINGS = {
     gotAway: 'The fish got away...',
     slack: 'The line went slack. The fish swam off.',
     grades: { perfect: 'Perfect catch!', good: 'Good catch!', weak: 'Weak catch...', miss: 'No catch.' },
-    landed: (grade: string, name: string, count: number, stars: string) =>
-      `${grade} You got ${count === 1 ? `a ${name}` : `${count} × ${name}`}! ${stars}`,
     slipped: (grade: string) => `${grade} The fish slipped off the hook.`,
   },
   cooking: {
@@ -84,8 +82,6 @@ export const STRINGS = {
     emptyPot: 'Put some food in the pot first. Tap Food to pick some.',
     full: 'The pot is full. Tap something in it to take it out.',
     noneLeft: (name: string) => `No ${name} left.`,
-    made: (name: string, stars: string) => `You made ${name}! ${stars}`,
-    discovered: (name: string, stars: string) => `New recipe! You made ${name}! ${stars}`,
     mess: 'Hmm... that made a Mushy mess. Try another mix!',
     needMore: (name: string) => `${name} needs something to go with it. Add more to the pot!`,
     cookMush: "This mix won't make a recipe. Cook it anyway?",
@@ -131,9 +127,7 @@ export const STRINGS = {
     perfectPour: 'Perfect pour! The soil stays moist longer.',
     fertilizedNow: 'Fertilized! It grows faster for 6 hours.',
     cured: 'All better! It carries on growing.',
-    harvested: (count: number, crop: string, stars: string) => `You picked ${count} × ${crop}! ${stars}`,
     cleared: 'The pot is ready for a new seed.',
-    foundSeed: (crop: string, stars: string) => `Lucky! You found a ${crop} seed! ${stars}`,
     blocked: {
       noPlot: '',
       notEmpty: 'Something is already growing here.',
@@ -212,7 +206,23 @@ export const STRINGS = {
       boxes === 0
         ? 'Percy came by, but no box was full. Maybe next time!'
         : `Percy picked up ${boxes === 1 ? '1 box' : `${boxes} boxes`}! +${gold} gold`,
+    // Added after pickedUp when Percy left a seed for a gold-frame order,
+    // e.g. "... +60 gold, and a Pumpkin seed! ★★".
+    leftSeed: (seed: string, stars: string) => `, and a ${seed} seed! ${stars}`.trimEnd(),
     flewOff: 'Percy flew off with the full boxes.',
+  },
+  // The item reveal over the stat bars when you get something.
+  reveal: {
+    name: (name: string, count: number) => (count > 1 ? `${name} × ${count}` : name),
+    newRecipe: 'New recipe!',
+    harvested: 'Harvest!',
+    luckySeed: 'Lucky find!',
+    fromPercy: 'A gift from Percy!',
+  },
+  // The pet's craving, in a thought bubble over its head.
+  craving: {
+    bubble: (name: string, food: string) => `${name} is craving ${food}`,
+    loved: (name: string, gold: number) => `Just what ${name} wanted! +${gold} gold`,
   },
   messages: {
     title: 'Messages',
