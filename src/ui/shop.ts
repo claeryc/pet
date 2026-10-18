@@ -71,13 +71,12 @@ function priceButton(price: number, gold: number, onClick: () => void): HTMLButt
   return b;
 }
 
-// How many of a limited item are left today: [hourglass 2/3], after "You have".
-function stockChip(left: number): HTMLElement {
+// A small hourglass left of the price, for items that are only in today.
+function stockIcon(): HTMLElement {
   const el = document.createElement('span');
   el.className = 'shop-stock';
-  const total = CONFIG.economy.limited.perDay;
-  el.innerHTML = `${STAT_ICONS.hourglass}<span>${left}/${total}</span>`;
-  el.setAttribute('aria-label', STRINGS.shop.inStock(left, total));
+  el.innerHTML = STAT_ICONS.hourglass;
+  el.setAttribute('aria-hidden', 'true');
   return el;
 }
 
@@ -185,8 +184,12 @@ export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>)
       const action = left <= 0
         ? label(STRINGS.shop.soldOut)
         : priceButton(f.price, state.gold, () => cb.onBuyFood(f.id));
-      const el = row(ITEM_ICONS[f.id], STRINGS.foods[f.id], STRINGS.shop.have(foodCount(state, f.id)), action);
-      if (f.limited) el.querySelector('small')!.append(stockChip(left));
+      // Limited items say how many are left today instead of how many you have.
+      const note = f.limited
+        ? STRINGS.shop.left(left, CONFIG.economy.limited.perDay)
+        : STRINGS.shop.have(foodCount(state, f.id));
+      const el = row(ITEM_ICONS[f.id], STRINGS.foods[f.id], note, action);
+      if (f.limited) el.insertBefore(stockIcon(), action);
       return { icon: ITEM_ICONS[f.id], count: countBadge(foodCount(state, f.id)), row: el };
     });
   const hats: Entry[] = HATS.map((h) => {

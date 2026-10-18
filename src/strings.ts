@@ -363,7 +363,7 @@ export const STRINGS = {
     room: 'Room',
     fishing: 'Fishing',
     // The energy drink is only in some days, a few at a time.
-    inStock: (left: number, total: number) => `${left} of ${total} left today`,
+    left: (left: number, total: number) => `Left: ${left}/${total}`,
     soldOut: 'Sold out',
     soldOutToday: 'Sold out for today. Check back another day!',
     bait: 'Bait',

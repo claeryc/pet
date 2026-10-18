@@ -3676,20 +3676,16 @@ body {
   height: 32px;
 }
 
-/* Today's stock of a limited item, after "You have": [hourglass 2/3]. */
+/* The hourglass left of the price, for items that are only in today. */
 .shop-stock {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  margin-left: 6px;
-  vertical-align: middle;
-  font-size: 0.8rem;
-  font-weight: 800;
-  color: var(--plum);
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  margin-right: -4px;
 }
 
 .shop-stock svg {
-  width: 12px;
-  height: 12px;
+  width: 100%;
+  height: 100%;
   display: block;
 }
