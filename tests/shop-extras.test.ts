@@ -98,7 +98,7 @@ describe('fishing bait', () => {
   });
 });
 
-describe('the fourth pot', () => {
+describe('the third pot', () => {
   it('can be bought once', () => {
     const s = rich();
     expect(s.garden).toHaveLength(CONFIG.garden.plots);

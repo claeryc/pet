@@ -315,9 +315,9 @@ describe('the garden room', () => {
     expect(potAt(46, 5, 3)).toBe(-1); // the sky
   });
 
-  it('four pots stand closer together', async () => {
+  it('two pots stand a little further apart', async () => {
     const { potAt } = await import('../src/render/garden');
-    expect([30, 39, 48, 57].map((x) => potAt(x, 38, 4))).toEqual([0, 1, 2, 3]);
-    expect(potAt(14, 38, 4)).toBe(-1);
+    expect([40, 53].map((x) => potAt(x, 38, 2))).toEqual([0, 1]);
+    expect(potAt(14, 38, 2)).toBe(-1);
   });
 });

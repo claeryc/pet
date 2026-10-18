@@ -1,5 +1,5 @@
 // The garden. While you garden, the room turns into a little garden with
-// the pet on the left and three pots on the right (drawn in
+// the pet on the left and the pots on the right (drawn in
 // src/render/garden.ts). Tap a pot in the room, or one of the 1 / 2 / 3
 // tabs, to pick it.
 //
@@ -137,7 +137,7 @@ export function createGarden(cb: GardenCallbacks): Garden {
   beds.className = 'garden';
   beds.hidden = true;
 
-  // Tabs: 1 / 2 / 3 (and 4 once bought), each with a little picture of what's growing.
+  // Tabs: 1 / 2 (and 3 once bought), each with a little picture of what's growing.
   const tabs = document.createElement('div');
   tabs.className = 'garden-tabs';
   tabs.setAttribute('role', 'tablist');

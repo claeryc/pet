@@ -2218,7 +2218,7 @@ body {
   }
 }
 
-/* The three pots along the top, as one segmented control: a number, a
+/* The pots along the top, as one segmented control: a number, a
    little picture of what's growing, and a drop when it needs water. */
 .garden-tabs {
   display: flex;
@@ -2228,6 +2228,10 @@ body {
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.5);
   box-shadow: inset 0 0 0 2px rgba(91, 63, 110, 0.12);
+}
+
+.garden-tab[hidden] {
+  display: none;
 }
 
 .garden-tab {

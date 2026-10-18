@@ -244,10 +244,10 @@ export const CONFIG = {
   // The garden (in the Play panel): pots to grow crops in. Plants grow in
   // real time, even while the game is closed. Times are in hours.
   garden: {
-    plots: 3, // pots in a new garden
+    plots: 2, // pots in a new garden (saves from before keep their 3)
     // One more pot can be bought in the Shop, up to `maxPlots`.
-    maxPlots: 4,
-    extraPotPrice: 300,
+    maxPlots: 3,
+    extraPotPrice: 250,
     // What you can grow. `id` is the food you harvest and `harvest` is how
     // many. `seedPrice` is the seed's price in the Shop (0: not sold, you
     // only find it by luck).

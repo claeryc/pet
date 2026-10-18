@@ -1,6 +1,6 @@
 // The garden scene in the room. While you garden, the room becomes a little
 // garden: sky, a picket fence and grass, with the pet on the left and the
-// pots side by side on the right (three, or four once you buy another). The pot you picked has a small
+// pots side by side on the right (two, or three once you buy another). The pot you picked has a small
 // arrow over it, and a dry pot has a blinking water drop.
 
 import { PALETTE } from './palette';
@@ -19,9 +19,8 @@ export interface GardenScene {
   selected: number;
 }
 
-// Where each pot stands: its middle, in room pixels. Four pots stand a
-// little closer together.
-const POT_X: Record<number, number[]> = { 3: [35, 46, 57], 4: [30, 39, 48, 57] };
+// Where each pot stands: its middle, in room pixels.
+const POT_X: Record<number, number[]> = { 2: [40, 53], 3: [35, 46, 57] };
 const potXs = (count: number) => POT_X[count] ?? POT_X[3];
 const POT_TOP = 40; // the rim; the plant stands on it
 const POT_W = 8;
@@ -155,7 +154,5 @@ export function drawGardenPots(ctx: CanvasRenderingContext2D, scene: GardenScene
 // small fingers don't miss.
 export function potAt(x: number, y: number, count: number): number {
   if (y < 22 || y > 47) return -1;
-  const xs = potXs(count);
-  const reach = count > 3 ? 4 : 5;
-  return xs.findIndex((cx) => Math.abs(x - cx) <= reach);
+  return potXs(count).findIndex((cx) => Math.abs(x - cx) <= 5);
 }
