@@ -34,6 +34,14 @@ describe('art files', () => {
     }
   });
 
+  it('every theme has a 1, 2 and 3 star character', () => {
+    // Otherwise a rolled rarity quietly falls back to another one, and a
+    // little one can't lean towards that parent's theme at that rarity.
+    for (const theme of Object.keys(data.themes))
+      for (const stars of [1, 2, 3])
+        expect(data.characters.some((c) => c.theme === theme && c.stars === stars), `${theme} ${stars}`).toBe(true);
+  });
+
   it('character ids are unique', () => {
     const ids = data.characters.map((c) => c.id);
     expect(new Set(ids).size).toBe(ids.length);

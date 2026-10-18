@@ -13,8 +13,10 @@
   },
   "characters": [
     { "id": "dumpling", "theme": "basic", "stars": 1, "name": "Dumpling", "sheet": "dumpling" },
+    { "id": "bunbun", "theme": "basic", "stars": 2, "name": "Bunbun", "sheet": "bunbun" },
     { "id": "cloudlet", "theme": "basic", "stars": 3, "name": "Cloudlet", "sheet": "cloudlet" },
     { "id": "sprig", "theme": "nature", "stars": 1, "name": "Sprig", "sheet": "sprig" },
+    { "id": "mosscap", "theme": "nature", "stars": 2, "name": "Mosscap", "sheet": "mosscap" },
     { "id": "fernwhisk", "theme": "nature", "stars": 3, "name": "Fernwhisk", "sheet": "fernwhisk" },
     {
       "id": "pebblit",
@@ -24,8 +26,10 @@
       "sheet": "pebblit",
       "variants": [{ "id": "amber", "name": "Amber", "sheet": "pebblit-amber", "chance": 25 }]
     },
+    { "id": "crystalback", "theme": "cave", "stars": 2, "name": "Crystalback", "sheet": "crystalback" },
     { "id": "geodon", "theme": "cave", "stars": 3, "name": "Geodon", "sheet": "geodon" },
     { "id": "glimmer", "theme": "sparkle", "stars": 1, "name": "Glimmer", "sheet": "glimmer" },
+    { "id": "moonpip", "theme": "sparkle", "stars": 2, "name": "Moonpip", "sheet": "moonpip" },
     { "id": "starwisp", "theme": "sparkle", "stars": 3, "name": "Starwisp", "sheet": "starwisp" }
   ]
 }

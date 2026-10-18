@@ -9,14 +9,16 @@ This explains how the pet's art is organised, how to draw a character in Aseprit
 - Good care during the baby and teen days raises the chance of a rarer character. The odds are in `src/game/config.ts` under `rarity`.
 - A character can have **colour variants** (for example an Amber Pebblit). A variant is just another sheet with a chance of appearing.
 
-Today each theme has a common (★) and a rare (★★★) character:
+Each theme has a common (★), an uncommon (★★) and a rare (★★★) character:
 
-| Theme | ★ | ★★★ |
-| --- | --- | --- |
-| Basic | Dumpling | Cloudlet |
-| Nature | Sprig | Fernwhisk |
-| Cave | Pebblit (and Amber variant) | Geodon |
-| Sparkle | Glimmer | Starwisp |
+| Theme | ★ | ★★ | ★★★ |
+| --- | --- | --- | --- |
+| Basic | Dumpling | Bunbun | Cloudlet |
+| Nature | Sprig | Mosscap | Fernwhisk |
+| Cave | Pebblit (and Amber variant) | Crystalback | Geodon |
+| Sparkle | Glimmer | Moonpip | Starwisp |
+
+![Every character, by theme and rarity](character-lineup.png)
 
 All of these are placeholders, made to be painted over.
 

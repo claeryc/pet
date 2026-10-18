@@ -74,6 +74,14 @@
         "size": "large"
       }
     },
+    "bunbun": {
+      "file": "characters/basic/bunbun.png",
+      "head": {
+        "x": 16,
+        "y": 15,
+        "size": "large"
+      }
+    },
     "cloudlet": {
       "file": "characters/basic/cloudlet.png",
       "head": {
@@ -87,6 +95,14 @@
       "head": {
         "x": 16,
         "y": 14,
+        "size": "large"
+      }
+    },
+    "mosscap": {
+      "file": "characters/nature/mosscap.png",
+      "head": {
+        "x": 16,
+        "y": 12,
         "size": "large"
       }
     },
@@ -114,6 +130,14 @@
         "size": "large"
       }
     },
+    "crystalback": {
+      "file": "characters/cave/crystalback.png",
+      "head": {
+        "x": 16,
+        "y": 15,
+        "size": "large"
+      }
+    },
     "geodon": {
       "file": "characters/cave/geodon.png",
       "head": {
@@ -128,6 +152,14 @@
         "x": 16,
         "y": 17,
         "size": "small"
+      }
+    },
+    "moonpip": {
+      "file": "characters/sparkle/moonpip.png",
+      "head": {
+        "x": 16,
+        "y": 16,
+        "size": "large"
       }
     },
     "starwisp": {
