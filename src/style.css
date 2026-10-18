@@ -3302,9 +3302,10 @@ body {
   flex: 0 0 auto;
 }
 
-.meet-row .btn[aria-pressed='true'] {
-  background: var(--accent);
-  color: white;
+/* Close and Meet shrink away fully while the Gift list is open. */
+.meet-row[data-open] > .btn {
+  padding: 0;
+  flex-shrink: 1;
 }
 
 .meet-row .btn:disabled {
@@ -3418,7 +3419,6 @@ body {
 
 .meet-mingle[hidden],
 .meet-add[hidden],
-.meet-gifts[hidden],
 .meet-empty[hidden] {
   display: none;
 }
@@ -3436,44 +3436,6 @@ body {
   font-size: 0.85rem;
   text-align: center;
   opacity: 0.75;
-}
-
-/* The gift picker: small food tiles with how many you have. */
-.meet-gifts {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  padding: 2px 0 4px;
-}
-
-.meet-gift {
-  flex: 0 0 auto;
-  position: relative;
-  width: 44px;
-  height: 44px;
-  padding: 5px;
-  border: 2px solid var(--lavender);
-  border-radius: 12px;
-  background: white;
-  cursor: pointer;
-}
-
-.meet-gift svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.meet-gift small {
-  position: absolute;
-  right: 2px;
-  bottom: 0;
-  font-size: 0.7rem;
-  font-weight: 800;
-}
-
-.meet-gift:active {
-  transform: translateY(2px);
 }
 
 /* Friends in Messages. */

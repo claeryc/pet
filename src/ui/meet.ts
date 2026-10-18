@@ -6,8 +6,8 @@
 //   Visiting · leaves in 2h   ·   Met 1 of 3 today
 //   [ ♥ Mingle: 50% chance of a little one ]   (or [Add friend] for a guest)
 //
-// The button row becomes [Close] [Gift] [Meet]. Gift swaps the Mingle line
-// for the food you could give. Pets come over one at a time (see
+// The button row becomes [Close] [Gift] [Meet]. Gift opens like Feed does:
+// a list of the food you have, each with how much friendship it's worth. Pets come over one at a time (see
 // stepVisits), so it's always whoever is visiting now.
 //
 // The rules (scores, caps, who can mingle) live in src/game/friends.ts.
@@ -20,6 +20,7 @@ import { characterSheet } from '../game/growth';
 import { hearts, isFriend, littleOneChance, mingleBlock, visitor } from '../game/friends';
 import type { Friend, GameState } from '../game/state';
 import { HEART_ICONS, ITEM_ICONS } from './icons';
+import { createDrawer, type DrawerOption } from './drawer';
 import { formatDuration } from './time';
 
 export interface MeetCallbacks {
@@ -76,7 +77,6 @@ export function createMeet(cb: MeetCallbacks): MeetPanel {
   let now = 0;
   let active = false;
   let outTimer = 0;
-  let gifting = false;
   let heartsUntil = 0;
 
   const panel = el('div', 'meet');
@@ -92,20 +92,45 @@ export function createMeet(cb: MeetCallbacks): MeetPanel {
   // The Mingle line, or Add friend for a guest.
   const mingle = el('button', 'meet-mingle');
   const add = el('button', 'shop-btn meet-add', STRINGS.friends.add);
-  // The gift picker.
-  const gifts = el('div', 'meet-gifts');
-  const empty = el('p', 'meet-empty');
-  panel.append(head, sub, mingle, add, gifts, empty);
+  const empty = el('p', 'meet-empty', STRINGS.friends.nobody);
+  panel.append(head, sub, mingle, add, empty);
 
   const row = el('div', 'actions meet-row');
   row.hidden = true;
   const close = el('button', 'btn btn-soft', STRINGS.friends.close);
-  const gift = el('button', 'btn btn-soft meet-gift-btn', STRINGS.friends.gift);
   const meetBtn = el('button', 'btn', STRINGS.friends.meet);
-  row.append(close, gift, meetBtn);
+
+  // Gift: the food you have (anything that isn't free), like the Feed list.
+  // Each row shows how many you have and the friendship it's worth.
+  const giftable = (CONFIG.foods as readonly Food[]).filter((food) => food.price > 0);
+  const hasGifts = () => !!state && giftable.some((food) => foodCount(state!, food.id) > 0);
+  const giftOptions: DrawerOption[] = giftable.map((food) => {
+    // Cheap food is worth part of a point (it adds up over the day).
+    const points = Math.round((Math.min(food.price, CONFIG.friends.gift.goldPerDay) / CONFIG.friends.gift.goldPerPoint) * 10) / 10;
+    return {
+      icon: ITEM_ICONS[food.id] ?? '',
+      label: STRINGS.foods[food.id as FoodId],
+      effects: [{ icon: HEART_ICONS.full, text: `+${points}`, title: STRINGS.friends.giftWorth(points) }],
+      onPick: () => {
+        const f = current();
+        if (f) cb.onGift(f.id, food.id);
+        heartsUntil = performance.now() + HEARTS_MS;
+      },
+    };
+  });
+  const gift = createDrawer({
+    id: 'gift',
+    label: STRINGS.friends.gift,
+    options: giftOptions,
+    row,
+    comingSoon: '',
+    beforeOpen: () => (!current() ? STRINGS.friends.nobody : hasGifts() ? null : STRINGS.friends.noGifts),
+    onBlocked: cb.toast,
+  });
+  row.append(close, gift.el, meetBtn);
 
   // Whoever is over. If they leave and someone new comes while the panel
-  // is open, the gift picker closes and the hearts stop.
+  // is open, the gift list closes and the hearts stop.
   let shown: string | null = null;
   const current = (): Friend | null => (state ? visitor(state) : null);
 
@@ -117,53 +142,35 @@ export function createMeet(cb: MeetCallbacks): MeetPanel {
     const f = current();
     if (f && cb.onMeet(f.id)) heartsUntil = performance.now() + HEARTS_MS;
   });
-  gift.addEventListener('click', () => {
-    gifting = !gifting;
-    render();
-  });
   mingle.addEventListener('click', () => {
     const f = current();
     if (f) cb.onMingle(f.id);
   });
   add.addEventListener('click', cb.onAdd);
 
-  // Food you could give: anything you have that isn't free.
-  function giftButtons(f: Friend): void {
-    if (!state) return;
-    const foods = (CONFIG.foods as readonly Food[]).filter((food) => food.price > 0 && foodCount(state!, food.id) > 0);
-    gifts.replaceChildren();
-    empty.hidden = foods.length > 0;
-    empty.textContent = STRINGS.friends.noGifts;
-    for (const food of foods) {
-      const b = el('button', 'meet-gift');
-      b.innerHTML = ITEM_ICONS[food.id] ?? '';
-      b.append(el('small', '', String(foodCount(state, food.id))));
-      const label = STRINGS.foods[food.id as FoodId];
-      b.title = label;
-      b.setAttribute('aria-label', `${STRINGS.friends.gift}: ${label}`);
-      b.addEventListener('click', () => cb.onGift(f.id, food.id));
-      gifts.append(b);
-    }
-  }
-
   function render(): void {
     if (!state) return;
     const f = current();
     if ((f?.id ?? null) !== shown) {
       shown = f?.id ?? null;
-      gifting = false;
+      gift.close();
       heartsUntil = 0;
     }
-    meetBtn.disabled = gift.disabled = !f;
-    gift.setAttribute('aria-pressed', String(gifting));
+    meetBtn.disabled = !f;
+    gift.setDim(!f);
+    // How many of each food you have; food you're out of is left off.
+    giftable.forEach((food, i) => {
+      const count = foodCount(state!, food.id);
+      gift.setNote(i, `${food.stars ? `${STRINGS.stars(food.stars)}  ` : ''}× ${count}`);
+      gift.setHidden(i, count === 0);
+    });
     if (!f) {
       name.textContent = '';
       pic.hidden = true;
       heartSlot.replaceChildren();
       sub.textContent = '';
-      mingle.hidden = add.hidden = gifts.hidden = true;
+      mingle.hidden = add.hidden = true;
       empty.hidden = false;
-      empty.textContent = STRINGS.friends.nobody;
       return;
     }
     name.textContent = f.name;
@@ -175,12 +182,6 @@ export function createMeet(cb: MeetCallbacks): MeetPanel {
     const where = STRINGS.friends.visiting(formatDuration(state.visit.until - now));
     sub.textContent = `${where}  ·  ${STRINGS.friends.metToday(Math.min(metToday, CONFIG.friends.meet.perDay), CONFIG.friends.meet.perDay)}`;
 
-    gifts.hidden = !gifting;
-    if (gifting) {
-      mingle.hidden = add.hidden = true;
-      giftButtons(f);
-      return;
-    }
     empty.hidden = true;
     const known = isFriend(state, f.id);
     add.hidden = known;
@@ -202,7 +203,7 @@ export function createMeet(cb: MeetCallbacks): MeetPanel {
     if (!active) return;
     active = false;
     row.hidden = true;
-    gifting = false;
+    gift.close();
     panel.classList.remove('is-in');
     clearTimeout(outTimer);
     outTimer = window.setTimeout(() => (panel.hidden = true), MEET_OUT_MS);
@@ -213,7 +214,6 @@ export function createMeet(cb: MeetCallbacks): MeetPanel {
     panel,
     start() {
       active = true;
-      gifting = false;
       heartsUntil = 0;
       row.hidden = false;
       clearTimeout(outTimer);
