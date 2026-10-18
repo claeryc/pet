@@ -4,7 +4,8 @@
 // and teen looks the same. When the teen grows up, the game picks which
 // *character* it becomes from src/data/characters.json:
 //   1. roll a star rarity, with better odds for a higher Care Score,
-//   2. pick a character of that rarity (any theme),
+//   2. pick a character of that rarity (any theme, though a little one
+//      leans towards its parents' themes),
 //   3. maybe pick one of that character's colour variants.
 // The rolls are based on the pet's id, so reloading never changes them.
 
@@ -45,11 +46,16 @@ export function getVariant(character: Character | undefined, id: string | null):
   return character?.variants?.find((v) => v.id === id);
 }
 
+// The sprite sheet of a grown-up character (and its colour variant).
+export function characterSheet(id: string | null, variant: string | null): string {
+  const character = getCharacter(id);
+  return getVariant(character, variant)?.sheet ?? character?.sheet ?? '';
+}
+
 // The sprite sheet the pet should be drawn with right now.
 export function sheetFor(pet: Pet): string {
   if (pet.stage !== 'adult') return STAGE_SHEETS[pet.stage];
-  const character = getCharacter(pet.character);
-  return getVariant(character, pet.variant)?.sheet ?? character?.sheet ?? '';
+  return characterSheet(pet.character, pet.variant);
 }
 
 export function nextStage(stage: Stage): Stage | null {
@@ -87,23 +93,47 @@ function pickByChance<T>(items: [T, number][], roll: number): T | null {
   return null;
 }
 
+// Rolls a star rarity from odds in percent, e.g. { 1: 60, 2: 30, 3: 10 }.
+export function rollStarsWith(odds: Record<Stars, number>, roll: number): Stars {
+  return pickByChance(([1, 2, 3] as Stars[]).map((s): [Stars, number] => [s, odds[s]]), roll) ?? 1;
+}
+
 // Rolls a star rarity for a Care Score.
 export function rollStars(careScore: number, petId: string): Stars {
   const band = CONFIG.rarity.find((r) => careScore >= r.minCare) ?? CONFIG.rarity[CONFIG.rarity.length - 1];
-  const odds = ([1, 2, 3] as Stars[]).map((s): [Stars, number] => [s, band.odds[s]]);
-  return pickByChance(odds, seededRoll(petId, 'stars')) ?? 1;
+  return rollStarsWith(band.odds, seededRoll(petId, 'stars'));
+}
+
+// Picks a character of a star rarity, and maybe a colour variant. If
+// nobody has that rarity yet, it steps down (then up) until someone does.
+// `themes` (a little one's parents' themes) are favoured
+// CONFIG.friends.parentThemeChance of the time, when they have a character
+// of that rarity.
+export function characterOfStars(
+  rolled: Stars,
+  seed: string,
+  themes: readonly string[] = [],
+): { character: Character; variant: Variant | null } {
+  const order = [rolled, ...([3, 2, 1] as Stars[]).filter((s) => s < rolled), ...([1, 2, 3] as Stars[]).filter((s) => s > rolled)];
+  const stars = order.find((s) => CHARACTERS.some((c) => c.stars === s)) ?? 1;
+  let options = CHARACTERS.filter((c) => c.stars === stars);
+  if (themes.length > 0 && seededRoll(seed, 'parentTheme') * 100 < CONFIG.friends.parentThemeChance) {
+    const theme = themes[Math.floor(seededRoll(seed, 'whichParent') * themes.length)];
+    const ofTheme = options.filter((c) => c.theme === theme);
+    if (ofTheme.length > 0) options = ofTheme;
+  }
+  const character = options[Math.floor(seededRoll(seed, 'character') * options.length)];
+  const variants = (character.variants ?? []).map((v): [Variant, number] => [v, v.chance]);
+  return { character, variant: pickByChance(variants, seededRoll(seed, 'variant')) };
 }
 
 // Picks the character (and maybe a colour variant) a teen grows into.
-export function chooseCharacter(careScore: number, petId: string): { character: Character; variant: Variant | null } {
-  // If nobody has the rolled rarity yet, step down (then up) until someone does.
-  const rolled = rollStars(careScore, petId);
-  const order = [rolled, ...([3, 2, 1] as Stars[]).filter((s) => s < rolled), ...([1, 2, 3] as Stars[]).filter((s) => s > rolled)];
-  const stars = order.find((s) => CHARACTERS.some((c) => c.stars === s)) ?? 1;
-  const options = CHARACTERS.filter((c) => c.stars === stars);
-  const character = options[Math.floor(seededRoll(petId, 'character') * options.length)];
-  const variants = (character.variants ?? []).map((v): [Variant, number] => [v, v.chance]);
-  return { character, variant: pickByChance(variants, seededRoll(petId, 'variant')) };
+export function chooseCharacter(
+  careScore: number,
+  petId: string,
+  themes: readonly string[] = [],
+): { character: Character; variant: Variant | null } {
+  return characterOfStars(rollStars(careScore, petId), petId, themes);
 }
 
 // Moves the pet into its next stage at time `t` (changes `pet` in place).
@@ -117,7 +147,7 @@ export function growUp(pet: Pet, t: number): void {
     pet.stats = { ...CONFIG.startingStats };
   }
   if (next === 'adult') {
-    const { character, variant } = chooseCharacter(pet.careScore, pet.id);
+    const { character, variant } = chooseCharacter(pet.careScore, pet.id, pet.themes ?? []);
     pet.character = character.id;
     pet.variant = variant?.id ?? null;
   }

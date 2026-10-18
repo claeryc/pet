@@ -6,8 +6,10 @@
 //
 // The tree is saved as a flat list of earlier pets (GameState.family), each
 // with a generation number and the ids of its parents, plus the pet you have
-// now. That's enough for many generations and for parents from other
-// players once pets can meet; nothing adds to the list yet.
+// now (and any other pet sharing its room). That's enough for many
+// generations and for parents from other players. A pet joins the list
+// when it retires, and a friend when it has a little one with your pet
+// (see src/game/friends.ts).
 
 import type { FamilyMember, GameState, Pet } from './state';
 import type { Stage } from './growth';
@@ -51,7 +53,8 @@ export function setOwner(state: GameState, raw: string): GameState {
 // One pet as the tree shows it.
 export interface TreeMember extends FamilyMember {
   stage: Stage; // earlier generations are shown as they were when grown up
-  current: boolean; // the pet you have now
+  current: boolean; // the pet you're looking after now
+  home: boolean; // in your room (the pet you're looking after, or another)
 }
 
 export interface Generation {
@@ -59,14 +62,14 @@ export interface Generation {
   members: TreeMember[];
 }
 
-// How a pet is remembered in the tree once a new generation takes over.
-// (Breeding will call this; it's here so the shape is settled now.)
+// How a pet is remembered in the tree once it retires.
 export function rememberPet(pet: Pet, owner: string): FamilyMember {
   return {
     id: pet.id,
     name: pet.name,
     owner,
     fromFriend: false,
+    fromWild: false,
     bornAt: pet.bornAt,
     character: pet.character,
     variant: pet.variant,
@@ -75,11 +78,14 @@ export function rememberPet(pet: Pet, owner: string): FamilyMember {
   };
 }
 
-// Every generation, oldest first, with the pet you have now in its own.
+// Every generation, oldest first, with the pets you have now in theirs.
 export function familyGenerations(state: GameState): Generation[] {
+  const atHome = (pet: Pet, current: boolean): TreeMember =>
+    ({ ...rememberPet(pet, state.owner), stage: pet.stage, current, home: true });
   const members: TreeMember[] = [
-    ...state.family.map((m) => ({ ...m, stage: 'adult' as Stage, current: false })),
-    { ...rememberPet(state.pet, state.owner), stage: state.pet.stage, current: true },
+    ...state.family.map((m) => ({ ...m, stage: 'adult' as Stage, current: false, home: false })),
+    atHome(state.pet, true),
+    ...state.housemates.map((p) => atHome(p, false)),
   ];
   const numbers = [...new Set(members.map((m) => m.generation))].sort((a, b) => a - b);
   return numbers.map((number) => ({

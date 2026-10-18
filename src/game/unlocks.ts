@@ -9,7 +9,7 @@ import type { GameState } from './state';
 import { canOrder } from './delivery';
 import { logMessage } from './messages';
 
-export type UnlockId = 'shop' | 'cooking' | 'collection' | 'familyTree' | 'garden' | 'messages' | 'delivery';
+export type UnlockId = 'shop' | 'cooking' | 'collection' | 'familyTree' | 'garden' | 'messages' | 'delivery' | 'meet';
 
 const RULES: Record<UnlockId, (s: GameState) => boolean> = {
   // Once the egg hatches and there's someone to buy things for.
@@ -27,6 +27,8 @@ const RULES: Record<UnlockId, (s: GameState) => boolean> = {
   // Percy's orders start once there's something to ask for: a fish you
   // caught, a crop you grew or a dish you cooked.
   delivery: (s) => canOrder(s),
+  // Meet (in Play) opens when the first wanderer drops by.
+  meet: (s) => !!s.visit?.guest || (s.friends?.length ?? 0) > 0,
 };
 
 export const UNLOCKS = Object.keys(RULES) as UnlockId[];
@@ -60,8 +62,8 @@ export function characterKey(character: string, variant: string | null): string 
 // can say so.
 export function updateProgress(state: GameState): { state: GameState; unlocked: UnlockId[] } {
   let s = state;
-  const { pet } = s;
-  if (pet.stage === 'adult' && pet.character) {
+  for (const pet of [s.pet, ...s.housemates]) {
+    if (pet.stage !== 'adult' || !pet.character) continue;
     const key = characterKey(pet.character, pet.variant);
     if (!s.charactersFound.includes(key)) s = { ...s, charactersFound: [...s.charactersFound, key] };
   }

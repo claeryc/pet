@@ -46,6 +46,11 @@ export interface Pet {
   careScore: number; // hidden 0-100 long-term care rating
   buffs: Buff[]; // active timed effects
   hat: string | null; // the hat it's wearing (an id from src/data/hats.json)
+  // The themes of its parents' characters (none for a first pet). When it
+  // grows up, characters of these themes are more likely (see growth.ts).
+  themes: string[];
+  // The friend it had a little one with. A pet only ever has one partner.
+  partner: string | null;
 }
 
 // Everything the player owns.
@@ -79,11 +84,45 @@ export interface FamilyMember {
   name: string;
   owner: string; // who raised it ('' if they didn't say)
   fromFriend: boolean; // another player's pet (once pets can meet)
+  fromWild: boolean; // a wanderer: a pet the game made, with no owner
   bornAt: number;
   character: string | null; // what it grew into (null if it never grew up)
   variant: string | null;
   generation: number;
   parents: string[]; // ids of other family members
+}
+
+// A pet you can meet (see src/game/friends.ts). For now every friend is a
+// wanderer: a grown-up pet the game makes itself, which drops by now and
+// then and can be added as a friend. Friends from other players will use
+// the same shape later.
+export interface Friend {
+  id: string;
+  name: string;
+  character: string; // an id from src/data/characters.json
+  variant: string | null;
+  bornAt: number;
+  generation: number;
+  parents: string[];
+  wild: boolean; // a wanderer (no owner)
+  score: number; // hidden friend score, 0-100, shown as hearts
+  // Today's meetings and gifts (they only count up to a daily cap). `day`
+  // is the local date they're for, e.g. "2026-10-18".
+  day: string;
+  metToday: number;
+  giftedToday: number; // gold value of today's gifts
+  // The last day the score is settled up to: a day with no meeting costs a
+  // point, worked out in stepFriends().
+  settledDay: string;
+  partner: string | null; // the pet of yours it had a little one with
+  mingledAt: number; // when it last mingled (0 = never)
+}
+
+// The wanderer visiting right now, if any, and when the next one comes.
+export interface Visit {
+  guest: Friend | null;
+  until: number; // the guest moves on at this time
+  nextAt: number; // when the next wanderer drops by (0 = not planned yet)
 }
 
 // Keeps track of the daily check-in bonus.
@@ -131,10 +170,16 @@ export type Message =
   | { kind: 'order'; at: number; boxes: { food: string; want: number }[]; pickupAt: number }
   | { kind: 'pickup'; at: number; boxes: OrderBox[]; gold: number; tier: OrderTier; seed?: string }
   | { kind: 'unlocked'; at: number; id: string }
-  | { kind: 'growth'; at: number; stage: string; name: string; character: string | null; variant: string | null };
+  | { kind: 'growth'; at: number; stage: string; name: string; character: string | null; variant: string | null }
+  | { kind: 'visitor'; at: number; name: string; character: string; variant: string | null }
+  | { kind: 'littleOne'; at: number; name: string; friend: string };
 
 export interface GameState {
+  // The pet you're looking after right now (its stats show on the home
+  // screen). Any other pets share the room in `housemates`; tapping one
+  // swaps it in here.
   pet: Pet;
+  housemates: Pet[];
   // The moment the simulation last caught up to. simulate() moves the world
   // forward from here to "now".
   lastUpdated: number;
@@ -176,6 +221,9 @@ export interface GameState {
   messagesSeenAt: number;
   // The pet's craving (the thought bubble).
   craving: Craving;
+  // Pets to meet: your friends, and the wanderer visiting now.
+  friends: Friend[];
+  visit: Visit;
 }
 
 // Makes a random id. crypto.randomUUID exists in all modern browsers and Node.
@@ -183,28 +231,39 @@ export function makeId(): string {
   return crypto.randomUUID();
 }
 
+// A brand new egg. A little one gets its generation, parents and their
+// themes; a first pet has none.
+export function newPet(now: number, family: { generation: number; parents: string[]; themes: string[] } = {
+  generation: 1, parents: [], themes: [],
+}): Pet {
+  return {
+    id: makeId(),
+    name: '',
+    named: false,
+    generation: family.generation,
+    parents: [...family.parents],
+    bornAt: now,
+    stats: { ...CONFIG.startingStats },
+    stage: 'egg', // every pet starts life as an egg
+    character: null,
+    variant: null,
+    stageStartedAt: now,
+    asleep: false,
+    condition: 'healthy',
+    warningMinutes: 0,
+    recoveryUntil: null,
+    careScore: CONFIG.careScore.start,
+    buffs: [],
+    hat: null,
+    themes: [...family.themes],
+    partner: null,
+  };
+}
+
 export function createNewGame(now: number): GameState {
   return {
-    pet: {
-      id: makeId(),
-      name: '',
-      named: false,
-      generation: 1,
-      parents: [],
-      bornAt: now,
-      stats: { ...CONFIG.startingStats },
-      stage: 'egg', // every pet starts life as an egg
-      character: null,
-      variant: null,
-      stageStartedAt: now,
-      asleep: false,
-      condition: 'healthy',
-      warningMinutes: 0,
-      recoveryUntil: null,
-      careScore: CONFIG.careScore.start,
-      buffs: [],
-      hat: null,
-    },
+    pet: newPet(now),
+    housemates: [],
     lastUpdated: now,
     clockOffsetMs: 0,
     gold: CONFIG.economy.startingGold,
@@ -225,5 +284,7 @@ export function createNewGame(now: number): GameState {
     messages: [],
     messagesSeenAt: 0,
     craving: { food: null, until: 0, nextAt: 0, last: null },
+    friends: [],
+    visit: { guest: null, until: 0, nextAt: 0 },
   };
 }

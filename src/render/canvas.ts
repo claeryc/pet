@@ -11,6 +11,14 @@ import { drawDelivery, type DeliveryScene } from './delivery';
 export const ROOM_WIDTH = 64;
 export const ROOM_HEIGHT = 48;
 
+// Another pet drawn in the room: one sharing it with yours, or a friend
+// visiting while they meet.
+export interface OtherPet {
+  sheet: SpriteSheet | undefined;
+  hat?: SpriteSheet;
+  animation: string;
+}
+
 // What the room should look like right now.
 export interface Scene {
   animation: string; // which pet animation to play
@@ -19,6 +27,11 @@ export interface Scene {
   fishing?: FishingPhase; // draws a little pond, rod and bobber while fishing
   garden?: GardenScene | null; // while gardening: the garden, with the pet on the left
   delivery?: DeliveryScene | null; // while filling Percy's order: his meadow
+  // The other pet in the room, and whether yours stands on the left of it
+  // (the older pet always stands on the left).
+  housemate?: OtherPet | null;
+  petOnLeft?: boolean;
+  meeting?: (OtherPet & { hearts: boolean }) | null; // a friend over to play
 }
 
 export function setupCanvas(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
@@ -79,11 +92,84 @@ function drawFishing(ctx: CanvasRenderingContext2D, phase: FishingPhase, timeMs:
   }
 }
 
-// True if a point in room pixels (0-64 across, 0-48 down) is on or near the
-// pet, which stands centred on the floor (see drawRoom below). Generous,
-// so small fingers don't miss.
+// Where a pet stands (the left edge of its 32-pixel frame): in the middle
+// on its own, or on the left or right when two share the room.
+const SPOTS = { middle: 16, left: 2, right: 30 } as const;
+type Spot = keyof typeof SPOTS;
+
+// Which pet a point in room pixels (0-64 across, 0-48 down) is on or near:
+// 'pet' (the one you're looking after), 'housemate' or null. Generous, so
+// small fingers don't miss. `two` says whether two pets share the room.
+export function petAt(x: number, y: number, two: boolean, petOnLeft: boolean): 'pet' | 'housemate' | null {
+  if (y < 4 || y > 44) return null;
+  if (!two) return x >= 12 && x <= ROOM_WIDTH - 12 ? 'pet' : null;
+  if (x < 2 || x > ROOM_WIDTH - 2) return null;
+  const onLeft = x < ROOM_WIDTH / 2;
+  return onLeft === petOnLeft ? 'pet' : 'housemate';
+}
+
 export function isOnPet(x: number, y: number): boolean {
-  return x >= 12 && x <= ROOM_WIDTH - 12 && y >= 4 && y <= 44;
+  return petAt(x, y, false, true) === 'pet';
+}
+
+// Draws one pet standing on the floor with its left edge at `x`, and its
+// hat. The hat's bottom middle sits on the head point, moved up or down
+// with the head. The left picture is the small size, the right the large.
+function drawPetAt(
+  ctx: CanvasRenderingContext2D,
+  sheet: SpriteSheet | undefined,
+  animation: string,
+  x: number,
+  timeMs: number,
+  hat?: SpriteSheet,
+): void {
+  if (!sheet) {
+    // The sprite is missing (or still loading): draw a little "?" box so
+    // it's obvious something needs fixing in manifest.json.
+    const cx = x + 10;
+    ctx.fillStyle = PALETTE.lilac;
+    ctx.fillRect(cx, 22, 12, 14);
+    ctx.fillStyle = PALETTE.white;
+    ctx.fillRect(cx + 4, 25, 4, 1);
+    ctx.fillRect(cx + 7, 26, 1, 3);
+    ctx.fillRect(cx + 5, 29, 2, 1);
+    ctx.fillRect(cx + 5, 32, 2, 2);
+    return;
+  }
+  const { frameWidth: w, frameHeight: h } = sheet;
+  const { sx, sy, headOffset } = frameFor(sheet, animation, timeMs);
+  const dy = 40 - h;
+  ctx.drawImage(sheet.image, sx, sy, w, h, x, dy, w, h);
+  if (hat && sheet.head) {
+    const { frameWidth: hw, frameHeight: hh } = hat;
+    const col = sheet.head.size === 'large' ? 1 : 0;
+    const hx = x + sheet.head.x - Math.floor(hw / 2);
+    const hy = dy + sheet.head.y + headOffset - hh;
+    ctx.drawImage(hat.image, col * hw, 0, hw, hh, hx, hy, hw, hh);
+  }
+}
+
+// Little hearts floating up between two pets that are playing together.
+function drawHearts(ctx: CanvasRenderingContext2D, timeMs: number): void {
+  for (let i = 0; i < 3; i++) {
+    const t = ((timeMs / 1400 + i / 3) % 1);
+    const x = 29 + [0, 4, -3][i] + Math.round(Math.sin(t * 6 + i) * 1.5);
+    const y = Math.round(26 - t * 20);
+    ctx.globalAlpha = 1 - t;
+    ctx.fillStyle = PALETTE.rose;
+    ctx.fillRect(x, y, 1, 1);
+    ctx.fillRect(x + 2, y, 1, 1);
+    ctx.fillRect(x - 0, y + 1, 3, 1);
+    ctx.fillRect(x + 1, y + 2, 1, 1);
+  }
+  ctx.globalAlpha = 1;
+}
+
+// A soft rug under the pet you're looking after, when two share the room.
+function drawRug(ctx: CanvasRenderingContext2D, x: number): void {
+  ctx.fillStyle = PALETTE.butter;
+  ctx.fillRect(x + 6, 37, 20, 2);
+  ctx.fillRect(x + 8, 39, 16, 1);
 }
 
 // Going outside and back (to the garden, or to Percy's meadow for his
@@ -150,33 +236,24 @@ export function drawRoom(
   // to the left as the garden grows in, to make room for the pots. Percy's
   // meadow is his alone: it grows up over the pet, who stays inside.
   const percys = !!outside && 'delivery' in outside;
+  // While a friend is over to play, the two stand side by side. With two
+  // pets in the room (and nothing else going on), the other one stands
+  // beside yours.
+  const inRoom = !outside && (!scene.fishing || scene.fishing === 'off');
+  const meeting = inRoom ? scene.meeting : null;
+  const housemate = inRoom && !meeting ? scene.housemate : null;
+  const spot: Spot = meeting ? 'left' : housemate ? (scene.petOnLeft ? 'left' : 'right') : 'middle';
   const drawPet = (slide: number) => {
-    if (sheet) {
-      const { frameWidth: w, frameHeight: h } = sheet;
-      const { sx, sy, headOffset } = frameFor(sheet, scene.animation, timeMs);
-      const centre = Math.floor((ROOM_WIDTH - w) / 2);
-      const dx = Math.round(centre + (-2 - centre) * slide);
-      const dy = 40 - h;
-      ctx.drawImage(sheet.image, sx, sy, w, h, dx, dy, w, h);
-      // The hat: its bottom middle sits on the head point, moved up or down
-      // with the head. The left picture is the small size, the right the large.
-      if (hat && sheet.head) {
-        const { frameWidth: hw, frameHeight: hh } = hat;
-        const col = sheet.head.size === 'large' ? 1 : 0;
-        const hx = dx + sheet.head.x - Math.floor(hw / 2);
-        const hy = dy + sheet.head.y + headOffset - hh;
-        ctx.drawImage(hat.image, col * hw, 0, hw, hh, hx, hy, hw, hh);
-      }
-    } else {
-      // The sprite is missing (or still loading): draw a little "?" box so
-      // it's obvious something needs fixing in manifest.json.
-      ctx.fillStyle = PALETTE.lilac;
-      ctx.fillRect(26, 22, 12, 14);
-      ctx.fillStyle = PALETTE.white;
-      ctx.fillRect(30, 25, 4, 1);
-      ctx.fillRect(33, 26, 1, 3);
-      ctx.fillRect(31, 29, 2, 1);
-      ctx.fillRect(31, 32, 2, 2);
+    const centre = SPOTS[spot];
+    const x = Math.round(centre + (-2 - centre) * slide);
+    if (housemate) {
+      drawRug(ctx, x);
+      drawPetAt(ctx, housemate.sheet, housemate.animation, SPOTS[spot === 'left' ? 'right' : 'left'], timeMs, housemate.hat);
+    }
+    drawPetAt(ctx, sheet, scene.animation, x, timeMs, hat);
+    if (meeting) {
+      drawPetAt(ctx, meeting.sheet, meeting.animation, SPOTS.right, timeMs, meeting.hat);
+      if (meeting.hearts) drawHearts(ctx, timeMs);
     }
   };
   if (percys) drawPet(0);

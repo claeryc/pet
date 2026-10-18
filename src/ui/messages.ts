@@ -1,19 +1,24 @@
-// The Messages page inside the gear menu. Two tabs: Mail and Friends
-// (Friends is for later, once pets can meet).
+// The Messages page inside the gear menu. Two tabs: Mail and Friends.
 //
 // Mail starts with Percy's order as it stands right now (what he wants,
 // what's in each box and the time left until pickup, with a button out to
 // Percy), or when he'll be back with the next one. Below it, every
 // earlier message, newest first: orders announced and picked up, the pet
-// hatching and growing up, and new things to try.
+// hatching and growing up, visitors, little ones and new things to try.
+//
+// Friends lists the wanderer visiting now and your friends, each with its
+// hearts, a Meet button (out to Play > Meet) and a way to say goodbye.
 
 import { STRINGS } from '../strings';
-import { getCharacter, getVariant } from '../game/growth';
+import { characterSheet, getCharacter, getVariant } from '../game/growth';
+import { CONFIG } from '../game/config';
+import type { Friend } from '../game/state';
+import { heartRow } from './meet';
 import { isFull, orderTier } from '../game/delivery';
 import { isUnlocked, type UnlockId } from '../game/unlocks';
 import type { GameState, Message } from '../game/state';
 import type { FoodId } from '../game/actions';
-import { ITEM_ICONS, STAT_ICONS } from './icons';
+import { ITEM_ICONS, STAT_ICONS, UNKNOWN_ICON } from './icons';
 import { formatDuration, formatWhen } from './time';
 
 export type MessagesTab = 'mail' | 'friends';
@@ -21,6 +26,9 @@ export type MessagesTab = 'mail' | 'friends';
 export interface MessagesActions {
   onTab: (tab: MessagesTab) => void;
   onOpenDelivery: () => void;
+  onOpenMeet: (friend: string) => void;
+  onRemoveFriend: (friend: string) => void;
+  characterImage: (sheet: string) => string | undefined;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text?: string): HTMLElementTagNameMap[K] {
@@ -51,6 +59,12 @@ function text(m: Message): string {
       const name = STRINGS.characterName(c?.name ?? '?', getVariant(c, m.variant)?.name);
       return STRINGS.growth.adult(m.name, name, STRINGS.stars(c?.stars ?? 1));
     }
+    case 'visitor': {
+      const c = getCharacter(m.character);
+      return STRINGS.messages.visitor(m.name, STRINGS.characterName(c?.name ?? '?', getVariant(c, m.variant)?.name));
+    }
+    case 'littleOne':
+      return STRINGS.messages.littleOne(m.name, m.friend);
   }
 }
 
@@ -106,7 +120,10 @@ function messageRow(m: Message, now: number): HTMLElement {
   const row = el('div', `shop-row mail-row kind-${m.kind}`);
   if (m.kind === 'pickup') row.dataset.tier = m.tier;
   const icon = el('span', 'drawer-option-icon');
-  icon.innerHTML = m.kind === 'order' || m.kind === 'pickup' ? ITEM_ICONS.parcel : ITEM_ICONS.letter;
+  icon.innerHTML =
+    m.kind === 'order' || m.kind === 'pickup' ? ITEM_ICONS.parcel
+    : m.kind === 'visitor' || m.kind === 'littleOne' ? ITEM_ICONS.meet
+    : ITEM_ICONS.letter;
   const body = el('span', 'shop-row-text');
   body.append(el('b', '', text(m)), el('small', '', formatWhen(m.at, now, STRINGS.messages.today, STRINGS.messages.yesterday)));
   row.append(icon, body);
@@ -116,7 +133,7 @@ function messageRow(m: Message, now: number): HTMLElement {
 export function messagesPage(state: GameState, now: number, tab: MessagesTab, cb: MessagesActions): HTMLElement[] {
   const out: HTMLElement[] = [tabs(tab, cb)];
   if (tab === 'friends') {
-    out.push(el('p', 'mail-empty', STRINGS.messages.friendsSoon));
+    out.push(...friendsTab(state, now, cb));
     return out;
   }
   const live = liveOrder(state, now, cb);
@@ -127,5 +144,47 @@ export function messagesPage(state: GameState, now: number, tab: MessagesTab, cb
   }
   out.push(el('h3', 'shop-section', STRINGS.messages.earlier));
   out.push(...state.messages.map((m) => messageRow(m, now)));
+  return out;
+}
+
+// One friend: picture, name and what it is, hearts, and buttons.
+function friendRow(f: Friend, state: GameState, now: number, cb: MessagesActions): HTMLElement {
+  const guest = state.visit.guest?.id === f.id;
+  const row = el('div', `shop-row friend-row${guest ? ' is-guest' : ''}`);
+  const pic = el('span', 'drawer-option-icon friend-pic');
+  const url = cb.characterImage(characterSheet(f.character, f.variant));
+  pic.innerHTML = url ? `<span class="portrait" style="background-image:url('${url}')"></span>` : UNKNOWN_ICON;
+  const body = el('span', 'shop-row-text');
+  const c = getCharacter(f.character);
+  const what = STRINGS.characterName(c?.name ?? '?', getVariant(c, f.variant)?.name);
+  const top = el('b', 'friend-name', f.name);
+  top.append(heartRow(f.score));
+  body.append(
+    top,
+    el('small', '', guest ? `${what}  ·  ${STRINGS.friends.visiting(formatDuration(state.visit.until - now))}` : what),
+  );
+  const buttons = el('span', 'friend-buttons');
+  const meet = el('button', 'shop-btn', STRINGS.friends.meet);
+  meet.addEventListener('click', () => cb.onOpenMeet(f.id));
+  buttons.append(meet);
+  if (!guest) {
+    const bye = el('button', 'shop-btn shop-btn-soft friend-bye', '×');
+    bye.title = STRINGS.friends.remove;
+    bye.setAttribute('aria-label', `${STRINGS.friends.remove}: ${f.name}`);
+    bye.addEventListener('click', () => cb.onRemoveFriend(f.id));
+    buttons.append(bye);
+  }
+  row.append(pic, body, buttons);
+  return row;
+}
+
+function friendsTab(state: GameState, now: number, cb: MessagesActions): HTMLElement[] {
+  const out: HTMLElement[] = [];
+  const guest = state.visit.guest;
+  if (guest) out.push(el('h3', 'shop-section', STRINGS.messages.visiting), friendRow(guest, state, now, cb));
+  const wild = state.friends.filter((f) => f.wild).length;
+  out.push(el('h3', 'shop-section', STRINGS.messages.yourFriends(wild, CONFIG.friends.maxWild)));
+  if (state.friends.length === 0) out.push(el('p', 'mail-empty', STRINGS.messages.friendsEmpty));
+  out.push(...[...state.friends].sort((a, b) => b.score - a.score).map((f) => friendRow(f, state, now, cb)));
   return out;
 }

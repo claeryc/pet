@@ -16,7 +16,7 @@ import {
   type ActionResult,
   type Food,
 } from './game/actions';
-import { getCharacter, getVariant, sheetFor } from './game/growth';
+import { characterSheet, getCharacter, getVariant, sheetFor } from './game/growth';
 import { buyFood, buyGardenItem, buyHat, checkIn, earn, getHat, wearHat, type ShopResult } from './game/economy';
 import { getLook, isNight } from './game/stats';
 import { cast, land } from './game/fishing';
@@ -37,6 +37,23 @@ import { fillAll, orderPay, orderTier, putInBox, takeFromBox, type BoxResult } f
 import { logMessage, markMessagesSeen } from './game/messages';
 import type { FoodId } from './game/actions';
 import { namePet, needsName, setOwner, suggestName } from './game/family';
+import {
+  allPets,
+  befriend,
+  getFriend,
+  giveGift,
+  makeWanderer,
+  meet,
+  mingle,
+  petStandsLeft,
+  removeFriend,
+  retire,
+  switchPet,
+  type FriendBlock,
+  type MingleBlock,
+} from './game/friends';
+import { createChoiceBox } from './ui/choice';
+import type { Pet } from './game/state';
 import { clearSave, loadGame, saveGame } from './storage/storage';
 import { setupCanvas, drawRoom } from './render/canvas';
 import { loadSprites, type SpriteLibrary } from './render/sprites';
@@ -69,29 +86,34 @@ const afterNaming: string[] = [];
 // just grew into a new stage, celebrate it, and say if anything new opened
 // up. A freshly hatched pet is asked for its name first.
 function setState(next: GameState): void {
-  const before = state.pet.stage;
+  const before = new Map(allPets(state).map((p) => [p.id, p.stage]));
   const oldMessages = state.messages;
   const progress = updateProgress(next);
   state = progress.state;
-  // Growing up goes in Messages too.
-  if (state.pet.stage !== before && state.pet.stage !== 'egg') {
-    const { pet } = state;
+  // Pets that grew into a new stage (any pet in the room, not just the one
+  // you're looking after). Growing up goes in Messages too.
+  const grew = allPets(state).filter((p) => before.has(p.id) && before.get(p.id) !== p.stage && p.stage !== 'egg');
+  for (const pet of grew) {
     state = logMessage(state, {
       kind: 'growth', at: gameNow(), stage: pet.stage, name: pet.name, character: pet.character, variant: pet.variant,
     });
   }
+  // An egg that hatched while you were looking after the other pet: switch
+  // to it, so it can be named.
+  const hatched = state.housemates.find((p) => p.stage !== 'egg' && !p.named);
+  if (hatched && !needsName(state)) state = switchPet(state, hatched.id);
   saveGame(state);
   home.update(state, gameNow());
-  const { pet } = state;
-  if (pet.stage !== before && pet.stage !== 'egg' && pet.stage !== 'baby') {
+  for (const pet of grew) {
+    if (pet.stage === 'baby') continue;
     if (pet.stage === 'adult') {
       const character = getCharacter(pet.character);
       const name = STRINGS.characterName(character?.name ?? '?', getVariant(character, pet.variant)?.name);
       home.toast(STRINGS.growth.adult(pet.name, name, STRINGS.stars(character?.stars ?? 1)));
     } else {
-      home.toast(STRINGS.growth[pet.stage](pet.name));
+      home.toast(STRINGS.growth.teen(pet.name));
     }
-    react('happy');
+    if (pet.id === state.pet.id) react('happy');
   }
   const notices = progress.unlocked.map((id) => STRINGS.unlocked[id]);
   if (needsName(state)) {
@@ -101,6 +123,7 @@ function setState(next: GameState): void {
     for (const message of notices) home.notice(message);
   }
   announceMail(oldMessages);
+  askWhoRetires();
 }
 
 // Says what Percy did since `old` was the message list: picked up an
@@ -113,6 +136,9 @@ function announceMail(old: Message[]): void {
     } else if (m.kind === 'pickup') {
       home.notice(STRINGS.delivery.pickedUp(m.boxes.filter((b) => b.have >= b.want).length, m.gold));
       if (m.seed) showGot(m.seed, 1, STRINGS.reveal.fromPercy, true);
+    } else if (m.kind === 'visitor') {
+      const c = getCharacter(m.character);
+      home.notice(STRINGS.messages.visitor(m.name, STRINGS.characterName(c?.name ?? '?', getVariant(c, m.variant)?.name)));
     }
   }
 }
@@ -235,6 +261,65 @@ function runBox(action: (s: GameState) => BoxResult, food?: string): void {
 }
 const boxFood = (i: number) => state.delivery.order?.boxes[i]?.food;
 
+// Friends: says why something was refused.
+function friendBlocked(reason: FriendBlock | MingleBlock): void {
+  home.toast(STRINGS.friends.blocked[reason](state.pet.name));
+}
+
+// A pet's portrait, for the choice box.
+const portraitOf = (pet: Pet) => characterImage(sheetFor(pet));
+
+// The room fits CONFIG.friends.maxPets pets. When a little one makes it
+// too full, the player picks who retires into the Family Tree (asked again
+// on the next visit if the game closed first).
+function askWhoRetires(): void {
+  if (choice.isOpen() || naming.isOpen() || allPets(state).length <= CONFIG.friends.maxPets) return;
+  // The newest pet (the egg) always stays.
+  const newest = allPets(state).reduce((a, b) => (b.bornAt > a.bornAt ? b : a));
+  choice.open({
+    title: STRINGS.friends.fullTitle,
+    text: STRINGS.friends.fullAsk,
+    options: allPets(state).filter((p) => p.id !== newest.id).map((p) => ({
+      label: STRINGS.friends.retire(p.name),
+      picture: portraitOf(p),
+      soft: true,
+      onPick: () => {
+        setState(retire(state, p.id));
+        home.toast(STRINGS.friends.retired(p.name));
+      },
+    })),
+  });
+}
+
+function onMingle(id: string): void {
+  const friend = getFriend(state, id);
+  const parent = state.pet;
+  const result = mingle(simulate(state, gameNow()), id, gameNow(), Math.random());
+  setState(result.state);
+  if (result.blocked) return friendBlocked(result.blocked);
+  react('happy');
+  if (!result.egg) return home.toast(STRINGS.friends.noLittleOne(parent.name, friend?.name ?? ''));
+  home.toast(STRINGS.friends.littleOne(parent.name, friend?.name ?? ''));
+  // A crowded room asks who retires (from setState). Otherwise the parent
+  // can stay or retire.
+  if (result.crowded) return;
+  choice.open({
+    title: STRINGS.friends.keepTitle,
+    text: STRINGS.friends.keepAsk(parent.name),
+    options: [
+      { label: STRINGS.friends.keep(parent.name), picture: portraitOf(parent), onPick: () => {} },
+      {
+        label: STRINGS.friends.retire(parent.name),
+        soft: true,
+        onPick: () => {
+          setState(retire(state, parent.id));
+          home.toast(STRINGS.friends.retired(parent.name));
+        },
+      },
+    ],
+  });
+}
+
 // Gives the check-in bonus if one is due (on opening the game or coming back).
 function tryCheckIn(): void {
   const { state: next, reward } = checkIn(simulate(state, gameNow()), gameNow());
@@ -335,6 +420,57 @@ const home = createHomeScreen(root, {
   onTakeFromBox: (box) => runBox((s) => takeFromBox(s, box)),
   onFillAll: () => runBox(fillAll),
   onMessagesSeen: () => setState(markMessagesSeen(state, gameNow())),
+  onMeet: (id) => {
+    const friend = getFriend(state, id);
+    const result = meet(simulate(state, gameNow()), id, gameNow());
+    setState(result.state);
+    if (result.blocked) {
+      friendBlocked(result.blocked);
+      return false;
+    }
+    react('happy');
+    const name = friend?.name ?? '';
+    home.toast(result.gained ? STRINGS.friends.met(state.pet.name, name, result.gained) : STRINGS.friends.tiredOfMeeting(name));
+    return true;
+  },
+  onGift: (id, food) => {
+    const result = giveGift(simulate(state, gameNow()), id, food, gameNow());
+    setState(result.state);
+    if (result.blocked) return friendBlocked(result.blocked);
+    home.toast(STRINGS.friends.gave(STRINGS.foods[food], getFriend(state, id)?.name ?? '', result.gained ?? 0));
+  },
+  onMingle,
+  onAddFriend: () => {
+    const guest = state.visit.guest;
+    const result = befriend(state);
+    setState(result.state);
+    if (result.blocked) return friendBlocked(result.blocked);
+    if (guest) home.toast(STRINGS.friends.added(guest.name));
+  },
+  onRemoveFriend: (id) => {
+    const friend = getFriend(state, id);
+    if (!friend || !confirm(STRINGS.friends.confirmRemove(friend.name))) return;
+    setState(removeFriend(state, id));
+    home.toast(STRINGS.friends.removed(friend.name));
+  },
+  onSwitchPet: (id) => {
+    setState(switchPet(simulate(state, gameNow()), id));
+    home.toast(STRINGS.friends.looking(state.pet.name));
+  },
+  onVisitorNow: () => {
+    const now = gameNow();
+    const taken = [...allPets(state).map((p) => p.name), ...state.friends.map((f) => f.name)];
+    const guest = makeWanderer(now, taken);
+    const visit = { guest, until: now + CONFIG.friends.stayHours * 3_600_000, nextAt: now + CONFIG.friends.visitEveryHours * 3_600_000 };
+    const c = getCharacter(guest.character);
+    setState(logMessage({ ...state, visit }, { kind: 'visitor', at: now, name: guest.name, character: guest.character, variant: guest.variant }));
+    home.toast(STRINGS.messages.visitor(guest.name, STRINGS.characterName(c?.name ?? '?', getVariant(c, guest.variant)?.name)));
+  },
+  onFriendScore: () => {
+    const up = <T extends { score: number }>(f: T): T => ({ ...f, score: Math.min(100, f.score + CONFIG.debug.friendScore) });
+    const guest = state.visit.guest && up(state.visit.guest);
+    setState({ ...state, friends: state.friends.map(up), visit: { ...state.visit, guest } });
+  },
   onBuyGardenItem: (item) =>
     runShop(buyGardenItem(state, item), STRINGS.shop.bought(
       item.kind === 'seed' ? STRINGS.garden.seedName(STRINGS.foods[item.id]) : STRINGS.garden.supplies[item.id],
@@ -363,12 +499,20 @@ const home = createHomeScreen(root, {
   // are moved back by the same amount, so they still finish on time.
   onResetClock: () => {
     const off = state.clockOffsetMs;
-    const pet = {
-      ...state.pet,
-      stageStartedAt: state.pet.stageStartedAt - off,
-      recoveryUntil: state.pet.recoveryUntil === null ? null : state.pet.recoveryUntil - off,
-      buffs: state.pet.buffs.map((b) => ({ ...b, until: b.until - off })),
+    const shift = (p: Pet): Pet => ({
+      ...p,
+      stageStartedAt: p.stageStartedAt - off,
+      recoveryUntil: p.recoveryUntil === null ? null : p.recoveryUntil - off,
+      buffs: p.buffs.map((b) => ({ ...b, until: b.until - off })),
+    });
+    const pet = shift(state.pet);
+    const housemates = state.housemates.map(shift);
+    const visit = {
+      ...state.visit,
+      until: state.visit.until - off,
+      nextAt: state.visit.nextAt && state.visit.nextAt - off,
     };
+    const friends = state.friends.map((f) => ({ ...f, mingledAt: f.mingledAt && f.mingledAt - off }));
     const garden = state.garden.map((p) => ({
       ...p,
       moistUntil: p.moistUntil - off,
@@ -382,12 +526,16 @@ const home = createHomeScreen(root, {
       nextAt: state.delivery.nextAt - off,
     };
     const craving = { ...state.craving, until: state.craving.until - off, nextAt: state.craving.nextAt - off };
-    setState({ ...state, pet, garden, delivery, craving, clockOffsetMs: 0, lastUpdated: Date.now() });
+    setState({
+      ...state, pet, housemates, visit, friends, garden, delivery, craving, clockOffsetMs: 0, lastUpdated: Date.now(),
+    });
   },
 });
 // Made after the home screen, which clears the page when it starts.
 const naming = createNamingBox(root);
+const choice = createChoiceBox(root);
 home.update(state, gameNow());
+askWhoRetires();
 announceMail(lastVisitMessages);
 tryCheckIn();
 
@@ -400,6 +548,9 @@ function render(timeMs: number): void {
   const pet = state.pet;
   let animation: string = getLook(pet);
   if (reaction && timeMs < reaction.until && !pet.asleep) animation = reaction.animation;
+  // The other pet in the room, and a friend over to play.
+  const other = state.housemates[0];
+  const meeting = home.meetScene();
   drawRoom(
     ctx,
     sprites.get(sheetFor(pet)),
@@ -410,6 +561,17 @@ function render(timeMs: number): void {
       fishing: home.fishingPhase(),
       garden: home.gardenScene(),
       delivery: home.deliveryScene(),
+      housemate: other && {
+        sheet: sprites.get(sheetFor(other)),
+        hat: sprites.get(getHat(other.hat)?.sheet ?? ''),
+        animation: getLook(other),
+      },
+      petOnLeft: petStandsLeft(state),
+      meeting: meeting && {
+        sheet: sprites.get(characterSheet(meeting.friend.character, meeting.friend.variant)),
+        animation: meeting.hearts ? 'happy' : 'cheerful',
+        hearts: meeting.hearts,
+      },
     },
     timeMs,
     sprites.get(getHat(pet.hat)?.sheet ?? ''),
