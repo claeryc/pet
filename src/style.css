@@ -3357,9 +3357,37 @@ body {
 }
 
 .meet-head {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas:
+    'pic name hearts'
+    'pic today leaves';
   align-items: center;
-  gap: 8px;
+  column-gap: 8px;
+  row-gap: 2px;
+}
+
+.meet-head .meet-pic {
+  grid-area: pic;
+}
+
+.meet-head .meet-name {
+  grid-area: name;
+}
+
+.meet-head .meet-hearts {
+  grid-area: hearts;
+  justify-self: end;
+}
+
+.meet-head .meet-today {
+  grid-area: today;
+  justify-self: start;
+}
+
+.meet-head .meet-leaves {
+  grid-area: leaves;
+  justify-self: end;
 }
 
 .meet-name {
@@ -3370,9 +3398,8 @@ body {
 }
 
 .meet-pic {
-  flex: none;
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
 }
 
 .meet-pic[hidden] {
@@ -3383,51 +3410,66 @@ body {
   margin-left: auto;
 }
 
-.meet-sub {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 0.85rem;
-  font-weight: 700;
-}
-
-.meet-sub[hidden] {
-  display: none;
-}
-
-.meet-leaves,
-.meet-today {
+/* The time left: hourglass and hours, small, under the hearts. */
+.meet-leaves {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-}
-
-.meet-leaves {
+  gap: 3px;
+  font-size: 0.8rem;
+  font-weight: 700;
   color: var(--plum);
 }
 
 .meet-leaves svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
 
-/* A small badge: Today, the meet icon, and meetings that counted. */
+/* Today's meetings that counted: a small pill with a dot per meeting,
+   pink once met, green when all are done. */
 .meet-today {
-  padding: 2px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px 1px 8px;
   border-radius: 999px;
-  background: var(--lavender);
+  background: var(--seg-empty);
   color: var(--plum);
+}
+
+.meet-today small {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 2px;
+  opacity: 0.8;
+}
+
+.meet-today i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: inset 0 0 0 1.5px var(--track);
+}
+
+.meet-today i.is-met {
+  background: var(--accent);
+  box-shadow: none;
 }
 
 .meet-today[data-done='true'] {
   background: var(--good-light);
-  color: var(--good-dark);
 }
 
-.meet-today svg {
-  width: 16px;
-  height: 16px;
+.meet-today[data-done='true'] i.is-met {
+  background: var(--good-dark);
+}
+
+.meet-today[hidden],
+.meet-leaves[hidden] {
+  display: none;
 }
 
 /* A gift's worth in hearts, pink rather than the green of stat boosts. */

@@ -3,7 +3,7 @@
 // Percy's boxes:
 //
 //   (o) Pip                            ♥♥♥♡♡
-//   Visiting · leaves in 2h   ·   Met 1 of 3 today
+//       [Today ●●○]                 ⧗ 2h 40m
 //   [ ♥ Mingle: 50% chance of a little one ]   (or [Add friend] for a guest)
 //
 // The button row becomes [Close] [Gift] [Meet]. Gift opens like Feed does:
@@ -95,18 +95,17 @@ export function createMeet(cb: MeetCallbacks): MeetPanel {
   const pic = el('span', 'portrait meet-pic');
   const name = el('b', 'meet-name');
   const heartSlot = el('span', 'meet-hearts');
-  head.append(pic, name, heartSlot);
-  // [hourglass 2h 40m]          [Today (meet icon) 1/3]
-  const sub = el('div', 'meet-sub');
-  const leaves = el('span', 'meet-leaves');
+  // Under the name: today's meetings that counted, as dots. Under the
+  // hearts: the time left with the hourglass.
   const today = el('span', 'meet-today');
-  sub.append(leaves, today);
+  const leaves = el('span', 'meet-leaves');
+  head.append(pic, name, heartSlot, today, leaves);
 
   // The Mingle line, or Add friend for a guest.
   const mingle = el('button', 'meet-mingle');
   const add = el('button', 'shop-btn meet-add', STRINGS.friends.add);
   const empty = el('p', 'meet-empty', STRINGS.friends.nobody);
-  panel.append(head, sub, mingle, add, empty);
+  panel.append(head, mingle, add, empty);
 
   const row = el('div', 'actions meet-row');
   row.hidden = true;
@@ -181,7 +180,7 @@ export function createMeet(cb: MeetCallbacks): MeetPanel {
       name.textContent = '';
       pic.hidden = true;
       heartSlot.replaceChildren();
-      sub.hidden = true;
+      today.hidden = leaves.hidden = true;
       mingle.hidden = add.hidden = true;
       empty.hidden = false;
       return;
@@ -195,15 +194,14 @@ export function createMeet(cb: MeetCallbacks): MeetPanel {
     const left = formatDuration(state.visit.until - now);
     const perDay = CONFIG.friends.meet.perDay;
     const met = Math.min(metToday, perDay);
-    sub.hidden = false;
+    today.hidden = leaves.hidden = false;
     leaves.innerHTML = STAT_ICONS.hourglass;
     leaves.append(left);
     leaves.title = STRINGS.friends.visiting(left);
-    today.innerHTML = '';
-    today.append(STRINGS.friends.today);
-    today.insertAdjacentHTML('beforeend', ITEM_ICONS.meet);
-    today.append(`${met}/${perDay}`);
+    today.replaceChildren(el('small', '', STRINGS.friends.today));
+    for (let i = 0; i < perDay; i++) today.append(el('i', i < met ? 'is-met' : ''));
     today.title = STRINGS.friends.metToday(met, perDay);
+    today.setAttribute('aria-label', STRINGS.friends.metToday(met, perDay));
     today.dataset.done = String(met >= perDay);
 
     empty.hidden = true;
