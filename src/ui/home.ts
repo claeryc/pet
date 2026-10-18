@@ -537,6 +537,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     onAdd: cb.onAddFriend,
     onExit: () => showActions(MEET_OUT_MS),
     toast: (msg) => showToast(msg),
+    characterImage: cb.characterImage,
   });
   function startMeet(id?: string): void {
     if (actions.hidden) return; // already busy with something else

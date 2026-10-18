@@ -3322,11 +3322,11 @@ body {
   box-shadow: inset 0 0 0 4px var(--low-light);
   transform: translateY(100%);
   transition: transform 0.45s cubic-bezier(0.5, 0, 0.9, 0.6);
-  padding: 10px 14px 12px;
+  padding: 8px 12px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .meet[hidden] {
@@ -3341,7 +3341,7 @@ body {
 .meet-head {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
 }
 
 .meet-name {
@@ -3351,23 +3351,44 @@ body {
   text-overflow: ellipsis;
 }
 
-.meet-arrow {
+/* Who to meet: a row of portraits that never moves; the chosen one gets a
+   pink ring, and a visitor a butter one. */
+.meet-picker {
   flex: none;
-  width: 30px;
-  height: 30px;
-  border: none;
-  border-radius: 10px;
-  background: var(--lavender);
-  color: var(--plum);
-  font: inherit;
-  font-size: 1.2rem;
-  font-weight: 800;
-  line-height: 1;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.meet-picker[hidden] {
+  display: none;
+}
+
+.meet-pick {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  padding: 2px;
+  border: 3px solid var(--lavender);
+  border-radius: 12px;
+  background: white;
   cursor: pointer;
 }
 
-.meet-arrow[hidden] {
-  display: none;
+.meet-pick.is-guest {
+  border-color: var(--butter);
+}
+
+.meet-pick[aria-checked='true'] {
+  border-color: var(--accent);
+  background: var(--bg);
+}
+
+.meet-pick .portrait {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .meet-hearts {
@@ -3385,8 +3406,8 @@ body {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 44px;
-  padding: 6px 12px;
+  min-height: 38px;
+  padding: 4px 12px;
   border: 2px dashed var(--low-light);
   border-radius: 14px;
   background: white;
@@ -3494,31 +3515,54 @@ body {
   display: block;
 }
 
+.friend-row {
+  position: relative;
+}
+
+.friend-row:has(.friend-bye) {
+  padding-right: 30px;
+}
+
+.friend-pic .portrait {
+  display: block;
+}
+
 .friend-name {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.friend-name .heart-row svg {
-  width: 13px;
-  height: 13px;
+.friend-row .heart-row {
+  margin: 1px 0;
 }
 
-.friend-buttons {
+.friend-row .heart-row svg {
+  width: 14px;
+  height: 14px;
+}
+
+.friend-hang {
   flex: none;
-  display: flex;
-  gap: 6px;
+  min-height: 36px;
+  white-space: nowrap;
 }
 
 .friend-bye {
-  width: 30px;
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
   padding: 0;
-}
-
-.friend-row .shop-btn {
-  min-height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--plum);
+  font: inherit;
+  font-weight: 800;
+  opacity: 0.55;
+  cursor: pointer;
 }
 
 /* The keep-or-retire box: one big button per choice. */

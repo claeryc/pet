@@ -157,24 +157,22 @@ function friendRow(f: Friend, state: GameState, now: number, cb: MessagesActions
   const body = el('span', 'shop-row-text');
   const c = getCharacter(f.character);
   const what = STRINGS.characterName(c?.name ?? '?', getVariant(c, f.variant)?.name);
-  const top = el('b', 'friend-name', f.name);
-  top.append(heartRow(f.score));
   body.append(
-    top,
+    el('b', 'friend-name', f.name),
+    heartRow(f.score),
     el('small', '', guest ? `${what}  ·  ${STRINGS.friends.visiting(formatDuration(state.visit.until - now))}` : what),
   );
-  const buttons = el('span', 'friend-buttons');
-  const meet = el('button', 'shop-btn', STRINGS.friends.meet);
-  meet.addEventListener('click', () => cb.onOpenMeet(f.id));
-  buttons.append(meet);
+  const hangOut = el('button', 'shop-btn friend-hang', STRINGS.friends.hangOut);
+  hangOut.addEventListener('click', () => cb.onOpenMeet(f.id));
+  row.append(pic, body, hangOut);
   if (!guest) {
-    const bye = el('button', 'shop-btn shop-btn-soft friend-bye', '×');
+    // Saying goodbye is rare, so it's a small × in the corner.
+    const bye = el('button', 'friend-bye', '×');
     bye.title = STRINGS.friends.remove;
     bye.setAttribute('aria-label', `${STRINGS.friends.remove}: ${f.name}`);
     bye.addEventListener('click', () => cb.onRemoveFriend(f.id));
-    buttons.append(bye);
+    row.append(bye);
   }
-  row.append(pic, body, buttons);
   return row;
 }
 

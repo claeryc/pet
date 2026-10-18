@@ -2,13 +2,15 @@
 // to your pet in the room, and a panel slides up over the stat bars, like
 // Percy's boxes:
 //
-//   ‹  Pip  ›                          ♥♥♥♡♡
+//   (o) (o) (o) (o)                   <- everyone you can meet; tap one
+//   Pip                                ♥♥♥♡♡
 //   Visiting · leaves in 5h   ·   Met 1 of 3 today
 //   [ ♥ Mingle: 50% chance of a little one ]   (or [Add friend] for a guest)
 //
 // The button row becomes [Close] [Gift] [Meet]. Gift swaps the Mingle line
-// for the food you could give. The arrows step through everyone you can
-// meet: the wanderer visiting now first, then your friends.
+// for the food you could give. The portraits stay put, in the same order
+// (the wanderer visiting now first, then your friends by hearts), and the
+// one you picked gets a pink ring.
 //
 // The rules (scores, caps, who can mingle) live in src/game/friends.ts.
 
@@ -16,6 +18,7 @@ import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import type { Food, FoodId } from '../game/actions';
 import { foodCount, localDay } from '../game/economy';
+import { characterSheet } from '../game/growth';
 import { hearts, isFriend, littleOneChance, meetable, mingleBlock } from '../game/friends';
 import type { Friend, GameState } from '../game/state';
 import { HEART_ICONS, ITEM_ICONS } from './icons';
@@ -28,6 +31,7 @@ export interface MeetCallbacks {
   onAdd: () => void; // add the guest as a friend
   onExit: () => void;
   toast: (message: string) => void;
+  characterImage: (sheet: string) => string | undefined;
 }
 
 export interface MeetPanel {
@@ -81,14 +85,14 @@ export function createMeet(cb: MeetCallbacks): MeetPanel {
   const panel = el('div', 'meet');
   panel.hidden = true;
 
+  // Who to meet: one portrait each, in a row that scrolls if it's long.
+  const picker = el('div', 'meet-picker');
+  picker.setAttribute('role', 'radiogroup');
+  picker.setAttribute('aria-label', STRINGS.friends.who);
   const head = el('div', 'meet-head');
-  const prev = el('button', 'meet-arrow', '‹');
-  prev.setAttribute('aria-label', STRINGS.friends.prev);
   const name = el('b', 'meet-name');
-  const next = el('button', 'meet-arrow', '›');
-  next.setAttribute('aria-label', STRINGS.friends.next);
   const heartSlot = el('span', 'meet-hearts');
-  head.append(prev, name, next, heartSlot);
+  head.append(name, heartSlot);
   const sub = el('p', 'meet-sub');
 
   // The Mingle line, or Add friend for a guest.
@@ -97,7 +101,7 @@ export function createMeet(cb: MeetCallbacks): MeetPanel {
   // The gift picker.
   const gifts = el('div', 'meet-gifts');
   const empty = el('p', 'meet-empty');
-  panel.append(head, sub, mingle, add, gifts, empty);
+  panel.append(picker, head, sub, mingle, add, gifts, empty);
 
   const row = el('div', 'actions meet-row');
   row.hidden = true;
@@ -109,17 +113,47 @@ export function createMeet(cb: MeetCallbacks): MeetPanel {
   const list = () => (state ? meetable(state) : []);
   const current = (): Friend | null => list().find((f) => f.id === selected) ?? list()[0] ?? null;
 
-  function step(by: number): void {
-    const all = list();
-    if (all.length < 2) return;
-    const i = all.findIndex((f) => f.id === current()?.id);
-    selected = all[(i + by + all.length) % all.length].id;
+  function pick(id: string): void {
+    if (id === selected) return;
+    selected = id;
     gifting = false;
     heartsUntil = 0;
     render();
   }
-  prev.addEventListener('click', () => step(-1));
-  next.addEventListener('click', () => step(1));
+
+  // Rebuilt only when the people in it change, so it doesn't jump about
+  // or lose its scroll position every minute.
+  let pickerKey = '';
+  function renderPicker(all: Friend[], on: Friend | null): void {
+    const key = all.map((f) => `${f.id}:${f.character}:${f.variant}`).join(',');
+    if (key !== pickerKey) {
+      pickerKey = key;
+      picker.replaceChildren(
+        ...all.map((f) => {
+          const b = el('button', 'meet-pick');
+          b.dataset.id = f.id;
+          b.setAttribute('role', 'radio');
+          b.setAttribute('aria-label', f.name);
+          b.title = f.name;
+          const url = cb.characterImage(characterSheet(f.character, f.variant));
+          if (url) {
+            const pic = el('span', 'portrait');
+            pic.style.backgroundImage = `url('${url}')`;
+            b.append(pic);
+          }
+          b.addEventListener('click', () => pick(f.id));
+          return b;
+        }),
+      );
+    }
+    picker.hidden = all.length === 0;
+    for (const b of picker.children as HTMLCollectionOf<HTMLElement>) {
+      const chosen = b.dataset.id === on?.id;
+      b.setAttribute('aria-checked', String(chosen));
+      b.classList.toggle('is-guest', state?.visit.guest?.id === b.dataset.id);
+      if (chosen && picker.scrollWidth > picker.clientWidth) b.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+  }
   close.addEventListener('click', () => {
     stop();
     cb.onExit();
@@ -161,7 +195,7 @@ export function createMeet(cb: MeetCallbacks): MeetPanel {
     if (!state) return;
     const f = current();
     const all = list();
-    prev.hidden = next.hidden = all.length < 2;
+    renderPicker(all, f);
     meetBtn.disabled = gift.disabled = !f;
     gift.setAttribute('aria-pressed', String(gifting));
     if (!f) {
