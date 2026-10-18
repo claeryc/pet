@@ -170,14 +170,22 @@ export function pickupSeed(order: Order, petId: string): CropId | null {
   return odds[odds.length - 1][0];
 }
 
+// Whether Percy leaves an energy drink after a gold-frame pickup that had
+// no seed. Same order, same answer.
+export function pickupDrink(order: Order, petId: string): boolean {
+  if (orderTier(order.boxes) !== 'gold') return false;
+  return seededRoll(petId, `percy-drink:${order.pickupAt}`) < D.drinkChance;
+}
+
 // Percy comes by: full boxes are paid for, the rest go back home. With
-// every box full, he may leave a seed too.
+// every box full, he may leave a seed too, or else an energy drink.
 function pickUp(state: GameState, order: Order): GameState {
   const pay = orderPay(order.boxes);
   const gold = pay.boxes + pay.bonus;
   const food = { ...state.inventory.food };
   for (const b of order.boxes) if (!isFull(b) && b.have > 0) food[b.food] = (food[b.food] ?? 0) + b.have;
   const seed = pickupSeed(order, state.pet.id);
+  const drink = !seed && pickupDrink(order, state.pet.id);
   let s: GameState = {
     ...state,
     gold: state.gold + gold,
@@ -185,9 +193,11 @@ function pickUp(state: GameState, order: Order): GameState {
     delivery: { order: null, nextAt: order.pickupAt + D.nextOrderHours * HOUR },
   };
   if (seed) s = addSeed(s, seed);
+  if (drink) s = { ...s, inventory: { ...s.inventory, food: { ...s.inventory.food, energyDrink: (s.inventory.food.energyDrink ?? 0) + 1 } } };
   return logMessage(s, {
     kind: 'pickup', at: order.pickupAt, boxes: order.boxes, gold, tier: orderTier(order.boxes),
     ...(seed ? { seed } : {}),
+    ...(drink ? { food: 'energyDrink' } : {}),
   });
 }
 

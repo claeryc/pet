@@ -1063,6 +1063,52 @@ body {
   display: none;
 }
 
+/* How much bait is left, in the pond's top corner. Tapping it switches
+   bait on, and the little ring fills in. */
+.pond-bait {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px 2px 6px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--plum);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.pond-bait-dot {
+  width: 8px;
+  height: 8px;
+  margin-right: 2px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  border: 1.5px solid var(--plum);
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.pond-bait.on .pond-bait-dot {
+  background: #f48fb1;
+  box-shadow: inset 0 0 0 1px #fff;
+}
+
+.pond-bait span {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.pond-bait[hidden] {
+  display: none;
+}
+
 /* The [Cancel] [Cast] row and the normal buttons pop up as they swap. */
 .fishing-row:not([hidden]),
 .cooking-row:not([hidden]),
@@ -2192,7 +2238,7 @@ body {
   }
 }
 
-/* The three pots along the top, as one segmented control: a number, a
+/* The pots along the top, as one segmented control: a number, a
    little picture of what's growing, and a drop when it needs water. */
 .garden-tabs {
   display: flex;
@@ -2202,6 +2248,10 @@ body {
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.5);
   box-shadow: inset 0 0 0 2px rgba(91, 63, 110, 0.12);
+}
+
+.garden-tab[hidden] {
+  display: none;
 }
 
 .garden-tab {
@@ -3624,4 +3674,18 @@ body {
   flex: none;
   width: 32px;
   height: 32px;
+}
+
+/* The hourglass left of the price, for items that are only in today. */
+.shop-stock {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  margin-right: -4px;
+}
+
+.shop-stock svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }

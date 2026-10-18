@@ -58,7 +58,20 @@ export interface Inventory {
   food: Record<string, number>; // food id -> how many
   hats: string[]; // ids of hats bought (each is bought once)
   seeds: Record<string, number>; // crop id -> how many seeds
-  supplies: Record<string, number>; // 'fertilizer' / 'plantCure' -> how many
+  supplies: Record<string, number>; // 'fertilizer' / 'plantCure' / 'bait' -> how many
+  decor: string[]; // room decorations bought, e.g. "wallpaper:dots", "curtains:rose"
+}
+
+// How the room is decorated (see src/game/decor.ts).
+export interface Room {
+  wallpaper: string; // a wallpaper id ('plain' to start with)
+  curtains: string | null; // a curtains id, or none
+}
+
+// What's been bought today of the Shop's limited stock (the energy drink).
+export interface Stock {
+  day: string; // the local date, e.g. "2026-10-18"
+  bought: number;
 }
 
 // One pot in the garden (see src/game/garden.ts). Times are timestamps.
@@ -170,7 +183,7 @@ export type OrderTier = 'none' | 'bronze' | 'silver' | 'gold';
 // when it's shown (see src/strings.ts).
 export type Message =
   | { kind: 'order'; at: number; boxes: { food: string; want: number }[]; pickupAt: number }
-  | { kind: 'pickup'; at: number; boxes: OrderBox[]; gold: number; tier: OrderTier; seed?: string }
+  | { kind: 'pickup'; at: number; boxes: OrderBox[]; gold: number; tier: OrderTier; seed?: string; food?: string }
   | { kind: 'unlocked'; at: number; id: string }
   | { kind: 'growth'; at: number; stage: string; name: string; character: string | null; variant: string | null }
   | { kind: 'visitor'; at: number; name: string; character: string; variant: string | null; friend?: boolean }
@@ -226,6 +239,11 @@ export interface GameState {
   // Pets to meet: your friends, and the wanderer visiting now.
   friends: Friend[];
   visit: Visit;
+  // How the room is decorated, and today's limited Shop stock.
+  room: Room;
+  stock: Stock;
+  // Whether fishing uses bait (switched on in the pond).
+  baitOn: boolean;
 }
 
 // Makes a random id. crypto.randomUUID exists in all modern browsers and Node.
@@ -269,7 +287,7 @@ export function createNewGame(now: number): GameState {
     lastUpdated: now,
     clockOffsetMs: 0,
     gold: CONFIG.economy.startingGold,
-    inventory: { food: { ...CONFIG.economy.startingFood }, hats: [], seeds: {}, supplies: {} },
+    inventory: { food: { ...CONFIG.economy.startingFood }, hats: [], seeds: {}, supplies: {}, decor: [] },
     checkIn: { day: '', count: 0, lastAt: 0 },
     recipesFound: [],
     recentFoods: [],
@@ -288,5 +306,8 @@ export function createNewGame(now: number): GameState {
     craving: { food: null, until: 0, nextAt: 0, last: null },
     friends: [],
     visit: { guest: null, friendId: null, until: 0, met: false, nextAt: 0, wildAt: 0, invitedDay: '' },
+    room: { wallpaper: 'plain', curtains: null },
+    stock: { day: '', bought: 0 },
+    baitOn: false,
   };
 }

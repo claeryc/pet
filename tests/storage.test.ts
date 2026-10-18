@@ -94,3 +94,14 @@ describe('save migration to cravings', () => {
     expect(out.state.craving).toEqual({ food: null, until: 0, nextAt: 0, last: null });
   });
 });
+
+describe('save migration to the Shop extras', () => {
+  it('gives older saves a plain room, no decor and a fresh stock', () => {
+    const out = migrate({ version: 13, state: { pet: { stage: 'teen' }, inventory: { food: {}, hats: [], seeds: {}, supplies: {} } } });
+    expect(out.version).toBe(SAVE_VERSION);
+    expect(out.state.inventory.decor).toEqual([]);
+    expect(out.state.room).toEqual({ wallpaper: 'plain', curtains: null });
+    expect(out.state.stock).toEqual({ day: '', bought: 0 });
+    expect(out.state.baitOn).toBe(false);
+  });
+});

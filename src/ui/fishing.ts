@@ -9,6 +9,7 @@
 // is decided in src/game/fishing.ts.
 
 import { STRINGS } from '../strings';
+import { ITEM_ICONS } from './icons';
 import { CONFIG } from '../game/config';
 import { createFroth, createPond } from '../render/pond';
 import { biteDelayMs, gradeAt, markerAt, placeZones, sweptOut, type CatchGrade, type CatchZones } from '../game/fishing';
@@ -21,6 +22,7 @@ export interface FishingCallbacks {
   onCast: () => boolean; // false if the game refused (the reason is shown elsewhere)
   onLand: (grade: CatchGrade) => void;
   onExit: () => void;
+  onToggleBait: () => void;
   toast: (message: string) => void;
 }
 
@@ -30,6 +32,7 @@ export interface Fishing {
   start: () => void;
   stop: () => void;
   phase: () => FishingPhase;
+  setBait: (count: number, on: boolean) => void; // the bait you have, and whether it's switched on
 }
 
 // How long the bar stays up after Catch, showing where the marker stopped.
@@ -68,7 +71,21 @@ export function createFishing(cb: FishingCallbacks): Fishing {
   pond.className = 'pond';
   pond.hidden = true;
   const froth = createFroth();
-  pond.append(froth.canvas, pondView.canvas, bar);
+  // Bait you have, in the corner (only when you have some). Tap it to
+  // switch bait on: the little ring fills in.
+  const bait = document.createElement('button');
+  bait.className = 'pond-bait';
+  bait.hidden = true;
+  bait.setAttribute('role', 'switch');
+  const baitDot = document.createElement('i');
+  baitDot.className = 'pond-bait-dot';
+  const baitIcon = document.createElement('span');
+  baitIcon.innerHTML = ITEM_ICONS.bait;
+  baitIcon.setAttribute('aria-hidden', 'true');
+  const baitCount = document.createElement('b');
+  bait.append(baitDot, baitIcon, baitCount);
+  bait.addEventListener('click', () => cb.onToggleBait());
+  pond.append(froth.canvas, pondView.canvas, bait, bar);
   // Shows the fizzy edge for a while, then fades it out.
   let frothTimer = 0;
   function fizz(ms: number): void {
@@ -215,6 +232,13 @@ export function createFishing(cb: FishingCallbacks): Fishing {
   return {
     row,
     pond,
+    setBait(count, on) {
+      bait.hidden = count <= 0;
+      bait.classList.toggle('on', on);
+      bait.setAttribute('aria-checked', String(on));
+      baitCount.textContent = String(count);
+      bait.setAttribute('aria-label', STRINGS.fishing.bait(count, on));
+    },
     start() {
       row.hidden = false;
       clearTimeout(drainTimer);

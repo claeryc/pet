@@ -8,6 +8,7 @@ import {
   orderPay,
   orderPool,
   orderTier,
+  pickupDrink,
   pickupSeed,
   pickupTime,
   putInBox,
@@ -223,5 +224,18 @@ describe("Percy's seeds", () => {
     expect(after.inventory.seeds[seed]).toBe(1);
     const msg = after.messages.find((m) => m.kind === 'pickup');
     expect(msg && msg.kind === 'pickup' && msg.seed).toBe(seed);
+  });
+
+  it('sometimes leaves an energy drink instead, when there was no seed', () => {
+    let s = ready();
+    let at = START + 24 * HOUR;
+    while (pickupSeed(order(at, true), s.pet.id) || !pickupDrink(order(at, true), s.pet.id)) at += HOUR;
+    expect(pickupDrink(order(at, false), s.pet.id)).toBe(false); // gold frames only
+    s = { ...s, delivery: { order: order(at, true), nextAt: 0 } };
+    const before = s.inventory.food.energyDrink ?? 0;
+    const after = stepDelivery(s, at);
+    expect(after.inventory.food.energyDrink).toBe(before + 1);
+    const msg = after.messages.find((m) => m.kind === 'pickup');
+    expect(msg && msg.kind === 'pickup' && msg.food).toBe('energyDrink');
   });
 });

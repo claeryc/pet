@@ -148,6 +148,10 @@ export const CONFIG = {
     { id: 'dragonFruitTart', price: 60, hunger: 30, happiness: 34, health: 6, cookedOnly: true, stars: 3 },
     { id: 'dragonFruitSmoothie', price: 70, hunger: 34, happiness: 30, health: 14, cookedOnly: true, stars: 3 },
     { id: 'seafoodPlatter', price: 85, hunger: 66, happiness: 30, health: 12, cookedOnly: true, stars: 3, slowHunger: { percent: 30, hours: 8 } },
+    // A pick-me-up: lots of energy, so the pet can fish and play longer.
+    // `limited` food isn't in the Shop every day (see `economy.limited`),
+    // and Percy sometimes leaves one after a gold-frame order.
+    { id: 'energyDrink', price: 35, hunger: 0, happiness: 4, health: -2, energy: 40, limited: true },
     // What you get when the pot holds a mix that isn't a recipe.
     { id: 'mushyMess', price: 1, hunger: 8, happiness: 0, health: 0, cookedOnly: true },
   ],
@@ -192,6 +196,15 @@ export const CONFIG = {
     // How many fish one successful catch gives. A food buff could raise this
     // later on (e.g. a chance of an extra fish).
     fishPerCatch: 1,
+    // Bait from the Shop. While you have some, each fish you land uses one
+    // and is more likely to be a salmon or lobster (odds in percent).
+    bait: {
+      price: 12,
+      catchOdds: {
+        perfect: { shrimp: 20, salmon: 45, lobster: 35 },
+        other: { shrimp: 35, salmon: 45, lobster: 20 },
+      },
+    },
   },
 
   // Cooking (the last row of the Feed panel). Put up to `slots` foods from
@@ -231,7 +244,10 @@ export const CONFIG = {
   // The garden (in the Play panel): pots to grow crops in. Plants grow in
   // real time, even while the game is closed. Times are in hours.
   garden: {
-    plots: 3,
+    plots: 2, // pots in a new garden (saves from before keep their 3)
+    // One more pot can be bought in the Shop, up to `maxPlots`.
+    maxPlots: 3,
+    extraPotPrice: 250,
     // What you can grow. `id` is the food you harvest and `harvest` is how
     // many. `seedPrice` is the seed's price in the Shop (0: not sold, you
     // only find it by luck).
@@ -288,6 +304,8 @@ export const CONFIG = {
     // only the ones the Shop doesn't sell.
     seedChance: 0.5,
     seedOdds: { pumpkin: 70, dragonFruit: 30 },
+    // When there's no seed, he leaves an energy drink this often instead.
+    drinkChance: 0.5,
   },
 
   // Cravings: now and then the pet would love one particular thing, shown
@@ -354,6 +372,25 @@ export const CONFIG = {
     wandererStars: { 1: 65, 2: 25, 3: 10 },
   },
 
+  // Decorating the room, from the Shop: a wallpaper and window curtains.
+  // Each is bought once, then you pick which to use. Every room starts
+  // with the plain wallpaper and no curtains.
+  room: {
+    wallpapers: [
+      { id: 'plain', price: 0 },
+      { id: 'stripes', price: 120 },
+      { id: 'dots', price: 150 },
+      { id: 'checks', price: 180 },
+      { id: 'stars', price: 240 },
+    ],
+    curtains: [
+      { id: 'rose', price: 80 },
+      { id: 'butter', price: 80 },
+      { id: 'mint', price: 100 },
+      { id: 'plum', price: 150 },
+    ],
+  },
+
   // How many old messages the Messages page keeps.
   messagesKept: 60,
 
@@ -367,6 +404,10 @@ export const CONFIG = {
     // first visit of the day, a bit for later visits at least
     // `minHoursBetween` apart, up to `maxPerDay` rewards a day.
     checkIn: { firstOfDay: 20, later: 5, minHoursBetween: 3, maxPerDay: 4 },
+    // `limited` food (the energy drink) is only in the Shop on some days:
+    // each day has this chance (0-1) of having it, and then only
+    // `perDay` can be bought that day.
+    limited: { chance: 0.3, perDay: 3 },
   },
 
   // Testing helpers shown in Settings. Turn off before releasing the game.

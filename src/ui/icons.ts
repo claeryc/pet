@@ -4,6 +4,7 @@
 // later without touching the rest of the UI.
 
 import { PALETTE } from '../render/palette';
+import { CURTAINS, WALLPAPERS } from '../render/room';
 
 const PIXEL_COLORS: Record<string, string> = {
   k: PALETTE.ink,
@@ -19,21 +20,65 @@ const PIXEL_COLORS: Record<string, string> = {
   o: PALETTE.peach,
   l: PALETTE.lilac,
   v: PALETTE.lavender,
+  e: PALETTE.cream,
+  u: PALETTE.plum,
 };
 
 // Turns a text grid into an SVG string.
-function pixelIcon(rows: string[]): string {
+// `extra` adds or swaps letters for one icon.
+function pixelIcon(rows: string[], extra: Record<string, string> = {}): string {
   const h = rows.length;
   const w = rows[0].length;
   let rects = '';
   rows.forEach((row, y) => {
     [...row].forEach((ch, x) => {
-      const color = PIXEL_COLORS[ch];
+      const color = extra[ch] ?? PIXEL_COLORS[ch];
       if (color) rects += `<rect x="${x}" y="${y}" width="1" height="1" fill="${color}"/>`;
     });
   });
   return `<svg viewBox="0 0 ${w} ${h}" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
 }
+
+// A wallpaper sample in a frame, drawn with the room's own pattern.
+function wallpaperIcon(id: string): string {
+  const pattern = WALLPAPERS[id];
+  let rects = '';
+  for (let y = 0; y < 12; y++) {
+    for (let x = 0; x < 12; x++) {
+      const edge = x === 0 || y === 0 || x === 11 || y === 11;
+      const color = edge ? PALETTE.ink : pattern(x - 1, y - 1, false);
+      rects += `<rect x="${x}" y="${y}" width="1" height="1" fill="${color}"/>`;
+    }
+  }
+  return `<svg viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
+}
+
+// A little window with the curtains drawn back (A is the cloth, B the folds).
+function curtainsIcon(id: string): string {
+  const [main, fold] = CURTAINS[id];
+  return pixelIcon(
+    [
+      'cccccccccccc',
+      'ABABkkkkABAB',
+      'ABABssssABAB',
+      'ABABswssABAB',
+      'ABABssssABAB',
+      'ABABkkkkABAB',
+      'ABABssssABAB',
+      'ABABsssmABAB',
+      'ABABssmmABAB',
+      'ABABkkkkABAB',
+      'BBBB....BBBB',
+      '............',
+    ],
+    { A: main, B: fold },
+  );
+}
+
+const ROOM_ICONS: Record<string, string> = Object.fromEntries([
+  ...Object.keys(WALLPAPERS).map((id) => [`wallpaper_${id}`, wallpaperIcon(id)]),
+  ...Object.keys(CURTAINS).map((id) => [`curtains_${id}`, curtainsIcon(id)]),
+]);
 
 // A "?" for things not found yet (in the Collection).
 export const UNKNOWN_ICON = pixelIcon([
@@ -53,6 +98,51 @@ export const UNKNOWN_ICON = pixelIcon([
 
 // Big icons (12x12) shown at the start of each row.
 export const ITEM_ICONS: Record<string, string> = {
+  ...ROOM_ICONS,
+  energyDrink: pixelIcon([
+    '....kkkk....',
+    '...kwwwwk...',
+    '...kkkkkk...',
+    '..kbbbbbbk..',
+    '..kbbbbbbk..',
+    '..kbbykbbk..',
+    '..kbykbbbk..',
+    '..kyyyykbk..',
+    '..kbbkybbk..',
+    '..kbbkybbk..',
+    '..kbbbbbbk..',
+    '...kkkkkk...',
+  ]),
+  // A wriggly worm on a hook.
+  bait: pixelIcon([
+    '.....kk.....',
+    '.....kk.....',
+    '.....kk.....',
+    '..kk.kk.....',
+    '.kppkkk.....',
+    'kprpkk..kk..',
+    'kppk...kppk.',
+    '.kpk..kprpk.',
+    '.kppkkppkk..',
+    '..kpprppk...',
+    '...kkkkk....',
+    '............',
+  ]),
+  // A flower pot with a "+" on it, for buying another.
+  gardenPot: pixelIcon([
+    '............',
+    '.....gg.....',
+    '....gmmg....',
+    '.....gg.....',
+    '.kkkkkkkkkk.',
+    '.kcccccccck.',
+    '..kcccwcck..',
+    '..kccwwwck..',
+    '..kcccwcck..',
+    '...kcccck...',
+    '...kkkkkk...',
+    '............',
+  ]),
   riceBall: pixelIcon([
     '.....kk.....',
     '....kwwk....',

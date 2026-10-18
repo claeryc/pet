@@ -17,9 +17,12 @@ import {
   type Food,
 } from './game/actions';
 import { characterSheet, getCharacter, getVariant, sheetFor } from './game/growth';
-import { buyFood, buyGardenItem, buyHat, checkIn, earn, getHat, wearHat, type ShopResult } from './game/economy';
+import {
+  buyBait, buyDecor, buyFood, buyGardenItem, buyHat, buyPot, checkIn, earn, getHat, wearHat, type ShopResult,
+} from './game/economy';
+import { useDecor } from './game/decor';
 import { getLook, isNight } from './game/stats';
-import { cast, land } from './game/fishing';
+import { cast, land, toggleBait } from './game/fishing';
 import { cook } from './game/cooking';
 import {
   clearPlot,
@@ -137,6 +140,7 @@ function announceMail(old: Message[]): void {
     } else if (m.kind === 'pickup') {
       home.notice(STRINGS.delivery.pickedUp(m.boxes.filter((b) => b.have >= b.want).length, m.gold));
       if (m.seed) showGot(m.seed, 1, STRINGS.reveal.fromPercy, true);
+      if (m.food) showGot(m.food, 1, STRINGS.reveal.fromPercy);
     } else if (m.kind === 'visitor' && m.friend) {
       home.notice(STRINGS.messages.friendVisit(m.name));
     } else if (m.kind === 'visitor') {
@@ -198,6 +202,7 @@ function runShop(result: ShopResult, success?: string): void {
   if (result.blocked === 'notEnoughGold') home.toast(STRINGS.shop.notEnoughGold);
   else if (result.blocked === 'alreadyOwned') home.toast(STRINGS.shop.alreadyOwned);
   else if (result.blocked === 'egg') home.toast(STRINGS.wardrobe.eggNoHat);
+  else if (result.blocked === 'soldOut') home.toast(STRINGS.shop.soldOutToday);
   else if (!result.blocked && success) home.toast(success);
 }
 
@@ -385,6 +390,7 @@ const home = createHomeScreen(root, {
       home.toast(grade === 'miss' ? label : STRINGS.fishing.slipped(label));
     }
   },
+  onToggleBait: () => setState(toggleBait(state)),
   onCook: (items) => {
     const result = cook(simulate(state, gameNow()), items);
     setState(result.state);
@@ -498,7 +504,12 @@ const home = createHomeScreen(root, {
   onGrowNow: () => setState(growNow(state, gameNow())),
   onAddGold: () => setState(earn(state, CONFIG.debug.addGold)),
   onSetCare: (careScore) => setState({ ...state, pet: { ...state.pet, careScore } }),
-  onBuyFood: (food) => runShop(buyFood(state, food), STRINGS.shop.bought(STRINGS.foods[food])),
+  onBuyFood: (food) => runShop(buyFood(state, food, gameNow()), STRINGS.shop.bought(STRINGS.foods[food])),
+  onBuyBait: () => runShop(buyBait(state), STRINGS.shop.bought(STRINGS.shop.bait)),
+  onBuyPot: () => runShop(buyPot(state), STRINGS.shop.potBought),
+  onBuyDecor: (kind, id) => runShop(buyDecor(state, kind, id),
+    STRINGS.shop.bought((kind === 'wallpaper' ? STRINGS.shop.wallpapers : STRINGS.shop.curtains)[id] ?? id)),
+  onUseDecor: (kind, id) => runShop(useDecor(state, kind, id)),
   onBuyHat: (id) => runShop(buyHat(state, id), STRINGS.shop.boughtHat(getHat(id)?.name ?? '', state.pet.name)),
   onWearHat: (id) => runShop(wearHat(state, id)),
   hatImage: (id) => sprites.get(getHat(id)?.sheet ?? '')?.image.src,
@@ -581,6 +592,7 @@ function render(timeMs: number): void {
         animation: getLook(other),
       },
       petOnLeft: petStandsLeft(state),
+      room: state.room,
       meeting: meeting && {
         sheet: sprites.get(characterSheet(meeting.friend.character, meeting.friend.variant)),
         animation: meeting.hearts ? 'happy' : 'cheerful',

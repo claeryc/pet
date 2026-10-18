@@ -87,9 +87,10 @@ export function cast(state: GameState, now: number): ActionResult {
 export type CatchId = keyof typeof CONFIG.fishing.catchOdds.other;
 
 // Which kind of fish bit, from a random number (0-1). A perfect catch
-// makes the rarer ones more likely.
-export function pickCatch(grade: CatchGrade, random: number): CatchId {
-  const odds = grade === 'perfect' ? CONFIG.fishing.catchOdds.perfect : CONFIG.fishing.catchOdds.other;
+// makes the rarer ones more likely, and so does bait.
+export function pickCatch(grade: CatchGrade, random: number, baited = false): CatchId {
+  const table = baited ? CONFIG.fishing.bait.catchOdds : CONFIG.fishing.catchOdds;
+  const odds = grade === 'perfect' ? table.perfect : table.other;
   const entries = Object.entries(odds) as [CatchId, number][];
   const total = entries.reduce((sum, [, p]) => sum + p, 0);
   let roll = random * total;
@@ -102,17 +103,26 @@ export function pickCatch(grade: CatchGrade, random: number): CatchId {
 
 // Tries to land the fish. `landRoll` (0-1) is rolled against the grade's
 // chance, and `kindRoll` (0-1) picks which fish it was. A landed fish goes
-// into the inventory as food.
+// into the inventory as food. With bait switched on, a landed fish uses one
+// up (a fish that gets away doesn't).
 export function land(
   state: GameState,
   grade: CatchGrade,
   landRoll: number,
   kindRoll: number,
-): { state: GameState; caught: CatchId | null; count: number } {
-  if (landRoll >= CONFIG.fishing.catchChance[grade]) return { state, caught: null, count: 0 };
-  const caught = pickCatch(grade, kindRoll);
+): { state: GameState; caught: CatchId | null; count: number; baited: boolean } {
+  if (landRoll >= CONFIG.fishing.catchChance[grade]) return { state, caught: null, count: 0, baited: false };
+  const bait = state.inventory.supplies.bait ?? 0;
+  const baited = state.baitOn && bait > 0;
+  const caught = pickCatch(grade, kindRoll, baited);
   const count = CONFIG.fishing.fishPerCatch;
   const food = { ...state.inventory.food, [caught]: (state.inventory.food[caught] ?? 0) + count };
+  const supplies = baited ? { ...state.inventory.supplies, bait: bait - 1 } : state.inventory.supplies;
   const kinds = state.caught.includes(caught) ? state.caught : [...state.caught, caught];
-  return { state: { ...state, inventory: { ...state.inventory, food }, caught: kinds }, caught, count };
+  return { state: { ...state, inventory: { ...state.inventory, food, supplies }, caught: kinds }, caught, count, baited };
+}
+
+// Switches bait on or off for fishing (the little dot in the pond).
+export function toggleBait(state: GameState): GameState {
+  return { ...state, baitOn: !state.baitOn };
 }

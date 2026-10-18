@@ -1,5 +1,5 @@
 // The garden. While you garden, the room turns into a little garden with
-// the pet on the left and three pots on the right (drawn in
+// the pet on the left and the pots on the right (drawn in
 // src/render/garden.ts). Tap a pot in the room, or one of the 1 / 2 / 3
 // tabs, to pick it.
 //
@@ -137,11 +137,11 @@ export function createGarden(cb: GardenCallbacks): Garden {
   beds.className = 'garden';
   beds.hidden = true;
 
-  // Tabs: 1 / 2 / 3, each with a little picture of what's growing.
+  // Tabs: 1 / 2 (and 3 once bought), each with a little picture of what's growing.
   const tabs = document.createElement('div');
   tabs.className = 'garden-tabs';
   tabs.setAttribute('role', 'tablist');
-  const tabButtons = Array.from({ length: CONFIG.garden.plots }, (_, i) => {
+  const tabButtons = Array.from({ length: CONFIG.garden.maxPlots }, (_, i) => {
     const b = document.createElement('button');
     b.className = 'garden-tab';
     b.setAttribute('role', 'tab');
@@ -329,6 +329,7 @@ export function createGarden(cb: GardenCallbacks): Garden {
   function render(): void {
     if (!state) return;
     const s = state;
+    tabButtons.forEach((t, i) => (t.b.hidden = i >= s.garden.length));
     s.garden.forEach((plot, i) => {
       const t = tabButtons[i];
       const stage = plotStage(plot);
