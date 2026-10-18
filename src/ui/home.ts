@@ -468,7 +468,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     if (latest && !canPlayMinigames(latest.state.pet, latest.now)) {
       return showToast(STRINGS.blocked.resting(petName));
     }
-    actions.hidden = true;
+    hideActions();
     stats.setAttribute('aria-hidden', 'true'); // under water for now
     fishing.start();
   }
@@ -481,7 +481,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   });
   function startCooking(): void {
     cb.onSeen('cooking');
-    actions.hidden = true;
+    hideActions();
     stats.setAttribute('aria-hidden', 'true'); // covered by the counter for now
     if (latest) cooking.update(latest.state);
     cooking.start();
@@ -500,7 +500,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   });
   function startGarden(): void {
     cb.onSeen('garden');
-    actions.hidden = true;
+    hideActions();
     stats.setAttribute('aria-hidden', 'true'); // covered by the garden for now
     if (latest) garden.update(latest.state, latest.now);
     garden.start();
@@ -522,8 +522,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     feedDrawer.close();
     playDrawer.close();
     menuDrawer!.close();
-    actions.hidden = true;
-    parcel.hidden = true;
+    hideActions();
     stats.setAttribute('aria-hidden', 'true'); // covered by the boxes for now
     if (latest) delivery.update(latest.state, latest.now);
     delivery.start();
@@ -545,11 +544,16 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     feedDrawer.close();
     playDrawer.close();
     menuDrawer!.close();
-    actions.hidden = true;
-    refreshParcel();
+    hideActions();
     stats.setAttribute('aria-hidden', 'true'); // covered by the panel for now
     if (latest) meet.update(latest.state, latest.now);
     meet.start();
+  }
+  // Off to another scene: the normal buttons go, and the parcel and the
+  // craving bubble with them, straight away rather than on the next tick.
+  function hideActions(): void {
+    actions.hidden = true;
+    refreshParcel();
   }
   function refreshParcel(): void {
     parcel.hidden = !latest?.state.delivery.order || actions.hidden || latest.state.pet.stage === 'egg';
