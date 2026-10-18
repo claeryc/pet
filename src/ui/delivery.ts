@@ -2,14 +2,15 @@
 // Messages) takes you out to Percy, who waits with a crate per thing he
 // asked for, on an open net (drawn in src/render/delivery.ts). A panel
 // slides up over the stat bars, like the garden's: the title, what the
-// whole order pays and the time left along the top, then one box per thing
+// whole order pays (once something is in a box) and the time left along
+// the top, then one box per thing
 // Percy asked for, with its picture and how many are in it out of how many
 // he wants (greyed out while empty). Tap a box to put one in, and the
 // little minus to take one back out.
 //
 // The panel's frame shows how the order is going: bronze with one full box,
 // silver with two, and a sparkling gold when every box is full (that's the
-// bonus). The button row becomes [Close] [Fill all].
+// bonus), with a soft shine sweeping across the boxes. The button row becomes [Close] [Fill all].
 //
 // What an order asks for and pays is decided in src/game/delivery.ts.
 
@@ -122,12 +123,22 @@ export function createDelivery(cb: DeliveryCallbacks): DeliveryPanel {
       empty.textContent = `${STRINGS.delivery.noOrder} ${STRINGS.delivery.nextOrder(formatDuration(state.delivery.nextAt - now))}`;
       return;
     }
-    // What the whole order pays with every box full, bonus included.
+    // What the whole order pays with every box full, bonus included. It
+    // only shows once you've started packing, popping in with the first item.
     const pay = orderPay(order.boxes.map((b) => ({ ...b, have: b.want })));
     const total = pay.boxes + pay.bonus;
-    reward.innerHTML = STAT_ICONS.gold;
-    reward.append(String(total));
-    reward.title = STRINGS.delivery.reward(total);
+    if (order.boxes.some((b) => b.have > 0)) {
+      if (!reward.hasChildNodes()) {
+        reward.classList.remove('pop');
+        void reward.offsetWidth;
+        reward.classList.add('pop');
+      }
+      reward.innerHTML = STAT_ICONS.gold;
+      reward.append(String(total));
+      reward.title = STRINGS.delivery.reward(total);
+    } else {
+      reward.replaceChildren();
+    }
     when.innerHTML = STAT_ICONS.hourglass;
     when.append(formatDuration(order.pickupAt - now));
     when.title = STRINGS.delivery.pickupIn(formatDuration(order.pickupAt - now));

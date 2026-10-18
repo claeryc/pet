@@ -2668,6 +2668,16 @@ body {
   display: none;
 }
 
+/* The reward pops in with the first item put in a box. */
+.delivery-reward.pop {
+  animation: reward-pop 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+@keyframes reward-pop {
+  from { transform: translateX(-50%) scale(0.4); opacity: 0; }
+  to { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
 .delivery-reward svg {
   width: 13px;
   height: 13px;
@@ -2780,6 +2790,53 @@ body {
 .delivery-box[data-fill='full'] .delivery-box-put {
   border-color: var(--good-dark);
   box-shadow: 0 3px 0 var(--good-dark);
+}
+
+/* Every box full: a soft white shine sweeps across the boxes, from top
+   left to bottom right, as if over one pane of glass (each box starts a
+   moment after the one before), then rests a while. */
+.delivery-box-put {
+  position: relative;
+  overflow: hidden;
+}
+
+.delivery[data-tier='gold'] .delivery-box-put::after {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  pointer-events: none;
+  background: linear-gradient(
+    135deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.55) 48%,
+    rgba(255, 255, 255, 0.55) 52%,
+    transparent 60%
+  );
+  transform: translate(-60%, -60%);
+  animation: box-shine 3s ease-in-out infinite;
+}
+
+.delivery[data-tier='gold'] .delivery-box:nth-child(2) .delivery-box-put::after {
+  animation-delay: 0.15s;
+}
+
+.delivery[data-tier='gold'] .delivery-box:nth-child(3) .delivery-box-put::after {
+  animation-delay: 0.3s;
+}
+
+@keyframes box-shine {
+  0% { transform: translate(-60%, -60%); }
+  35%, 100% { transform: translate(60%, 60%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .delivery[data-tier='gold'] .delivery-box-put::after,
+  .delivery-reward.pop {
+    animation: none;
+  }
+  .delivery[data-tier='gold'] .delivery-box-put::after {
+    display: none;
+  }
 }
 
 /* Take one back out: a small round minus on the box's corner. */
