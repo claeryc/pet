@@ -3367,9 +3367,57 @@ body {
 }
 
 .meet-sub {
-  margin: 0;
-  font-size: 0.8rem;
-  opacity: 0.7;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.meet-sub[hidden] {
+  display: none;
+}
+
+.meet-leaves,
+.meet-today {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.meet-leaves {
+  color: var(--plum);
+}
+
+.meet-leaves svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* A small badge: Today, the meet icon, and meetings that counted. */
+.meet-today {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--lavender);
+  color: var(--plum);
+}
+
+.meet-today[data-done='true'] {
+  background: var(--good-light);
+  color: var(--good-dark);
+}
+
+.meet-today svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* A gift's worth: one little pink dot per point. */
+.drawer[data-drawer='gift'] .chip-effect {
+  color: var(--accent-dark);
+  background: #fde4ec;
+  letter-spacing: 1px;
 }
 
 .meet-mingle {

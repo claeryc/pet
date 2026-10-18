@@ -323,9 +323,9 @@ export const CONFIG = {
     // A meeting: score gained (only the first `perDay` meetings with a
     // friend each day count), and what it does to your pet's stats.
     meet: { score: 4, perDay: 3, happiness: 8, energy: -4 },
-    // Gifts: +1 score per `goldPerPoint` of the food's price, counting up to
-    // `goldPerDay` of gifts per friend each day.
-    gift: { goldPerPoint: 10, goldPerDay: 50 },
+    // Gifts: +1 score per `goldPerPoint` of the food's price, but always at
+    // least 1, counting up to `pointsPerDay` from gifts per friend each day.
+    gift: { goldPerPoint: 10, pointsPerDay: 5 },
     // A friend who visited and left without meeting your pet loses this
     // much, but never a whole heart.
     missedVisit: 1,

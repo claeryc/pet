@@ -225,8 +225,13 @@ export function meet(state: GameState, friendId: string, now: number): FriendRes
 
 const FOODS = CONFIG.foods as readonly Food[];
 
+// What a food with this Shop price is worth as a gift (before today's cap).
+export function giftPoints(price: number): number {
+  return Math.min(F.gift.pointsPerDay, Math.max(1, Math.floor(price / F.gift.goldPerPoint)));
+}
+
 // Gives one food to a friend. Its Shop price is its value: +1 score for
-// every `goldPerPoint`, counting up to `goldPerDay` of gifts a day.
+// every `goldPerPoint` (at least 1), counting up to `pointsPerDay` a day.
 // Free food (the rice ball) can't be given.
 export function giveGift(state: GameState, friendId: string, food: FoodId, now: number): FriendResult {
   if (!getFriend(state, friendId)) return { state, blocked: 'gone' };
@@ -239,11 +244,9 @@ export function giveGift(state: GameState, friendId: string, food: FoodId, now: 
   let gained = 0;
   const s = withFriend(stocked, friendId, (f) => {
     freshDay(f, day);
-    const cap = F.gift.goldPerDay;
-    const before = Math.min(cap, f.giftedToday);
-    const after = Math.min(cap, f.giftedToday + value);
-    gained = Math.min(Math.floor(after / F.gift.goldPerPoint) - Math.floor(before / F.gift.goldPerPoint), 100 - f.score);
-    f.giftedToday += value;
+    gained = Math.min(giftPoints(value), F.gift.pointsPerDay - f.giftedToday, 100 - f.score);
+    gained = Math.max(0, gained);
+    f.giftedToday += gained;
     f.score = clampStat(f.score + gained);
   });
   return { state: s, gained };

@@ -17,9 +17,9 @@ import { CONFIG } from '../game/config';
 import type { Food, FoodId } from '../game/actions';
 import { foodCount, localDay } from '../game/economy';
 import { characterSheet } from '../game/growth';
-import { hearts, isFriend, littleOneChance, mingleBlock, visitor } from '../game/friends';
+import { giftPoints, hearts, isFriend, littleOneChance, mingleBlock, visitor } from '../game/friends';
 import type { Friend, GameState } from '../game/state';
-import { HEART_ICONS, ITEM_ICONS } from './icons';
+import { HEART_ICONS, ITEM_ICONS, STAT_ICONS } from './icons';
 import { createDrawer, type DrawerOption } from './drawer';
 import { formatDuration } from './time';
 
@@ -87,7 +87,11 @@ export function createMeet(cb: MeetCallbacks): MeetPanel {
   const name = el('b', 'meet-name');
   const heartSlot = el('span', 'meet-hearts');
   head.append(pic, name, heartSlot);
-  const sub = el('p', 'meet-sub');
+  // [hourglass 2h 40m]          [Today (meet icon) 1/3]
+  const sub = el('div', 'meet-sub');
+  const leaves = el('span', 'meet-leaves');
+  const today = el('span', 'meet-today');
+  sub.append(leaves, today);
 
   // The Mingle line, or Add friend for a guest.
   const mingle = el('button', 'meet-mingle');
@@ -105,12 +109,13 @@ export function createMeet(cb: MeetCallbacks): MeetPanel {
   const giftable = (CONFIG.foods as readonly Food[]).filter((food) => food.price > 0);
   const hasGifts = () => !!state && giftable.some((food) => foodCount(state!, food.id) > 0);
   const giftOptions: DrawerOption[] = giftable.map((food) => {
-    // Cheap food is worth part of a point (it adds up over the day).
-    const points = Math.round((Math.min(food.price, CONFIG.friends.gift.goldPerDay) / CONFIG.friends.gift.goldPerPoint) * 10) / 10;
+    // What it's worth, as little dots (1 to 5) rather than a number, so it
+    // doesn't read as hearts.
+    const points = giftPoints(food.price);
     return {
       icon: ITEM_ICONS[food.id] ?? '',
       label: STRINGS.foods[food.id as FoodId],
-      effects: [{ icon: HEART_ICONS.full, text: `+${points}`, title: STRINGS.friends.giftWorth(points) }],
+      effects: [{ icon: '', text: '●'.repeat(points), title: STRINGS.friends.giftWorth(points) }],
       onPick: () => {
         const f = current();
         if (f) cb.onGift(f.id, food.id);
@@ -168,7 +173,7 @@ export function createMeet(cb: MeetCallbacks): MeetPanel {
       name.textContent = '';
       pic.hidden = true;
       heartSlot.replaceChildren();
-      sub.textContent = '';
+      sub.hidden = true;
       mingle.hidden = add.hidden = true;
       empty.hidden = false;
       return;
@@ -179,8 +184,19 @@ export function createMeet(cb: MeetCallbacks): MeetPanel {
     if (url) pic.style.backgroundImage = `url('${url}')`;
     heartSlot.replaceChildren(heartRow(f.score));
     const metToday = f.day === localDay(now) ? f.metToday : 0;
-    const where = STRINGS.friends.visiting(formatDuration(state.visit.until - now));
-    sub.textContent = `${where}  ·  ${STRINGS.friends.metToday(Math.min(metToday, CONFIG.friends.meet.perDay), CONFIG.friends.meet.perDay)}`;
+    const left = formatDuration(state.visit.until - now);
+    const perDay = CONFIG.friends.meet.perDay;
+    const met = Math.min(metToday, perDay);
+    sub.hidden = false;
+    leaves.innerHTML = STAT_ICONS.hourglass;
+    leaves.append(left);
+    leaves.title = STRINGS.friends.visiting(left);
+    today.innerHTML = '';
+    today.append(STRINGS.friends.today);
+    today.insertAdjacentHTML('beforeend', ITEM_ICONS.meet);
+    today.append(`${met}/${perDay}`);
+    today.title = STRINGS.friends.metToday(met, perDay);
+    today.dataset.done = String(met >= perDay);
 
     empty.hidden = true;
     const known = isFriend(state, f.id);

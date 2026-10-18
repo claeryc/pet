@@ -110,7 +110,7 @@ export interface Friend {
   // is the local date they're for, e.g. "2026-10-18".
   day: string;
   metToday: number;
-  giftedToday: number; // gold value of today's gifts
+  giftedToday: number; // friend score from today's gifts
   partner: string | null; // the pet of yours it had a little one with
   mingledAt: number; // when it last mingled (0 = never)
 }

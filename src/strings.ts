@@ -202,6 +202,7 @@ export const STRINGS = {
     visiting: (time: string) => `Visiting · leaves in ${time}`,
     hearts: (h: number) => `${h} of 5 hearts`,
     metToday: (n: number, max: number) => `Met ${n} of ${max} today`,
+    today: 'Today',
     met: (pet: string, friend: string, gained: number) =>
       gained > 0 ? `${pet} and ${friend} played together! Friendship grew.` : `${pet} and ${friend} played together!`,
     tiredOfMeeting: (friend: string) => `${friend} had fun! Your friendship grows again tomorrow.`,
