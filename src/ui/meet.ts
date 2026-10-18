@@ -17,7 +17,7 @@ import { CONFIG } from '../game/config';
 import type { Food, FoodId } from '../game/actions';
 import { foodCount, localDay } from '../game/economy';
 import { characterSheet } from '../game/growth';
-import { giftPoints, hearts, isFriend, littleOneChance, mingleBlock, visitor } from '../game/friends';
+import { giftTenths, hearts, isFriend, littleOneChance, mingleBlock, visitor } from '../game/friends';
 import type { Friend, GameState } from '../game/state';
 import { HEART_ICONS, ITEM_ICONS, STAT_ICONS } from './icons';
 import { createDrawer, type DrawerOption } from './drawer';
@@ -58,18 +58,27 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, te
   return e;
 }
 
-// Five hearts, filled in by halves.
+// Five hearts, each filling up from left to right a tenth at a time.
 export function heartRow(score: number): HTMLElement {
   const row = el('span', 'heart-row');
   const h = hearts(score);
   for (let i = 0; i < 5; i++) {
-    const kind = h >= i + 1 ? 'full' : h >= i + 0.5 ? 'half' : 'empty';
-    row.insertAdjacentHTML('beforeend', HEART_ICONS[kind]);
+    const fill = Math.max(0, Math.min(1, h - i));
+    row.append(heartIcon(fill));
   }
   row.setAttribute('role', 'img');
   row.setAttribute('aria-label', STRINGS.friends.hearts(h));
   row.title = STRINGS.friends.hearts(h);
   return row;
+}
+
+// One heart, `fill` (0 to 1) of it full: an empty heart with a full one
+// on top, cut off above the fill line (see .heart in style.css).
+export function heartIcon(fill: number): HTMLElement {
+  const heart = el('span', 'heart');
+  heart.innerHTML = HEART_ICONS.empty + HEART_ICONS.full;
+  heart.style.setProperty('--fill', String(fill));
+  return heart;
 }
 
 export function createMeet(cb: MeetCallbacks): MeetPanel {
@@ -109,13 +118,12 @@ export function createMeet(cb: MeetCallbacks): MeetPanel {
   const giftable = (CONFIG.foods as readonly Food[]).filter((food) => food.price > 0);
   const hasGifts = () => !!state && giftable.some((food) => foodCount(state!, food.id) > 0);
   const giftOptions: DrawerOption[] = giftable.map((food) => {
-    // What it's worth, as little dots (1 to 5) rather than a number, so it
-    // doesn't read as hearts.
-    const points = giftPoints(food.price);
+    // What it's worth in hearts, e.g. "+0.2".
+    const worth = giftTenths(food.price) / 10;
     return {
       icon: ITEM_ICONS[food.id] ?? '',
       label: STRINGS.foods[food.id as FoodId],
-      effects: [{ icon: '', text: '●'.repeat(points), title: STRINGS.friends.giftWorth(points) }],
+      effects: [{ icon: HEART_ICONS.full, text: `+${worth}`, title: STRINGS.friends.giftWorth(worth) }],
       onPick: () => {
         const f = current();
         if (f) cb.onGift(f.id, food.id);

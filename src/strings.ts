@@ -206,7 +206,7 @@ export const STRINGS = {
     met: (pet: string, friend: string, gained: number) =>
       gained > 0 ? `${pet} and ${friend} played together! Friendship grew.` : `${pet} and ${friend} played together!`,
     tiredOfMeeting: (friend: string) => `${friend} had fun! Your friendship grows again tomorrow.`,
-    giftWorth: (points: number) => `Worth ${points} friendship`,
+    giftWorth: (hearts: number) => `Worth ${hearts} of a heart`,
     noGifts: 'Nothing to give yet. Food from the Shop, the pond, the garden or the pot makes a nice gift.',
     gave: (food: string, friend: string, gained: number) =>
       gained > 0 ? `${friend} loved the ${food}! Friendship grew.` : `${friend} said thanks for the ${food}!`,

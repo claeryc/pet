@@ -200,23 +200,25 @@ describe('friend score', () => {
   it('gifts count by their price, at least 1, up to a daily cap', () => {
     let { state: s, friend } = withFriend(0);
     s.inventory.food = { lobster: 3, cookie: 1 };
-    s = giveGift(s, friend.id, 'lobster', NOON).state; // 40 gold: +4
-    expect(s.friends[0].score).toBe(4);
-    s = giveGift(s, friend.id, 'cookie', NOON).state; // 8 gold, still +1
-    expect(s.friends[0].score).toBe(F.gift.pointsPerDay);
+    s = giveGift(s, friend.id, 'lobster', NOON).state; // 40 gold: 2 tenths of a heart
+    expect(hearts(s.friends[0].score)).toBe(0.2);
+    s = giveGift(s, friend.id, 'cookie', NOON).state; // 8 gold, still a tenth
+    expect(hearts(s.friends[0].score)).toBe(0.3);
     s = giveGift(s, friend.id, 'lobster', NOON).state; // nothing more today
-    expect(s.friends[0].score).toBe(F.gift.pointsPerDay);
+    expect(hearts(s.friends[0].score)).toBe(0.3);
+    const cap = s.friends[0].score;
     expect(s.inventory.food.lobster).toBe(1);
     expect(giveGift(s, friend.id, 'riceBall', NOON).blocked).toBe('freeFood');
     expect(giveGift(s, friend.id, 'cookie', NOON).blocked).toBe('noFood');
     // Tomorrow, gifts count again.
-    expect(giveGift(s, friend.id, 'lobster', NOON + DAY).state.friends[0].score).toBe(F.gift.pointsPerDay + 4);
+    expect(giveGift(s, friend.id, 'lobster', NOON + DAY).state.friends[0].score).toBe(cap + 2 * (F.heartPoints / 10));
   });
 
-  it('shows as hearts, in halves', () => {
+  it('shows as hearts, in tenths', () => {
     expect(hearts(0)).toBe(0);
     expect(hearts(70)).toBe(3.5);
-    expect(hearts(79)).toBe(3.5);
+    expect(hearts(79)).toBe(3.9);
+    expect(hearts(4)).toBe(0.2);
     expect(hearts(100)).toBe(5);
   });
 });

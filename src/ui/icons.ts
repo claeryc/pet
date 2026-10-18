@@ -746,16 +746,6 @@ export const HEART_ICONS = {
     '...k....',
     '........',
   ]),
-  half: pixelIcon([
-    '........',
-    '.kk.kk..',
-    'krrkvvk.',
-    'krrrvvk.',
-    '.krrvk..',
-    '..krk...',
-    '...k....',
-    '........',
-  ]),
   empty: pixelIcon([
     '........',
     '.kk.kk..',

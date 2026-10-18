@@ -42,9 +42,10 @@ export function allPets(state: GameState): Pet[] {
   return [state.pet, ...state.housemates];
 }
 
-// Hearts out of 5 for a score, in halves (3.5 = three and a half).
+// Hearts out of 5 for a score, in tenths (3.4 = three hearts and a bit).
+// Each heart fills up a tenth at a time.
 export function hearts(score: number): number {
-  return Math.floor((score / F.heartPoints) * 2) / 2;
+  return Math.floor((score / F.heartPoints) * 10 + 1e-9) / 10;
 }
 
 export function getFriend(state: GameState, id: string): Friend | undefined {
@@ -225,14 +226,18 @@ export function meet(state: GameState, friendId: string, now: number): FriendRes
 
 const FOODS = CONFIG.foods as readonly Food[];
 
-// What a food with this Shop price is worth as a gift (before today's cap).
-export function giftPoints(price: number): number {
-  return Math.min(F.gift.pointsPerDay, Math.max(1, Math.floor(price / F.gift.goldPerPoint)));
+// A tenth of a heart, in score.
+const TENTH = F.heartPoints / 10;
+
+// What a food with this Shop price is worth as a gift, in tenths of a
+// heart (before today's cap).
+export function giftTenths(price: number): number {
+  return Math.min(F.gift.tenthsPerDay, Math.max(1, Math.round(price / F.gift.goldPerTenth)));
 }
 
-// Gives one food to a friend. Its Shop price is its value: +1 score for
-// every `goldPerPoint` (at least 1), counting up to `pointsPerDay` a day.
-// Free food (the rice ball) can't be given.
+// Gives one food to a friend. Its Shop price is its value: a tenth of a
+// heart per `goldPerTenth` (at least one), counting up to `tenthsPerDay` a
+// day. Free food (the rice ball) can't be given.
 export function giveGift(state: GameState, friendId: string, food: FoodId, now: number): FriendResult {
   if (!getFriend(state, friendId)) return { state, blocked: 'gone' };
   if (!isVisiting(state, friendId)) return { state, blocked: 'away' };
@@ -244,7 +249,7 @@ export function giveGift(state: GameState, friendId: string, food: FoodId, now: 
   let gained = 0;
   const s = withFriend(stocked, friendId, (f) => {
     freshDay(f, day);
-    gained = Math.min(giftPoints(value), F.gift.pointsPerDay - f.giftedToday, 100 - f.score);
+    gained = Math.min(giftTenths(value) * TENTH, F.gift.tenthsPerDay * TENTH - f.giftedToday, 100 - f.score);
     gained = Math.max(0, gained);
     f.giftedToday += gained;
     f.score = clampStat(f.score + gained);
