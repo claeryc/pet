@@ -145,6 +145,11 @@ export function createDrawer(setup: DrawerSetup): Drawer {
     if (blocked) return setup.onBlocked(blocked);
     setup.onOpen?.();
     setup.row.dataset.open = setup.id;
+    // The rows slide in one after another, counting only the ones showing,
+    // so a food far down the list doesn't keep you waiting.
+    [...options.children]
+      .filter((row) => !(row as HTMLElement).hidden)
+      .forEach((row, i) => (row as HTMLElement).style.setProperty('--i', String(i)));
     el.classList.add('is-open');
     head.setAttribute('aria-expanded', 'true');
     // On short screens, gently scroll so the whole panel is visible once
@@ -178,10 +183,9 @@ export function createDrawer(setup: DrawerSetup): Drawer {
       if (row) row.hidden = hidden;
     },
     setOrder(order) {
-      order.forEach((index, position) => {
+      order.forEach((index) => {
         const row = rows[index];
         if (!row) return;
-        row.style.setProperty('--i', String(position));
         options.append(row); // moves it to the end, so they end up in order
       });
     },

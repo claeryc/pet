@@ -2,6 +2,7 @@
 // "real" pixels) and CSS scales it up with crisp, blocky pixels.
 
 import { PALETTE } from './palette';
+import { drawCurtains, drawWall } from './room';
 import { frameFor } from './animations';
 import type { SpriteSheet } from './sprites';
 import type { FishingPhase } from '../ui/fishing';
@@ -32,6 +33,8 @@ export interface Scene {
   housemate?: OtherPet | null;
   petOnLeft?: boolean;
   meeting?: (OtherPet & { hearts: boolean }) | null; // a friend over to play
+  // How the room is decorated: a wallpaper id, and curtains (or none).
+  room?: { wallpaper: string; curtains: string | null };
 }
 
 export function setupCanvas(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
@@ -42,8 +45,11 @@ export function setupCanvas(canvas: HTMLCanvasElement): CanvasRenderingContext2D
   return ctx;
 }
 
+// The window's glass, in room pixels (its frame is one pixel bigger).
+const WINDOW = { x: 6, y: 6, w: 14, h: 12 };
+
 function drawWindow(ctx: CanvasRenderingContext2D, night: boolean, timeMs: number): void {
-  const x = 6, y = 6, w = 14, h = 12;
+  const { x, y, w, h } = WINDOW;
   ctx.fillStyle = PALETTE.cocoa; // frame
   ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
   ctx.fillStyle = night ? PALETTE.plum : PALETTE.sky; // sky
@@ -222,13 +228,13 @@ export function drawRoom(
   const { mix, outside } = stepOutside(scene, timeMs);
   if (mix < 1) {
     // Wall and floor (the wall is a little bluer at night).
-    ctx.fillStyle = scene.night ? PALETTE.lavender : PALETTE.cream;
-    ctx.fillRect(0, 0, ROOM_WIDTH, ROOM_HEIGHT);
+    drawWall(ctx, scene.room?.wallpaper ?? 'plain', scene.night, ROOM_WIDTH, 34);
     ctx.fillStyle = PALETTE.peach;
     ctx.fillRect(0, 34, ROOM_WIDTH, ROOM_HEIGHT - 34);
     ctx.fillStyle = PALETTE.butter;
     ctx.fillRect(0, 34, ROOM_WIDTH, 1);
     drawWindow(ctx, scene.night, timeMs);
+    if (scene.room?.curtains) drawCurtains(ctx, scene.room.curtains, WINDOW.x, WINDOW.y, WINDOW.w, WINDOW.h);
     if (scene.fishing && scene.fishing !== 'off') drawFishing(ctx, scene.fishing, timeMs);
   }
 

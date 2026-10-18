@@ -4,7 +4,8 @@
 
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
-import { HATS, foodCount } from '../game/economy';
+import { HATS, baitCount, canBuyPot, foodCount, limitedInStock, limitedLeft, localDay } from '../game/economy';
+import { CURTAINS, WALLPAPERS, inUse, ownsDecor, type Decor, type DecorKind } from '../game/decor';
 import type { GameState } from '../game/state';
 import type { Food, FoodId } from '../game/actions';
 import { ITEM_ICONS, STAT_ICONS } from './icons';
@@ -15,6 +16,10 @@ export interface ShopCallbacks {
   onBuyHat: (hat: string) => void;
   onBuyGardenItem: (item: ShopItem) => void;
   onWearHat: (hat: string | null) => void;
+  onBuyBait: () => void;
+  onBuyPot: () => void;
+  onBuyDecor: (kind: DecorKind, id: string) => void;
+  onUseDecor: (kind: DecorKind, id: string | null) => void;
   // The picture of a hat, as a URL (from its sprite sheet), if loaded.
   hatImage: (hat: string) => string | undefined;
 }
@@ -144,15 +149,40 @@ function countBadge(count: number): string | undefined {
   return count === Infinity ? '∞' : String(count);
 }
 
+// A wallpaper or curtains: its price until it's yours, then Use (or, for
+// curtains in use, Take down).
+function decorEntry(state: GameState, d: Decor, cb: ShopCallbacks): Entry {
+  const owned = ownsDecor(state, d.kind, d.id);
+  const using = inUse(state, d.kind, d.id);
+  const icon = ITEM_ICONS[`${d.kind}_${d.id}`] ?? '';
+  const name = (d.kind === 'wallpaper' ? STRINGS.shop.wallpapers : STRINGS.shop.curtains)[d.id] ?? d.id;
+  let action: HTMLElement;
+  if (!owned) action = priceButton(d.price, state.gold, () => cb.onBuyDecor(d.kind, d.id));
+  else if (using && d.kind === 'curtains') action = button(STRINGS.shop.takeDown, () => cb.onUseDecor(d.kind, null), 'shop-btn shop-btn-soft');
+  else if (using) action = label(STRINGS.shop.inUse);
+  else action = button(STRINGS.shop.use, () => cb.onUseDecor(d.kind, d.id));
+  return { icon, mark: using, row: row(icon, name, using ? STRINGS.shop.inUse : owned ? STRINGS.shop.owned : '', action) };
+}
+
 export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>): HTMLElement[] {
+  const now = state.lastUpdated;
+  // Only plain ingredients are sold, and the energy drink only on its days.
   const food: Entry[] = CONFIG.foods
-    .filter((f: Food) => f.price > 0 && !f.caughtOnly && !f.grownOnly && !f.cookedOnly) // only plain ingredients are sold
-    .map((f) => ({
-      icon: ITEM_ICONS[f.id],
-      count: countBadge(foodCount(state, f.id)),
-      row: row(ITEM_ICONS[f.id], STRINGS.foods[f.id], STRINGS.shop.have(foodCount(state, f.id)),
-        priceButton(f.price, state.gold, () => cb.onBuyFood(f.id))),
-    }));
+    .filter((f: Food) => f.price > 0 && !f.caughtOnly && !f.grownOnly && !f.cookedOnly)
+    .filter((f: Food) => !f.limited || limitedInStock(localDay(now)))
+    .map((f: Food) => {
+      const note = f.limited
+        ? `${STRINGS.shop.inStock(limitedLeft(state, now))}. ${STRINGS.shop.have(foodCount(state, f.id))}`
+        : STRINGS.shop.have(foodCount(state, f.id));
+      const action = f.limited && limitedLeft(state, now) <= 0
+        ? label(STRINGS.shop.inStock(0))
+        : priceButton(f.price, state.gold, () => cb.onBuyFood(f.id));
+      return {
+        icon: ITEM_ICONS[f.id],
+        count: countBadge(foodCount(state, f.id)),
+        row: row(ITEM_ICONS[f.id], STRINGS.foods[f.id], note, action),
+      };
+    });
   const hats: Entry[] = HATS.map((h) => {
     const owned = state.inventory.hats.includes(h.id);
     return {
@@ -184,9 +214,26 @@ export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>)
     count: countBadge(g.count),
     row: row(g.icon, g.name, g.note, priceButton(priceOf(g.item), state.gold, () => cb.onBuyGardenItem(g.item))),
   }));
+  // One more pot, until the garden is as big as it gets.
+  if (canBuyPot(state)) {
+    garden.push({
+      icon: ITEM_ICONS.gardenPot,
+      row: row(ITEM_ICONS.gardenPot, STRINGS.shop.extraPot, STRINGS.shop.extraPotNote,
+        priceButton(CONFIG.garden.extraPotPrice, state.gold, cb.onBuyPot)),
+    });
+  }
+  const fishing: Entry[] = [{
+    icon: ITEM_ICONS.bait,
+    count: countBadge(baitCount(state)),
+    row: row(ITEM_ICONS.bait, STRINGS.shop.bait, STRINGS.shop.baitNote(baitCount(state)),
+      priceButton(CONFIG.fishing.bait.price, state.gold, cb.onBuyBait)),
+  }];
+  const room: Entry[] = [...WALLPAPERS, ...CURTAINS].map((d) => decorEntry(state, d, cb));
   return [
     category('food', STRINGS.shop.food, food, open),
     category('garden', STRINGS.shop.garden, garden, open),
+    category('fishing', STRINGS.shop.fishing, fishing, open),
+    category('room', STRINGS.shop.room, room, open),
     category('hats', STRINGS.shop.hats, hats, open),
   ];
 }

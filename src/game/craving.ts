@@ -22,7 +22,8 @@ const HOUR = 3_600_000;
 const C = CONFIG.craving;
 const FOODS = CONFIG.foods as readonly Food[];
 
-const fromShop = (f: Food) => !f.caughtOnly && !f.grownOnly && !f.cookedOnly;
+// Shop food that's always in (not the energy drink, which only comes some days).
+const fromShop = (f: Food) => !f.caughtOnly && !f.grownOnly && !f.cookedOnly && !f.limited;
 
 // Everything the pet could crave, in groups like Percy's: Shop treats,
 // fish, crops and dishes. Never the free rice ball, a Mushy mess, or the

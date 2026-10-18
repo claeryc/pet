@@ -8,7 +8,7 @@ import { canPlayMinigames, getLook, isRecovering } from '../game/stats';
 import { stageLengthMs } from '../game/growth';
 import type { GameState, PetStats } from '../game/state';
 import { createMenu, type MenuCallbacks } from './menu';
-import { foodCount } from '../game/economy';
+import { baitCount, foodCount } from '../game/economy';
 import { createDrawer, type DrawerOption, type Effect } from './drawer';
 import { ITEM_ICONS, STAT_ICONS } from './icons';
 import type { ActivityId, Food, FoodId } from '../game/actions';
@@ -249,7 +249,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   // Turns stat changes like { hunger: 20, energy: -8 } into effect chips.
   const statEffects = (changes: Partial<Record<keyof PetStats, number>>): Effect[] =>
     (Object.entries(changes) as [keyof PetStats, number][])
-      .filter(([, v]) => v !== 0)
+      .filter(([, v]) => v !== undefined && v !== 0)
       .map(([stat, v]) => {
         const text = `${v > 0 ? '+' : ''}${v}`;
         return {
@@ -285,7 +285,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const COOK_ROW = 0;
   const foodRow = (i: number) => i + 1; // the foods come after the pot
   for (const f of CONFIG.foods as readonly Food[]) {
-    const effects = statEffects({ hunger: f.hunger, happiness: f.happiness, health: f.health });
+    const effects = statEffects({ hunger: f.hunger, happiness: f.happiness, health: f.health, energy: f.energy });
     if (f.slowHunger) {
       const { hours, percent } = f.slowHunger;
       effects.push({
@@ -403,7 +403,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     // In the garden, tapping a pot picks it.
     if (garden.active()) {
       const { x, y } = roomPoint(e);
-      const pot = potAt(x, y);
+      const pot = potAt(x, y, latest?.state.garden.length ?? CONFIG.garden.plots);
       if (pot >= 0) garden.select(pot);
       return;
     }
@@ -703,6 +703,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
         feedDrawer.setOrder(order);
       }
       cooking.update(state);
+      fishing.setBait(baitCount(state));
       garden.update(state, now);
       delivery.update(state, now);
       meet.update(state, now);

@@ -45,6 +45,7 @@ export const STRINGS = {
     lobsterBisque: 'Lobster bisque',
     seafoodPlatter: 'Seafood platter',
     mushyMess: 'Mushy mess',
+    energyDrink: 'Energy drink',
   },
   activities: {
     cuddle: 'Cuddle',
@@ -73,6 +74,7 @@ export const STRINGS = {
     slack: 'The line went slack. The fish swam off.',
     grades: { perfect: 'Perfect catch!', good: 'Good catch!', weak: 'Weak catch...', miss: 'No catch.' },
     slipped: (grade: string) => `${grade} The fish slipped off the hook.`,
+    baitLeft: (count: number) => `${count} bait left`,
   },
   cooking: {
     open: 'Cook',
@@ -358,6 +360,32 @@ export const STRINGS = {
     boughtHat: (item: string, name: string) => `You bought ${item}! Hold ${name} to try it on.`,
     notEnoughGold: 'Not enough gold yet.',
     alreadyOwned: 'You already have that one.',
+    room: 'Room',
+    fishing: 'Fishing',
+    // The energy drink is only in some days, a few at a time.
+    inStock: (left: number) => (left > 0 ? `In today! ${left} left` : 'Sold out for today'),
+    soldOut: 'Sold out for today. Check back another day!',
+    bait: 'Bait',
+    baitNote: (count: number) => `Rarer fish for each catch. You have ${count}`,
+    extraPot: 'Garden pot',
+    extraPotNote: 'One more pot for your garden',
+    potBought: 'A new pot is waiting in your garden!',
+    wallpapers: {
+      plain: 'Plain wall',
+      stripes: 'Mint stripes',
+      dots: 'Peach dots',
+      checks: 'Lilac checks',
+      stars: 'Starry night',
+    } as Record<string, string>,
+    curtains: {
+      rose: 'Rose curtains',
+      butter: 'Sunny curtains',
+      mint: 'Mint curtains',
+      plum: 'Plum curtains',
+    } as Record<string, string>,
+    use: 'Use',
+    inUse: 'In use',
+    takeDown: 'Take down',
   },
   // Opened by holding the pet.
   wardrobe: {

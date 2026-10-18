@@ -9,6 +9,7 @@
 // is decided in src/game/fishing.ts.
 
 import { STRINGS } from '../strings';
+import { ITEM_ICONS } from './icons';
 import { CONFIG } from '../game/config';
 import { createFroth, createPond } from '../render/pond';
 import { biteDelayMs, gradeAt, markerAt, placeZones, sweptOut, type CatchGrade, type CatchZones } from '../game/fishing';
@@ -30,6 +31,7 @@ export interface Fishing {
   start: () => void;
   stop: () => void;
   phase: () => FishingPhase;
+  setBait: (count: number) => void; // the bait you have left, shown in the pond's corner
 }
 
 // How long the bar stays up after Catch, showing where the marker stopped.
@@ -68,7 +70,16 @@ export function createFishing(cb: FishingCallbacks): Fishing {
   pond.className = 'pond';
   pond.hidden = true;
   const froth = createFroth();
-  pond.append(froth.canvas, pondView.canvas, bar);
+  // Bait you have, in the corner (only when you have some).
+  const bait = document.createElement('div');
+  bait.className = 'pond-bait';
+  bait.hidden = true;
+  const baitIcon = document.createElement('span');
+  baitIcon.innerHTML = ITEM_ICONS.bait;
+  baitIcon.setAttribute('aria-hidden', 'true');
+  const baitCount = document.createElement('b');
+  bait.append(baitIcon, baitCount);
+  pond.append(froth.canvas, pondView.canvas, bait, bar);
   // Shows the fizzy edge for a while, then fades it out.
   let frothTimer = 0;
   function fizz(ms: number): void {
@@ -215,6 +226,11 @@ export function createFishing(cb: FishingCallbacks): Fishing {
   return {
     row,
     pond,
+    setBait(count) {
+      bait.hidden = count <= 0;
+      baitCount.textContent = String(count);
+      bait.title = STRINGS.fishing.baitLeft(count);
+    },
     start() {
       row.hidden = false;
       clearTimeout(drainTimer);

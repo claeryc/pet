@@ -27,6 +27,8 @@ export function withPet(state: GameState, change: (pet: Pet) => void): GameState
 }
 
 export type Food = (typeof CONFIG.foods)[number] & {
+  energy?: number;
+  limited?: boolean;
   slowHunger?: { percent: number; hours: number };
   caughtOnly?: boolean;
   grownOnly?: boolean;
@@ -48,6 +50,7 @@ export function feed(state: GameState, now: number, foodId: FoodId = 'riceBall')
     pet.stats.hunger = clampStat(pet.stats.hunger + food.hunger);
     pet.stats.happiness = clampStat(pet.stats.happiness + food.happiness);
     pet.stats.health = clampStat(pet.stats.health + food.health);
+    if (food.energy) pet.stats.energy = clampStat(pet.stats.energy + food.energy);
     if (food.slowHunger) {
       // Eating it again restarts the timer (effects don't stack).
       const until = now + food.slowHunger.hours * 3_600_000;

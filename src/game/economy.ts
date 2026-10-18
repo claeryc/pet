@@ -7,7 +7,9 @@ import { CONFIG } from './config';
 import hatData from '../data/hats.json';
 import type { GameState } from './state';
 import type { Food, FoodId } from './actions';
-import { priceOf, type ShopItem } from './garden';
+import { emptyPlot, priceOf, type ShopItem } from './garden';
+import { seededRoll } from './growth';
+import { decorKey, getDecor, ownsDecor, type DecorKind } from './decor';
 
 export interface Hat {
   id: string;
@@ -22,7 +24,7 @@ export function getHat(id: string | null): Hat | undefined {
   return HATS.find((h) => h.id === id);
 }
 
-export type ShopBlock = 'notEnoughGold' | 'alreadyOwned' | 'notOwned' | 'egg';
+export type ShopBlock = 'notEnoughGold' | 'alreadyOwned' | 'notOwned' | 'egg' | 'soldOut';
 
 export interface ShopResult {
   state: GameState;
@@ -57,11 +59,69 @@ export function useFood(state: GameState, id: FoodId): GameState | null {
   return { ...state, inventory: { ...state.inventory, food } };
 }
 
-export function buyFood(state: GameState, id: FoodId): ShopResult {
-  const { price } = getFood(id);
-  if (!canAfford(state, price)) return { state, blocked: 'notEnoughGold' };
+export function buyFood(state: GameState, id: FoodId, now = Date.now()): ShopResult {
+  const f = getFood(id);
+  if (f.limited && limitedLeft(state, now) <= 0) return { state, blocked: 'soldOut' };
+  if (!canAfford(state, f.price)) return { state, blocked: 'notEnoughGold' };
   const food = { ...state.inventory.food, [id]: (state.inventory.food[id] ?? 0) + 1 };
-  return { state: { ...state, gold: state.gold - price, inventory: { ...state.inventory, food } } };
+  let s: GameState = { ...state, gold: state.gold - f.price, inventory: { ...state.inventory, food } };
+  if (f.limited) {
+    const day = localDay(now);
+    s = { ...s, stock: { day, bought: (state.stock.day === day ? state.stock.bought : 0) + 1 } };
+  }
+  return { state: s };
+}
+
+// ---- The limited stock (the energy drink) ----
+
+// Is limited food in the Shop on this day? The same day always gives the
+// same answer, for everyone.
+export function limitedInStock(day: string): boolean {
+  return seededRoll('shop', `limited:${day}`) < CONFIG.economy.limited.chance;
+}
+
+// How many more can be bought today (0 on days it isn't in).
+export function limitedLeft(state: GameState, now: number): number {
+  const day = localDay(now);
+  if (!limitedInStock(day)) return 0;
+  const bought = state.stock.day === day ? state.stock.bought : 0;
+  return Math.max(0, CONFIG.economy.limited.perDay - bought);
+}
+
+// ---- Fishing bait, the extra garden pot and room decorations ----
+
+export function baitCount(state: GameState): number {
+  return state.inventory.supplies.bait ?? 0;
+}
+
+export function buyBait(state: GameState): ShopResult {
+  const { price } = CONFIG.fishing.bait;
+  if (!canAfford(state, price)) return { state, blocked: 'notEnoughGold' };
+  const supplies = { ...state.inventory.supplies, bait: baitCount(state) + 1 };
+  return { state: { ...state, gold: state.gold - price, inventory: { ...state.inventory, supplies } } };
+}
+
+// True while another garden pot can still be bought.
+export function canBuyPot(state: GameState): boolean {
+  return state.garden.length < CONFIG.garden.maxPlots;
+}
+
+export function buyPot(state: GameState): ShopResult {
+  if (!canBuyPot(state)) return { state, blocked: 'alreadyOwned' };
+  const price = CONFIG.garden.extraPotPrice;
+  if (!canAfford(state, price)) return { state, blocked: 'notEnoughGold' };
+  return { state: { ...state, gold: state.gold - price, garden: [...state.garden, emptyPlot()] } };
+}
+
+// Buys a wallpaper or curtains, and puts it up straight away.
+export function buyDecor(state: GameState, kind: DecorKind, id: string): ShopResult {
+  const d = getDecor(kind, id);
+  if (!d) return { state };
+  if (ownsDecor(state, kind, id)) return { state, blocked: 'alreadyOwned' };
+  if (!canAfford(state, d.price)) return { state, blocked: 'notEnoughGold' };
+  const decor = [...state.inventory.decor, decorKey(kind, id)];
+  const room = kind === 'wallpaper' ? { ...state.room, wallpaper: id } : { ...state.room, curtains: id };
+  return { state: { ...state, gold: state.gold - d.price, inventory: { ...state.inventory, decor }, room } };
 }
 
 // Buys a seed, fertilizer or plant cure.

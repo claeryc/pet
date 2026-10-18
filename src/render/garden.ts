@@ -1,6 +1,6 @@
 // The garden scene in the room. While you garden, the room becomes a little
 // garden: sky, a picket fence and grass, with the pet on the left and the
-// three pots side by side on the right. The pot you picked has a small
+// pots side by side on the right (three, or four once you buy another). The pot you picked has a small
 // arrow over it, and a dry pot has a blinking water drop.
 
 import { PALETTE } from './palette';
@@ -19,8 +19,10 @@ export interface GardenScene {
   selected: number;
 }
 
-// Where each pot stands: its middle, in room pixels.
-const POT_X = [35, 46, 57];
+// Where each pot stands: its middle, in room pixels. Four pots stand a
+// little closer together.
+const POT_X: Record<number, number[]> = { 3: [35, 46, 57], 4: [30, 39, 48, 57] };
+const potXs = (count: number) => POT_X[count] ?? POT_X[3];
 const POT_TOP = 40; // the rim; the plant stands on it
 const POT_W = 8;
 
@@ -130,11 +132,12 @@ export function drawGardenBackground(
   }
 }
 
-// The three pots, their plants, and the markers.
+// The pots, their plants, and the markers.
 export function drawGardenPots(ctx: CanvasRenderingContext2D, scene: GardenScene, timeMs: number): void {
   const bob = Math.floor(timeMs / 400) % 2;
+  const xs = potXs(scene.pots.length);
   scene.pots.forEach((pot, i) => {
-    const left = POT_X[i] - POT_W / 2;
+    const left = xs[i] - POT_W / 2;
     const plant = plantSprite(pot);
     if (plant) {
       // Ready plants hop a little, to say "pick me".
@@ -148,9 +151,11 @@ export function drawGardenPots(ctx: CanvasRenderingContext2D, scene: GardenScene
   });
 }
 
-// Which pot (0-2) a point in room pixels is on, or -1. Generous, so small
-// fingers don't miss.
-export function potAt(x: number, y: number): number {
+// Which of `count` pots a point in room pixels is on, or -1. Generous, so
+// small fingers don't miss.
+export function potAt(x: number, y: number, count: number): number {
   if (y < 22 || y > 47) return -1;
-  return POT_X.findIndex((cx) => Math.abs(x - cx) <= 5);
+  const xs = potXs(count);
+  const reach = count > 3 ? 4 : 5;
+  return xs.findIndex((cx) => Math.abs(x - cx) <= reach);
 }

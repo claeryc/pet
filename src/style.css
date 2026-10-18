@@ -1063,6 +1063,32 @@ body {
   display: none;
 }
 
+/* How much bait is left, in the pond's top corner. */
+.pond-bait {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px 2px 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--plum);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.pond-bait span {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.pond-bait[hidden] {
+  display: none;
+}
+
 /* The [Cancel] [Cast] row and the normal buttons pop up as they swap. */
 .fishing-row:not([hidden]),
 .cooking-row:not([hidden]),
