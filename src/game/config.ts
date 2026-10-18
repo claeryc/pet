@@ -304,15 +304,20 @@ export const CONFIG = {
   },
 
   // Friends and the next generation (Play > Meet). Once you have a
-  // grown-up pet, a wanderer (a grown-up pet the game makes itself) drops
-  // by every couple of days. Meeting a pet and giving it gifts raises your
+  // grown-up pet, pets drop by one at a time: your friends at random times
+  // through the day, and a new wanderer (a grown-up pet the game makes
+  // itself) every couple of days. Meeting a pet and giving it gifts raises your
   // friend score with it (0-100, shown as 5 hearts, `heartPoints` each).
   // With enough hearts, two grown-ups can mingle, and that may bring a
   // little one: an egg for your room. Times are in hours.
   friends: {
     firstVisitHours: 1, // the first wanderer comes this soon after growing up
-    visitEveryHours: 48, // then one every 2 days
-    stayHours: 24, // and each one stays this long
+    wildEveryHours: 48, // then a new one every 2 days
+    stayHours: 3, // each visitor stays this long
+    // The break between one visitor leaving and the next arriving, picked
+    // at random between these.
+    gapHours: { min: 1, max: 3 },
+    invitesPerDay: 1, // friends you can invite over yourself each day
     maxWild: 10, // how many wanderers you can keep as friends (online friends get their own 10 later)
     heartPoints: 20,
     // A meeting: score gained (only the first `perDay` meetings with a
@@ -321,8 +326,9 @@ export const CONFIG = {
     // Gifts: +1 score per `goldPerPoint` of the food's price, counting up to
     // `goldPerDay` of gifts per friend each day.
     gift: { goldPerPoint: 10, goldPerDay: 50 },
-    // A day with no meeting costs this much, but never a whole heart.
-    missedDay: 1,
+    // A friend who visited and left without meeting your pet loses this
+    // much, but never a whole heart.
+    missedVisit: 1,
     // Mingling needs this score (70 = hearts 70% full). The chance of a
     // little one goes up with the score (first row that fits, percent).
     // After a mingle the pair waits `waitDays` before the next one.

@@ -34,12 +34,13 @@ export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks, FamilyCall
   onSeen: (id: UnlockId) => void; // the player has looked at something new
   onMessagesSeen: () => void; // the player opened Messages
   onRemoveFriend: (friend: string) => void;
+  onInvite: (friend: string) => boolean; // true if they're coming over
 }
 
 // Things only the home screen can do, passed in by it.
 export interface MenuActions {
   onOpenDelivery: () => void; // go out to Percy to fill Percy's order
-  onOpenMeet: (friend: string) => void; // meet a friend (Play > Meet)
+  onOpenMeet: () => void; // meet whoever is over (Play > Meet)
 }
 
 export interface Menu {
@@ -168,11 +169,12 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
           close();
           cb.onOpenDelivery();
         },
-        onOpenMeet: (id) => {
+        onOpenMeet: () => {
           close();
-          cb.onOpenMeet(id);
+          cb.onOpenMeet();
         },
         onRemoveFriend: cb.onRemoveFriend,
+        onInvite: cb.onInvite,
         characterImage: cb.characterImage,
       }));
     }

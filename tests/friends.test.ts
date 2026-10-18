@@ -6,18 +6,19 @@ import {
   befriend,
   giveGift,
   hearts,
+  invite,
   makeWanderer,
   meet,
   mingle,
   mingleBlock,
+  removeFriend,
   retire,
-  stepFriends,
   stepVisits,
   switchPet,
+  visitor,
 } from '../src/game/friends';
 import { familyGenerations, pedigree } from '../src/game/family';
 import { simulate } from '../src/game/simulate';
-import { localDay } from '../src/game/economy';
 import { migrate, SAVE_VERSION } from '../src/storage/storage';
 
 // Noon, local time, so a few hours either way stays on the same day.
@@ -35,27 +36,40 @@ function withAdult(now = NOON): GameState {
   return s;
 }
 
-// The same game with a wanderer friend at `score`.
+// The same game with a wanderer friend at `score`, over for a long visit.
 function withFriend(score: number, now = NOON): { state: GameState; friend: Friend } {
   const s = withAdult(now);
   const friend = { ...makeWanderer(now - DAY, []), score, character: 'sprig', variant: null };
-  return { state: { ...s, friends: [friend] }, friend };
+  return { state: { ...s, friends: [friend], visit: { ...s.visit, friendId: friend.id, until: now + 30 * DAY } }, friend };
 }
 
-describe('wanderers', () => {
-  it('the first one comes soon after a pet grows up, then one every 2 days', () => {
+// Steps visits along an hour at a time, noting each arrival.
+function arrivals(s: GameState, from: number, to: number): { s: GameState; seen: { at: number; id: string; until: number }[] } {
+  const seen: { at: number; id: string; until: number }[] = [];
+  for (let t = from; t <= to; t += 10 * 60_000) {
+    s = stepVisits(s, t);
+    const who = visitor(s);
+    if (who && seen[seen.length - 1]?.until !== s.visit.until) seen.push({ at: s.visit.until - F.stayHours * HOUR, id: who.id, until: s.visit.until });
+  }
+  return { s, seen };
+}
+
+describe('visits', () => {
+  it('the first wanderer comes soon after a pet grows up, and stays a few hours', () => {
     let s = withAdult();
     s = stepVisits(s, NOON);
     expect(s.visit.guest).toBeNull();
     expect(s.visit.nextAt).toBe(NOON + F.firstVisitHours * HOUR);
     s = stepVisits(s, s.visit.nextAt);
     expect(s.visit.guest).not.toBeNull();
-    expect(s.visit.until).toBe(NOON + F.firstVisitHours * HOUR + F.stayHours * HOUR);
-    expect(s.visit.nextAt).toBe(NOON + F.firstVisitHours * HOUR + F.visitEveryHours * HOUR);
+    expect(s.visit.until).toBe(NOON + (F.firstVisitHours + F.stayHours) * HOUR);
     expect(s.messages[0].kind).toBe('visitor');
-    // It moves on after a day.
-    s = stepVisits(s, s.visit.until);
-    expect(s.visit.guest).toBeNull();
+    // It moves on, and the next one comes after a break.
+    const left = s.visit.until;
+    s = stepVisits(s, left);
+    expect(visitor(s)).toBeNull();
+    expect(s.visit.nextAt - left).toBeGreaterThanOrEqual(F.gapHours.min * HOUR);
+    expect(s.visit.nextAt - left).toBeLessThanOrEqual(F.gapHours.max * HOUR);
   });
 
   it("doesn't come before any pet has grown up", () => {
@@ -63,28 +77,98 @@ describe('wanderers', () => {
     expect(stepVisits(s, NOON + 10 * DAY).visit.nextAt).toBe(0);
   });
 
-  it('skips visits that came and went while the game was closed', () => {
-    let s = stepVisits(withAdult(), NOON);
-    const first = s.visit.nextAt;
-    // 5 days later: visits at +0, +2d, +4d. The one at +4d is still here.
-    s = stepVisits(s, first + 4 * DAY + HOUR);
-    expect(s.visit.guest?.id).toBe(`wild-${first + 4 * DAY}`);
-    expect(s.messages.filter((m) => m.kind === 'visitor')).toHaveLength(1);
+  it('friends drop by one at a time, with a new wanderer every 2 days', () => {
+    const { state } = withFriend(10);
+    const start = { ...state, visit: { ...state.visit, friendId: null, until: 0 } };
+    const { seen } = arrivals(start, NOON, NOON + 4 * DAY);
+    const wild = seen.filter((v) => v.id.startsWith('wild-') && v.id !== state.friends[0].id);
+    // The second is due 2 days on; if a friend is over then, it comes next.
+    expect(wild).toHaveLength(2);
+    expect(wild[0].at).toBe(NOON + HOUR);
+    expect(wild[1].at).toBeGreaterThanOrEqual(NOON + HOUR + 2 * DAY);
+    expect(wild[1].at).toBeLessThanOrEqual(NOON + HOUR + 2 * DAY + (F.stayHours + F.gapHours.max) * HOUR);
+    const friendVisits = seen.filter((v) => v.id === state.friends[0].id);
+    expect(friendVisits.length).toBeGreaterThan(10);
+    // Never two at once, and always a break of at least an hour.
+    for (let i = 1; i < seen.length; i++) {
+      expect(seen[i].at - seen[i - 1].until).toBeGreaterThanOrEqual(F.gapHours.min * HOUR);
+    }
+  });
+
+  it('nobody comes between wanderers until you have a friend', () => {
+    const { seen } = arrivals(withAdult(), NOON, NOON + 3 * DAY);
+    expect(seen.map((v) => v.at)).toEqual([NOON + HOUR, NOON + HOUR + 2 * DAY]);
   });
 
   it('are the same however the game catches up', () => {
     expect(makeWanderer(NOON, [])).toEqual(makeWanderer(NOON, []));
     expect(makeWanderer(NOON, ['Mochi']).name).not.toBe('Mochi');
+    const { state } = withFriend(10);
+    const start = stepVisits({ ...state, visit: { ...state.visit, friendId: null, until: 0 } }, NOON);
+    const later = NOON + 3 * DAY + 5 * HOUR;
+    expect(stepVisits(start, later).visit).toEqual(arrivals(start, NOON, later).s.visit);
   });
 
-  it('can be added as friends, up to the limit', () => {
+  it('a friend who visits and leaves without meeting loses a point, never a heart', () => {
+    const { state, friend } = withFriend(41);
+    let s = { ...state, visit: { ...state.visit, until: NOON + HOUR } };
+    s = stepVisits(s, NOON + HOUR);
+    expect(s.friends[0].score).toBe(40);
+    s = { ...s, visit: { ...s.visit, friendId: friend.id, until: NOON + 2 * HOUR, met: false } };
+    expect(stepVisits(s, NOON + 2 * HOUR).friends[0].score).toBe(40);
+    // Met during the visit: nothing lost.
+    const { state: s2 } = withFriend(41);
+    const met = meet({ ...s2, visit: { ...s2.visit, until: NOON + HOUR } }, friend.id, NOON).state;
+    expect(stepVisits(met, NOON + HOUR).friends[0].score).toBe(41 + F.meet.score);
+  });
+
+  it('only the visitor still here gets a message after a long time away', () => {
+    const { state } = withFriend(60);
+    const start = stepVisits({ ...state, visit: { ...state.visit, friendId: null, until: 0 } }, NOON);
+    const s = stepVisits(start, NOON + 5 * DAY);
+    expect(s.messages.filter((m) => m.kind === 'visitor').length).toBeLessThanOrEqual(1);
+    expect(s.friends[0].score).toBe(60); // missed visits, but never below 3 hearts
+  });
+
+  it('a wanderer can be added as a friend, up to the limit, and stays for its visit', () => {
     let s = stepVisits(stepVisits(withAdult(), NOON), NOON + F.firstVisitHours * HOUR);
     const guest = s.visit.guest!;
     const added = befriend(s);
     expect(added.state.friends.map((f) => f.id)).toEqual([guest.id]);
     expect(added.state.visit.guest).toBeNull();
+    expect(visitor(added.state)?.id).toBe(guest.id);
     s = { ...s, friends: Array.from({ length: F.maxWild }, (_, i) => makeWanderer(i, [])) };
     expect(befriend(s).blocked).toBe('full');
+  });
+
+  it('you can invite a friend over once a day, when nobody is over', () => {
+    const { state, friend } = withFriend(10);
+    expect(invite(state, friend.id, NOON).blocked).toBeUndefined(); // already here
+    const other = { ...makeWanderer(NOON - 2 * DAY, []), name: 'Pip' };
+    let s = { ...state, friends: [...state.friends, other] };
+    expect(invite(s, other.id, NOON).blocked).toBe('busy');
+    s = { ...s, visit: { ...s.visit, friendId: null, until: 0, nextAt: NOON + 2 * HOUR } };
+    s = invite(s, other.id, NOON).state;
+    expect(visitor(s)?.id).toBe(other.id);
+    expect(s.visit.until).toBe(NOON + F.stayHours * HOUR);
+    s = stepVisits(s, s.visit.until);
+    expect(invite(s, friend.id, s.visit.nextAt - 1).blocked).toBe('invited');
+    expect(invite(s, friend.id, NOON + DAY).blocked).toBeUndefined();
+  });
+
+  it('your pet can only meet whoever is over', () => {
+    const { state, friend } = withFriend(10);
+    const away = { ...state, visit: { ...state.visit, friendId: null, until: 0 } };
+    expect(meet(away, friend.id, NOON).blocked).toBe('away');
+    expect(mingleBlock({ ...away, friends: [{ ...friend, score: 90 }] }, friend.id, NOON)).toBe('away');
+  });
+
+  it('saying goodbye to a friend who is over sends them home', () => {
+    const { state, friend } = withFriend(10);
+    const s = removeFriend(state, friend.id, NOON);
+    expect(s.friends).toEqual([]);
+    expect(visitor(s)).toBeNull();
+    expect(s.visit.nextAt).toBeGreaterThan(NOON);
   });
 });
 
@@ -125,17 +209,6 @@ describe('friend score', () => {
     expect(giveGift(s, friend.id, 'cookie', NOON).blocked).toBe('noFood');
   });
 
-  it('fades a point a day without meeting, but never loses a heart', () => {
-    const { state, friend } = withFriend(46);
-    let s = { ...state, friends: [{ ...friend, settledDay: localDay(NOON) }] };
-    s = stepFriends(s, NOON + 3 * DAY); // 2 whole days missed
-    expect(s.friends[0].score).toBe(44);
-    s = stepFriends(s, NOON + 3 * DAY); // nothing more the same day
-    expect(s.friends[0].score).toBe(44);
-    s = stepFriends(s, NOON + 20 * DAY);
-    expect(s.friends[0].score).toBe(40); // stops at 2 hearts
-  });
-
   it('shows as hearts, in halves', () => {
     expect(hearts(0)).toBe(0);
     expect(hearts(70)).toBe(3.5);
@@ -155,7 +228,7 @@ describe('mingling', () => {
     const { state, friend } = withFriend(80);
     expect(mingleBlock({ ...state, pet: { ...state.pet, stage: 'teen' } }, friend.id, NOON)).toBe('notAdult');
     expect(mingleBlock({ ...state, pet: { ...state.pet, condition: 'sick' } }, friend.id, NOON)).toBe('unwell');
-    const guest = { ...state, friends: [], visit: { guest: friend, until: NOON + HOUR, nextAt: 0 } };
+    const guest = { ...state, friends: [], visit: { ...state.visit, guest: friend, friendId: null } };
     expect(mingleBlock(guest, friend.id, NOON)).toBe('notFriend');
   });
 
@@ -199,8 +272,9 @@ describe('mingling', () => {
     let s = mingle(state, friend.id, NOON, 0).state;
     s = switchPet(s, s.housemates[0].id); // back to the parent
     const other = { ...makeWanderer(NOON - 2 * DAY, []), score: 100 };
-    s = { ...s, friends: [...s.friends, other] };
+    s = { ...s, friends: [...s.friends, other], visit: { ...s.visit, friendId: other.id } };
     expect(mingleBlock(s, other.id, NOON + 5 * DAY)).toBe('taken');
+    s = { ...s, visit: { ...s.visit, friendId: friend.id } };
     expect(mingleBlock(s, friend.id, NOON + 5 * DAY)).toBeNull();
   });
 
@@ -288,7 +362,7 @@ describe('saves', () => {
     expect(file.version).toBe(SAVE_VERSION);
     expect(file.state.housemates).toEqual([]);
     expect(file.state.friends).toEqual([]);
-    expect(file.state.visit).toEqual({ guest: null, until: 0, nextAt: 0 });
+    expect(file.state.visit).toEqual(createNewGame(NOON).visit);
     expect(file.state.pet.themes).toEqual([]);
     expect(file.state.family[0].fromWild).toBe(false);
   });

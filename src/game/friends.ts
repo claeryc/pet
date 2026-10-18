@@ -1,13 +1,16 @@
 // Friends, mingling and the next generation.
 //
-// Once you have a grown-up pet, a wanderer drops by every couple of days:
-// a grown-up pet the game makes itself, with no owner. It stays for a day.
-// Under Play > Meet your pet can meet it, you can give it gifts and add it
-// as a friend, so it can be met any time after it moves on.
+// Once you have a grown-up pet, other pets drop by one at a time, each
+// for a few hours with a break in between: your friends at random, and
+// every couple of days a new wanderer (a grown-up pet the game makes
+// itself, with no owner). Under Play > Meet your pet can meet whoever is
+// over, you can give them gifts, and add a wanderer as a friend so it
+// keeps coming back. You can also invite a friend over yourself, once a
+// day, from Messages > Friends.
 //
 // Meeting and gifts raise the friend score (0-100, shown as hearts), with
-// daily caps so it can't be rushed. A day with no meeting costs a point,
-// but never a whole heart. Once the hearts are 70% full, two grown-ups can
+// daily caps so it can't be rushed. A friend who visits and leaves without
+// meeting your pet loses a point, but never a whole heart. Once the hearts are 70% full, two grown-ups can
 // mingle, and that may bring a little one: an egg that joins your room
 // (the room fits two pets; past that, one retires into the Family Tree).
 // The little one leans towards its parents' themes when it grows up.
@@ -52,12 +55,13 @@ export function isFriend(state: GameState, id: string): boolean {
   return state.friends.some((f) => f.id === id);
 }
 
-// Everyone your pet can meet right now: the guest (if one is visiting),
-// then your friends, best friends first.
-export function meetable(state: GameState): Friend[] {
-  const guest = state.visit.guest ? [state.visit.guest] : [];
-  return [...guest, ...[...state.friends].sort((a, b) => b.score - a.score)];
+// Who's over right now, if anyone.
+export function visitor(state: GameState): Friend | null {
+  const v = state.visit;
+  return v.guest ?? (v.friendId ? state.friends.find((f) => f.id === v.friendId) ?? null : null);
 }
+
+const isVisiting = (state: GameState, id: string) => visitor(state)?.id === id;
 
 // Changes one friend (or the guest) with `change`, on copies.
 function withFriend(state: GameState, id: string, change: (f: Friend) => void): GameState {
@@ -101,72 +105,85 @@ export function makeWanderer(t: number, taken: readonly string[]): Friend {
     day: localDay(t),
     metToday: 0,
     giftedToday: 0,
-    settledDay: localDay(t),
     partner: null,
     mingledAt: 0,
   };
 }
 
-// Wanderers come and go on real time, like Percy: one arrives every
-// `visitEveryHours` once you have a grown-up, and stays `stayHours`.
-// Visits that came and went while the game was closed are skipped.
+// The break after a visitor leaves at `t`, the same however the game
+// catches up.
+function gapAfter(t: number): number {
+  const { min, max } = F.gapHours;
+  return Math.round((min + seededRoll(`gap-${t}`, 'gap') * (max - min)) * HOUR);
+}
+
+// Visitors come and go on real time, like Percy, one at a time: each stays
+// `stayHours`, then there's a break before the next. A new wanderer is
+// due every `wildEveryHours` once you have a grown-up; the other visits
+// are your friends, picked at random. Visits that came and went while the
+// game was closed still happen (a friend you missed loses a point), but
+// only the one still here gets a message.
 export function stepVisits(state: GameState, t: number): GameState {
-  let visit = state.visit;
   let s = state;
-  if (visit.guest && t >= visit.until) visit = { ...visit, guest: null };
-  if (!visit.guest) {
-    if (visit.nextAt === 0) {
-      // The first one comes soon after a pet grows up.
-      if (allPets(s).some((p) => p.stage === 'adult')) visit = { ...visit, nextAt: t + F.firstVisitHours * HOUR };
-    } else if (t >= visit.nextAt) {
-      const every = F.visitEveryHours * HOUR;
-      // The latest arrival up to now.
-      const arrive = visit.nextAt + Math.floor((t - visit.nextAt) / every) * every;
-      visit = { guest: null, until: 0, nextAt: arrive + every };
-      if (t < arrive + F.stayHours * HOUR) {
-        const taken = [...allPets(s).map((p) => p.name), ...s.friends.map((f) => f.name)];
-        const guest = makeWanderer(arrive, taken);
-        visit = { ...visit, guest, until: arrive + F.stayHours * HOUR };
-        s = logMessage(s, { kind: 'visitor', at: arrive, name: guest.name, character: guest.character, variant: guest.variant });
+  let v = state.visit;
+  for (let guard = 0; guard < 10_000; guard++) {
+    if (v.until > 0) {
+      // Someone's over: they stay until `until`.
+      if (t < v.until) break;
+      if (v.friendId && !v.met) s = missedVisit(s, v.friendId);
+      v = { ...v, guest: null, friendId: null, met: false, until: 0, nextAt: v.until + gapAfter(v.until) };
+      continue;
+    }
+    if (v.nextAt === 0) {
+      // The first one, a wanderer, comes soon after a pet grows up.
+      if (allPets(s).some((p) => p.stage === 'adult')) {
+        const at = t + F.firstVisitHours * HOUR;
+        v = { ...v, nextAt: at, wildAt: at };
       }
+      break;
+    }
+    if (t < v.nextAt) break;
+    const arrive = v.nextAt;
+    const until = arrive + F.stayHours * HOUR;
+    let who: Friend;
+    if (arrive >= v.wildAt) {
+      const taken = [...allPets(s).map((p) => p.name), ...s.friends.map((f) => f.name)];
+      who = makeWanderer(arrive, taken);
+      v = { ...v, guest: who, until, met: false, wildAt: arrive + F.wildEveryHours * HOUR };
+    } else if (s.friends.length > 0) {
+      who = s.friends[Math.floor(seededRoll(`visit-${arrive}`, 'who') * s.friends.length)];
+      v = { ...v, friendId: who.id, until, met: false };
+    } else {
+      // No friends yet: nobody comes until the next wanderer.
+      v = { ...v, nextAt: v.wildAt };
+      continue;
+    }
+    if (t < until) {
+      const friend = isFriend(s, who.id);
+      s = logMessage(s, { kind: 'visitor', at: arrive, name: who.name, character: who.character, variant: who.variant, friend });
     }
   }
-  return visit === state.visit && s === state ? state : { ...s, visit };
+  return v === state.visit && s === state ? state : { ...s, visit: v };
 }
 
-// Whole days from one local date to another ("2026-10-18" to
-// "2026-10-20" is 2).
-function daysBetween(from: string, to: string): number {
-  const utc = (day: string) => {
-    const [y, m, d] = day.split('-').map(Number);
-    return Date.UTC(y, m - 1, d);
+// A friend came over and left without meeting your pet. It costs
+// `missedVisit` points, but never a whole heart.
+function missedVisit(state: GameState, id: string): GameState {
+  return {
+    ...state,
+    friends: state.friends.map((f) => {
+      if (f.id !== id) return f;
+      const floor = Math.floor(f.score / F.heartPoints) * F.heartPoints;
+      return { ...f, score: Math.max(floor, f.score - F.missedVisit) };
+    }),
   };
-  return Math.round((utc(to) - utc(from)) / DAY);
-}
-
-// A day with no meeting costs `missedDay` points, but never takes a friend
-// below the heart it has reached. Only whole days that are over count;
-// meeting a friend settles it up to today.
-export function stepFriends(state: GameState, t: number): GameState {
-  const today = localDay(t);
-  let changed = false;
-  const settle = (f: Friend): Friend => {
-    const missed = daysBetween(f.settledDay, today) - 1;
-    if (missed <= 0) return f;
-    changed = true;
-    const floor = Math.floor(f.score / F.heartPoints) * F.heartPoints;
-    const yesterday = localDay(t - DAY);
-    return { ...f, score: Math.max(floor, f.score - missed * F.missedDay), settledDay: yesterday };
-  };
-  const friends = state.friends.map(settle);
-  const guest = state.visit.guest && settle(state.visit.guest);
-  return changed ? { ...state, friends, visit: { ...state.visit, guest } } : state;
 }
 
 // --- Meeting and gifts -------------------------------------------------------
 
 export type FriendBlock =
-  | 'egg' | 'asleep' | 'tooTired' | 'resting' | 'gone' | 'noFood' | 'freeFood' | 'full' | 'known';
+  | 'egg' | 'asleep' | 'tooTired' | 'resting' | 'gone' | 'away' | 'noFood' | 'freeFood' | 'full' | 'known'
+  | 'busy' | 'invited';
 
 export interface FriendResult {
   state: GameState;
@@ -187,6 +204,7 @@ function meetBlock(pet: Pet, now: number): FriendBlock | null {
 // little), and the first few meetings each day raise the friend score.
 export function meet(state: GameState, friendId: string, now: number): FriendResult {
   if (!getFriend(state, friendId)) return { state, blocked: 'gone' };
+  if (!isVisiting(state, friendId)) return { state, blocked: 'away' };
   const block = meetBlock(state.pet, now);
   if (block) return { state, blocked: block };
   const day = localDay(now);
@@ -196,8 +214,8 @@ export function meet(state: GameState, friendId: string, now: number): FriendRes
     if (f.metToday < F.meet.perDay) gained = Math.min(F.meet.score, 100 - f.score);
     f.metToday += 1;
     f.score = clampStat(f.score + gained);
-    f.settledDay = day;
   });
+  s = { ...s, visit: { ...s.visit, met: true } };
   const stats = { ...s.pet.stats };
   stats.happiness = clampStat(stats.happiness + F.meet.happiness);
   stats.energy = clampStat(stats.energy + F.meet.energy);
@@ -212,6 +230,7 @@ const FOODS = CONFIG.foods as readonly Food[];
 // Free food (the rice ball) can't be given.
 export function giveGift(state: GameState, friendId: string, food: FoodId, now: number): FriendResult {
   if (!getFriend(state, friendId)) return { state, blocked: 'gone' };
+  if (!isVisiting(state, friendId)) return { state, blocked: 'away' };
   const value = FOODS.find((f) => f.id === food)?.price ?? 0;
   if (value <= 0) return { state, blocked: 'freeFood' };
   const stocked = useFood(state, food);
@@ -230,20 +249,39 @@ export function giveGift(state: GameState, friendId: string, food: FoodId, now: 
   return { state: s, gained };
 }
 
-// Adds the visiting wanderer to your friends. It stops being a guest: it's
-// a friend you can meet any time now.
+// Adds the visiting wanderer to your friends. It stays for the rest of its
+// visit, now as a friend, and drops by again from time to time.
 export function befriend(state: GameState): FriendResult {
   const guest = state.visit.guest;
   if (!guest) return { state, blocked: 'gone' };
   if (isFriend(state, guest.id)) return { state, blocked: 'known' };
   if (state.friends.filter((f) => f.wild).length >= F.maxWild) return { state, blocked: 'full' };
-  return { state: { ...state, friends: [...state.friends, guest], visit: { ...state.visit, guest: null, until: 0 } } };
+  return { state: { ...state, friends: [...state.friends, guest], visit: { ...state.visit, guest: null, friendId: guest.id } } };
+}
+
+// Whether today's invite is still unused.
+export function canInvite(state: GameState, now: number): boolean {
+  return F.invitesPerDay > 0 && state.visit.invitedDay !== localDay(now);
+}
+
+// Invites a friend over now, if nobody else is, once a day. They stay as
+// long as any visitor.
+export function invite(state: GameState, id: string, now: number): FriendResult {
+  if (!isFriend(state, id)) return { state, blocked: 'gone' };
+  if (isVisiting(state, id)) return { state };
+  if (state.visit.until > 0) return { state, blocked: 'busy' };
+  if (!canInvite(state, now)) return { state, blocked: 'invited' };
+  const visit = { ...state.visit, friendId: id, until: now + F.stayHours * HOUR, met: false, invitedDay: localDay(now) };
+  return { state: { ...state, visit } };
 }
 
 // Says goodbye to a friend. Little ones you already have keep it in the
-// Family Tree.
-export function removeFriend(state: GameState, id: string): GameState {
-  return { ...state, friends: state.friends.filter((f) => f.id !== id) };
+// Family Tree. If it was over, it leaves now.
+export function removeFriend(state: GameState, id: string, now: number): GameState {
+  const friends = state.friends.filter((f) => f.id !== id);
+  if (state.visit.friendId !== id) return { ...state, friends };
+  const visit = { ...state.visit, friendId: null, met: false, until: 0, nextAt: now + gapAfter(now) };
+  return { ...state, friends, visit };
 }
 
 // --- Mingling ------------------------------------------------------------------
@@ -255,13 +293,15 @@ export type MingleBlock =
   | 'taken' // one of them already has a different partner
   | 'family' // they're parent and little one, or brothers and sisters
   | 'wait' // they mingled recently
-  | 'notFriend'; // add the guest as a friend first
+  | 'notFriend' // add the guest as a friend first
+  | 'away'; // they aren't over right now
 
 // Why two pets can't mingle right now, or null if they can.
 export function mingleBlock(state: GameState, friendId: string, now: number): MingleBlock | null {
   const friend = getFriend(state, friendId);
   const pet = state.pet;
   if (!friend || !isFriend(state, friendId)) return 'notFriend';
+  if (!isVisiting(state, friendId)) return 'away';
   if (pet.stage !== 'adult') return 'notAdult';
   if (pet.asleep || pet.condition !== 'healthy' || !canPlayMinigames(pet, now)) return 'unwell';
   if ((pet.partner && pet.partner !== friend.id) || (friend.partner && friend.partner !== pet.id)) return 'taken';

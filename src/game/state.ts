@@ -111,18 +111,20 @@ export interface Friend {
   day: string;
   metToday: number;
   giftedToday: number; // gold value of today's gifts
-  // The last day the score is settled up to: a day with no meeting costs a
-  // point, worked out in stepFriends().
-  settledDay: string;
   partner: string | null; // the pet of yours it had a little one with
   mingledAt: number; // when it last mingled (0 = never)
 }
 
-// The wanderer visiting right now, if any, and when the next one comes.
+// Who's over right now, one at a time: a new wanderer (`guest`) or one of
+// your friends (`friendId`), and when the next one comes.
 export interface Visit {
-  guest: Friend | null;
-  until: number; // the guest moves on at this time
-  nextAt: number; // when the next wanderer drops by (0 = not planned yet)
+  guest: Friend | null; // a wanderer you haven't added as a friend
+  friendId: string | null; // or a friend who dropped by
+  until: number; // they move on at this time (0 = nobody's over)
+  met: boolean; // your pet met them during this visit
+  nextAt: number; // when the next one drops by (0 = not planned yet)
+  wildAt: number; // when the next new wanderer is due
+  invitedDay: string; // the local date you last invited a friend over
 }
 
 // Keeps track of the daily check-in bonus.
@@ -171,7 +173,7 @@ export type Message =
   | { kind: 'pickup'; at: number; boxes: OrderBox[]; gold: number; tier: OrderTier; seed?: string }
   | { kind: 'unlocked'; at: number; id: string }
   | { kind: 'growth'; at: number; stage: string; name: string; character: string | null; variant: string | null }
-  | { kind: 'visitor'; at: number; name: string; character: string; variant: string | null }
+  | { kind: 'visitor'; at: number; name: string; character: string; variant: string | null; friend?: boolean }
   | { kind: 'littleOne'; at: number; name: string; friend: string };
 
 export interface GameState {
@@ -285,6 +287,6 @@ export function createNewGame(now: number): GameState {
     messagesSeenAt: 0,
     craving: { food: null, until: 0, nextAt: 0, last: null },
     friends: [],
-    visit: { guest: null, until: 0, nextAt: 0 },
+    visit: { guest: null, friendId: null, until: 0, met: false, nextAt: 0, wildAt: 0, invitedDay: '' },
   };
 }

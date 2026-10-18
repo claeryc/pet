@@ -347,7 +347,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   // same way Feed and Play open. It always opens, even for an egg.
   let menuDrawer: ReturnType<typeof createDrawer> | null = null;
   const menu = createMenu(
-    { ...cb, onOpenDelivery: () => startDelivery(), onOpenMeet: (id) => startMeet(id) },
+    { ...cb, onOpenDelivery: () => startDelivery(), onOpenMeet: () => startMeet() },
     () => menuDrawer?.isOpen() ?? false,
     () => menuDrawer?.close(),
   );
@@ -539,7 +539,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     toast: (msg) => showToast(msg),
     characterImage: cb.characterImage,
   });
-  function startMeet(id?: string): void {
+  function startMeet(): void {
     if (actions.hidden) return; // already busy with something else
     cb.onSeen('meet');
     feedDrawer.close();
@@ -549,7 +549,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     refreshParcel();
     stats.setAttribute('aria-hidden', 'true'); // covered by the panel for now
     if (latest) meet.update(latest.state, latest.now);
-    meet.start(id);
+    meet.start();
   }
   function refreshParcel(): void {
     parcel.hidden = !latest?.state.delivery.order || actions.hidden || latest.state.pet.stage === 'egg';

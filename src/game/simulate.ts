@@ -14,7 +14,7 @@ import { growUp, stageLengthMs } from './growth';
 import { growGarden } from './garden';
 import { stepDelivery } from './delivery';
 import { stepCraving } from './craving';
-import { stepFriends, stepVisits } from './friends';
+import { stepVisits } from './friends';
 import type { GameState, Pet } from './state';
 
 const MS_PER_MINUTE = 60_000;
@@ -50,9 +50,9 @@ export function simulate(state: GameState, now: number): GameState {
   // The garden grows on its own clock, so it catches up in one go.
   const garden = growGarden(state.garden, state.lastUpdated, t);
   // So do Percy's orders (a pickup that came due, or a new order), the
-  // pet's cravings, and wanderers dropping by and friendships fading.
+  // pet's cravings, and visitors dropping by.
   const next = { ...state, pet, housemates, garden, lastUpdated: t };
-  return stepFriends(stepVisits(stepCraving(stepDelivery(next, t), t), t), t);
+  return stepVisits(stepCraving(stepDelivery(next, t), t), t);
 }
 
 // Advances the pet by one tick ending at time `t`. Changes `pet` in place

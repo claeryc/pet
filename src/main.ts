@@ -40,6 +40,7 @@ import { namePet, needsName, setOwner, suggestName } from './game/family';
 import {
   allPets,
   befriend,
+  invite,
   getFriend,
   giveGift,
   makeWanderer,
@@ -136,6 +137,8 @@ function announceMail(old: Message[]): void {
     } else if (m.kind === 'pickup') {
       home.notice(STRINGS.delivery.pickedUp(m.boxes.filter((b) => b.have >= b.want).length, m.gold));
       if (m.seed) showGot(m.seed, 1, STRINGS.reveal.fromPercy, true);
+    } else if (m.kind === 'visitor' && m.friend) {
+      home.notice(STRINGS.messages.friendVisit(m.name));
     } else if (m.kind === 'visitor') {
       const c = getCharacter(m.character);
       home.notice(STRINGS.messages.visitor(m.name, STRINGS.characterName(c?.name ?? '?', getVariant(c, m.variant)?.name)));
@@ -450,8 +453,18 @@ const home = createHomeScreen(root, {
   onRemoveFriend: (id) => {
     const friend = getFriend(state, id);
     if (!friend || !confirm(STRINGS.friends.confirmRemove(friend.name))) return;
-    setState(removeFriend(state, id));
+    setState(removeFriend(simulate(state, gameNow()), id, gameNow()));
     home.toast(STRINGS.friends.removed(friend.name));
+  },
+  onInvite: (id) => {
+    const result = invite(simulate(state, gameNow()), id, gameNow());
+    setState(result.state);
+    if (result.blocked) {
+      friendBlocked(result.blocked);
+      return false;
+    }
+    home.toast(STRINGS.friends.invited(getFriend(state, id)?.name ?? ''));
+    return true;
   },
   onSwitchPet: (id) => {
     setState(switchPet(simulate(state, gameNow()), id));
@@ -461,7 +474,7 @@ const home = createHomeScreen(root, {
     const now = gameNow();
     const taken = [...allPets(state).map((p) => p.name), ...state.friends.map((f) => f.name)];
     const guest = makeWanderer(now, taken);
-    const visit = { guest, until: now + CONFIG.friends.stayHours * 3_600_000, nextAt: now + CONFIG.friends.visitEveryHours * 3_600_000 };
+    const visit = { ...state.visit, guest, friendId: null, met: false, until: now + CONFIG.friends.stayHours * 3_600_000, wildAt: now + CONFIG.friends.wildEveryHours * 3_600_000 };
     const c = getCharacter(guest.character);
     setState(logMessage({ ...state, visit }, { kind: 'visitor', at: now, name: guest.name, character: guest.character, variant: guest.variant }));
     home.toast(STRINGS.messages.visitor(guest.name, STRINGS.characterName(c?.name ?? '?', getVariant(c, guest.variant)?.name)));
@@ -509,8 +522,9 @@ const home = createHomeScreen(root, {
     const housemates = state.housemates.map(shift);
     const visit = {
       ...state.visit,
-      until: state.visit.until - off,
+      until: state.visit.until && state.visit.until - off,
       nextAt: state.visit.nextAt && state.visit.nextAt - off,
+      wildAt: state.visit.wildAt && state.visit.wildAt - off,
     };
     const friends = state.friends.map((f) => ({ ...f, mingledAt: f.mingledAt && f.mingledAt - off }));
     const garden = state.garden.map((p) => ({

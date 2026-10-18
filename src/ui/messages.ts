@@ -6,14 +6,16 @@
 // earlier message, newest first: orders announced and picked up, the pet
 // hatching and growing up, visitors, little ones and new things to try.
 //
-// Friends lists the wanderer visiting now and your friends, each with its
-// hearts, a Meet button (out to Play > Meet) and a way to say goodbye.
+// Friends shows whoever is over now, with a Hang out button (out to
+// Play > Meet), then your other friends, each with its hearts, an Invite
+// button (once a day, when nobody's over) and a way to say goodbye.
 
 import { STRINGS } from '../strings';
 import { characterSheet, getCharacter, getVariant } from '../game/growth';
 import { CONFIG } from '../game/config';
 import type { Friend } from '../game/state';
 import { heartRow } from './meet';
+import { canInvite, visitor } from '../game/friends';
 import { isFull, orderTier } from '../game/delivery';
 import { isUnlocked, type UnlockId } from '../game/unlocks';
 import type { GameState, Message } from '../game/state';
@@ -26,8 +28,9 @@ export type MessagesTab = 'mail' | 'friends';
 export interface MessagesActions {
   onTab: (tab: MessagesTab) => void;
   onOpenDelivery: () => void;
-  onOpenMeet: (friend: string) => void;
+  onOpenMeet: () => void;
   onRemoveFriend: (friend: string) => void;
+  onInvite: (friend: string) => boolean;
   characterImage: (sheet: string) => string | undefined;
 }
 
@@ -60,6 +63,7 @@ function text(m: Message): string {
       return STRINGS.growth.adult(m.name, name, STRINGS.stars(c?.stars ?? 1));
     }
     case 'visitor': {
+      if (m.friend) return STRINGS.messages.friendVisit(m.name);
       const c = getCharacter(m.character);
       return STRINGS.messages.visitor(m.name, STRINGS.characterName(c?.name ?? '?', getVariant(c, m.variant)?.name));
     }
@@ -149,8 +153,9 @@ export function messagesPage(state: GameState, now: number, tab: MessagesTab, cb
 
 // One friend: picture, name and what it is, hearts, and buttons.
 function friendRow(f: Friend, state: GameState, now: number, cb: MessagesActions): HTMLElement {
+  const over = visitor(state)?.id === f.id;
   const guest = state.visit.guest?.id === f.id;
-  const row = el('div', `shop-row friend-row${guest ? ' is-guest' : ''}`);
+  const row = el('div', `shop-row friend-row${over ? ' is-guest' : ''}`);
   const pic = el('span', 'drawer-option-icon friend-pic');
   const url = cb.characterImage(characterSheet(f.character, f.variant));
   pic.innerHTML = url ? `<span class="portrait" style="background-image:url('${url}')"></span>` : UNKNOWN_ICON;
@@ -160,11 +165,18 @@ function friendRow(f: Friend, state: GameState, now: number, cb: MessagesActions
   body.append(
     el('b', 'friend-name', f.name),
     heartRow(f.score),
-    el('small', '', guest ? `${what}  ·  ${STRINGS.friends.visiting(formatDuration(state.visit.until - now))}` : what),
+    el('small', '', over ? `${what}  ·  ${STRINGS.friends.visiting(formatDuration(state.visit.until - now))}` : what),
   );
-  const hangOut = el('button', 'shop-btn friend-hang', STRINGS.friends.hangOut);
-  hangOut.addEventListener('click', () => cb.onOpenMeet(f.id));
-  row.append(pic, body, hangOut);
+  // Hang out with whoever is over; invite anyone else (quieter when
+  // someone's already over or today's invite is used, and a tap says why).
+  const free = state.visit.until === 0 && canInvite(state, now);
+  const button = over
+    ? el('button', 'shop-btn friend-hang', STRINGS.friends.hangOut)
+    : el('button', `shop-btn friend-hang${free ? '' : ' shop-btn-soft'}`, STRINGS.friends.invite);
+  button.addEventListener('click', () => {
+    if (over || cb.onInvite(f.id)) cb.onOpenMeet();
+  });
+  row.append(pic, body, button);
   if (!guest) {
     // Saying goodbye is rare, so it's a small × in the corner.
     const bye = el('button', 'friend-bye', '×');
@@ -178,11 +190,13 @@ function friendRow(f: Friend, state: GameState, now: number, cb: MessagesActions
 
 function friendsTab(state: GameState, now: number, cb: MessagesActions): HTMLElement[] {
   const out: HTMLElement[] = [];
-  const guest = state.visit.guest;
-  if (guest) out.push(el('h3', 'shop-section', STRINGS.messages.visiting), friendRow(guest, state, now, cb));
+  const over = visitor(state);
+  if (over) out.push(el('h3', 'shop-section', STRINGS.messages.visiting), friendRow(over, state, now, cb));
   const wild = state.friends.filter((f) => f.wild).length;
   out.push(el('h3', 'shop-section', STRINGS.messages.yourFriends(wild, CONFIG.friends.maxWild)));
   if (state.friends.length === 0) out.push(el('p', 'mail-empty', STRINGS.messages.friendsEmpty));
-  out.push(...[...state.friends].sort((a, b) => b.score - a.score).map((f) => friendRow(f, state, now, cb)));
+  else if (!canInvite(state, now)) out.push(el('p', 'mail-empty friend-hint', STRINGS.messages.inviteTomorrow));
+  const others = state.friends.filter((f) => f.id !== over?.id).sort((a, b) => b.score - a.score);
+  out.push(...others.map((f) => friendRow(f, state, now, cb)));
   return out;
 }
