@@ -72,3 +72,17 @@ describe('save migration to unlockable menus', () => {
     expect(out.state.showAllMenus).toBe(false);
   });
 });
+
+describe("save migration to Percy's orders", () => {
+  it('starts with no order and no messages, and counts crops in the pantry as grown', () => {
+    const out = migrate({
+      version: 10,
+      state: { pet: { stage: 'teen' }, inventory: { food: { carrot: 2, shrimp: 1 }, hats: [], seeds: {}, supplies: {} } },
+    });
+    expect(out.version).toBe(SAVE_VERSION);
+    expect(out.state.grown).toEqual(['carrot']);
+    expect(out.state.delivery).toEqual({ order: null, nextAt: 0 });
+    expect(out.state.messages).toEqual([]);
+    expect(out.state.messagesSeenAt).toBe(0);
+  });
+});

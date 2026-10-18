@@ -254,7 +254,8 @@ export function harvest(state: GameState, index: number): GardenResult & { crop?
   const count = getCrop(crop).harvest;
   const id = crop as FoodId;
   const food = { ...state.inventory.food, [id]: (state.inventory.food[id] ?? 0) + count };
-  const s = withPlot({ ...state, inventory: { ...state.inventory, food } }, index, (p) => Object.assign(p, emptyPlot()));
+  const grown = state.grown.includes(crop) ? state.grown : [...state.grown, crop];
+  const s = withPlot({ ...state, inventory: { ...state.inventory, food }, grown }, index, (p) => Object.assign(p, emptyPlot()));
   return { state: s, crop, count };
 }
 

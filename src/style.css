@@ -2472,3 +2472,435 @@ body {
   animation: catch-blink 0.15s steps(1) 4;
 }
 
+
+/* ---- Percy's orders ---- */
+
+/* The room, with Percy's parcel in its top corner while there's an order. */
+.room-wrap {
+  position: relative;
+}
+
+.room-wrap .room {
+  display: block;
+  box-sizing: border-box;
+}
+
+.parcel-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 46px;
+  height: 46px;
+  padding: 7px;
+  border: 3px solid var(--card);
+  border-radius: 14px;
+  background: white;
+  box-shadow: 0 3px 0 rgba(43, 33, 64, 0.2);
+  cursor: pointer;
+  touch-action: manipulation;
+  animation: parcel-bob 1.8s ease-in-out infinite;
+}
+
+.parcel-btn[hidden] {
+  display: none;
+}
+
+.parcel-btn svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Every box full: a golden ring, ready for Percy. */
+.parcel-btn.all-full {
+  border-color: #f2c14e;
+}
+
+.parcel-btn:active {
+  transform: translateY(2px);
+}
+
+@keyframes parcel-bob {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  45% { transform: translateY(-3px) rotate(-4deg); }
+  55% { transform: translateY(-3px) rotate(4deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .parcel-btn {
+    animation: none;
+  }
+}
+
+/* [Close] [Fill all], one height, like the garden's row. */
+.delivery-row:not([hidden]) {
+  animation: rise-in 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.delivery-row .btn {
+  height: 52px;
+  padding: 0 14px;
+  flex: 1 1 0;
+}
+
+.delivery-row .btn-soft {
+  flex: 0 0 auto;
+}
+
+.delivery-row .btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* The boxes slide up over the stat bars like the garden does. The frame
+   shows how the order is going: plain, bronze, silver, or sparkling gold
+   when every box is full. */
+.delivery {
+  --frame: var(--lavender);
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 4px var(--frame);
+  transform: translateY(100%);
+  transition: transform 0.45s cubic-bezier(0.5, 0, 0.9, 0.6), box-shadow 0.3s ease;
+  padding: 10px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.delivery[hidden] {
+  display: none;
+}
+
+.delivery.is-in {
+  transform: translateY(0);
+  transition: transform 0.7s cubic-bezier(0.45, 0, 0.55, 1), box-shadow 0.3s ease;
+}
+
+.delivery[data-tier='bronze'] {
+  --frame: #d29a6c;
+}
+
+.delivery[data-tier='silver'] {
+  --frame: #b7c0d4;
+}
+
+.delivery[data-tier='gold'] {
+  --frame: #f2c14e;
+}
+
+/* Gold: little white sparkles twinkle along the frame. */
+.delivery[data-tier='gold']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  pointer-events: none;
+  background:
+    linear-gradient(white, white) 12% 1px / 4px 4px no-repeat,
+    linear-gradient(white, white) 58% 1px / 4px 4px no-repeat,
+    linear-gradient(white, white) 1px 55% / 4px 4px no-repeat,
+    linear-gradient(white, white) calc(100% - 1px) 30% / 4px 4px no-repeat,
+    linear-gradient(white, white) 35% calc(100% - 1px) / 4px 4px no-repeat,
+    linear-gradient(white, white) 88% calc(100% - 1px) / 4px 4px no-repeat;
+  animation: sparkle 1.2s steps(2) infinite;
+}
+
+.delivery[data-tier='gold'] {
+  animation: gold-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes sparkle {
+  0% { opacity: 1; }
+  100% { opacity: 0.1; }
+}
+
+@keyframes gold-glow {
+  0%, 100% { box-shadow: inset 0 0 0 4px var(--frame), inset 0 0 0 7px rgba(242, 193, 78, 0.15); }
+  50% { box-shadow: inset 0 0 0 4px var(--frame), inset 0 0 0 9px rgba(242, 193, 78, 0.35); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .delivery,
+  .delivery.is-in {
+    transition: none;
+  }
+  .delivery[data-tier='gold'],
+  .delivery[data-tier='gold']::after {
+    animation: none;
+  }
+}
+
+.delivery-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 2px;
+}
+
+.delivery-when {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--plum);
+  font-variant-numeric: tabular-nums;
+}
+
+.delivery-when svg {
+  width: 13px;
+  height: 13px;
+}
+
+.delivery-boxes {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.delivery-boxes[hidden],
+.delivery-empty[hidden],
+.delivery-box[hidden],
+.delivery-box-take[hidden] {
+  display: none;
+}
+
+/* One or two boxes stay box-sized, in the middle. */
+.delivery-boxes[data-count='1'] {
+  grid-template-columns: minmax(0, 1fr);
+  padding: 0 33%;
+}
+
+.delivery-boxes[data-count='2'] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 0 16%;
+}
+
+.delivery-box {
+  position: relative;
+  min-width: 0;
+}
+
+/* A cardboard box with a strip of tape across the top. */
+.delivery-box-put {
+  width: 100%;
+  height: 100%;
+  font: inherit;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 10px 4px 6px;
+  border: 3px solid #b77b5a;
+  border-radius: 10px;
+  background:
+    linear-gradient(#d9a479, #d9a479) center 0 / 14px 9px no-repeat,
+    #f3c9a0;
+  box-shadow: 0 3px 0 #b77b5a;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.delivery-box-put:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #b77b5a;
+}
+
+.delivery-box-icon {
+  width: 32px;
+  height: 32px;
+}
+
+.delivery-box-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.delivery-box-count {
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.delivery-box-pay {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 700;
+  font-size: 0.75rem;
+  color: #7a5a1e;
+}
+
+.delivery-box-pay svg {
+  width: 11px;
+  height: 11px;
+}
+
+/* Still empty: the picture and count are greyed out. */
+.delivery-box[data-fill='empty'] .delivery-box-icon {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+
+.delivery-box[data-fill='empty'] .delivery-box-count {
+  opacity: 0.45;
+}
+
+/* Full: a green count, and the box looks packed. */
+.delivery-box[data-fill='full'] .delivery-box-count {
+  color: var(--good-dark);
+}
+
+.delivery-box[data-fill='full'] .delivery-box-put {
+  border-color: var(--good-dark);
+  box-shadow: 0 3px 0 var(--good-dark);
+}
+
+/* Take one back out: a small round minus on the box's corner. */
+.delivery-box-take {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  font: inherit;
+  font-weight: 800;
+  font-size: 1rem;
+  line-height: 1;
+  border: 2px solid var(--plum);
+  border-radius: 50%;
+  background: white;
+  color: var(--plum);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.delivery-empty {
+  margin: auto 0;
+  text-align: center;
+  font-size: 0.95rem;
+  color: var(--plum);
+}
+
+/* ---- Messages ---- */
+
+.messages .tree-switch {
+  margin-bottom: 4px;
+}
+
+/* Percy's order as it stands: a card with a frame like the delivery
+   panel's. */
+.mail-live {
+  --frame: var(--lavender);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: white;
+  box-shadow: inset 0 0 0 3px var(--frame);
+}
+
+.mail-live[data-tier='bronze'] { --frame: #d29a6c; }
+.mail-live[data-tier='silver'] { --frame: #b7c0d4; }
+.mail-live[data-tier='gold'] { --frame: #f2c14e; }
+
+.mail-live.idle {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.mail-live.idle > svg {
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+}
+
+.mail-live-wait {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.mail-live-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mail-live-when {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--plum);
+}
+
+.mail-live-when svg {
+  width: 12px;
+  height: 12px;
+}
+
+.mail-live-boxes {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mail-live-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 4px;
+  border-radius: 999px;
+  background: #fbe6d2;
+  font-weight: 800;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.mail-live-box svg {
+  width: 20px;
+  height: 20px;
+}
+
+.mail-live-box[data-fill='empty'] {
+  color: rgba(43, 33, 64, 0.5);
+}
+
+.mail-live-box[data-fill='full'] {
+  background: var(--good-light);
+}
+
+.mail-live-open {
+  margin-left: auto;
+}
+
+.mail-empty {
+  margin: 12px 0;
+  text-align: center;
+  opacity: 0.75;
+}
+
+.mail-row .shop-row-text b {
+  font-weight: 600;
+  font-size: 0.92rem;
+  white-space: normal;
+}
+
+/* A picked-up order: a coloured edge for how it went. */
+.mail-row[data-tier='bronze'] { box-shadow: inset 4px 0 0 #d29a6c; }
+.mail-row[data-tier='silver'] { box-shadow: inset 4px 0 0 #b7c0d4; }
+.mail-row[data-tier='gold'] { box-shadow: inset 4px 0 0 #f2c14e; }

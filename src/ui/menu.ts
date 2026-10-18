@@ -1,6 +1,6 @@
 // The menu inside the gear button's panel (it opens like Feed and Play). It
-// has a main list (Shop, Collection, Family Tree, Settings) and a page for
-// each, plus the Wardrobe, which opens when you hold the pet.
+// has a main list (Shop, Messages, Collection, Family Tree, Settings) and a
+// page for each, plus the Wardrobe, which opens when you hold the pet.
 // Shop, Collection and Family Tree only appear once they've opened up (see
 // src/game/unlocks.ts), with a "new" dot until you've looked at them.
 // Items for features we haven't built yet are shown greyed out with
@@ -14,6 +14,8 @@ import { goldPill, shopPage, wardrobePage, type ShopCallbacks } from './shop';
 import { collectionPage } from './collection';
 import { familyTreePage, type FamilyCallbacks, type TreeView } from './family';
 import { OWNER_MAX } from '../game/family';
+import { messagesPage, type MessagesTab } from './messages';
+import { unreadMail } from '../game/messages';
 
 export interface DebugCallbacks {
   onFastForward: (hours: number) => void;
@@ -28,6 +30,12 @@ export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks, FamilyCall
   onReset: () => void;
   onOwner: (name: string) => void; // the player typed their name in Settings
   onSeen: (id: UnlockId) => void; // the player has looked at something new
+  onMessagesSeen: () => void; // the player opened Messages
+}
+
+// Things only the home screen can do, passed in by it.
+export interface MenuActions {
+  onOpenDelivery: () => void; // go out to the doorstep to fill Percy's order
 }
 
 export interface Menu {
@@ -61,14 +69,14 @@ function item(label: string, onClick?: () => void, isNew = false): HTMLButtonEle
 }
 
 // `isOpen` says whether the panel is showing; `close` folds it up.
-export function createMenu(cb: MenuCallbacks, isOpen: () => boolean, close: () => void): Menu {
+export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolean, close: () => void): Menu {
   const panel = document.createElement('div');
   panel.className = 'menu-panel';
 
   // The pages redraw whenever the game changes (after buying something,
   // for example), so we remember which page is showing.
   let state: GameState | null = null;
-  let page: 'main' | 'settings' | 'shop' | 'wardrobe' | 'collection' | 'familyTree' = 'main';
+  let page: 'main' | 'settings' | 'shop' | 'wardrobe' | 'collection' | 'familyTree' | 'messages' = 'main';
 
   // Live readout for the testing tools, refreshed by update().
   const debugInfo = document.createElement('p');
@@ -114,10 +122,51 @@ export function createMenu(cb: MenuCallbacks, isOpen: () => boolean, close: () =
     toTop();
     panel.replaceChildren(
       ...unlockable('shop', STRINGS.menu.shop, () => showShop()),
+      ...messagesItem(),
       ...unlockable('collection', STRINGS.menu.collection, () => showCollection()),
       ...unlockable('familyTree', STRINGS.menu.familyTree, () => showFamilyTree()),
       item(STRINGS.menu.settings, showSettings),
     );
+  }
+
+  // Messages, with a dot while there's new mail from Percy (or until it's
+  // been looked at once).
+  function messagesItem(): HTMLButtonElement[] {
+    const entry = unlockable('messages', STRINGS.menu.messages, () => showMessages());
+    if (entry.length && state && unreadMail(state) > 0 && !isNew(state, 'messages')) {
+      const dot = document.createElement('span');
+      dot.className = 'new-dot';
+      dot.setAttribute('aria-label', STRINGS.messages.unread);
+      entry[0].append(dot);
+    }
+    return entry;
+  }
+
+  // Mail or Friends, in Messages. Mail each time you go in.
+  let messagesTab: MessagesTab = 'mail';
+  function showMessages(fresh = true): void {
+    if (fresh) {
+      messagesTab = 'mail';
+      toTop();
+    }
+    // Reading the page counts as reading the mail, new mail included.
+    if (state && (fresh || unreadMail(state) > 0)) queueMicrotask(cb.onMessagesSeen);
+    page = 'messages';
+    const list = document.createElement('div');
+    list.className = 'shop-list messages';
+    if (state) {
+      list.append(...messagesPage(state, state.lastUpdated, messagesTab, {
+        onTab: (tab) => {
+          messagesTab = tab;
+          showMessages(false);
+        },
+        onOpenDelivery: () => {
+          close();
+          cb.onOpenDelivery();
+        },
+      }));
+    }
+    panel.replaceChildren(header(STRINGS.messages.title, showMain), list);
   }
 
   // Which categories (Food, Hats...) are unfolded. Everything starts folded
@@ -271,6 +320,8 @@ export function createMenu(cb: MenuCallbacks, isOpen: () => boolean, close: () =
         JSON.stringify([
           s.gold, s.inventory, s.pet.hat, s.pet.stage, s.unlocked, s.seen, s.showAllMenus,
           s.recipesFound, s.caught, s.charactersFound, s.pet.name, s.pet.named, s.owner, s.family,
+          s.messages, s.messagesSeenAt, s.delivery,
+          page === 'messages' && Math.floor(s.lastUpdated / 60_000),
           page === 'familyTree' && [Object.values(s.pet.stats).map(Math.round), Math.floor(s.lastUpdated / 3_600_000)],
         ]);
       const changed = key(state) !== key(next);
@@ -281,6 +332,7 @@ export function createMenu(cb: MenuCallbacks, isOpen: () => boolean, close: () =
         else if (isOpen() && page === 'wardrobe') showWardrobe(false);
         else if (isOpen() && page === 'collection') showCollection(false);
         else if (isOpen() && page === 'familyTree') showFamilyTree(false);
+        else if (isOpen() && page === 'messages') showMessages(false);
       }
       const p = next.pet;
       debugInfo.textContent = `${STRINGS.debug.careScore}: ${p.careScore.toFixed(1)} · ${STRINGS.debug.condition}: ${p.condition} · ${STRINGS.debug.character}: ${p.character ?? '-'}${p.variant ? ` (${p.variant})` : ''}`;

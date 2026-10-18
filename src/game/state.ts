@@ -93,6 +93,37 @@ export interface CheckIn {
   lastAt: number; // when the last reward was given
 }
 
+// One box of a delivery order: what Percy wants, how many, and how many
+// you've put in so far (those are out of your inventory until pickup).
+export interface OrderBox {
+  food: string; // a food id
+  want: number;
+  have: number;
+}
+
+// The order Percy is waiting on (see src/game/delivery.ts).
+export interface Order {
+  announcedAt: number;
+  pickupAt: number;
+  boxes: OrderBox[];
+}
+
+export interface Delivery {
+  order: Order | null; // null between orders
+  nextAt: number; // when the next order is announced (if there's none now)
+}
+
+// How a picked-up order went: by how many boxes were full, from none to all.
+export type OrderTier = 'none' | 'bronze' | 'silver' | 'gold';
+
+// Something for the Messages page. Kept as plain data, and turned into text
+// when it's shown (see src/strings.ts).
+export type Message =
+  | { kind: 'order'; at: number; boxes: { food: string; want: number }[]; pickupAt: number }
+  | { kind: 'pickup'; at: number; boxes: OrderBox[]; gold: number; tier: OrderTier }
+  | { kind: 'unlocked'; at: number; id: string }
+  | { kind: 'growth'; at: number; stage: string; name: string; character: string | null; variant: string | null };
+
 export interface GameState {
   pet: Pet;
   // The moment the simulation last caught up to. simulate() moves the world
@@ -126,6 +157,14 @@ export interface GameState {
   family: FamilyMember[];
   // The garden's pots, left to right.
   garden: Plot[];
+  // Crops ever harvested (food ids), so Percy only asks for things you
+  // know how to get.
+  grown: string[];
+  // Percy's delivery orders.
+  delivery: Delivery;
+  // The Messages page, newest first, and when it was last looked at.
+  messages: Message[];
+  messagesSeenAt: number;
 }
 
 // Makes a random id. crypto.randomUUID exists in all modern browsers and Node.
@@ -170,5 +209,9 @@ export function createNewGame(now: number): GameState {
     owner: '',
     family: [],
     garden: newGarden(),
+    grown: [],
+    delivery: { order: null, nextAt: 0 },
+    messages: [],
+    messagesSeenAt: 0,
   };
 }

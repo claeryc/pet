@@ -6,8 +6,10 @@
 // The "Show every menu" testing tool in Settings skips the rules.
 
 import type { GameState } from './state';
+import { canOrder } from './delivery';
+import { logMessage } from './messages';
 
-export type UnlockId = 'shop' | 'cooking' | 'collection' | 'familyTree' | 'garden';
+export type UnlockId = 'shop' | 'cooking' | 'collection' | 'familyTree' | 'garden' | 'messages' | 'delivery';
 
 const RULES: Record<UnlockId, (s: GameState) => boolean> = {
   // Once the egg hatches and there's someone to buy things for.
@@ -20,6 +22,11 @@ const RULES: Record<UnlockId, (s: GameState) => boolean> = {
   familyTree: (s) => s.pet.stage === 'adult',
   // Once the egg hatches, along with the Shop that sells the first seeds.
   garden: (s) => s.pet.stage !== 'egg',
+  // The Messages page opens with the Shop.
+  messages: (s) => s.pet.stage !== 'egg',
+  // Percy's orders start once there's something to ask for: a fish you
+  // caught, a crop you grew or a dish you cooked.
+  delivery: (s) => canOrder(s),
 };
 
 export const UNLOCKS = Object.keys(RULES) as UnlockId[];
@@ -60,5 +67,6 @@ export function updateProgress(state: GameState): { state: GameState; unlocked: 
   }
   const opened = unlocksFor(s).filter((id) => !s.unlocked.includes(id));
   if (opened.length > 0) s = { ...s, unlocked: [...s.unlocked, ...opened] };
+  for (const id of opened) s = logMessage(s, { kind: 'unlocked', at: s.lastUpdated, id });
   return { state: s, unlocked: opened };
 }
