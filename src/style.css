@@ -2633,12 +2633,44 @@ body {
   }
 }
 
+/* [Percy's order ... coin 68 ... hourglass 5h] with the reward in the
+   middle. */
 .delivery-head {
+  position: relative;
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
   gap: 8px;
   padding: 0 2px;
+}
+
+.delivery-head > b {
+  white-space: nowrap;
+}
+
+.delivery-reward {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px 2px 6px;
+  border-radius: 999px;
+  background: #fff3c4;
+  color: #7a5a1e;
+  font-weight: 800;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.delivery-reward:empty {
+  display: none;
+}
+
+.delivery-reward svg {
+  width: 13px;
+  height: 13px;
 }
 
 .delivery-when {
@@ -2697,8 +2729,8 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
-  padding: 10px 4px 6px;
+  gap: 2px;
+  padding: 9px 4px 5px;
   border: 3px solid #b77b5a;
   border-radius: 10px;
   background:
@@ -2728,20 +2760,6 @@ body {
 .delivery-box-count {
   font-size: 1rem;
   font-variant-numeric: tabular-nums;
-}
-
-.delivery-box-pay {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  font-weight: 700;
-  font-size: 0.75rem;
-  color: #7a5a1e;
-}
-
-.delivery-box-pay svg {
-  width: 11px;
-  height: 11px;
 }
 
 /* Still empty: the picture and count are greyed out. */
@@ -2904,3 +2922,11 @@ body {
 .mail-row[data-tier='bronze'] { box-shadow: inset 4px 0 0 #d29a6c; }
 .mail-row[data-tier='silver'] { box-shadow: inset 4px 0 0 #b7c0d4; }
 .mail-row[data-tier='gold'] { box-shadow: inset 4px 0 0 #f2c14e; }
+
+/* On the smallest phones the title would run into the reward; Percy is
+   right there in the scene, so the reward and timer are enough. */
+@media (max-width: 360px) {
+  .delivery-head > b {
+    visibility: hidden;
+  }
+}

@@ -3,7 +3,7 @@
 //
 // Mail starts with Percy's order as it stands right now (what he wants,
 // what's in each box and the time left until pickup, with a button out to
-// the doorstep), or when he'll be back with the next one. Below it, every
+// Percy), or when he'll be back with the next one. Below it, every
 // earlier message, newest first: orders announced and picked up, the pet
 // hatching and growing up, and new things to try.
 

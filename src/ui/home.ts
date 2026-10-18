@@ -53,7 +53,7 @@ export interface HomeScreen {
   notice: (message: string) => void;
   fishingPhase: () => FishingPhase; // so the room can draw the line and bobber
   gardenScene: () => GardenScene | null; // so the room can turn into the garden
-  deliveryScene: () => DeliveryScene | null; // ...or the doorstep, for Percy's order
+  deliveryScene: () => DeliveryScene | null; // ...or Percy's meadow, for his order
 }
 
 // Pixel icons drawn on a 12x12 grid, so they match the pixel-art style.
@@ -165,7 +165,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   canvas.className = 'room';
   canvas.setAttribute('role', 'img');
   // Percy's parcel sits in the top corner of the room while there's an
-  // order to fill. Tapping it goes out to the doorstep.
+  // order to fill. Tapping it goes out to Percy.
   const roomWrap = document.createElement('div');
   roomWrap.className = 'room-wrap';
   const parcel = document.createElement('button');
@@ -438,7 +438,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     if (latest) garden.update(latest.state, latest.now);
     garden.start();
   }
-  // Percy's order: the doorstep, its own [Close] [Fill all] row, and a
+  // Percy's order: his meadow, its own [Close] [Fill all] row, and a
   // panel of boxes that slides up over the stat bars.
   const delivery = createDelivery({
     onPut: cb.onPutInBox,

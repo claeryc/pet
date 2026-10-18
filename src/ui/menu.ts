@@ -35,7 +35,7 @@ export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks, FamilyCall
 
 // Things only the home screen can do, passed in by it.
 export interface MenuActions {
-  onOpenDelivery: () => void; // go out to the doorstep to fill Percy's order
+  onOpenDelivery: () => void; // go out to Percy to fill Percy's order
 }
 
 export interface Menu {

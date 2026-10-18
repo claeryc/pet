@@ -1,10 +1,11 @@
 // Filling Percy's order. Tapping the parcel in the room (or Open in
-// Messages) takes you out to the doorstep, where Percy waits on the
-// mailbox (drawn in src/render/delivery.ts). A panel slides up over the
-// stat bars, like the garden's, with one box per thing Percy asked for:
-// its picture, how many are in it out of how many he wants (greyed out
-// while empty), and what it pays once full. Tap a box to put one in, and
-// the little minus to take one back out.
+// Messages) takes you out to Percy, who waits with a crate per thing he
+// asked for, on an open net (drawn in src/render/delivery.ts). A panel
+// slides up over the stat bars, like the garden's: the title, what the
+// whole order pays and the time left along the top, then one box per thing
+// Percy asked for, with its picture and how many are in it out of how many
+// he wants (greyed out while empty). Tap a box to put one in, and the
+// little minus to take one back out.
 //
 // The panel's frame shows how the order is going: bronze with one full box,
 // silver with two, and a sparkling gold when every box is full (that's the
@@ -13,7 +14,7 @@
 // What an order asks for and pays is decided in src/game/delivery.ts.
 
 import { STRINGS } from '../strings';
-import { boxReward, isFull, orderTier } from '../game/delivery';
+import { isFull, orderPay, orderTier } from '../game/delivery';
 import type { GameState } from '../game/state';
 import type { FoodId } from '../game/actions';
 import type { DeliveryScene } from '../render/delivery';
@@ -53,14 +54,16 @@ export function createDelivery(cb: DeliveryCallbacks): DeliveryPanel {
   panel.className = 'delivery';
   panel.hidden = true;
 
-  // [Percy's order ........ hourglass 5h 12m]
+  // [Percy's order ..... coin 68 ..... hourglass 5h 12m]
   const head = document.createElement('div');
   head.className = 'delivery-head';
   const title = document.createElement('b');
   title.textContent = STRINGS.delivery.title;
+  const reward = document.createElement('span');
+  reward.className = 'delivery-reward';
   const when = document.createElement('span');
   when.className = 'delivery-when';
-  head.append(title, when);
+  head.append(title, reward, when);
 
   const boxesEl = document.createElement('div');
   boxesEl.className = 'delivery-boxes';
@@ -68,8 +71,8 @@ export function createDelivery(cb: DeliveryCallbacks): DeliveryPanel {
   empty.className = 'delivery-empty';
   panel.append(head, boxesEl, empty);
 
-  // One box: [picture] [have / want] [coin +pay], with a minus in the corner
-  // once something is in it.
+  // One box: [picture] [have / want], with a minus in the corner once
+  // something is in it.
   const boxes = Array.from({ length: 3 }, (_, i) => {
     const el = document.createElement('div');
     el.className = 'delivery-box';
@@ -79,16 +82,14 @@ export function createDelivery(cb: DeliveryCallbacks): DeliveryPanel {
     icon.className = 'delivery-box-icon';
     const count = document.createElement('b');
     count.className = 'delivery-box-count';
-    const pay = document.createElement('small');
-    pay.className = 'delivery-box-pay';
-    put.append(icon, count, pay);
+    put.append(icon, count);
     const take = document.createElement('button');
     take.className = 'delivery-box-take';
     take.textContent = '−';
     put.addEventListener('click', () => cb.onPut(i));
     take.addEventListener('click', () => cb.onTake(i));
     el.append(put, take);
-    return { el, put, icon, count, pay, take, food: '' };
+    return { el, put, icon, count, take, food: '' };
   });
   boxesEl.append(...boxes.map((b) => b.el));
 
@@ -117,9 +118,16 @@ export function createDelivery(cb: DeliveryCallbacks): DeliveryPanel {
     fill.disabled = !order || order.boxes.every(isFull);
     if (!order) {
       when.replaceChildren();
+      reward.replaceChildren();
       empty.textContent = `${STRINGS.delivery.noOrder} ${STRINGS.delivery.nextOrder(formatDuration(state.delivery.nextAt - now))}`;
       return;
     }
+    // What the whole order pays with every box full, bonus included.
+    const pay = orderPay(order.boxes.map((b) => ({ ...b, have: b.want })));
+    const total = pay.boxes + pay.bonus;
+    reward.innerHTML = STAT_ICONS.gold;
+    reward.append(String(total));
+    reward.title = STRINGS.delivery.reward(total);
     when.innerHTML = STAT_ICONS.hourglass;
     when.append(formatDuration(order.pickupAt - now));
     when.title = STRINGS.delivery.pickupIn(formatDuration(order.pickupAt - now));
@@ -132,12 +140,9 @@ export function createDelivery(cb: DeliveryCallbacks): DeliveryPanel {
         b.food = box.food;
         b.icon.innerHTML = ITEM_ICONS[box.food] ?? '';
       }
-      const gold = boxReward(box);
       b.count.textContent = `${box.have}/${box.want}`;
       b.el.dataset.fill = isFull(box) ? 'full' : box.have > 0 ? 'some' : 'empty';
-      b.pay.innerHTML = STAT_ICONS.gold;
-      b.pay.append(STRINGS.delivery.pays(gold));
-      b.put.setAttribute('aria-label', STRINGS.delivery.box(foodName(box.food), box.have, box.want, gold));
+      b.put.setAttribute('aria-label', STRINGS.delivery.box(foodName(box.food), box.have, box.want));
       b.take.hidden = box.have === 0;
       b.take.setAttribute('aria-label', STRINGS.delivery.takeOut(foodName(box.food)));
     });
@@ -167,7 +172,14 @@ export function createDelivery(cb: DeliveryCallbacks): DeliveryPanel {
     },
     stop,
     active: () => active,
-    scene: () => (active && state ? { percy: !!state.delivery.order } : null),
+    scene: () => {
+      if (!active || !state) return null;
+      const boxes = state.delivery.order?.boxes ?? [];
+      return {
+        percy: boxes.length > 0,
+        crates: boxes.map((b) => (isFull(b) ? 'full' : b.have > 0 ? 'some' : 'empty')),
+      };
+    },
     update(next, at) {
       state = next;
       now = at;

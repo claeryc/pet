@@ -201,10 +201,9 @@ export const STRINGS = {
     noneLeft: (name: string) => `You have no ${name} left.`,
     full: 'This box is full already.',
     nothingToFill: "You don't have anything Percy asked for yet.",
-    box: (name: string, have: number, want: number, gold: number) =>
-      `${name}: ${have} of ${want}. Pays ${gold} gold when full. Tap to put one in`,
+    box: (name: string, have: number, want: number) => `${name}: ${have} of ${want}. Tap to put one in`,
     takeOut: (name: string) => `Take one ${name} back out`,
-    pays: (gold: number) => `+${gold}`,
+    reward: (gold: number) => `Pays ${gold} gold with every box full`,
     allFull: (bonus: number) => `Every box full! +${bonus} bonus`,
     tiers: { none: '', bronze: 'Bronze', silver: 'Silver', gold: 'Gold' },
     item: (count: number, name: string) => `${count} × ${name}`,

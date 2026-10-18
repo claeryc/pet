@@ -18,7 +18,7 @@ export interface Scene {
   lightsOff: boolean; // the room is dark (pet is sleeping)
   fishing?: FishingPhase; // draws a little pond, rod and bobber while fishing
   garden?: GardenScene | null; // while gardening: the garden, with the pet on the left
-  delivery?: DeliveryScene | null; // while filling Percy's order: the doorstep
+  delivery?: DeliveryScene | null; // while filling Percy's order: his meadow
 }
 
 export function setupCanvas(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
@@ -86,10 +86,10 @@ export function isOnPet(x: number, y: number): boolean {
   return x >= 12 && x <= ROOM_WIDTH - 12 && y >= 4 && y <= 44;
 }
 
-// Going outside and back (to the garden, or to the doorstep for Percy's
+// Going outside and back (to the garden, or to Percy's meadow for his
 // orders): the outside grows up from the bottom of the room with a grassy
-// edge, like the water rising for fishing, while the pet walks over to the
-// left. It takes as long as the panel takes to slide in and out under the
+// edge, like the water rising for fishing (in the garden the pet walks
+// over to the left). It takes as long as the panel takes to slide in and out under the
 // room (see .garden and .delivery in style.css).
 const OUTSIDE_IN_MS = 700;
 const OUTSIDE_OUT_MS = 450;
@@ -145,8 +145,43 @@ export function drawRoom(
     drawWindow(ctx, scene.night, timeMs);
     if (scene.fishing && scene.fishing !== 'off') drawFishing(ctx, scene.fishing, timeMs);
   }
+
+  // The pet, centred and standing on the floor. In the garden it walks over
+  // to the left as the garden grows in, to make room for the pots. Percy's
+  // meadow is his alone: it grows up over the pet, who stays inside.
+  const percys = !!outside && 'delivery' in outside;
+  const drawPet = (slide: number) => {
+    if (sheet) {
+      const { frameWidth: w, frameHeight: h } = sheet;
+      const { sx, sy, headOffset } = frameFor(sheet, scene.animation, timeMs);
+      const centre = Math.floor((ROOM_WIDTH - w) / 2);
+      const dx = Math.round(centre + (-2 - centre) * slide);
+      const dy = 40 - h;
+      ctx.drawImage(sheet.image, sx, sy, w, h, dx, dy, w, h);
+      // The hat: its bottom middle sits on the head point, moved up or down
+      // with the head. The left picture is the small size, the right the large.
+      if (hat && sheet.head) {
+        const { frameWidth: hw, frameHeight: hh } = hat;
+        const col = sheet.head.size === 'large' ? 1 : 0;
+        const hx = dx + sheet.head.x - Math.floor(hw / 2);
+        const hy = dy + sheet.head.y + headOffset - hh;
+        ctx.drawImage(hat.image, col * hw, 0, hw, hh, hx, hy, hw, hh);
+      }
+    } else {
+      // The sprite is missing (or still loading): draw a little "?" box so
+      // it's obvious something needs fixing in manifest.json.
+      ctx.fillStyle = PALETTE.lilac;
+      ctx.fillRect(26, 22, 12, 14);
+      ctx.fillStyle = PALETTE.white;
+      ctx.fillRect(30, 25, 4, 1);
+      ctx.fillRect(33, 26, 1, 3);
+      ctx.fillRect(31, 29, 2, 1);
+      ctx.fillRect(31, 32, 2, 2);
+    }
+  };
+  if (percys) drawPet(0);
   if (outside) {
-    // The garden or doorstep, rising up from the bottom (or all of it,
+    // The garden or Percy's meadow, rising up from the bottom (or all of it,
     // once it's in).
     const edge = (ROOM_HEIGHT + 3) * (1 - mix);
     ctx.save();
@@ -160,35 +195,7 @@ export function drawRoom(
     ctx.restore();
   }
 
-  // The pet, centred and standing on the floor (on the left outside, to make
-  // room for the pots or the mailbox; it slides over as outside grows in).
-  if (sheet) {
-    const { frameWidth: w, frameHeight: h } = sheet;
-    const { sx, sy, headOffset } = frameFor(sheet, scene.animation, timeMs);
-    const centre = Math.floor((ROOM_WIDTH - w) / 2);
-    const dx = Math.round(centre + (-2 - centre) * mix);
-    const dy = 40 - h;
-    ctx.drawImage(sheet.image, sx, sy, w, h, dx, dy, w, h);
-    // The hat: its bottom middle sits on the head point, moved up or down
-    // with the head. The left picture is the small size, the right the large.
-    if (hat && sheet.head) {
-      const { frameWidth: hw, frameHeight: hh } = hat;
-      const col = sheet.head.size === 'large' ? 1 : 0;
-      const hx = dx + sheet.head.x - Math.floor(hw / 2);
-      const hy = dy + sheet.head.y + headOffset - hh;
-      ctx.drawImage(hat.image, col * hw, 0, hw, hh, hx, hy, hw, hh);
-    }
-  } else {
-    // The sprite is missing (or still loading): draw a little "?" box so
-    // it's obvious something needs fixing in manifest.json.
-    ctx.fillStyle = PALETTE.lilac;
-    ctx.fillRect(26, 22, 12, 14);
-    ctx.fillStyle = PALETTE.white;
-    ctx.fillRect(30, 25, 4, 1);
-    ctx.fillRect(33, 26, 1, 3);
-    ctx.fillRect(31, 29, 2, 1);
-    ctx.fillRect(31, 32, 2, 2);
-  }
+  if (!percys) drawPet(mix);
 
   // Lights off: dim the whole room.
   if (scene.lightsOff) {
