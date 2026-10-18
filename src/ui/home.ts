@@ -36,6 +36,7 @@ export interface HomeCallbacks extends MenuCallbacks {
   onMedicine: () => void;
   onCast: () => boolean; // throws the fishing line; false if refused
   onLand: (grade: CatchGrade) => void;
+  onToggleBait: () => void;
   onCook: (items: FoodId[]) => FoodId | null; // the dish made, or null if refused
   onPlant: (pot: number, crop: CropId) => void;
   onWater: (pot: number, perfect: boolean) => void;
@@ -459,6 +460,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const fishing = createFishing({
     onCast: cb.onCast,
     onLand: cb.onLand,
+    onToggleBait: cb.onToggleBait,
     onExit: () => showActions(DRAIN_MS),
     toast: (msg) => showToast(msg),
   });
@@ -703,7 +705,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
         feedDrawer.setOrder(order);
       }
       cooking.update(state);
-      fishing.setBait(baitCount(state));
+      fishing.setBait(baitCount(state), state.baitOn);
       garden.update(state, now);
       delivery.update(state, now);
       meet.update(state, now);

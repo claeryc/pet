@@ -242,6 +242,8 @@ export interface GameState {
   // How the room is decorated, and today's limited Shop stock.
   room: Room;
   stock: Stock;
+  // Whether fishing uses bait (switched on in the pond).
+  baitOn: boolean;
 }
 
 // Makes a random id. crypto.randomUUID exists in all modern browsers and Node.
@@ -306,5 +308,6 @@ export function createNewGame(now: number): GameState {
     visit: { guest: null, friendId: null, until: 0, met: false, nextAt: 0, wildAt: 0, invitedDay: '' },
     room: { wallpaper: 'plain', curtains: null },
     stock: { day: '', bought: 0 },
+    baitOn: false,
   };
 }

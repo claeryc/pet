@@ -74,7 +74,7 @@ export const STRINGS = {
     slack: 'The line went slack. The fish swam off.',
     grades: { perfect: 'Perfect catch!', good: 'Good catch!', weak: 'Weak catch...', miss: 'No catch.' },
     slipped: (grade: string) => `${grade} The fish slipped off the hook.`,
-    baitLeft: (count: number) => `${count} bait left`,
+    bait: (count: number, on: boolean) => `Use bait (${count} left): ${on ? 'on' : 'off'}`,
   },
   cooking: {
     open: 'Cook',
@@ -363,8 +363,9 @@ export const STRINGS = {
     room: 'Room',
     fishing: 'Fishing',
     // The energy drink is only in some days, a few at a time.
-    inStock: (left: number) => (left > 0 ? `In today! ${left} left` : 'Sold out for today'),
-    soldOut: 'Sold out for today. Check back another day!',
+    inStock: (left: number, total: number) => `${left} of ${total} left today`,
+    soldOut: 'Sold out',
+    soldOutToday: 'Sold out for today. Check back another day!',
     bait: 'Bait',
     baitNote: (count: number) => `Rarer fish for each catch. You have ${count}`,
     extraPot: 'Garden pot',

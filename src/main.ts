@@ -22,7 +22,7 @@ import {
 } from './game/economy';
 import { useDecor } from './game/decor';
 import { getLook, isNight } from './game/stats';
-import { cast, land } from './game/fishing';
+import { cast, land, toggleBait } from './game/fishing';
 import { cook } from './game/cooking';
 import {
   clearPlot,
@@ -202,7 +202,7 @@ function runShop(result: ShopResult, success?: string): void {
   if (result.blocked === 'notEnoughGold') home.toast(STRINGS.shop.notEnoughGold);
   else if (result.blocked === 'alreadyOwned') home.toast(STRINGS.shop.alreadyOwned);
   else if (result.blocked === 'egg') home.toast(STRINGS.wardrobe.eggNoHat);
-  else if (result.blocked === 'soldOut') home.toast(STRINGS.shop.soldOut);
+  else if (result.blocked === 'soldOut') home.toast(STRINGS.shop.soldOutToday);
   else if (!result.blocked && success) home.toast(success);
 }
 
@@ -390,6 +390,7 @@ const home = createHomeScreen(root, {
       home.toast(grade === 'miss' ? label : STRINGS.fishing.slipped(label));
     }
   },
+  onToggleBait: () => setState(toggleBait(state)),
   onCook: (items) => {
     const result = cook(simulate(state, gameNow()), items);
     setState(result.state);

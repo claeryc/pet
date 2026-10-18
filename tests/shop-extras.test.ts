@@ -14,7 +14,7 @@ import {
   limitedLeft,
   localDay,
 } from '../src/game/economy';
-import { land, pickCatch } from '../src/game/fishing';
+import { land, pickCatch, toggleBait } from '../src/game/fishing';
 import { createNewGame } from '../src/game/state';
 import { newTeen } from './helpers';
 
@@ -86,8 +86,17 @@ describe('fishing bait', () => {
     expect(lobsters(true)).toBeGreaterThan(lobsters(false));
   });
 
+  it('stays in the bag until you switch it on', () => {
+    const s = buyBait(rich()).state;
+    expect(s.baitOn).toBe(false);
+    const r = land(s, 'perfect', 0, 0.999);
+    expect(r.baited).toBe(false);
+    expect(baitCount(r.state)).toBe(1);
+    expect(toggleBait(s).baitOn).toBe(true);
+  });
+
   it('a landed fish uses one up, a fish that gets away does not', () => {
-    let s = buyBait(buyBait(rich()).state).state;
+    let s = toggleBait(buyBait(buyBait(rich()).state).state);
     const r = land(s, 'perfect', 0, 0.999);
     expect(r.baited).toBe(true);
     expect(baitCount(r.state)).toBe(1);

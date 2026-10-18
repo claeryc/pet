@@ -102,5 +102,6 @@ describe('save migration to the Shop extras', () => {
     expect(out.state.inventory.decor).toEqual([]);
     expect(out.state.room).toEqual({ wallpaper: 'plain', curtains: null });
     expect(out.state.stock).toEqual({ day: '', bought: 0 });
+    expect(out.state.baitOn).toBe(false);
   });
 });

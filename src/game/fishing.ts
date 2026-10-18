@@ -103,8 +103,8 @@ export function pickCatch(grade: CatchGrade, random: number, baited = false): Ca
 
 // Tries to land the fish. `landRoll` (0-1) is rolled against the grade's
 // chance, and `kindRoll` (0-1) picks which fish it was. A landed fish goes
-// into the inventory as food. With bait, a landed fish uses one up (a fish
-// that gets away doesn't).
+// into the inventory as food. With bait switched on, a landed fish uses one
+// up (a fish that gets away doesn't).
 export function land(
   state: GameState,
   grade: CatchGrade,
@@ -113,11 +113,16 @@ export function land(
 ): { state: GameState; caught: CatchId | null; count: number; baited: boolean } {
   if (landRoll >= CONFIG.fishing.catchChance[grade]) return { state, caught: null, count: 0, baited: false };
   const bait = state.inventory.supplies.bait ?? 0;
-  const baited = bait > 0;
+  const baited = state.baitOn && bait > 0;
   const caught = pickCatch(grade, kindRoll, baited);
   const count = CONFIG.fishing.fishPerCatch;
   const food = { ...state.inventory.food, [caught]: (state.inventory.food[caught] ?? 0) + count };
   const supplies = baited ? { ...state.inventory.supplies, bait: bait - 1 } : state.inventory.supplies;
   const kinds = state.caught.includes(caught) ? state.caught : [...state.caught, caught];
   return { state: { ...state, inventory: { ...state.inventory, food, supplies }, caught: kinds }, caught, count, baited };
+}
+
+// Switches bait on or off for fishing (the little dot in the pond).
+export function toggleBait(state: GameState): GameState {
+  return { ...state, baitOn: !state.baitOn };
 }

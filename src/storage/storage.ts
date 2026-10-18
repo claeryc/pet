@@ -131,13 +131,14 @@ export function migrate(save: SaveFile): SaveFile {
     st.visit = { guest: null, friendId: null, until: 0, met: false, nextAt: 0, wildAt: 0, invitedDay: '' };
     save.version = 13;
   }
-  // Version 13 -> 14: room decorations, bait, the energy drink and a 4th
+  // Version 13 -> 14: room decorations, bait, the energy drink and a 3rd
   // garden pot. Every room starts plain.
   if (save.version === 13) {
     const st = save.state;
     st.inventory = { ...st.inventory, decor: [] };
     st.room = { wallpaper: 'plain', curtains: null };
     st.stock = { day: '', bought: 0 };
+    st.baitOn = false;
     save.version = 14;
   }
   return save;

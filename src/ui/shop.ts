@@ -71,6 +71,16 @@ function priceButton(price: number, gold: number, onClick: () => void): HTMLButt
   return b;
 }
 
+// How many of a limited item are left today: [hourglass 2/3].
+function stockChip(left: number): HTMLElement {
+  const el = document.createElement('span');
+  el.className = 'shop-stock';
+  const total = CONFIG.economy.limited.perDay;
+  el.innerHTML = `${STAT_ICONS.hourglass}<span>${left}/${total}</span>`;
+  el.setAttribute('aria-label', STRINGS.shop.inStock(left, total));
+  return el;
+}
+
 export function label(text: string): HTMLElement {
   const el = document.createElement('span');
   el.className = 'shop-label';
@@ -171,17 +181,13 @@ export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>)
     .filter((f: Food) => f.price > 0 && !f.caughtOnly && !f.grownOnly && !f.cookedOnly)
     .filter((f: Food) => !f.limited || limitedInStock(localDay(now)))
     .map((f: Food) => {
-      const note = f.limited
-        ? `${STRINGS.shop.inStock(limitedLeft(state, now))}. ${STRINGS.shop.have(foodCount(state, f.id))}`
-        : STRINGS.shop.have(foodCount(state, f.id));
-      const action = f.limited && limitedLeft(state, now) <= 0
-        ? label(STRINGS.shop.inStock(0))
+      const left = f.limited ? limitedLeft(state, now) : Infinity;
+      const action = left <= 0
+        ? label(STRINGS.shop.soldOut)
         : priceButton(f.price, state.gold, () => cb.onBuyFood(f.id));
-      return {
-        icon: ITEM_ICONS[f.id],
-        count: countBadge(foodCount(state, f.id)),
-        row: row(ITEM_ICONS[f.id], STRINGS.foods[f.id], note, action),
-      };
+      const el = row(ITEM_ICONS[f.id], STRINGS.foods[f.id], STRINGS.shop.have(foodCount(state, f.id)), action);
+      if (f.limited) el.querySelector('b')!.append(stockChip(left));
+      return { icon: ITEM_ICONS[f.id], count: countBadge(foodCount(state, f.id)), row: el };
     });
   const hats: Entry[] = HATS.map((h) => {
     const owned = state.inventory.hats.includes(h.id);
