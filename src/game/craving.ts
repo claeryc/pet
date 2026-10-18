@@ -1,24 +1,19 @@
 // Cravings. Now and then the pet would love one particular thing: a fish, a
 // crop, a dish or a Shop treat. It shows in a thought bubble over its head
 // (no messages), and feeding it that food gives a little extra joy, Care
-// and gold. Ignoring it costs nothing; it just passes after a while.
+// and gold (more gold for rarer food). Ignoring it costs nothing; it just
+// passes after a while.
 //
-// The pet only craves something you can get before the craving passes:
-//   - food you have right now,
-//   - Shop food (you can always buy it),
-//   - a fish you've caught before (3-star fish only if you have one),
-//   - a crop in a pot that will be ripe in time,
-//   - a dish you've cooked before, if you can get each ingredient this way.
-// So it never asks for a dragon fruit that's two days from ripe.
+// The pet craves anything you've had before, whether you have one now or
+// not: a fish you've caught, a crop you've grown, a dish you've cooked, or
+// a Shop treat. A pumpkin craving is easy with pumpkins in the pantry and
+// out of reach without, so keeping a varied pantry pays off.
 //
 // Like Percy's orders, cravings run on real time inside simulate(): one
 // that's still going when you come back is waiting in its bubble.
 
 import { CONFIG } from './config';
-import type { Food, FoodId } from './actions';
-import { foodCount } from './economy';
-import { RECIPES } from './cooking';
-import { plotStage, timeLeft } from './garden';
+import type { Food } from './actions';
 import { seededRoll } from './growth';
 import { clampStat, isNight } from './stats';
 import type { GameState } from './state';
@@ -27,45 +22,32 @@ const HOUR = 3_600_000;
 const C = CONFIG.craving;
 const FOODS = CONFIG.foods as readonly Food[];
 
-const getFood = (id: string) => FOODS.find((f) => f.id === id);
 const fromShop = (f: Food) => !f.caughtOnly && !f.grownOnly && !f.cookedOnly;
 
-// Can you get this food by time `by`?
-export function gettable(state: GameState, id: string, by: number, now: number): boolean {
-  const food = getFood(id);
-  if (!food) return false;
-  if (foodCount(state, id as FoodId) > 0) return true;
-  if (fromShop(food)) return true;
-  if (food.caughtOnly) return state.caught.includes(id) && (food.stars ?? 1) < 3;
-  if (food.grownOnly) {
-    return state.garden.some(
-      (p) => p.crop === id && (plotStage(p) === 'ready' || (plotStage(p) === 'growing' && now + timeLeft(p, now) <= by)),
-    );
-  }
-  if (id === CONFIG.cooking.mess || !state.recipesFound.includes(id)) return false;
-  const recipe = RECIPES.find((r) => r.id === id);
-  return !!recipe && recipe.ingredients.every((i) => gettable(state, i, by, now));
-}
-
-// Everything the pet could crave right now, in groups like Percy's: Shop
-// treats, fish, crops and dishes. Never the free rice ball or a Mushy mess.
-export function cravingPool(state: GameState, now: number): string[][] {
-  const by = now + C.lastsHours * HOUR;
-  const ok = (f: Food) =>
-    f.price > 0 && f.id !== CONFIG.cooking.mess && f.id !== state.craving.last && gettable(state, f.id, by, now);
+// Everything the pet could crave, in groups like Percy's: Shop treats,
+// fish, crops and dishes. Never the free rice ball, a Mushy mess, or the
+// same thing twice in a row.
+export function cravingPool(state: GameState): string[][] {
+  const ok = (f: Food) => f.price > 0 && f.id !== CONFIG.cooking.mess && f.id !== state.craving.last;
   return [
     FOODS.filter((f) => fromShop(f) && ok(f)),
-    FOODS.filter((f) => f.caughtOnly && ok(f)),
-    FOODS.filter((f) => f.grownOnly && ok(f)),
-    FOODS.filter((f) => f.cookedOnly && ok(f)),
+    FOODS.filter((f) => f.caughtOnly && ok(f) && state.caught.includes(f.id)),
+    FOODS.filter((f) => f.grownOnly && ok(f) && (state.grown ?? []).includes(f.id)),
+    FOODS.filter((f) => f.cookedOnly && ok(f) && state.recipesFound.includes(f.id)),
   ].map((g) => g.map((f) => f.id as string));
+}
+
+// The gold tip for feeding a craving, by the food's stars.
+export function cravingTip(food: string): number {
+  const stars = (FOODS.find((f) => f.id === food)?.stars ?? 0) as 0 | 1 | 2 | 3;
+  return C.reward.gold[stars];
 }
 
 // Picks a craving: first a group (so a pantry full of Shop treats doesn't
 // crowd out the rest), then a food in it. The same moment always gives the
 // same pick, so it can be tested.
 export function pickCraving(state: GameState, now: number): string | null {
-  const groups = cravingPool(state, now).filter((g) => g.length > 0);
+  const groups = cravingPool(state).filter((g) => g.length > 0);
   if (groups.length === 0) return null;
   const group = groups[Math.floor(seededRoll(state.pet.id, `craving-group:${now}`) * groups.length)];
   return group[Math.floor(seededRoll(state.pet.id, `craving:${now}`) * group.length)];
@@ -92,6 +74,7 @@ export function stepCraving(state: GameState, now: number): GameState {
 export function satisfyCraving(state: GameState, food: string, now: number): { state: GameState; tip: number } {
   if (!state.craving.food || state.craving.food !== food) return { state, tip: 0 };
   const { reward } = C;
+  const tip = cravingTip(food);
   const pet = {
     ...state.pet,
     stats: { ...state.pet.stats, happiness: clampStat(state.pet.stats.happiness + reward.happiness) },
@@ -101,9 +84,9 @@ export function satisfyCraving(state: GameState, food: string, now: number): { s
     state: {
       ...state,
       pet,
-      gold: state.gold + reward.gold,
+      gold: state.gold + tip,
       craving: { ...state.craving, food: null, nextAt: now + C.nextAfterHours * HOUR },
     },
-    tip: reward.gold,
+    tip,
   };
 }

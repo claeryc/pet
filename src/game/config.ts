@@ -291,17 +291,16 @@ export const CONFIG = {
   },
 
   // Cravings: now and then the pet would love one particular thing, shown
-  // in a thought bubble over its head. It only asks for something you can
-  // get before the craving passes: food you have, a fish you've caught
-  // before, a crop that's in your pantry or ripe in time, or a dish you've
-  // cooked whose ingredients you can get the same way. 3-star fish only
-  // come up if you already have one. Feeding it is never required. Times
-  // are in hours.
+  // in a thought bubble over its head. It can be anything you've had
+  // before (a fish you caught, a crop you grew, a dish you cooked) or a
+  // Shop treat, whether you have one right now or not, so keeping a varied
+  // pantry pays off. Feeding it is never required. Times are in hours.
   craving: {
     lastsHours: 6, // how long the bubble stays if you don't feed it
     nextAfterHours: 3, // a new craving comes this long after the last one ends
-    // What feeding the craved food gives on top of the food itself.
-    reward: { happiness: 15, care: 2, gold: 10 },
+    // What feeding the craved food gives on top of the food itself. Rarer
+    // food gives a bigger gold tip, by its stars (0 for Shop food).
+    reward: { happiness: 15, care: 2, gold: { 0: 5, 1: 10, 2: 20, 3: 35 } },
   },
 
   // How many old messages the Messages page keeps.
