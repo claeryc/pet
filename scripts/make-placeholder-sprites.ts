@@ -99,7 +99,9 @@ class PixelCanvas {
 // ---------- The creatures ----------
 
 type Face = 'happy' | 'sad' | 'sleep' | 'sick' | 'eat' | 'joy' | 'cheerful';
-type Topper = 'none' | 'nubs' | 'ears' | 'sprout' | 'fluff' | 'spikes' | 'crystals' | 'leaves' | 'antenna' | 'halo';
+type Topper =
+  | 'none' | 'nubs' | 'ears' | 'bunny' | 'sprout' | 'fluff' | 'spikes' | 'crystals' | 'shards'
+  | 'leaves' | 'mushroom' | 'antenna' | 'halo' | 'moon';
 type Extra = 'spots' | 'wings' | 'twinkle';
 
 interface Look {
@@ -185,6 +187,12 @@ function drawCreature(look: Look, face: Face, [bounce, squash, extra]: Frame, co
   } else if (look.topper === 'ears') {
     px(left + 3, top - 2, 2, 2, body);
     px(left + bw - 5, top - 2, 2, 2, body);
+  } else if (look.topper === 'bunny') {
+    // Two tall ears, pink inside.
+    for (const x of [left + 4, left + bw - 7]) {
+      px(x, top - 5, 3, 5, body);
+      px(x + 1, top - 4, 1, 3, sickLook ? PALETTE.leaf : PALETTE.pink);
+    }
   } else if (look.topper === 'sprout') {
     px(mid, top - 3, 1, 3, PALETTE.leaf);
     px(mid - 2, top - 4, 2, 2, PALETTE.leaf);
@@ -205,6 +213,16 @@ function drawCreature(look: Look, face: Face, [bounce, squash, extra]: Frame, co
     crystal(left + 4, 3, PALETTE.pink);
     crystal(mid - 1, 5, PALETTE.sky);
     crystal(left + bw - 7, 3, PALETTE.lavender);
+  } else if (look.topper === 'shards') {
+    // A few crystals growing out of its back, leaning to one side.
+    const crystal = (x: number, h: number, color: string) => {
+      px(x + 1, top - h - 1, 1, 1, color);
+      px(x, top - h, 3, h, color);
+      px(x, top - h, 1, h - 1, PALETTE.white);
+    };
+    crystal(left + 4, 4, PALETTE.ocean);
+    crystal(left + 8, 2, PALETTE.pink);
+    crystal(left + bw - 7, 2, PALETTE.ocean);
   } else if (look.topper === 'leaves') {
     for (const x of [left + 3, left + bw - 6]) {
       px(x, top - 2, 3, 2, PALETTE.leaf);
@@ -214,6 +232,13 @@ function drawCreature(look: Look, face: Face, [bounce, squash, extra]: Frame, co
     px(mid - 2, top - 3, 5, 1, PALETTE.pink);
     px(mid - 1, top - 2, 3, 2, PALETTE.pink);
     px(mid, top - 3, 1, 1, PALETTE.butter);
+  } else if (look.topper === 'mushroom') {
+    // A spotty toadstool cap over the top of the head.
+    const cap = sickLook ? PALETTE.leaf : PALETTE.rose;
+    [[6, -3], [2, -2], [0, -1], [-1, 0], [-1, 1]].forEach(([inset, dy]) => px(left + inset, top + dy, bw - inset * 2, 1, cap));
+    px(left + 4, top - 1, 2, 1, PALETTE.white);
+    px(mid + 1, top - 2, 2, 1, PALETTE.white);
+    px(left + bw - 5, top, 2, 1, PALETTE.white);
   } else if (look.topper === 'antenna') {
     px(mid, top - 4, 1, 4, PALETTE.ink);
     px(mid, top - 9, 1, 5, PALETTE.butter); // a little star
@@ -223,6 +248,12 @@ function drawCreature(look: Look, face: Face, [bounce, squash, extra]: Frame, co
   } else if (look.topper === 'halo') {
     // A floating halo (the outline makes it a ring).
     px(mid - 4, top - 6, 9, 1, PALETTE.butter);
+  } else if (look.topper === 'moon') {
+    // A little crescent moon floating above the head.
+    const x = mid - 2;
+    px(x + 1, top - 8, 3, 1, PALETTE.butter);
+    px(x, top - 7, 2, 3, PALETTE.butter);
+    px(x + 1, top - 4, 3, 1, PALETTE.butter);
   }
 
   // Face.
@@ -489,16 +520,20 @@ const LOOKS: Record<string, Look> = {
   'stages/teen': { body: PALETTE.pink, shade: PALETTE.rose, width: 20, height: 16, topper: 'ears' },
   // Basic: soft and simple.
   'characters/basic/dumpling': { body: PALETTE.peach, shade: PALETTE.cocoa, width: 20, height: 15, topper: 'nubs' },
+  'characters/basic/bunbun': { body: PALETTE.cream, shade: PALETTE.peach, width: 22, height: 15, topper: 'bunny' },
   'characters/basic/cloudlet': { body: PALETTE.lavender, shade: PALETTE.lilac, width: 24, height: 17, topper: 'fluff', extras: ['wings'] },
   // Nature: leafy and green.
   'characters/nature/sprig': { body: PALETTE.mint, shade: PALETTE.leaf, width: 20, height: 16, topper: 'sprout' },
+  'characters/nature/mosscap': { body: PALETTE.peach, shade: PALETTE.leaf, width: 22, height: 15, topper: 'mushroom' },
   'characters/nature/fernwhisk': { body: PALETTE.leaf, shade: PALETTE.cocoa, width: 24, height: 18, topper: 'leaves' },
   // Cave: spiky and rocky.
   'characters/cave/pebblit': { body: PALETTE.lilac, shade: PALETTE.plum, detail: PALETTE.plum, width: 20, height: 15, topper: 'spikes', extras: ['spots'] },
   'characters/cave/pebblit-amber': { body: PALETTE.butter, shade: PALETTE.cocoa, detail: PALETTE.cocoa, width: 20, height: 15, topper: 'spikes', extras: ['spots'] },
+  'characters/cave/crystalback': { body: PALETTE.lavender, shade: PALETTE.plum, detail: PALETTE.lilac, width: 22, height: 15, topper: 'shards', extras: ['spots'] },
   'characters/cave/geodon': { body: PALETTE.ocean, shade: PALETTE.plum, detail: PALETTE.lavender, width: 24, height: 16, topper: 'crystals', extras: ['spots'] },
   // Sparkle: shiny and magical.
   'characters/sparkle/glimmer': { body: PALETTE.butter, shade: PALETTE.peach, width: 18, height: 13, topper: 'antenna' },
+  'characters/sparkle/moonpip': { body: PALETTE.pink, shade: PALETTE.rose, width: 22, height: 14, topper: 'moon', extras: ['twinkle'] },
   'characters/sparkle/starwisp': { body: PALETTE.sky, shade: PALETTE.lilac, width: 24, height: 16, topper: 'halo', extras: ['twinkle'] },
 };
 

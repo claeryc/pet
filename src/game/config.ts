@@ -45,9 +45,8 @@ export const CONFIG = {
   // using the Care Score at that moment, then picks a theme at random among
   // the characters of that rarity (see src/data/characters.json).
   // Each row: the lowest Care Score for that row, then the chance (percent)
-  // of 1, 2 and 3 stars. If no character has the rolled rarity yet, the
-  // next lower rarity is used, so today (only 1 and 3 star characters)
-  // a 2-star roll becomes 1 star.
+  // of 1, 2 and 3 stars. If no character has the rolled rarity, the next
+  // lower rarity is used (every theme has all three today).
   rarity: [
     { minCare: 80, odds: { 1: 10, 2: 40, 3: 50 } },
     { minCare: 50, odds: { 1: 30, 2: 50, 3: 20 } },
