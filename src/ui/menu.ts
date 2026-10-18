@@ -24,6 +24,8 @@ export interface DebugCallbacks {
   onAddGold: () => void;
   onSetCare: (score: number) => void;
   onShowAllMenus: (on: boolean) => void;
+  onVisitorNow: () => void;
+  onFriendScore: () => void;
 }
 
 export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks, FamilyCallbacks {
@@ -31,11 +33,14 @@ export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks, FamilyCall
   onOwner: (name: string) => void; // the player typed their name in Settings
   onSeen: (id: UnlockId) => void; // the player has looked at something new
   onMessagesSeen: () => void; // the player opened Messages
+  onRemoveFriend: (friend: string) => void;
+  onInvite: (friend: string) => boolean; // true if they're coming over
 }
 
 // Things only the home screen can do, passed in by it.
 export interface MenuActions {
   onOpenDelivery: () => void; // go out to Percy to fill Percy's order
+  onOpenMeet: () => void; // meet whoever is over (Play > Meet)
 }
 
 export interface Menu {
@@ -164,6 +169,13 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
           close();
           cb.onOpenDelivery();
         },
+        onOpenMeet: () => {
+          close();
+          cb.onOpenMeet();
+        },
+        onRemoveFriend: cb.onRemoveFriend,
+        onInvite: cb.onInvite,
+        characterImage: cb.characterImage,
       }));
     }
     panel.replaceChildren(header(STRINGS.messages.title, showMain), list);
@@ -242,7 +254,15 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     gold.className = 'chip';
     gold.textContent = STRINGS.debug.addGold(CONFIG.debug.addGold);
     gold.addEventListener('click', cb.onAddGold);
-    row.append(back, grow, gold);
+    const visitor = document.createElement('button');
+    visitor.className = 'chip';
+    visitor.textContent = STRINGS.debug.visitorNow;
+    visitor.addEventListener('click', cb.onVisitorNow);
+    const friendship = document.createElement('button');
+    friendship.className = 'chip';
+    friendship.textContent = STRINGS.debug.friendScore(CONFIG.debug.friendScore);
+    friendship.addEventListener('click', cb.onFriendScore);
+    row.append(back, grow, gold, visitor, friendship);
     // Care Score presets, to try out which characters appear.
     const careLabel = document.createElement('p');
     careLabel.textContent = STRINGS.debug.setCare;
@@ -320,7 +340,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
         JSON.stringify([
           s.gold, s.inventory, s.pet.hat, s.pet.stage, s.unlocked, s.seen, s.showAllMenus,
           s.recipesFound, s.caught, s.charactersFound, s.pet.name, s.pet.named, s.owner, s.family,
-          s.messages, s.messagesSeenAt, s.delivery,
+          s.messages, s.messagesSeenAt, s.delivery, s.friends, s.visit.guest, s.housemates.map((p) => [p.id, p.name, p.stage]),
           page === 'messages' && Math.floor(s.lastUpdated / 60_000),
           page === 'familyTree' && [Object.values(s.pet.stats).map(Math.round), Math.floor(s.lastUpdated / 3_600_000)],
         ]);

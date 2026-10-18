@@ -14,6 +14,7 @@ import { growUp, stageLengthMs } from './growth';
 import { growGarden } from './garden';
 import { stepDelivery } from './delivery';
 import { stepCraving } from './craving';
+import { stepVisits } from './friends';
 import type { GameState, Pet } from './state';
 
 const MS_PER_MINUTE = 60_000;
@@ -32,21 +33,26 @@ export function simulate(state: GameState, now: number): GameState {
 
   const ticks = Math.floor(elapsed / tickMs);
 
-  // Work on a copy so the original state is never changed by accident.
-  const pet: Pet = { ...state.pet, stats: { ...state.pet.stats }, buffs: [...state.pet.buffs] };
+  // Work on copies so the original state is never changed by accident.
+  // Every pet in the room lives on, not just the one you're looking after.
+  const copy = (p: Pet): Pet => ({ ...p, stats: { ...p.stats }, buffs: [...p.buffs] });
+  const pet = copy(state.pet);
+  const housemates = state.housemates.map(copy);
 
   let t = state.lastUpdated;
   for (let i = 0; i < ticks; i++) {
     const wasNight = isNight(t);
     t += tickMs;
     tick(pet, t, wasNight);
+    for (const other of housemates) tick(other, t, wasNight);
   }
 
   // The garden grows on its own clock, so it catches up in one go.
   const garden = growGarden(state.garden, state.lastUpdated, t);
-  // So do Percy's orders (a pickup that came due, or a new order) and the
-  // pet's cravings.
-  return stepCraving(stepDelivery({ ...state, pet, garden, lastUpdated: t }, t), t);
+  // So do Percy's orders (a pickup that came due, or a new order), the
+  // pet's cravings, and visitors dropping by.
+  const next = { ...state, pet, housemates, garden, lastUpdated: t };
+  return stepVisits(stepCraving(stepDelivery(next, t), t), t);
 }
 
 // Advances the pet by one tick ending at time `t`. Changes `pet` in place

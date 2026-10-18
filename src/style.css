@@ -3250,3 +3250,378 @@ body {
     visibility: hidden;
   }
 }
+
+/* ---- Friends and the next generation ---- */
+
+/* With two pets in the room the craving bubble floats over the one you're
+   looking after: the older pet stands on the left. */
+.room-wrap[data-spot='left'] .craving-bubble {
+  left: 31%;
+}
+
+.room-wrap[data-spot='right'] .craving-bubble {
+  left: auto;
+  right: 0;
+}
+
+/* Another player's pet has a blue border; a wanderer a leafy green one. */
+.tree-card.is-wild,
+.tree-node.is-wild {
+  border-color: var(--good);
+}
+
+/* "At home": another pet in your room, in the Family Tree. */
+.tree-now.tree-home {
+  background: var(--lilac);
+}
+
+/* Five hearts, filled in by halves. */
+.heart-row {
+  display: inline-flex;
+  gap: 1px;
+  vertical-align: middle;
+}
+
+/* One heart: the empty heart, with the full one laid over it and cut off
+   past --fill (0 to 1), so it fills up from left to right. The drawing
+   only uses columns 0-6 of its 8, hence the 12.5% and 87.5%. */
+.heart {
+  position: relative;
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+}
+
+.heart svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.heart svg + svg {
+  clip-path: inset(0 calc(12.5% + (1 - var(--fill)) * 87.5%) 0 0);
+  transition: clip-path 0.6s ease;
+}
+
+/* [Close] [Gift] [Meet], one height, like Percy's row. */
+.meet-row:not([hidden]) {
+  animation: rise-in 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.meet-row .btn {
+  height: 52px;
+  padding: 0 14px;
+  flex: 1 1 0;
+}
+
+.meet-row .btn-soft {
+  flex: 0 0 auto;
+}
+
+/* Close and Meet shrink away fully while the Gift list is open. */
+.meet-row[data-open] > .btn {
+  padding: 0;
+  flex-shrink: 1;
+}
+
+.meet-row .btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* The panel slides up over the stat bars like Percy's boxes, with a
+   soft pink frame. */
+.meet {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 4px var(--low-light);
+  transform: translateY(100%);
+  transition: transform 0.45s cubic-bezier(0.5, 0, 0.9, 0.6);
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+
+.meet[hidden] {
+  display: none;
+}
+
+.meet.is-in {
+  transform: translateY(0);
+  transition: transform 0.7s cubic-bezier(0.45, 0, 0.55, 1);
+}
+
+.meet-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas:
+    'pic name hearts'
+    'today today leaves';
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 4px;
+}
+
+.meet-head .meet-pic {
+  grid-area: pic;
+}
+
+.meet-head .meet-name {
+  grid-area: name;
+}
+
+.meet-head .meet-hearts {
+  grid-area: hearts;
+  justify-self: end;
+}
+
+.meet-head .meet-today {
+  grid-area: today;
+  justify-self: start;
+}
+
+.meet-head .meet-leaves {
+  grid-area: leaves;
+  justify-self: end;
+}
+
+.meet-name {
+  font-size: 1.05rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meet-pic {
+  width: 30px;
+  height: 30px;
+}
+
+.meet-pic[hidden] {
+  display: none;
+}
+
+.meet-hearts {
+  margin-left: auto;
+}
+
+/* The time left: hourglass and hours, small, under the hearts. */
+.meet-leaves {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--plum);
+}
+
+.meet-leaves svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Today's meetings that counted: a small pill with a dot per meeting,
+   pink once met, green when all are done. */
+.meet-today {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px 1px 8px;
+  border-radius: 999px;
+  background: var(--seg-empty);
+  color: var(--plum);
+}
+
+.meet-today small {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 2px;
+  opacity: 0.8;
+}
+
+.meet-today i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: inset 0 0 0 1.5px var(--track);
+}
+
+.meet-today i.is-met {
+  background: var(--accent);
+  box-shadow: none;
+}
+
+.meet-today[data-done='true'] {
+  background: var(--good-light);
+}
+
+.meet-today[data-done='true'] i.is-met {
+  background: var(--good-dark);
+}
+
+.meet-today[hidden],
+.meet-leaves[hidden] {
+  display: none;
+}
+
+/* A gift's worth in hearts, pink rather than the green of stat boosts. */
+.drawer[data-drawer='gift'] .chip-effect {
+  color: var(--accent-dark);
+  background: #fde4ec;
+}
+
+.meet-mingle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  margin: 10px 0 6px;
+  padding: 4px 12px;
+  border: 2px dashed var(--low-light);
+  border-radius: 14px;
+  background: white;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.meet-mingle svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+
+/* Ready to mingle: a solid pink button with a soft beat. */
+.meet-mingle[data-ready='true'] {
+  border-style: solid;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: white;
+  animation: mingle-beat 1.6s ease-in-out infinite;
+}
+
+@keyframes mingle-beat {
+  0%, 100% { transform: scale(1); }
+  10% { transform: scale(1.03); }
+  20% { transform: scale(1); }
+  30% { transform: scale(1.03); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meet-mingle[data-ready='true'] {
+    animation: none;
+  }
+}
+
+.meet-mingle[hidden],
+.meet-add[hidden],
+.meet-empty[hidden] {
+  display: none;
+}
+
+.meet-add {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 18px;
+}
+
+.meet-empty {
+  margin: 0;
+  font-size: 0.85rem;
+  text-align: center;
+  opacity: 0.75;
+}
+
+/* Friends in Messages. */
+.friend-row.is-guest {
+  border-color: var(--butter);
+}
+
+.friend-pic .portrait {
+  display: block;
+}
+
+.friend-row {
+  position: relative;
+}
+
+.friend-row:has(.friend-bye) {
+  padding-right: 30px;
+}
+
+.friend-pic .portrait {
+  display: block;
+}
+
+.friend-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.friend-row .heart-row {
+  margin: 1px 0;
+}
+
+.friend-row .heart {
+  width: 14px;
+  height: 14px;
+}
+
+.friend-hang {
+  flex: none;
+  min-height: 36px;
+  white-space: nowrap;
+}
+
+.friend-bye {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--plum);
+  font: inherit;
+  font-weight: 800;
+  opacity: 0.55;
+  cursor: pointer;
+}
+
+/* The keep-or-retire box: one big button per choice. */
+.choice-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.choice-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+}
+
+.choice-btn .portrait {
+  flex: none;
+  width: 32px;
+  height: 32px;
+}

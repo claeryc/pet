@@ -11,7 +11,7 @@ const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 12;
+export const SAVE_VERSION = 13;
 
 export interface SaveFile {
   version: number;
@@ -119,6 +119,17 @@ export function migrate(save: SaveFile): SaveFile {
   if (save.version === 11) {
     save.state.craving = { food: null, until: 0, nextAt: 0, last: null };
     save.version = 12;
+  }
+  // Version 12 -> 13: friends, mingling and more than one pet in the room.
+  if (save.version === 12) {
+    const st = save.state;
+    st.pet.themes = [];
+    st.pet.partner = null;
+    st.housemates = [];
+    st.family = (st.family ?? []).map((m: any) => ({ ...m, fromWild: false }));
+    st.friends = [];
+    st.visit = { guest: null, friendId: null, until: 0, met: false, nextAt: 0, wildAt: 0, invitedDay: '' };
+    save.version = 13;
   }
   return save;
 }

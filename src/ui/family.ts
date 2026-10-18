@@ -5,7 +5,7 @@
 // on the home screen.
 
 import { STRINGS } from '../strings';
-import { getCharacter, getVariant, sheetFor } from '../game/growth';
+import { characterSheet, getCharacter, getVariant, sheetFor } from '../game/growth';
 import { ageInDays, familyGenerations, pedigree, type TreeMember } from '../game/family';
 import type { GameState, PetStats } from '../game/state';
 import { STAT_ICONS, UNKNOWN_ICON } from './icons';
@@ -40,9 +40,9 @@ function whatItIs(m: TreeMember): string {
 }
 
 function sheetOf(m: TreeMember, state: GameState): string {
-  if (m.current) return sheetFor(state.pet);
-  const character = getCharacter(m.character);
-  return getVariant(character, m.variant)?.sheet ?? character?.sheet ?? '';
+  const atHome = [state.pet, ...state.housemates].find((p) => p.id === m.id);
+  if (atHome) return sheetFor(atHome);
+  return characterSheet(m.character, m.variant);
 }
 
 // The pet's four stats as tiny bars.
@@ -69,7 +69,7 @@ function statRow(stats: PetStats): HTMLElement {
 }
 
 function card(m: TreeMember, state: GameState, cb: FamilyCallbacks): HTMLElement {
-  const c = el('div', `tree-card${m.current ? ' is-current' : ''}${m.fromFriend ? ' is-friend' : ''}`);
+  const c = el('div', `tree-card${m.current ? ' is-current' : ''}${kindClass(m)}`);
   const pic = el('span', 'tree-portrait');
   const url = cb.characterImage(sheetOf(m, state));
   pic.innerHTML = url ? `<span class="portrait" style="background-image:url('${url}')"></span>` : UNKNOWN_ICON;
@@ -78,6 +78,7 @@ function card(m: TreeMember, state: GameState, cb: FamilyCallbacks): HTMLElement
   const top = el('div', 'tree-name');
   top.append(el('b', '', m.name || '…'));
   if (m.current) top.append(el('span', 'tree-now', STRINGS.family.you));
+  else if (m.home) top.append(el('span', 'tree-now tree-home', STRINGS.family.atHome));
   if (m.current && state.pet.named) {
     const rename = el('button', 'shop-btn shop-btn-soft tree-rename', STRINGS.family.rename);
     rename.addEventListener('click', cb.onRename);
@@ -86,12 +87,18 @@ function card(m: TreeMember, state: GameState, cb: FamilyCallbacks): HTMLElement
   info.append(
     top,
     el('small', 'tree-what', whatItIs(m)),
-    el('small', '', m.owner ? STRINGS.family.raisedBy(m.owner) : STRINGS.family.raisedByYou),
-    el('small', '', m.current ? STRINGS.family.age(ageInDays(m.bornAt, state.lastUpdated)) : bornOn(m.bornAt)),
+    el('small', '', m.fromWild ? STRINGS.family.raisedInWild : m.owner ? STRINGS.family.raisedBy(m.owner) : STRINGS.family.raisedByYou),
+    el('small', '', m.home ? STRINGS.family.age(ageInDays(m.bornAt, state.lastUpdated)) : bornOn(m.bornAt)),
   );
-  if (m.current && m.stage !== 'egg') info.append(statRow(state.pet.stats));
+  const atHome = [state.pet, ...state.housemates].find((p) => p.id === m.id);
+  if (atHome && atHome.stage !== 'egg') info.append(statRow(atHome.stats));
   c.append(pic, info);
   return c;
+}
+
+// A blue border for another player's pet, green for a wanderer.
+function kindClass(m: TreeMember): string {
+  return m.fromWild ? ' is-wild' : m.fromFriend ? ' is-friend' : '';
 }
 
 function bornOn(t: number): string {
@@ -112,7 +119,7 @@ function node(m: TreeMember | null, state: GameState, cb: FamilyCallbacks, onFoc
     empty.append(el('span', 'tree-node-name', STRINGS.collection.unknown));
     return empty;
   }
-  const b = el('button', `tree-node${m.current ? ' is-current' : ''}${m.fromFriend ? ' is-friend' : ''}`);
+  const b = el('button', `tree-node${m.current ? ' is-current' : ''}${kindClass(m)}`);
   b.innerHTML = `<span class="tree-node-pic">${portraitHtml(m, state, cb)}</span>`;
   b.append(el('span', 'tree-node-name', m.name || '…'));
   // Who raised it shows on its card once you tap it; here a blue border

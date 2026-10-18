@@ -303,6 +303,57 @@ export const CONFIG = {
     reward: { happiness: 15, care: 2, gold: { 0: 5, 1: 10, 2: 20, 3: 35 } },
   },
 
+  // Friends and the next generation (Play > Meet). Once you have a
+  // grown-up pet, pets drop by one at a time: your friends at random times
+  // through the day, and a new wanderer (a grown-up pet the game makes
+  // itself) every couple of days. Meeting a pet and giving it gifts raises your
+  // friend score with it (0-100, shown as 5 hearts, `heartPoints` each).
+  // With enough hearts, two grown-ups can mingle, and that may bring a
+  // little one: an egg for your room. Times are in hours.
+  friends: {
+    firstVisitHours: 1, // the first wanderer comes this soon after growing up
+    wildEveryHours: 48, // then a new one every 2 days
+    stayHours: 3, // each visitor stays this long
+    // The break between one visitor leaving and the next arriving, picked
+    // at random between these.
+    gapHours: { min: 1, max: 3 },
+    invitesPerDay: 1, // friends you can invite over yourself each day
+    maxWild: 10, // how many wanderers you can keep as friends (online friends get their own 10 later)
+    heartPoints: 20,
+    // A meeting: score gained (only the first `perDay` meetings with a
+    // friend each day count), and what it does to your pet's stats.
+    meet: { score: 4, perDay: 3, happiness: 8, energy: -4 },
+    // Gifts count in tenths of a heart (heartPoints / 10 each): one tenth
+    // per `goldPerTenth` of the food's price (rounded, but always at least
+    // one), counting up to `tenthsPerDay` from gifts per friend each day.
+    gift: { goldPerTenth: 20, tenthsPerDay: 3 },
+    // A friend who visited and left without meeting your pet loses this
+    // much, but never a whole heart.
+    missedVisit: 1,
+    // Mingling needs this score (70 = hearts 70% full). The chance of a
+    // little one goes up with the score (first row that fits, percent).
+    // After a mingle the pair waits `waitDays` before the next one.
+    mingle: {
+      minScore: 70,
+      chance: [
+        { minScore: 100, chance: 80 },
+        { minScore: 85, chance: 65 },
+        { minScore: 70, chance: 50 },
+      ],
+      waitDays: 3,
+    },
+    // How many pets fit in the room. A little one past that means one of
+    // the others retires into the Family Tree.
+    maxPets: 2,
+    // A little one favours its parents' themes when it grows up: this
+    // share (percent) of the time it becomes a character of one of them,
+    // otherwise any theme. Rarity still comes from the Care Score.
+    parentThemeChance: 60,
+    // Wanderers lean towards common characters (percent by stars), so
+    // friends' pets stay the best route to rare little ones.
+    wandererStars: { 1: 65, 2: 25, 3: 10 },
+  },
+
   // How many old messages the Messages page keeps.
   messagesKept: 60,
 
@@ -325,6 +376,7 @@ export const CONFIG = {
     addGold: 100,
     // Buttons that set the Care Score, to test which characters appear.
     careScores: [10, 60, 90],
+    friendScore: 20, // "+20 friendship" with every friend and the guest
   },
 } as const;
 

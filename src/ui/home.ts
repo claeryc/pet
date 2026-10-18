@@ -20,7 +20,10 @@ import { createDelivery, DELIVERY_OUT_MS } from './delivery';
 import { unreadMail } from '../game/messages';
 import type { CropId } from '../game/garden';
 import { isNew, isUnlocked } from '../game/unlocks';
-import { isOnPet, ROOM_HEIGHT, ROOM_WIDTH } from '../render/canvas';
+import { petAt, ROOM_HEIGHT, ROOM_WIDTH } from '../render/canvas';
+import { createMeet, MEET_OUT_MS } from './meet';
+import { petStandsLeft } from '../game/friends';
+import type { Friend } from '../game/state';
 import { potAt, type GardenScene } from '../render/garden';
 import type { DeliveryScene } from '../render/delivery';
 import { formatDuration } from './time';
@@ -44,6 +47,11 @@ export interface HomeCallbacks extends MenuCallbacks {
   onPutInBox: (box: number) => void; // Percy's order
   onTakeFromBox: (box: number) => void;
   onFillAll: () => void;
+  onMeet: (friend: string) => boolean; // true if they played
+  onGift: (friend: string, food: FoodId) => void;
+  onMingle: (friend: string) => void;
+  onAddFriend: () => void;
+  onSwitchPet: (id: string) => void; // tapped the other pet in the room
 }
 
 export interface HomeScreen {
@@ -57,6 +65,7 @@ export interface HomeScreen {
   fishingPhase: () => FishingPhase; // so the room can draw the line and bobber
   gardenScene: () => GardenScene | null; // so the room can turn into the garden
   deliveryScene: () => DeliveryScene | null; // ...or Percy's meadow, for his order
+  meetScene: () => { friend: Friend; hearts: boolean } | null; // a friend over to play
 }
 
 // Pixel icons drawn on a 12x12 grid, so they match the pixel-art style.
@@ -87,6 +96,8 @@ interface StatBar {
   set: (v: number) => void;
   // Empties the bar, waits `delayMs`, then fills it back up to its value.
   refill: (delayMs: number) => void;
+  // Moves to a new value one block at a time (switching pets).
+  slide: (v: number) => void;
 }
 
 function statBar(label: string, icon: string): StatBar {
@@ -112,8 +123,10 @@ function statBar(label: string, icon: string): StatBar {
   let value = 0;
   let filling = false; // true while refilling: shown blocks count up on their own
   let timer = 0;
+  let shown = 0; // blocks lit right now
   const litFor = (v: number) => Math.ceil(v / (100 / STAT_SEGMENTS));
   function show(lit: number): void {
+    shown = lit;
     const low = value < CONFIG.lowStatThreshold;
     segments.forEach((seg, i) => {
       seg.classList.toggle('on', i < lit);
@@ -146,8 +159,31 @@ function statBar(label: string, icon: string): StatBar {
       };
       timer = window.setTimeout(step, delayMs);
     },
+    slide(v) {
+      clearTimeout(timer);
+      value = v;
+      filling = true;
+      el.setAttribute('aria-valuenow', String(Math.round(v)));
+      el.title = `${label}: ${Math.round(v)}`;
+      // One block up or down each step, until it reaches the new value.
+      const step = () => {
+        const target = litFor(value);
+        if (shown === target) {
+          filling = false;
+          show(target);
+          return;
+        }
+        show(shown + Math.sign(target - shown));
+        timer = window.setTimeout(step, SLIDE_MS_PER_SEGMENT);
+      };
+      step();
+    },
   };
 }
+
+// Switching pets: the bars move to the other pet's values this many ms per
+// block.
+const SLIDE_MS_PER_SEGMENT = 70;
 
 function button(label: string, className: string, onClick: () => void): HTMLButtonElement {
   const b = document.createElement('button');
@@ -278,6 +314,13 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       effects: statEffects({ happiness: a.happiness, energy: a.energy }),
       onPick: () => cb.onPlay(a.id),
     })),
+    // Meeting friends, right after the quick ones.
+    {
+      icon: ITEM_ICONS.meet,
+      label: STRINGS.minigames.meet,
+      effects: statEffects({ happiness: CONFIG.friends.meet.happiness, energy: CONFIG.friends.meet.energy }),
+      onPick: () => startMeet(),
+    },
     {
       icon: ITEM_ICONS.fishing,
       label: STRINGS.minigames.fishing,
@@ -295,7 +338,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     { icon: ITEM_ICONS.memoryMatch, label: STRINGS.minigames.memoryMatch, effects: [] },
   ];
 
-  const GARDEN_ROW = CONFIG.activities.length + 1; // after Fishing
+  const MEET_ROW = CONFIG.activities.length; // after Cuddle and Tickle
+  const GARDEN_ROW = MEET_ROW + 2; // after Meet and Fishing
   const feedDrawer = createDrawer({ id: 'feed', label: STRINGS.buttons.feed, options: feedOptions, ...drawerSetup });
   const playDrawer = createDrawer({ id: 'play', label: STRINGS.buttons.play, options: playOptions, ...drawerSetup });
 
@@ -303,7 +347,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   // same way Feed and Play open. It always opens, even for an egg.
   let menuDrawer: ReturnType<typeof createDrawer> | null = null;
   const menu = createMenu(
-    { ...cb, onOpenDelivery: () => startDelivery() },
+    { ...cb, onOpenDelivery: () => startDelivery(), onOpenMeet: () => startMeet() },
     () => menuDrawer?.isOpen() ?? false,
     () => menuDrawer?.close(),
   );
@@ -342,9 +386,12 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       y: ((e.clientY - rect.top) / rect.height) * ROOM_HEIGHT,
     };
   };
-  const onPetAt = (e: PointerEvent) => {
+  // Which pet a tap is on: the one you're looking after, the other one in
+  // the room, or neither.
+  const tappedPet = (e: PointerEvent) => {
     const { x, y } = roomPoint(e);
-    return isOnPet(x, y);
+    const s = latest?.state;
+    return petAt(x, y, !!s && s.housemates.length > 0, !s || petStandsLeft(s));
   };
   function cuddle(): void {
     const now = performance.now();
@@ -360,7 +407,12 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       if (pot >= 0) garden.select(pot);
       return;
     }
-    if (actions.hidden || !onPetAt(e)) return;
+    if (actions.hidden) return;
+    const which = tappedPet(e);
+    if (!which) return;
+    // Tapping the other pet looks after it instead.
+    const other = latest?.state.housemates[0];
+    if (which === 'housemate' && other) return cb.onSwitchPet(other.id);
     press = { x: e.clientX, y: e.clientY, held: false };
     clearTimeout(holdTimer);
     holdTimer = window.setTimeout(() => {
@@ -476,6 +528,29 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     if (latest) delivery.update(latest.state, latest.now);
     delivery.start();
   }
+  // Meeting a friend: they come over to the room, and a panel with their
+  // hearts slides up over the stat bars.
+  const meet = createMeet({
+    onMeet: cb.onMeet,
+    onGift: cb.onGift,
+    onMingle: cb.onMingle,
+    onAdd: cb.onAddFriend,
+    onExit: () => showActions(MEET_OUT_MS),
+    toast: (msg) => showToast(msg),
+    characterImage: cb.characterImage,
+  });
+  function startMeet(): void {
+    if (actions.hidden) return; // already busy with something else
+    cb.onSeen('meet');
+    feedDrawer.close();
+    playDrawer.close();
+    menuDrawer!.close();
+    actions.hidden = true;
+    refreshParcel();
+    stats.setAttribute('aria-hidden', 'true'); // covered by the panel for now
+    if (latest) meet.update(latest.state, latest.now);
+    meet.start();
+  }
   function refreshParcel(): void {
     parcel.hidden = !latest?.state.delivery.order || actions.hidden || latest.state.pet.stage === 'egg';
     refreshBubble();
@@ -541,7 +616,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   statSlot.className = 'stat-slot';
   // The item reveal plays over all of them.
   const reveal = createReveal();
-  statSlot.append(stats, fishing.pond, cooking.kitchen, garden.beds, delivery.panel, reveal.el);
+  statSlot.append(stats, fishing.pond, cooking.kitchen, garden.beds, delivery.panel, meet.panel, reveal.el);
 
   // A short message that pops up and fades, e.g. "Mochi is asleep".
   const toastEl = document.createElement('div');
@@ -563,18 +638,29 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     else showToast(message);
   }
 
-  root.append(roomWrap, banner, statSlot, garden.pour, actions, fishing.row, cooking.row, garden.row, delivery.row, toastEl);
+  root.append(roomWrap, banner, statSlot, garden.pour, actions, fishing.row, cooking.row, garden.row, delivery.row, meet.row, toastEl);
+
+  // Which pet the bars were showing, so switching pets can slide them.
+  let barsFor: string | null = null;
 
   return {
     canvas,
     update(state, now) {
+      const switched = barsFor !== null && barsFor !== state.pet.id && !stats.hidden;
+      barsFor = state.pet.id;
       latest = { state, now };
       const pet = state.pet;
       petName = pet.name;
       petAsleep = pet.asleep;
       const isEgg = pet.stage === 'egg';
       petIsEgg = isEgg;
-      for (const key of Object.keys(bars) as (keyof PetStats)[]) bars[key].set(pet.stats[key]);
+      for (const key of Object.keys(bars) as (keyof PetStats)[]) {
+        if (switched) bars[key].slide(pet.stats[key]);
+        else bars[key].set(pet.stats[key]);
+      }
+      // With two pets, the craving bubble floats over the one you're
+      // looking after.
+      roomWrap.dataset.spot = state.housemates.length === 0 ? 'middle' : petStandsLeft(state) ? 'left' : 'right';
       // How many of each food you have ("Free" for food that never runs out).
       // Caught fish and cooked dishes also show their stars. Dishes only
       // show up once you have some, to keep the list short.
@@ -615,12 +701,16 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       cooking.update(state);
       garden.update(state, now);
       delivery.update(state, now);
+      meet.update(state, now);
       refreshParcel();
       parcel.classList.toggle('all-full', !!state.delivery.order?.boxes.every((b) => b.have >= b.want));
       playDrawer.setHidden(GARDEN_ROW, !isUnlocked(state, 'garden'));
       const gardenIsNew = isNew(state, 'garden');
       playDrawer.setOptionNew(GARDEN_ROW, gardenIsNew);
-      playDrawer.setNew(gardenIsNew);
+      playDrawer.setHidden(MEET_ROW, !isUnlocked(state, 'meet'));
+      const meetIsNew = isNew(state, 'meet');
+      playDrawer.setOptionNew(MEET_ROW, meetIsNew);
+      playDrawer.setNew(gardenIsNew || meetIsNew);
       stats.hidden = isEgg; // an egg has no needs yet
       canvas.setAttribute('aria-label', isEgg ? STRINGS.mood.egg : STRINGS.mood[getLook(pet)](pet.name));
 
@@ -654,6 +744,12 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       }
       // Fishing stops if the pet falls asleep or gets sick.
       if (!canPlayMinigames(pet, now) || isEgg) stopFishing();
+      // A little one arrived (you're looking after the egg now): the friend
+      // goes home.
+      if (isEgg && meet.active()) {
+        meet.stop();
+        showActions(MEET_OUT_MS);
+      }
 
       menu.update(state);
     },
@@ -663,5 +759,6 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     fishingPhase: fishing.phase,
     gardenScene: () => garden.scene(),
     deliveryScene: () => delivery.scene(),
+    meetScene: () => meet.scene(),
   };
 }

@@ -688,6 +688,21 @@ export const ITEM_ICONS: Record<string, string> = {
     '.....ll.....',
     '............',
   ]),
+  // Two little pets side by side with a heart over them.
+  meet: pixelIcon([
+    '....kk.kk...',
+    '...krrkrrk..',
+    '....krrrk...',
+    '.....krk....',
+    '......k.....',
+    '.kkkk..kkkk.',
+    'kvvvvkkyyyyk',
+    'kvkkvkkykkyk',
+    'kvvvvkkyyyyk',
+    'kvvvvkkyyyyk',
+    '.kkkk..kkkk.',
+    '............',
+  ]),
   catchTreats: pixelIcon([
     '............',
     '............',
@@ -719,6 +734,30 @@ export const ITEM_ICONS: Record<string, string> = {
 };
 
 // Small icons (8x8) used next to the numbers.
+// Friendship hearts: full, half and empty.
+export const HEART_ICONS = {
+  full: pixelIcon([
+    '........',
+    '.kk.kk..',
+    'krrkrrk.',
+    'krrrrrk.',
+    '.krrrk..',
+    '..krk...',
+    '...k....',
+    '........',
+  ]),
+  empty: pixelIcon([
+    '........',
+    '.kk.kk..',
+    'kvvkvvk.',
+    'kvvvvvk.',
+    '.kvvvk..',
+    '..kvk...',
+    '...k....',
+    '........',
+  ]),
+};
+
 export const STAT_ICONS = {
   gold: pixelIcon([
     '..kkkk..',
