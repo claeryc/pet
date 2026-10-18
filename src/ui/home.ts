@@ -24,7 +24,7 @@ import { isOnPet, ROOM_HEIGHT, ROOM_WIDTH } from '../render/canvas';
 import { potAt, type GardenScene } from '../render/garden';
 import type { DeliveryScene } from '../render/delivery';
 import { formatDuration } from './time';
-import { RECIPES } from '../game/cooking';
+import { createReveal, type RevealItem } from './reveal';
 
 export interface HomeCallbacks extends MenuCallbacks {
   onFeed: (food: FoodId) => void;
@@ -52,6 +52,8 @@ export interface HomeScreen {
   toast: (message: string) => void;
   // Like toast, but waits for the message showing now to finish first.
   notice: (message: string) => void;
+  // Shows off something you just got, over the stat bars.
+  reveal: (item: RevealItem) => void;
   fishingPhase: () => FishingPhase; // so the room can draw the line and bobber
   gardenScene: () => GardenScene | null; // so the room can turn into the garden
   deliveryScene: () => DeliveryScene | null; // ...or Percy's meadow, for his order
@@ -177,7 +179,9 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   parcel.hidden = true;
   parcel.addEventListener('click', () => startDelivery());
   // The pet's craving: a thought bubble over its head with the food in it.
-  // Tapping it opens Feed when you have that food, or says where to get it.
+  // Tapping it opens Feed when you have that food. Where to get it is for
+  // the player to work out (the recipe book helps), so otherwise it just
+  // gives a little shake.
   const bubble = document.createElement('button');
   bubble.className = 'craving-bubble';
   bubble.innerHTML = '<span class="craving-cloud"></span><span class="craving-dot craving-dot-1"></span><span class="craving-dot craving-dot-2"></span>';
@@ -508,15 +512,9 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       if (!feedDrawer.isOpen()) feedDrawer.open();
       return;
     }
-    const f = (CONFIG.foods as readonly Food[]).find((x) => x.id === food);
-    const name = STRINGS.foods[food as FoodId];
-    const recipe = RECIPES.find((r) => r.id === food);
-    showToast(
-      f?.caughtOnly ? STRINGS.craving.getIt.fish(name)
-      : f?.grownOnly ? STRINGS.craving.getIt.crop(name)
-      : recipe ? STRINGS.craving.getIt.dish(name, recipe.ingredients.map((i) => STRINGS.foods[i as FoodId]).join(' + '))
-      : STRINGS.craving.getIt.shop(name),
-    );
+    bubble.classList.remove('nudge');
+    void bubble.offsetHeight;
+    bubble.classList.add('nudge');
   }
   function stopFishing(): void {
     if (fishing.phase() === 'off') return;
@@ -541,7 +539,9 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   // spot: each of them rises over the bars.
   const statSlot = document.createElement('div');
   statSlot.className = 'stat-slot';
-  statSlot.append(stats, fishing.pond, cooking.kitchen, garden.beds, delivery.panel);
+  // The item reveal plays over all of them.
+  const reveal = createReveal();
+  statSlot.append(stats, fishing.pond, cooking.kitchen, garden.beds, delivery.panel, reveal.el);
 
   // A short message that pops up and fades, e.g. "Mochi is asleep".
   const toastEl = document.createElement('div');
@@ -659,6 +659,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     },
     toast: showToast,
     notice: showNotice,
+    reveal: reveal.show,
     fishingPhase: fishing.phase,
     gardenScene: () => garden.scene(),
     deliveryScene: () => delivery.scene(),
