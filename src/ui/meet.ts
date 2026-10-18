@@ -3,7 +3,7 @@
 // Percy's boxes:
 //
 //   (o) Pip                            ♥♥♥♡♡
-//       [Today ●●○]                 ⧗ 2h 40m
+//   [Today ●●○]                     ⧗ 2h 40m
 //   [ ♥ Mingle: 50% chance of a little one ]   (or [Add friend] for a guest)
 //
 // The button row becomes [Close] [Gift] [Meet]. Gift opens like Feed does:
@@ -95,8 +95,8 @@ export function createMeet(cb: MeetCallbacks): MeetPanel {
   const pic = el('span', 'portrait meet-pic');
   const name = el('b', 'meet-name');
   const heartSlot = el('span', 'meet-hearts');
-  // Under the name: today's meetings that counted, as dots. Under the
-  // hearts: the time left with the hourglass.
+  // Under the picture and name: today's meetings that counted, as dots.
+  // Under the hearts: the time left with the hourglass.
   const today = el('span', 'meet-today');
   const leaves = el('span', 'meet-leaves');
   head.append(pic, name, heartSlot, today, leaves);
