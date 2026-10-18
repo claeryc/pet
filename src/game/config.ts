@@ -283,6 +283,25 @@ export const CONFIG = {
     // above). Filling every box adds `fullBonus` on top (0.25 = 25%).
     payShare: 0.8,
     fullBonus: 0.25,
+    // A gold-frame pickup (every box full) leaves a seed behind `seedChance`
+    // of the time (0.5 = half). Which seed is picked by `seedOdds` (percent):
+    // only the ones the Shop doesn't sell.
+    seedChance: 0.5,
+    seedOdds: { pumpkin: 70, dragonFruit: 30 },
+  },
+
+  // Cravings: now and then the pet would love one particular thing, shown
+  // in a thought bubble over its head. It only asks for something you can
+  // get before the craving passes: food you have, a fish you've caught
+  // before, a crop that's in your pantry or ripe in time, or a dish you've
+  // cooked whose ingredients you can get the same way. 3-star fish only
+  // come up if you already have one. Feeding it is never required. Times
+  // are in hours.
+  craving: {
+    lastsHours: 6, // how long the bubble stays if you don't feed it
+    nextAfterHours: 3, // a new craving comes this long after the last one ends
+    // What feeding the craved food gives on top of the food itself.
+    reward: { happiness: 15, care: 2, gold: 10 },
   },
 
   // How many old messages the Messages page keeps.

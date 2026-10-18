@@ -108,6 +108,15 @@ export interface Order {
   boxes: OrderBox[];
 }
 
+// What the pet is craving right now, shown in a thought bubble (see
+// src/game/craving.ts).
+export interface Craving {
+  food: string | null; // a food id, or null when it isn't craving anything
+  until: number; // the craving passes at this time
+  nextAt: number; // when the next one can come (while there's none)
+  last: string | null; // the last thing it craved, so it doesn't ask twice in a row
+}
+
 export interface Delivery {
   order: Order | null; // null between orders
   nextAt: number; // when the next order is announced (if there's none now)
@@ -120,7 +129,7 @@ export type OrderTier = 'none' | 'bronze' | 'silver' | 'gold';
 // when it's shown (see src/strings.ts).
 export type Message =
   | { kind: 'order'; at: number; boxes: { food: string; want: number }[]; pickupAt: number }
-  | { kind: 'pickup'; at: number; boxes: OrderBox[]; gold: number; tier: OrderTier }
+  | { kind: 'pickup'; at: number; boxes: OrderBox[]; gold: number; tier: OrderTier; seed?: string }
   | { kind: 'unlocked'; at: number; id: string }
   | { kind: 'growth'; at: number; stage: string; name: string; character: string | null; variant: string | null };
 
@@ -165,6 +174,8 @@ export interface GameState {
   // The Messages page, newest first, and when it was last looked at.
   messages: Message[];
   messagesSeenAt: number;
+  // The pet's craving (the thought bubble).
+  craving: Craving;
 }
 
 // Makes a random id. crypto.randomUUID exists in all modern browsers and Node.
@@ -213,5 +224,6 @@ export function createNewGame(now: number): GameState {
     delivery: { order: null, nextAt: 0 },
     messages: [],
     messagesSeenAt: 0,
+    craving: { food: null, until: 0, nextAt: 0, last: null },
   };
 }

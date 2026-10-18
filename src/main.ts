@@ -109,7 +109,8 @@ function announceMail(old: Message[]): void {
       const items = m.boxes.map((b) => STRINGS.delivery.item(b.want, STRINGS.foods[b.food as FoodId]));
       home.notice(STRINGS.delivery.announced(items.join(', ')));
     } else if (m.kind === 'pickup') {
-      home.notice(STRINGS.delivery.pickedUp(m.boxes.filter((b) => b.have >= b.want).length, m.gold));
+      const seed = m.seed ? `${STRINGS.delivery.leftSeed(STRINGS.foods[m.seed as FoodId], starsOf(m.seed))}` : '';
+      home.notice(STRINGS.delivery.pickedUp(m.boxes.filter((b) => b.have >= b.want).length, m.gold) + seed);
     }
   }
 }
@@ -249,7 +250,17 @@ function characterImage(sheetName: string): string | undefined {
 }
 
 const home = createHomeScreen(root, {
-  onFeed: (food) => runAction((s, now) => feed(s, now, food), 'eat'),
+  onFeed: (food) => {
+    const result = feed(state, gameNow(), food);
+    setState(result.state);
+    if (result.blocked) return home.toast(STRINGS.blocked[result.blocked](state.pet.name));
+    if (result.craved) {
+      home.toast(STRINGS.craving.loved(state.pet.name, result.craved));
+      react('happy');
+    } else {
+      react('eat');
+    }
+  },
   onPlay: (activity) => playWith(activity),
   onPetTap: () => playWith('cuddle'),
   onLights: () => runAction(toggleLights),
@@ -357,7 +368,8 @@ const home = createHomeScreen(root, {
       order: order && { ...order, announcedAt: order.announcedAt - off, pickupAt: order.pickupAt - off },
       nextAt: state.delivery.nextAt - off,
     };
-    setState({ ...state, pet, garden, delivery, clockOffsetMs: 0, lastUpdated: Date.now() });
+    const craving = { ...state.craving, until: state.craving.until - off, nextAt: state.craving.nextAt - off };
+    setState({ ...state, pet, garden, delivery, craving, clockOffsetMs: 0, lastUpdated: Date.now() });
   },
 });
 // Made after the home screen, which clears the page when it starts.

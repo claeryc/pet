@@ -13,6 +13,7 @@ import { clampStat, isNeglected, isNight, isWellFed } from './stats';
 import { growUp, stageLengthMs } from './growth';
 import { growGarden } from './garden';
 import { stepDelivery } from './delivery';
+import { stepCraving } from './craving';
 import type { GameState, Pet } from './state';
 
 const MS_PER_MINUTE = 60_000;
@@ -43,8 +44,9 @@ export function simulate(state: GameState, now: number): GameState {
 
   // The garden grows on its own clock, so it catches up in one go.
   const garden = growGarden(state.garden, state.lastUpdated, t);
-  // So do Percy's orders: a pickup that came due, or a new order.
-  return stepDelivery({ ...state, pet, garden, lastUpdated: t }, t);
+  // So do Percy's orders (a pickup that came due, or a new order) and the
+  // pet's cravings.
+  return stepCraving(stepDelivery({ ...state, pet, garden, lastUpdated: t }, t), t);
 }
 
 // Advances the pet by one tick ending at time `t`. Changes `pet` in place

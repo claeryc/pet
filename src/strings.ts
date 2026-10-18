@@ -212,7 +212,22 @@ export const STRINGS = {
       boxes === 0
         ? 'Percy came by, but no box was full. Maybe next time!'
         : `Percy picked up ${boxes === 1 ? '1 box' : `${boxes} boxes`}! +${gold} gold`,
+    // Added after pickedUp when Percy left a seed for a gold-frame order,
+    // e.g. "... +60 gold, and a Pumpkin seed! ★★".
+    leftSeed: (seed: string, stars: string) => `, and a ${seed} seed! ${stars}`.trimEnd(),
     flewOff: 'Percy flew off with the full boxes.',
+  },
+  // The pet's craving, in a thought bubble over its head.
+  craving: {
+    bubble: (name: string, food: string) => `${name} is craving ${food}`,
+    loved: (name: string, gold: number) => `Just what ${name} wanted! +${gold} gold`,
+    // Shown when you tap the bubble for something you don't have yet.
+    getIt: {
+      shop: (food: string) => `${food} is in the Shop.`,
+      fish: (food: string) => `Catch a ${food} while fishing.`,
+      crop: (food: string) => `Your ${food} will be ripe soon.`,
+      dish: (food: string, ingredients: string) => `Cook ${food} from ${ingredients}.`,
+    },
   },
   messages: {
     title: 'Messages',

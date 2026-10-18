@@ -39,6 +39,9 @@ export interface Drawer {
   // A small "new" dot on the button, or on one option.
   setNew: (isNew: boolean) => void;
   setOptionNew: (index: number, isNew: boolean) => void;
+  // A small picture on the corner of an option's icon (e.g. the heart on
+  // what the pet is craving), or null to take it off.
+  setOptionBadge: (index: number, badge: string | null) => void;
 }
 
 export interface DrawerSetup {
@@ -185,6 +188,16 @@ export function createDrawer(setup: DrawerSetup): Drawer {
     setNew: (isNew) => head.classList.toggle('has-new', isNew),
     setOptionNew(index, isNew) {
       rows[index]?.classList.toggle('has-new', isNew);
+    },
+    setOptionBadge(index, badge) {
+      const icon = rows[index]?.querySelector('.drawer-option-icon');
+      if (!icon) return;
+      icon.querySelector('.drawer-option-badge')?.remove();
+      if (!badge) return;
+      const b = document.createElement('span');
+      b.className = 'drawer-option-badge';
+      b.innerHTML = badge;
+      icon.append(b);
     },
   };
 }
