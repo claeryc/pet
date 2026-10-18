@@ -3676,7 +3676,7 @@ body {
   height: 32px;
 }
 
-/* Today's stock of a limited item, next to its name: [hourglass 2/3]. */
+/* Today's stock of a limited item, after "You have": [hourglass 2/3]. */
 .shop-stock {
   display: inline-flex;
   align-items: center;

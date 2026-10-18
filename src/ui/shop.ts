@@ -71,7 +71,7 @@ function priceButton(price: number, gold: number, onClick: () => void): HTMLButt
   return b;
 }
 
-// How many of a limited item are left today: [hourglass 2/3].
+// How many of a limited item are left today: [hourglass 2/3], after "You have".
 function stockChip(left: number): HTMLElement {
   const el = document.createElement('span');
   el.className = 'shop-stock';
@@ -186,7 +186,7 @@ export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>)
         ? label(STRINGS.shop.soldOut)
         : priceButton(f.price, state.gold, () => cb.onBuyFood(f.id));
       const el = row(ITEM_ICONS[f.id], STRINGS.foods[f.id], STRINGS.shop.have(foodCount(state, f.id)), action);
-      if (f.limited) el.querySelector('b')!.append(stockChip(left));
+      if (f.limited) el.querySelector('small')!.append(stockChip(left));
       return { icon: ITEM_ICONS[f.id], count: countBadge(foodCount(state, f.id)), row: el };
     });
   const hats: Entry[] = HATS.map((h) => {
