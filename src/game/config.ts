@@ -313,7 +313,7 @@ export const CONFIG = {
     firstVisitHours: 1, // the first wanderer comes this soon after growing up
     visitEveryHours: 48, // then one every 2 days
     stayHours: 24, // and each one stays this long
-    maxWild: 8, // how many wanderers you can keep as friends
+    maxWild: 10, // how many wanderers you can keep as friends (online friends get their own 10 later)
     heartPoints: 20,
     // A meeting: score gained (only the first `perDay` meetings with a
     // friend each day count), and what it does to your pet's stats.
