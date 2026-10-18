@@ -11,7 +11,7 @@ const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 10;
+export const SAVE_VERSION = 11;
 
 export interface SaveFile {
   version: number;
@@ -104,6 +104,16 @@ export function migrate(save: SaveFile): SaveFile {
     save.state.garden = newGarden();
     save.state.inventory = { food: {}, hats: [], ...save.state.inventory, seeds: {}, supplies: {} };
     save.version = 10;
+  }
+  // Version 10 -> 11: Percy's delivery orders and the Messages page. Crops
+  // in the pantry count as grown, so Percy can ask for them.
+  if (save.version === 10) {
+    const st = save.state;
+    st.grown = CONFIG.garden.crops.map((c) => c.id as string).filter((id) => (st.inventory?.food?.[id] ?? 0) > 0);
+    st.delivery = { order: null, nextAt: 0 };
+    st.messages = [];
+    st.messagesSeenAt = 0;
+    save.version = 11;
   }
   return save;
 }

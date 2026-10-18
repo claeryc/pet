@@ -16,10 +16,13 @@ import type { CatchGrade } from '../game/fishing';
 import { createFishing, DRAIN_MS, type FishingPhase } from './fishing';
 import { createCooking, KITCHEN_OUT_MS } from './cooking';
 import { createGarden, GARDEN_OUT_MS } from './garden';
+import { createDelivery, DELIVERY_OUT_MS } from './delivery';
+import { unreadMail } from '../game/messages';
 import type { CropId } from '../game/garden';
 import { isNew, isUnlocked } from '../game/unlocks';
 import { isOnPet, ROOM_HEIGHT, ROOM_WIDTH } from '../render/canvas';
 import { potAt, type GardenScene } from '../render/garden';
+import type { DeliveryScene } from '../render/delivery';
 import { formatDuration } from './time';
 
 export interface HomeCallbacks extends MenuCallbacks {
@@ -37,6 +40,9 @@ export interface HomeCallbacks extends MenuCallbacks {
   onHarvest: (pot: number) => void;
   onClear: (pot: number) => void;
   onPetTap: () => void; // a quick cuddle
+  onPutInBox: (box: number) => void; // Percy's order
+  onTakeFromBox: (box: number) => void;
+  onFillAll: () => void;
 }
 
 export interface HomeScreen {
@@ -47,6 +53,7 @@ export interface HomeScreen {
   notice: (message: string) => void;
   fishingPhase: () => FishingPhase; // so the room can draw the line and bobber
   gardenScene: () => GardenScene | null; // so the room can turn into the garden
+  deliveryScene: () => DeliveryScene | null; // ...or Percy's meadow, for his order
 }
 
 // Pixel icons drawn on a 12x12 grid, so they match the pixel-art style.
@@ -157,6 +164,18 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const canvas = document.createElement('canvas');
   canvas.className = 'room';
   canvas.setAttribute('role', 'img');
+  // Percy's parcel sits in the top corner of the room while there's an
+  // order to fill. Tapping it goes out to Percy.
+  const roomWrap = document.createElement('div');
+  roomWrap.className = 'room-wrap';
+  const parcel = document.createElement('button');
+  parcel.className = 'parcel-btn';
+  parcel.innerHTML = ITEM_ICONS.parcel;
+  parcel.setAttribute('aria-label', STRINGS.delivery.open);
+  parcel.title = STRINGS.delivery.open;
+  parcel.hidden = true;
+  parcel.addEventListener('click', () => startDelivery());
+  roomWrap.append(canvas, parcel);
 
   // Warning / sick / recovering banner, hidden when all is well.
   const banner = document.createElement('div');
@@ -268,7 +287,11 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   // The gear button opens the menu (shop, inventory, settings and more) the
   // same way Feed and Play open. It always opens, even for an egg.
   let menuDrawer: ReturnType<typeof createDrawer> | null = null;
-  const menu = createMenu(cb, () => menuDrawer?.isOpen() ?? false, () => menuDrawer?.close());
+  const menu = createMenu(
+    { ...cb, onOpenDelivery: () => startDelivery() },
+    () => menuDrawer?.isOpen() ?? false,
+    () => menuDrawer?.close(),
+  );
   menuDrawer = createDrawer({
     ...drawerSetup,
     id: 'menu',
@@ -415,6 +438,32 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     if (latest) garden.update(latest.state, latest.now);
     garden.start();
   }
+  // Percy's order: his meadow, its own [Close] [Fill all] row, and a
+  // panel of boxes that slides up over the stat bars.
+  const delivery = createDelivery({
+    onPut: cb.onPutInBox,
+    onTake: cb.onTakeFromBox,
+    onFillAll: cb.onFillAll,
+    onExit: () => {
+      showActions(DELIVERY_OUT_MS);
+      refreshParcel();
+    },
+    toast: (msg) => showToast(msg),
+  });
+  function startDelivery(): void {
+    if (actions.hidden) return; // already busy with something else
+    feedDrawer.close();
+    playDrawer.close();
+    menuDrawer!.close();
+    actions.hidden = true;
+    parcel.hidden = true;
+    stats.setAttribute('aria-hidden', 'true'); // covered by the boxes for now
+    if (latest) delivery.update(latest.state, latest.now);
+    delivery.start();
+  }
+  function refreshParcel(): void {
+    parcel.hidden = !latest?.state.delivery.order || actions.hidden || latest.state.pet.stage === 'egg';
+  }
   function stopFishing(): void {
     if (fishing.phase() === 'off') return;
     fishing.stop();
@@ -428,6 +477,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       for (const bar of Object.values(bars)) bar.refill(delayMs);
     }
     actions.hidden = false;
+    refreshParcel();
     actions.classList.remove('rise-in');
     void actions.offsetHeight;
     actions.classList.add('rise-in');
@@ -437,7 +487,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   // spot: each of them rises over the bars.
   const statSlot = document.createElement('div');
   statSlot.className = 'stat-slot';
-  statSlot.append(stats, fishing.pond, cooking.kitchen, garden.beds);
+  statSlot.append(stats, fishing.pond, cooking.kitchen, garden.beds, delivery.panel);
 
   // A short message that pops up and fades, e.g. "Mochi is asleep".
   const toastEl = document.createElement('div');
@@ -459,7 +509,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     else showToast(message);
   }
 
-  root.append(canvas, banner, statSlot, garden.pour, actions, fishing.row, cooking.row, garden.row, toastEl);
+  root.append(roomWrap, banner, statSlot, garden.pour, actions, fishing.row, cooking.row, garden.row, delivery.row, toastEl);
 
   return {
     canvas,
@@ -485,7 +535,10 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       const cookIsNew = isNew(state, 'cooking');
       feedDrawer.setOptionNew(COOK_ROW, cookIsNew);
       feedDrawer.setNew(cookIsNew);
-      menuDrawer!.setNew(isNew(state, 'shop') || isNew(state, 'collection') || isNew(state, 'familyTree'));
+      menuDrawer!.setNew(
+        isNew(state, 'shop') || isNew(state, 'collection') || isNew(state, 'familyTree') ||
+          isNew(state, 'messages') || unreadMail(state) > 0,
+      );
       // The pot, then what you fed most recently, then the rest as listed
       // in the config. Rows only move while the panel is closed.
       const ids = CONFIG.foods.map((f) => f.id as string);
@@ -498,6 +551,9 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       }
       cooking.update(state);
       garden.update(state, now);
+      delivery.update(state, now);
+      refreshParcel();
+      parcel.classList.toggle('all-full', !!state.delivery.order?.boxes.every((b) => b.have >= b.want));
       playDrawer.setHidden(GARDEN_ROW, !isUnlocked(state, 'garden'));
       const gardenIsNew = isNew(state, 'garden');
       playDrawer.setOptionNew(GARDEN_ROW, gardenIsNew);
@@ -542,5 +598,6 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     notice: showNotice,
     fishingPhase: fishing.phase,
     gardenScene: () => garden.scene(),
+    deliveryScene: () => delivery.scene(),
   };
 }

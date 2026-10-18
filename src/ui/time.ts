@@ -7,3 +7,14 @@ export function formatDuration(ms: number): string {
   if (d > 0) return `${d}d ${h}h`;
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
+
+// When something happened, for the Messages page: "Today 14:05",
+// "Yesterday 9:30" or a date like "12 Oct".
+export function formatWhen(at: number, now: number, today: (t: string) => string, yesterday: (t: string) => string): string {
+  const d = new Date(at);
+  const time = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const day = (t: number) => new Date(t).toDateString();
+  if (day(at) === day(now)) return today(time);
+  if (day(at) === day(now - 86_400_000)) return yesterday(time);
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}

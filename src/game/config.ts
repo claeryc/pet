@@ -268,6 +268,26 @@ export const CONFIG = {
     },
   },
 
+  // Delivery orders: Percy the pigeon announces an order of 1 to 3 things
+  // you caught, grew or cooked, and comes back to pick them up. Times are in
+  // hours; the pickup always lands in the daytime, between `daytime.from`
+  // and `daytime.to` o'clock (your device's local time).
+  delivery: {
+    pickupHours: 24, // how long you have to fill an order
+    daytime: { from: 9, to: 20 },
+    nextOrderHours: 4, // the next order is announced this long after a pickup
+    boxes: { min: 1, max: 3 },
+    // How many of a thing Percy asks for, by its stars: [fewest, most].
+    amounts: { 1: [2, 3], 2: [1, 2], 3: [1, 1] },
+    // A full box pays this share of what its items are worth (their `price`
+    // above). Filling every box adds `fullBonus` on top (0.25 = 25%).
+    payShare: 0.8,
+    fullBonus: 0.25,
+  },
+
+  // How many old messages the Messages page keeps.
+  messagesKept: 60,
+
   // Gold. It's earned (mini-games arrive in Milestone 4, plus check-in
   // bonuses) and spent in the Shop. It can never be bought with real money.
   economy: {

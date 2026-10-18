@@ -4,7 +4,7 @@
 //                            saving (src/storage)
 
 import { CONFIG } from './game/config';
-import { createNewGame, type GameState } from './game/state';
+import { createNewGame, type GameState, type Message } from './game/state';
 import { simulate } from './game/simulate';
 import {
   fastForward,
@@ -33,6 +33,9 @@ import {
   type GardenResult,
 } from './game/garden';
 import { markSeen, updateProgress } from './game/unlocks';
+import { fillAll, orderPay, orderTier, putInBox, takeFromBox, type BoxResult } from './game/delivery';
+import { logMessage, markMessagesSeen } from './game/messages';
+import type { FoodId } from './game/actions';
 import { namePet, needsName, setOwner, suggestName } from './game/family';
 import { clearSave, loadGame, saveGame } from './storage/storage';
 import { setupCanvas, drawRoom } from './render/canvas';
@@ -50,6 +53,9 @@ function gameNow(): number {
 
 // Load the saved game (or start a new one) and catch it up to right now.
 let state: GameState = loadGame() ?? createNewGame(Date.now());
+// What Messages had at the last visit, so Percy's news from while you were
+// away can be shown once the screen is up.
+const lastVisitMessages = state.messages;
 state = updateProgress(simulate(state, gameNow())).state;
 saveGame(state);
 
@@ -62,8 +68,16 @@ const afterNaming: string[] = [];
 // up. A freshly hatched pet is asked for its name first.
 function setState(next: GameState): void {
   const before = state.pet.stage;
+  const oldMessages = state.messages;
   const progress = updateProgress(next);
   state = progress.state;
+  // Growing up goes in Messages too.
+  if (state.pet.stage !== before && state.pet.stage !== 'egg') {
+    const { pet } = state;
+    state = logMessage(state, {
+      kind: 'growth', at: gameNow(), stage: pet.stage, name: pet.name, character: pet.character, variant: pet.variant,
+    });
+  }
   saveGame(state);
   home.update(state, gameNow());
   const { pet } = state;
@@ -83,6 +97,20 @@ function setState(next: GameState): void {
     askName();
   } else {
     for (const message of notices) home.notice(message);
+  }
+  announceMail(oldMessages);
+}
+
+// Says what Percy did since `old` was the message list: picked up an
+// order (maybe while the game was closed), or brought a new one.
+function announceMail(old: Message[]): void {
+  for (const m of state.messages.filter((m) => !old.includes(m)).reverse()) {
+    if (m.kind === 'order') {
+      const items = m.boxes.map((b) => STRINGS.delivery.item(b.want, STRINGS.foods[b.food as FoodId]));
+      home.notice(STRINGS.delivery.announced(items.join(', ')));
+    } else if (m.kind === 'pickup') {
+      home.notice(STRINGS.delivery.pickedUp(m.boxes.filter((b) => b.have >= b.want).length, m.gold));
+    }
   }
 }
 
@@ -175,6 +203,23 @@ function runGarden(action: (s: GameState, now: number) => GardenResult, success?
   return true;
 }
 
+// Percy's order: putting things in boxes and taking them out. Says when
+// every box is full (the golden frame and its bonus).
+function runBox(action: (s: GameState) => BoxResult, food?: string): void {
+  const result = action(simulate(state, gameNow()));
+  const wasGold = state.delivery.order ? orderTier(state.delivery.order.boxes) === 'gold' : false;
+  setState(result.state);
+  const name = food ? STRINGS.foods[food as FoodId] : '';
+  if (result.blocked === 'noFood') home.toast(food ? STRINGS.delivery.noneLeft(name) : STRINGS.delivery.nothingToFill);
+  else if (result.blocked === 'full') home.toast(STRINGS.delivery.full);
+  const order = state.delivery.order;
+  if (!result.blocked && order && !wasGold && orderTier(order.boxes) === 'gold') {
+    home.toast(STRINGS.delivery.allFull(orderPay(order.boxes).bonus));
+    react('happy');
+  }
+}
+const boxFood = (i: number) => state.delivery.order?.boxes[i]?.food;
+
 // Gives the check-in bonus if one is due (on opening the game or coming back).
 function tryCheckIn(): void {
   const { state: next, reward } = checkIn(simulate(state, gameNow()), gameNow());
@@ -262,6 +307,10 @@ const home = createHomeScreen(root, {
     react('happy');
   },
   onClear: (pot) => runGarden((s) => clearPlot(s, pot), STRINGS.garden.cleared),
+  onPutInBox: (box) => runBox((s) => putInBox(s, box), boxFood(box)),
+  onTakeFromBox: (box) => runBox((s) => takeFromBox(s, box)),
+  onFillAll: () => runBox(fillAll),
+  onMessagesSeen: () => setState(markMessagesSeen(state, gameNow())),
   onBuyGardenItem: (item) =>
     runShop(buyGardenItem(state, item), STRINGS.shop.bought(
       item.kind === 'seed' ? STRINGS.garden.seedName(STRINGS.foods[item.id]) : STRINGS.garden.supplies[item.id],
@@ -303,12 +352,18 @@ const home = createHomeScreen(root, {
       fertilizedUntil: p.fertilizedUntil - off,
       sickSince: p.sickSince === null ? null : p.sickSince - off,
     }));
-    setState({ ...state, pet, garden, clockOffsetMs: 0, lastUpdated: Date.now() });
+    const order = state.delivery.order;
+    const delivery = {
+      order: order && { ...order, announcedAt: order.announcedAt - off, pickupAt: order.pickupAt - off },
+      nextAt: state.delivery.nextAt - off,
+    };
+    setState({ ...state, pet, garden, delivery, clockOffsetMs: 0, lastUpdated: Date.now() });
   },
 });
 // Made after the home screen, which clears the page when it starts.
 const naming = createNamingBox(root);
 home.update(state, gameNow());
+announceMail(lastVisitMessages);
 tryCheckIn();
 
 // Draw the pet every animation frame (about 60 times a second). The sprite
@@ -329,6 +384,7 @@ function render(timeMs: number): void {
       lightsOff: pet.asleep,
       fishing: home.fishingPhase(),
       garden: home.gardenScene(),
+      delivery: home.deliveryScene(),
     },
     timeMs,
     sprites.get(getHat(pet.hat)?.sheet ?? ''),

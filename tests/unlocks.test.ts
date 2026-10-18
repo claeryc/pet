@@ -16,7 +16,7 @@ describe('menus that open up as you play', () => {
 
   it('the Shop and the Garden open once the egg hatches, with a "new" dot until seen', () => {
     const { state, unlocked } = updateProgress(newTeen(START));
-    expect(unlocked).toEqual(['shop', 'garden']);
+    expect(unlocked).toEqual(['shop', 'garden', 'messages']);
     expect(isNew(state, 'garden')).toBe(true);
     expect(isNew(state, 'shop')).toBe(true);
     expect(isNew(markSeen(state, 'shop'), 'shop')).toBe(false);
@@ -28,7 +28,7 @@ describe('menus that open up as you play', () => {
     let s = updateProgress(newTeen(START)).state;
     s = land(s, 'perfect', 0, 0).state;
     const result = updateProgress(s);
-    expect(result.unlocked).toEqual(['cooking']);
+    expect(result.unlocked).toEqual(['cooking', 'delivery']);
     const eaten = { ...result.state, inventory: { ...result.state.inventory, food: {} } };
     expect(isUnlocked(updateProgress(eaten).state, 'cooking')).toBe(true);
   });
