@@ -426,7 +426,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 268px;
+  /* Feed and Play reach up to the stat bars (set in home.ts). */
+  max-height: var(--drawer-fit, 268px);
   overflow-y: auto;
   overscroll-behavior: contain;
   white-space: normal;
@@ -557,7 +558,8 @@ body {
 .toast {
   position: fixed;
   left: 50%;
-  /* Just above the buttons, so it never covers them. */
+  /* Just above the buttons, so it never covers them. While a panel is
+     open, home.ts moves it up over the stat bars. */
   bottom: calc(88px + env(safe-area-inset-bottom));
   transform: translate(-50%, 20px);
   max-width: min(380px, calc(100% - 32px));
@@ -803,7 +805,7 @@ body {
   /* Always the same height as the Feed and Play lists, whichever menu page
      is showing, so the panel doesn't jump when you switch pages. Longer
      pages (like Settings) scroll inside. */
-  height: 268px;
+  height: var(--drawer-fit, 268px);
   max-height: none;
 }
 
