@@ -16,6 +16,7 @@
 // always turns out the same way however often the game catches up.
 
 import { CONFIG } from './config';
+import { addTally } from './achievements';
 import type { FoodId } from './actions';
 import type { GameState, Plot } from './state';
 
@@ -256,7 +257,7 @@ export function harvest(state: GameState, index: number): GardenResult & { crop?
   const food = { ...state.inventory.food, [id]: (state.inventory.food[id] ?? 0) + count };
   const grown = state.grown.includes(crop) ? state.grown : [...state.grown, crop];
   const s = withPlot({ ...state, inventory: { ...state.inventory, food }, grown }, index, (p) => Object.assign(p, emptyPlot()));
-  return { state: s, crop, count };
+  return { state: addTally(s, 'harvests'), crop, count };
 }
 
 // Clears away a plant that died, so the pot can be used again.

@@ -119,7 +119,10 @@ function setState(next: GameState): void {
     }
     if (pet.id === state.pet.id) react('happy');
   }
-  const notices = progress.unlocked.map((id) => STRINGS.unlocked[id]);
+  const notices = [
+    ...progress.badges.map((b) => STRINGS.achievements.earned(STRINGS.achievements.names[b.id], STRINGS.achievements.tiers[b.tier])),
+    ...progress.unlocked.map((id) => STRINGS.unlocked[id]),
+  ];
   if (needsName(state)) {
     afterNaming.push(...notices);
     askName();

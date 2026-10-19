@@ -448,9 +448,38 @@ export const STRINGS = {
     characters: 'Characters',
     recipes: 'Recipes',
     catches: 'Catches',
+    achievements: 'Achievements',
     count: (title: string, found: number, total: number) => `${title}  ${found}/${total}`,
     unknown: '???',
     notFound: 'Not found yet',
+  },
+  // Achievements in the Collection: badges from bronze to silver to gold.
+  achievements: {
+    names: {
+      fish: 'Angler',
+      deliveries: "Percy's Helper",
+      harvests: 'Green Thumb',
+      dishes: 'Little Chef',
+      cravings: 'Mind Reader',
+      gifts: 'Gift Giver',
+      littleOnes: 'Growing Family',
+    },
+    // What to do to reach a goal of `n`.
+    goals: {
+      fish: (n: number) => `Catch ${n} fish`,
+      deliveries: (n: number) => `Fill ${n} of Percy's orders`,
+      harvests: (n: number) => `Harvest ${n} crops`,
+      dishes: (n: number) => `Cook ${n} dishes`,
+      cravings: (n: number) => `Treat ${n} cravings`,
+      gifts: (n: number) => `Give ${n} gifts`,
+      littleOnes: (n: number) => (n === 1 ? 'Welcome a little one' : `Welcome ${n} little ones`),
+    },
+    tiers: { bronze: 'Bronze', silver: 'Silver', gold: 'Gold' },
+    // "Catch 50 fish · 12/50"
+    progress: (goal: string, have: number, need: number) => `${goal} · ${have}/${need}`,
+    // Once gold: "All done! 214 so far"
+    allDone: (have: number) => `All done! ${have} so far`,
+    earned: (name: string, tier: string) => `New badge: ${name} (${tier})!`,
   },
   gold: {
     label: 'Gold',

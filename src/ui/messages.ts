@@ -20,7 +20,8 @@ import { isFull, orderTier } from '../game/delivery';
 import { isUnlocked, type UnlockId } from '../game/unlocks';
 import type { GameState, Message } from '../game/state';
 import type { FoodId } from '../game/actions';
-import { ITEM_ICONS, STAT_ICONS, UNKNOWN_ICON } from './icons';
+import { ITEM_ICONS, MEDAL_ICONS, STAT_ICONS, UNKNOWN_ICON } from './icons';
+import type { AchievementId } from '../game/achievements';
 import { formatDuration, formatWhen } from './time';
 
 export type MessagesTab = 'mail' | 'friends';
@@ -69,6 +70,10 @@ function text(m: Message): string {
     }
     case 'littleOne':
       return STRINGS.messages.littleOne(m.name, m.friend);
+    case 'badge': {
+      const A = STRINGS.achievements;
+      return A.earned(A.names[m.id as AchievementId] ?? m.id, A.tiers[m.tier]);
+    }
   }
 }
 
@@ -122,11 +127,12 @@ function liveOrder(state: GameState, now: number, cb: MessagesActions): HTMLElem
 
 function messageRow(m: Message, now: number): HTMLElement {
   const row = el('div', `shop-row mail-row kind-${m.kind}`);
-  if (m.kind === 'pickup') row.dataset.tier = m.tier;
+  if (m.kind === 'pickup' || m.kind === 'badge') row.dataset.tier = m.tier;
   const icon = el('span', 'drawer-option-icon');
   icon.innerHTML =
     m.kind === 'order' || m.kind === 'pickup' ? ITEM_ICONS.parcel
     : m.kind === 'visitor' || m.kind === 'littleOne' ? ITEM_ICONS.meet
+    : m.kind === 'badge' ? MEDAL_ICONS[m.tier]
     : ITEM_ICONS.letter;
   const body = el('span', 'shop-row-text');
   body.append(el('b', '', text(m)), el('small', '', formatWhen(m.at, now, STRINGS.messages.today, STRINGS.messages.yesterday)));

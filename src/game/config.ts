@@ -390,6 +390,19 @@ export const CONFIG = {
     ],
   },
 
+  // Achievements (in the Collection): badges for doing something lots of
+  // times. Each has three tiers, bronze, silver and gold, reached at these
+  // counts. Raising a number later never takes a badge away.
+  achievements: {
+    fish: [10, 50, 200], // fish landed
+    deliveries: [5, 25, 100], // Percy's orders picked up with at least one full box
+    harvests: [10, 50, 150], // crops picked in the garden
+    dishes: [10, 50, 150], // recipes cooked (a Mushy mess doesn't count)
+    cravings: [5, 25, 100], // cravings treated with just the right food
+    gifts: [5, 25, 100], // gifts given to friends
+    littleOnes: [1, 3, 10], // little ones from mingling
+  },
+
   // How many old messages the Messages page keeps.
   messagesKept: 60,
 
