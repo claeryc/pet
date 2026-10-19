@@ -88,6 +88,11 @@ const SUN_ICON = `
 // points, and a block lights up as soon as the stat reaches into it.
 const STAT_SEGMENTS = 10;
 
+// An open Feed, Play or Menu list is at least this tall (px), and stops
+// this far below the stat bars.
+const DRAWER_MIN = 268;
+const DRAWER_GAP = 12;
+
 // After a mini-game closes, the bars start empty and fill back up one block
 // at a time, this many ms per block: a full bar takes 1.5 seconds, a bar at
 // 10% just a moment.
@@ -272,6 +277,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     beforeOpen: () =>
       petIsEgg ? STRINGS.blocked.egg(petName) : petAsleep ? STRINGS.blocked.asleep(petName) : null,
     onBlocked: (msg: string) => showToast(msg),
+    onOpen: () => fitDrawers(),
   };
 
   // The Feed panel: the cooking pot first (once cooking has opened up),
@@ -356,10 +362,23 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     label: STRINGS.buttons.menu,
     icon: GEAR_ICON,
     content: menu.el,
-    onOpen: menu.reset,
+    onOpen: () => {
+      fitDrawers();
+      menu.reset();
+    },
     beforeOpen: () => null,
   });
   const lights = button('', 'btn btn-icon', cb.onLights);
+
+  // An open Feed, Play or Menu panel reaches up to just under the stat bars,
+  // so taller screens show more rows. Small screens keep the old height
+  // (the panel covers the bars there). The panel's button, frame and
+  // padding take about 74px.
+  function fitDrawers(): void {
+    const room = actions.getBoundingClientRect().bottom - statSlot.getBoundingClientRect().bottom - DRAWER_GAP;
+    actions.style.setProperty('--drawer-fit', `${Math.max(DRAWER_MIN, Math.floor(room - 74))}px`);
+  }
+  window.addEventListener('resize', fitDrawers);
 
   actions.append(feedDrawer.el, playDrawer.el, menuDrawer.el, lights);
 
@@ -640,6 +659,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     toastText.textContent = message;
     toastShop.hidden = !toastShopAt;
     toastEl.classList.toggle('has-action', !!toastShopAt);
+    placeToast();
     toastEl.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = window.setTimeout(() => {
@@ -647,6 +667,26 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       const next = waiting.shift();
       if (next) toastTimer = window.setTimeout(() => showToast(next), 300);
     }, toastShopAt ? 4000 : 2500); // a little longer to reach the button
+  }
+  // The toast sits just above the buttons. While a panel is open (which
+  // would cover it), it moves into the space between the panel and the
+  // stat bars (or the pond, counter or garden in their spot) if it fits
+  // there; if not, over the middle of the stat bars, or on small screens,
+  // where the panel covers those, just above the panel.
+  function placeToast(): void {
+    const open = root.querySelector('.drawer.is-open');
+    if (!open) {
+      toastEl.style.bottom = '';
+      return;
+    }
+    const h = toastEl.offsetHeight;
+    const slot = statSlot.getBoundingClientRect();
+    const panelTop = open.getBoundingClientRect().top;
+    const fromBottom = (y: number) => Math.round(window.innerHeight - y - h / 2); // centre the toast on y
+    let bottom: number;
+    if (panelTop - slot.bottom >= h + 2 * DRAWER_GAP) bottom = fromBottom((slot.bottom + panelTop) / 2);
+    else bottom = Math.max(fromBottom((slot.top + slot.bottom) / 2), Math.round(window.innerHeight - panelTop + DRAWER_GAP));
+    toastEl.style.bottom = `${bottom}px`;
   }
   // Leaves the garden or the kitchen and opens the Shop at `category`.
   function goShop(category: ShopCategory): void {
