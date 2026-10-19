@@ -4,7 +4,7 @@
 import { PALETTE } from './palette';
 import { drawCurtains, drawWall } from './room';
 import { frameFor } from './animations';
-import type { SpriteSheet } from './sprites';
+import { pickHatFrame, type SpriteSheet } from './sprites';
 import type { FishingPhase } from '../ui/fishing';
 import { drawGardenBackground, drawGardenPots, type GardenScene } from './garden';
 import { drawDelivery, type DeliveryScene } from './delivery';
@@ -120,7 +120,8 @@ export function isOnPet(x: number, y: number): boolean {
 
 // Draws one pet standing on the floor with its left edge at `x`, and its
 // hat. The hat's bottom middle sits on the shape's head point, moved up or
-// down with the head. The left picture is the small size, the right the large.
+// down with the head. The hat sheet's sizes go left to right, and the
+// widest one that fits the head's width is used.
 function drawPetAt(
   ctx: CanvasRenderingContext2D,
   sheet: SpriteSheet | undefined,
@@ -148,9 +149,9 @@ function drawPetAt(
   ctx.drawImage(sheet.image, sx, sy, w, h, x, dy, w, h);
   if (hat && sheet.head) {
     const { frameWidth: hw, frameHeight: hh } = hat;
-    // The pet's shape can nudge this one hat, or ask for the other size.
+    // The pet's shape can nudge this one hat, or give it a different width.
     const fit = sheet.hats?.[hat.name];
-    const col = (fit?.size ?? sheet.head.size) === 'large' ? 1 : 0;
+    const col = pickHatFrame(hat.hatWidths ?? [hw], fit?.width ?? sheet.head.width);
     const hx = x + sheet.head.x + (fit?.x ?? 0) - Math.floor(hw / 2);
     const hy = dy + sheet.head.y + (fit?.y ?? 0) + headOffset - hh;
     ctx.drawImage(hat.image, col * hw, 0, hw, hh, hx, hy, hw, hh);

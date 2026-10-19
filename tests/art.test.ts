@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import data from '../src/data/characters.json';
 import manifest from '../public/sprites/manifest.json';
 import hatData from '../src/data/hats.json';
-import type { Shape } from '../src/render/sprites';
+import { pickHatFrame, type Shape } from '../src/render/sprites';
 
 // Every PNG in public/sprites, as paths like "stages/egg.png".
 const pngs = Object.keys(import.meta.glob('../public/sprites/**/*.png')).map((p) =>
@@ -23,11 +23,11 @@ describe('art files', () => {
   });
 
   it.each(Object.entries(shapes))('shape "%s" says where hats sit, and only fits known hats', (_, shape) => {
-    expect(['small', 'large']).toContain(shape.head.size);
+    expect(shape.head.width).toBeGreaterThan(0);
     const hatSheets = hatData.hats.map((h) => h.sheet);
     for (const [hat, fit] of Object.entries(shape.hats ?? {})) {
       expect(hatSheets).toContain(hat);
-      if (fit.size) expect(['small', 'large']).toContain(fit.size);
+      if (fit.width !== undefined) expect(fit.width).toBeGreaterThan(0);
     }
   });
 
@@ -59,5 +59,21 @@ describe('art files', () => {
   it('character ids are unique', () => {
     const ids = data.characters.map((c) => c.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe('hat sizes', () => {
+  // A beanie drawn 10, 14 and 18 pixels wide.
+  const widths = [10, 14, 18];
+
+  it('uses the widest hat that fits the head', () => {
+    expect(pickHatFrame(widths, 14)).toBe(1);
+    expect(pickHatFrame(widths, 16)).toBe(1);
+    expect(pickHatFrame(widths, 30)).toBe(2);
+  });
+
+  it('uses the narrowest hat when none fits', () => {
+    expect(pickHatFrame(widths, 6)).toBe(0);
+    expect(pickHatFrame([12, 8], 4)).toBe(1);
   });
 });

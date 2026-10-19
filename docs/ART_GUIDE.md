@@ -101,7 +101,7 @@ A new **theme** is one more line under `"themes"` in `characters.json`, then cha
 
 ## Hats
 
-Any hat fits any character, so you draw each hat only once (in two sizes), and never per character.
+Any hat fits any character, so you draw each hat only once (in a few sizes), and never per character.
 
 **How it works:** every pet sheet in `manifest.json` names a body `shape`, and the shape says where hats sit. In every other frame the game finds how far the top of the head has moved (by looking at the picture) and moves the hat with it, so the hat hops, squashes and sleeps along with the pet.
 
@@ -113,9 +113,9 @@ Characters drawn on the same body (same size, same top where a hat rests) share 
 
 ```json
 "shapes": {
-  "loaf":      { "head": { "x": 16, "y": 15, "size": "large" } },
-  "wide-loaf": { "head": { "x": 16, "y": 15, "size": "large" } },
-  "small":     { "head": { "x": 16, "y": 17, "size": "small" } }
+  "loaf":      { "head": { "x": 16, "y": 15, "width": 14 } },
+  "wide-loaf": { "head": { "x": 16, "y": 15, "width": 14 } },
+  "small":     { "head": { "x": 16, "y": 17, "width": 10 } }
 }
 ```
 
@@ -132,16 +132,24 @@ Characters drawn on the same body (same size, same top where a hat rests) share 
 | `cloud` | Cloudlet |
 | `big-tall` | Fernwhisk |
 
-A shape's `head` is the pixel in the first `idle` frame where the bottom middle of a hat should sit, and whether the shape has a small or large head. To find it, open a sheet of that shape, look at the first idle frame, and find the column in the middle of the head (`x`) and the row just below the top of the head (`y`). Use `"size": "small"` for small heads (babies, tiny characters) and `"large"` for the rest. If hats sit a little too high or low, change `y` by 1.
+A shape's `head` is the pixel in the first `idle` frame where the bottom middle of a hat should sit, and how wide a hat may be there. To find it, open a sheet of that shape and look at the first idle frame:
+
+- `x`: the column in the middle of the head.
+- `y`: the row just below the top of the head, where the hat rests. If hats sit a little too high or low, change `y` by 1.
+- `width`: how many pixels wide a hat can be without looking wrong. On a flat or round head that's about the width of the head's top. **If the head has ears, horns or spikes at the sides with a dip in the middle**, put `y` in the dip and use the gap between the ears as `width`, so hats sit between them instead of covering them. On a **dome**, put `y` on the top and use roughly the width of the upper curve.
+
+The game then uses, for every hat, the widest size that fits `width` (or the smallest size, if none fit). A new hat fits every shape without any extra setup.
+
+**Uneven tops.** Hats are always level, so on a lopsided head pick the spot where a level hat looks best (often a little towards the higher side) and nudge from there. A truly tilted hat would need its own drawing.
 
 **A new body** is a new shape: add it under `"shapes"` and point the sheet at it. A one-off character is simply a shape of one.
 
-**If one hat looks wrong on one shape** (a crown slipping between bunny ears, a party hat poking through spikes), nudge just that hat on that shape with `"hats"`, keyed by the hat's sheet name. `x` moves it right, `y` moves it down (negative is up), and `size` picks the other hat size:
+**If one hat looks wrong on one shape** (a crown slipping between bunny ears, a party hat poking through spikes), nudge just that hat on that shape with `"hats"`, keyed by the hat's sheet name. `x` moves it right, `y` moves it down (negative is up), and `width` picks that hat's size with a different width:
 
 ```json
 "wide-loaf": {
-  "head": { "x": 16, "y": 15, "size": "large" },
-  "hats": { "hat-tiny-crown": { "y": -1 }, "hat-party": { "size": "small" } }
+  "head": { "x": 16, "y": 15, "width": 14 },
+  "hats": { "hat-tiny-crown": { "y": -1 }, "hat-party": { "width": 10 } }
 }
 ```
 
@@ -152,6 +160,8 @@ Every other hat and shape stays as it was.
 1. Copy any file in `art/hats/`, for example `beanie.aseprite`. It's 16 x 16 with two frames: tag `small` (about 8 pixels wide) and tag `large` (about 12 pixels wide).
 2. Draw the hat with its bottom edge on the last row and centred around column 8. Give it the dark outline.
 3. Export with **Sheet type: Horizontal Strip** (small on the left, large on the right), to `public/sprites/hats/<name>.png`, so the PNG is 32 x 16.
+
+**More sizes:** a hat can have as many sizes as you like, as frames going from smallest on the left to largest on the right. For example, add a third frame with an extra-wide version for big pets (the PNG is then 48 x 16). The game measures how wide each drawing is, so there's nothing else to set. If a size needs more than 16 pixels, make every frame of that hat wider (for example 24 x 16) and set `frameWidth` to match in step 4.
 4. Add it to `manifest.json`:
    ```json
    "hat-scarf": { "file": "hats/scarf.png", "frameWidth": 16, "frameHeight": 16, "animations": {} }
