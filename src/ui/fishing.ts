@@ -1,6 +1,7 @@
 // The fishing mini-game's buttons and pond. While you fish, the button row
 // becomes [Cancel] [Cast], where Cast turns into Reel in once the line is
-// out, and Reel in turns into Catch once a fish is hooked. Water rises up
+// out, and Reel in turns into Pull once a fish is hooked: hold it to drag
+// the dot right on the catch bar, let go and it drifts back left. Water rises up
 // over the stat bars into a pond of the same size (see src/render/pond.ts),
 // and drains away again when you stop. The catch bar shows up at the
 // bottom of the pond while you reel in.
@@ -16,7 +17,17 @@ import { STRINGS } from '../strings';
 import { ITEM_ICONS } from './icons';
 import { CONFIG } from '../game/config';
 import { createFroth, createPond } from '../render/pond';
-import { biteDelayMs, gradeAt, markerAt, placeZones, sweptOut, type CatchGrade, type CatchZones } from '../game/fishing';
+import {
+  biteDelayMs,
+  reelGrade,
+  reelOutcome,
+  reelZones,
+  startReel,
+  stepReel,
+  type CatchGrade,
+  type CatchZones,
+  type Reel,
+} from '../game/fishing';
 
 // ready: line in, waiting for you to cast. waiting: line out, no bite yet.
 // bite: a fish is nibbling, tap Reel in now! reeling: the catch bar is up.
@@ -39,7 +50,7 @@ export interface Fishing {
   setBait: (count: number, on: boolean) => void; // the bait you have, and whether it's switched on
 }
 
-// How long the bar stays up after Catch, showing where the marker stopped.
+// How long the bar stays up after a catch, showing where the dot ended up.
 const RESULT_MS = 900;
 // How long the water takes to rise and to drain away (matches .pond in
 // style.css). The fizzy edge shows for that long.
@@ -63,7 +74,8 @@ export function createFishing(cb: FishingCallbacks): Fishing {
   main.className = 'btn fishing-main';
   row.append(cancel, main);
 
-  // The bar: blue, with green, yellow and red zones painted on, and a marker.
+  // The bar: blue, with red, yellow and green zones painted on, the dot,
+  // and the catch meter along its bottom.
   const bar = document.createElement('div');
   bar.className = 'catch-bar';
   bar.hidden = true;
@@ -74,7 +86,12 @@ export function createFishing(cb: FishingCallbacks): Fishing {
   const marker = document.createElement('div');
   marker.className = 'catch-marker';
   track.append(marker);
-  bar.append(track);
+  const meter = document.createElement('div');
+  meter.className = 'catch-meter';
+  const meterFill = document.createElement('div');
+  meterFill.className = 'catch-meter-fill';
+  meter.append(meterFill);
+  bar.append(track, meter);
 
   const pondView = createPond();
   const pond = document.createElement('div');
@@ -115,8 +132,8 @@ export function createFishing(cb: FishingCallbacks): Fishing {
   let phase: FishingPhase = 'off';
   let timer = 0;
   let frame = 0;
-  let zones: CatchZones | null = null;
-  let reelStart = 0;
+  let reel: Reel | null = null;
+  let held = false; // Pull is held down
   // Perfect catches in a row, and whether the last cast ended in one.
   let streak = 0;
   let lastPerfect = false;
@@ -124,13 +141,19 @@ export function createFishing(cb: FishingCallbacks): Fishing {
   function clearTimers(): void {
     clearTimeout(timer);
     cancelAnimationFrame(frame);
+    setHeld(false);
+  }
+
+  function setHeld(on: boolean): void {
+    held = on && phase === 'reeling';
+    main.classList.toggle('pulling', held);
   }
 
   function setPhase(next: FishingPhase): void {
     phase = next;
     row.dataset.phase = next;
     main.textContent =
-      next === 'reeling' ? STRINGS.fishing.catch
+      next === 'reeling' ? STRINGS.fishing.pull
       : next === 'waiting' || next === 'bite' ? STRINGS.fishing.reelIn
       : STRINGS.fishing.cast;
     main.disabled = false;
@@ -141,11 +164,11 @@ export function createFishing(cb: FishingCallbacks): Fishing {
     const pct = (n: number) => `${(n * 100).toFixed(2)}%`;
     const stops: [string, number, number][] = [
       ['var(--catch-miss)', 0, z.weak.start],
-      ['var(--catch-weak)', z.weak.start, z.good.start],
-      ['var(--catch-good)', z.good.start, z.perfect.start],
-      ['var(--catch-perfect)', z.perfect.start, z.perfect.end],
-      ['var(--catch-good)', z.perfect.end, z.good.end],
-      ['var(--catch-weak)', z.good.end, z.weak.end],
+      ['var(--catch-red)', z.weak.start, z.good.start],
+      ['var(--catch-yellow)', z.good.start, z.perfect.start],
+      ['var(--catch-green)', z.perfect.start, z.perfect.end],
+      ['var(--catch-yellow)', z.perfect.end, z.good.end],
+      ['var(--catch-red)', z.good.end, z.weak.end],
       ['var(--catch-miss)', z.weak.end, 1],
     ];
     track.style.background = `linear-gradient(to right, ${stops
@@ -191,29 +214,36 @@ export function createFishing(cb: FishingCallbacks): Fishing {
       cb.toast(STRINGS.fishing.tooSoon);
       return backToReady();
     }
-    zones = placeZones(Math.random());
-    paintZones(zones);
-    moveMarker(0);
+    reel = startReel(Math.random());
+    showReel(reel);
     bar.hidden = false;
     setPhase('reeling');
-    reelStart = performance.now();
+    cb.toast(STRINGS.fishing.hold);
+    let last = performance.now();
     const tick = (t: number) => {
-      const elapsed = t - reelStart;
-      if (sweptOut(elapsed)) {
+      reel = stepReel(reel!, held, t - last, Math.random());
+      last = t;
+      showReel(reel);
+      const outcome = reelOutcome(reel);
+      if (outcome === 'lost') {
         cb.toast(STRINGS.fishing.slack);
         return backToReady();
       }
-      moveMarker(markerAt(elapsed));
+      if (outcome === 'landed') return landed(reel);
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
   }
 
-  function tryCatch(): void {
+  function showReel(r: Reel): void {
+    paintZones(reelZones(r));
+    moveMarker(r.marker);
+    meterFill.style.width = `${(r.meter * 100).toFixed(1)}%`;
+  }
+
+  function landed(r: Reel): void {
     clearTimers();
-    const position = markerAt(performance.now() - reelStart);
-    moveMarker(position);
-    const grade = gradeAt(zones!, position);
+    const grade = reelGrade(r);
     bar.dataset.grade = grade;
     const caught = cb.onLand(grade);
     pondView.landed(caught !== null);
@@ -274,7 +304,27 @@ export function createFishing(cb: FishingCallbacks): Fishing {
   main.addEventListener('click', () => {
     if (phase === 'ready') castLine();
     else if (phase === 'waiting' || phase === 'bite') reelIn();
-    else if (phase === 'reeling') tryCatch();
+  });
+  // Pull is held, not tapped: hold to drag the dot right.
+  main.addEventListener('pointerdown', (e) => {
+    if (phase !== 'reeling') return;
+    e.preventDefault();
+    main.setPointerCapture?.(e.pointerId);
+    setHeld(true);
+  });
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) {
+    main.addEventListener(type, () => setHeld(false));
+  }
+  main.addEventListener('contextmenu', (e) => e.preventDefault()); // long press on phones
+  main.addEventListener('keydown', (e) => {
+    if (phase !== 'reeling' || (e.key !== 'Enter' && e.key !== ' ')) return;
+    e.preventDefault();
+    setHeld(true);
+  });
+  main.addEventListener('keyup', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    if (phase === 'reeling') e.preventDefault();
+    setHeld(false);
   });
   cancel.addEventListener('click', () => {
     stop();

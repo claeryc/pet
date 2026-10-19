@@ -182,18 +182,31 @@ export const CONFIG = {
   },
 
   // The fishing mini-game (in the Play panel). Cast, wait for a bite, tap
-  // Reel in, then tap Catch while the marker sweeping across the bar is on
-  // a good spot.
+  // Reel in, then hold Pull to keep the dot on the green stripe until the
+  // catch meter fills (see src/game/fishing.ts).
   fishing: {
     energyPerCast: 3, // each cast tires the pet a little
     biteAfterSeconds: { min: 4, max: 10 }, // how long until a fish bites
     biteWindowSeconds: 1.6, // how long you have to tap Reel in after a bite
-    sweepSeconds: 1.2, // how long the marker takes to cross the bar once
-    maxSweeps: 4, // after this many crossings the fish swims off
-    // How wide each coloured zone is, as a share of the bar. The red stripe
-    // sits in the middle, with yellow on both sides, then green; the rest of
-    // the bar is blue (no catch).
-    zoneWidths: { perfect: 0.05, good: 0.07, weak: 0.1 },
+    // How wide each coloured zone is, as a share of the bar. The green
+    // stripe sits in the middle, with yellow on both sides, then red; the
+    // rest of the bar is blue (no catch).
+    zoneWidths: { perfect: 0.1, good: 0.07, weak: 0.07 },
+    // Reeling in. Speeds are in bar widths per second.
+    reel: {
+      pull: 2.6, // how hard holding Pull drags the dot right
+      drift: 1.7, // how hard it drifts back left when you let go
+      maxSpeed: 0.9,
+      shiftEverySeconds: { min: 2.5, max: 3.5 }, // how often the zones slide
+      shiftBy: { min: 0.1, max: 0.22 }, // how far they slide each time
+      glideSeconds: 0.6, // how long a slide takes
+      meterStart: 0.3, // the catch meter starts this full
+      fill: 0.16, // meter gained per second on a coloured zone
+      drain: 0.18, // meter lost per second on blue
+      // A landed catch is perfect if at least this share of the time on
+      // the coloured zones was on green, good if on green or yellow.
+      gradeShare: 0.6,
+    },
     // The chance (0-1) that a fish is landed for each kind of catch.
     catchChance: { perfect: 1, good: 0.75, weak: 0.3, miss: 0 },
     // What you catch, in percent. A perfect catch makes the rarer ones
