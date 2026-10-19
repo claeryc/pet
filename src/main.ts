@@ -59,6 +59,8 @@ import {
   type MingleBlock,
 } from './game/friends';
 import { createChoiceBox } from './ui/choice';
+import { createAwayCard } from './ui/away';
+import { awayNotes } from './game/away';
 import type { Pet } from './game/state';
 import { clearSave, loadGame, saveGame } from './storage/storage';
 import { setupCanvas, drawRoom } from './render/canvas';
@@ -67,7 +69,7 @@ import { createHomeScreen } from './ui/home';
 import { createNamingBox } from './ui/naming';
 import { STRINGS } from './strings';
 import { ITEM_ICONS } from './ui/icons';
-import { DONE_MS as COOKED_MS } from './ui/cooking';
+import { DISH_MS, DONE_MS as COOKED_MS } from './ui/cooking';
 
 const root = document.getElementById('app')!;
 
@@ -77,7 +79,8 @@ function gameNow(): number {
 }
 
 // Load the saved game (or start a new one) and catch it up to right now.
-let state: GameState = loadGame() ?? createNewGame(Date.now());
+const saved = loadGame();
+let state: GameState = saved ?? createNewGame(Date.now());
 // What Messages had at the last visit, so Percy's news from while you were
 // away can be shown once the screen is up.
 const lastVisitMessages = state.messages;
@@ -351,6 +354,15 @@ function onMingle(id: string): void {
 }
 
 // Gives the check-in bonus if one is due (on opening the game or coming back).
+// Shows the "While you were away" card, if you were gone a while and
+// something happened. `before` is the game as you left it at `leftAt`.
+// Skipped while the pet is being named or a choice is open.
+function showAway(before: GameState, leftAt: number): void {
+  if (naming.isOpen() || choice.isOpen() || away.isOpen()) return;
+  const notes = awayNotes(before, simulate(state, gameNow()), leftAt, gameNow());
+  if (notes.length > 0) away.open(notes, state.pet.name, gameNow() - leftAt);
+}
+
 function tryCheckIn(): void {
   const firstEver = state.checkIn.day === '';
   const { state: next, reward } = checkIn(simulate(state, gameNow()), gameNow());
@@ -440,8 +452,11 @@ const home = createHomeScreen(root, {
     // The pot bubbles and shows the dish first, then the reveal.
     const caption = result.discovered ? STRINGS.reveal.newRecipe : undefined;
     window.setTimeout(() => showGot(result.dish, 1, caption), COOKED_MS);
-    if (!result.recipe) home.toast(STRINGS.cooking.mess);
-    if (result.discovered) react('happy');
+    // What it made stays a secret until the lid comes off.
+    window.setTimeout(() => {
+      if (!result.recipe) home.toast(STRINGS.cooking.mess);
+      if (result.discovered) react('happy');
+    }, DISH_MS);
     return result.dish;
   },
   onPlant: (pot, crop) =>
@@ -537,7 +552,12 @@ const home = createHomeScreen(root, {
       setState(createNewGame(Date.now()));
     }
   },
-  onFastForward: (hours) => setState(fastForward(state, Date.now(), hours)),
+  onFastForward: (hours) => {
+    const before = simulate(state, gameNow());
+    const at = gameNow();
+    setState(fastForward(state, Date.now(), hours));
+    showAway(before, at);
+  },
   onGrowNow: () => setState(growNow(state, gameNow())),
   onAddGold: () => setState(earn(state, CONFIG.debug.addGold)),
   onSetCare: (careScore) => setState({ ...state, pet: { ...state.pet, careScore } }),
@@ -596,10 +616,12 @@ const home = createHomeScreen(root, {
 // Made after the home screen, which clears the page when it starts.
 const naming = createNamingBox(root);
 const choice = createChoiceBox(root);
+const away = createAwayCard(root);
 home.update(state, gameNow());
 askWhoRetires();
 announceMail(lastVisitMessages);
 tryCheckIn();
+if (saved) showAway(saved, saved.lastUpdated);
 
 // Draw the pet every animation frame (about 60 times a second). The sprite
 // sheet comes from the pet's stage or character (see src/data/characters.json).
@@ -647,6 +669,15 @@ requestAnimationFrame(render);
 setInterval(() => setState(simulate(state, gameNow())), CONFIG.liveUpdateSeconds * 1000);
 
 // ...and catch up straight away when you come back to the tab or app.
+// Leaving keeps a copy of the game as it was, so coming back can say what
+// happened meanwhile.
+let leftAs: { state: GameState; at: number } | null = null;
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') tryCheckIn();
+  if (document.visibilityState === 'hidden') {
+    leftAs = { state, at: gameNow() };
+  } else {
+    tryCheckIn();
+    if (leftAs) showAway(leftAs.state, leftAs.at);
+    leftAs = null;
+  }
 });
