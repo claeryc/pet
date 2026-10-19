@@ -13,7 +13,7 @@ import type { GameState } from '../game/state';
 import type { Food, FoodId } from '../game/actions';
 import { category, label, row, type Entry } from './shop';
 import { ACHIEVEMENTS, badgeCount, badgeOf, nextGoal, tallyOf, type AchievementId } from '../game/achievements';
-import { ACHIEVEMENT_ICONS, ITEM_ICONS, MEDAL_ICONS, UNKNOWN_ICON } from './icons';
+import { ACHIEVEMENT_ICONS, ITEM_ICONS, UNKNOWN_ICON } from './icons';
 
 export interface CollectionCallbacks {
   // A character's picture (its first idle frame) as a URL, if loaded.
@@ -35,8 +35,8 @@ function entry(found: boolean, icon: string, name: string, note: string, stars: 
 }
 
 // One achievement: its picture (dimmed until the first badge), what to do
-// for the next badge with a bar showing how far along it is, and the badge
-// earned so far on the right.
+// for the next badge with a bar showing how far along it is, and the tier
+// earned so far on the right. The outline and fill take the tier's colour.
 function achievement(state: GameState, id: AchievementId): Entry {
   const A = STRINGS.achievements;
   const have = tallyOf(state, id);
@@ -47,9 +47,7 @@ function achievement(state: GameState, id: AchievementId): Entry {
   const badge = document.createElement('span');
   badge.className = 'shop-label achievement-tier';
   badge.dataset.tier = tier ?? 'none';
-  badge.innerHTML = MEDAL_ICONS[tier ?? 'none'];
-  badge.append(tier ? A.tiers[tier] : '');
-  if (tier) badge.title = A.tiers[tier];
+  badge.textContent = tier ? A.tiers[tier] : '';
 
   const el = row(ACHIEVEMENT_ICONS[id], A.names[id], note, badge);
   el.classList.add('achievement-row');
@@ -61,7 +59,7 @@ function achievement(state: GameState, id: AchievementId): Entry {
   bar.append(fill);
   el.querySelector('.shop-row-text')?.append(bar);
 
-  return { icon: ACHIEVEMENT_ICONS[id], row: el, faded: !tier, medal: tier ? MEDAL_ICONS[tier] : undefined };
+  return { icon: ACHIEVEMENT_ICONS[id], row: el, faded: !tier, tier: tier ?? undefined };
 }
 
 const foodStars = (id: string) => (CONFIG.foods as readonly Food[]).find((f) => f.id === id)?.stars ?? 0;

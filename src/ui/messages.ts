@@ -20,7 +20,7 @@ import { isFull, orderTier } from '../game/delivery';
 import { isUnlocked, type UnlockId } from '../game/unlocks';
 import type { GameState, Message } from '../game/state';
 import type { FoodId } from '../game/actions';
-import { ITEM_ICONS, MEDAL_ICONS, STAT_ICONS, UNKNOWN_ICON } from './icons';
+import { ACHIEVEMENT_ICONS, ITEM_ICONS, STAT_ICONS, UNKNOWN_ICON } from './icons';
 import type { AchievementId } from '../game/achievements';
 import { formatDuration, formatWhen } from './time';
 
@@ -132,7 +132,7 @@ function messageRow(m: Message, now: number): HTMLElement {
   icon.innerHTML =
     m.kind === 'order' || m.kind === 'pickup' ? ITEM_ICONS.parcel
     : m.kind === 'visitor' || m.kind === 'littleOne' ? ITEM_ICONS.meet
-    : m.kind === 'badge' ? MEDAL_ICONS[m.tier]
+    : m.kind === 'badge' ? ACHIEVEMENT_ICONS[m.id] ?? ITEM_ICONS.letter
     : ITEM_ICONS.letter;
   const body = el('span', 'shop-row-text');
   body.append(el('b', '', text(m)), el('small', '', formatWhen(m.at, now, STRINGS.messages.today, STRINGS.messages.yesterday)));

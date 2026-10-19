@@ -823,40 +823,6 @@ export const ITEM_ICONS: Record<string, string> = {
   ]),
 };
 
-// A medal on a ribbon, for achievements (A is the medal, B its shine, C
-// its shadow). `none` is the grey one for a badge not earned yet.
-const MEDAL_COLORS: Record<string, [string, string, string]> = {
-  none: ['#d6d1de', '#eeebf2', '#b3adbd'],
-  bronze: ['#d29a6c', '#f0c8a0', '#a86a3e'],
-  silver: ['#b7c0d4', '#eef2fa', '#8590a8'],
-  gold: ['#f2c14e', '#fff0b0', '#c8902a'],
-};
-
-function medalIcon(tier: string): string {
-  const [main, shine, shade] = MEDAL_COLORS[tier];
-  return pixelIcon(
-    [
-      '.kk......kk.',
-      '.krk....kbk.',
-      '..krk..kbk..',
-      '...krkkbk...',
-      '....kkkk....',
-      '...kAAAAk...',
-      '..kABBAAAk..',
-      '..kABAAAAk..',
-      '..kAAAAACk..',
-      '..kAAAACCk..',
-      '...kACCCk...',
-      '....kkkk....',
-    ],
-    { A: main, B: shine, C: shade },
-  );
-}
-
-export const MEDAL_ICONS: Record<string, string> = Object.fromEntries(
-  Object.keys(MEDAL_COLORS).map((tier) => [tier, medalIcon(tier)]),
-);
-
 // The pictures for each achievement in the Collection.
 export const ACHIEVEMENT_ICONS: Record<string, string> = {
   fish: ITEM_ICONS.fishing,
