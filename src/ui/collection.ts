@@ -36,7 +36,9 @@ function entry(found: boolean, icon: string, name: string, note: string, stars: 
 
 // One achievement: its picture (dimmed until the first badge), what to do
 // for the next badge with a bar showing how far along it is, and the tier
-// earned so far on the right. The outline and fill take the tier's colour.
+// earned so far as a picture on the right (from sprites/badges/tiers.png,
+// drawn in art/badges/tiers.aseprite). The outline and fill take the
+// tier's colour.
 function achievement(state: GameState, id: AchievementId): Entry {
   const A = STRINGS.achievements;
   const have = tallyOf(state, id);
@@ -45,9 +47,14 @@ function achievement(state: GameState, id: AchievementId): Entry {
   const note = next ? A.progress(A.goals[id](next.goal), Math.min(have, next.goal), next.goal) : A.allDone(have);
 
   const badge = document.createElement('span');
-  badge.className = 'shop-label achievement-tier';
+  badge.className = 'achievement-tier';
   badge.dataset.tier = tier ?? 'none';
-  badge.textContent = tier ? A.tiers[tier] : '';
+  if (tier) {
+    badge.style.backgroundImage = `url('${import.meta.env.BASE_URL}sprites/badges/tiers.png')`;
+    badge.title = A.tiers[tier];
+    badge.setAttribute('role', 'img');
+    badge.setAttribute('aria-label', A.tiers[tier]);
+  }
 
   const el = row(ACHIEVEMENT_ICONS[id], A.names[id], note, badge);
   el.classList.add('achievement-row');
