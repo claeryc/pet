@@ -14,6 +14,10 @@ export const CONFIG = {
   // play with it, in milliseconds.
   reactionMs: 1400,
 
+  // Eating takes longer: the food sits in front of the pet and goes in
+  // `bites` bites over `ms` milliseconds.
+  eating: { ms: 2800, bites: 4 },
+
   // Pets with an idle set (see public/sprites/manifest.json) play one of its
   // moves, like a stretch or a look around, about this often while they're
   // idle or cheerful, in milliseconds. Each break comes up to 3 seconds
