@@ -61,6 +61,32 @@ Keep `art/` and `public/sprites/` mirrored: `art/characters/cave/pebblit.aseprit
 
 So a full sheet is 128 x 224 pixels. The egg only has an `idle` row. If a sheet is missing an animation, the game uses `idle` instead, so you can start with just `idle` and add the rest later.
 
+## Extra idle moves (idle sets)
+
+A pet can have a few extra idle moves, like a stretch or a look around. While it's idle or cheerful, it plays one of them now and then (every 6 to 12 seconds, picked at random), once, and then goes back to its normal loop. It never does this while sad, sick, asleep or eating.
+
+Moves are shared through an **idle set**, so characters that move the same way are set up once. A set lists its moves and the rows they're drawn on, under `"idleSets"` in `manifest.json`:
+
+```json
+"idleSets": {
+  "curious": {
+    "animations": {
+      "idle-look":    { "row": 7, "frames": 4, "frameMs": 260 },
+      "idle-stretch": { "row": 8, "frames": 4, "frameMs": 260 }
+    }
+  }
+}
+```
+
+A sheet uses a set with `"idleSet": "curious"`, and has those moves drawn on those rows, below the usual seven. Bunbun and Mosscap use `curious` (placeholder art: a lean to the left and a stretch up tall).
+
+- Move names start with `idle-`, and each move gets a row of its own after row 6.
+- Every sheet using a set draws its moves on the set's rows. A sheet that should move differently uses a different set.
+- In Aseprite, add a tag for each move with the move's name (the same as in the set), so **Split Tags** exports it as its own row.
+- How often moves play is `idleMoveEveryMs` in `src/game/config.ts`.
+
+**Hats follow the moves**, up and down as usual and sideways too: the game sees how far the head moves left or right in each frame of an idle move. Each sheet is measured on its own, so the same move on different bodies still keeps each hat on its own pet's head. If the sideways tracking is off, set it by hand with `headShifts`, in pixels compared to the first idle frame (negative is left), for example `"headShifts": { "idle-look": [-1, -2, -2, -1] }`. Put it on the idle set to fix every sheet using it, or on one sheet for just that one. For up and down, `headOffsets` works on idle moves too. A sheet's own fix wins over its set's, and a set's over its shape's.
+
 ## The palette
 
 All art uses one shared 16-colour palette (`src/render/palette.ts`). It's already loaded in every `.aseprite` file in `art/`, and `docs/palette.gpl` has it as a separate palette file.
@@ -105,7 +131,7 @@ Any hat fits any character, so you draw each hat only once (in a few sizes), and
 
 **How it works:** every pet sheet in `manifest.json` names a body `shape`, and the shape says where hats sit. In every other frame the game finds how far the top of the head has moved (by looking at the picture) and moves the hat with it, so the hat hops, squashes and sleeps along with the pet.
 
-**If a hat doesn't follow an animation properly**, you can tell the game exactly how far the head moves in each frame of that animation, in pixels compared to the first idle frame (negative is up). Add it to the sheet in `manifest.json`, for example `"headOffsets": { "happy": [1, -4, -5, -3] }`. If every character of a shape needs the same fix, put it on the shape instead. A sheet's own fix wins over its shape's.
+**If a hat doesn't follow an animation properly**, you can tell the game exactly how far the head moves in each frame of that animation, in pixels compared to the first idle frame (negative is up). Add it to the sheet in `manifest.json`, for example `"headOffsets": { "happy": [1, -4, -5, -3] }`. If every character of a shape needs the same fix, put it on the shape instead. A sheet's own fix wins over its shape's. Idle moves also follow the head sideways (see [Extra idle moves](#extra-idle-moves-idle-sets)).
 
 ### Body shapes
 

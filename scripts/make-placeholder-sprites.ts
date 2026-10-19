@@ -112,11 +112,13 @@ interface Look {
   topper: Topper; // what sits on top of the head
   detail?: string; // colour for spikes, spots and other details
   extras?: Extra[];
+  idleSet?: string; // extra idle moves from IDLE_SETS, drawn below the usual rows
 }
 
-// One frame: how high it hops, how squashed it is, and a counter for
-// little extras like floating Zs.
-type Frame = [bounce: number, squash: number, extra: number];
+// One frame: how high it hops, how squashed it is (negative is stretched
+// tall), a counter for little extras like floating Zs, and how far the top
+// leans sideways (negative is left).
+type Frame = [bounce: number, squash: number, extra: number, lean?: number];
 
 // Rows of every creature sheet, in order. Must match manifest.json.
 const ROWS: [tag: string, face: Face, frameMs: number, frames: Frame[]][] = [
@@ -128,6 +130,15 @@ const ROWS: [tag: string, face: Face, frameMs: number, frames: Frame[]][] = [
   ['happy', 'joy', 140, [[0, 2, 0], [3, 0, 0], [4, 0, 0], [2, 0, 0]]], // big hop
   ['cheerful', 'cheerful', 320, [[0, 1, 0], [0, 0, 1], [0, 0, 2], [0, 1, 3]]], // calm and happy, no jump
 ];
+
+// Idle sets: extra idle moves, on the rows after ROWS. Must match the
+// 'idleSets' in manifest.json.
+const IDLE_SETS: Record<string, typeof ROWS> = {
+  curious: [
+    ['idle-look', 'happy', 260, [[0, 0, 0, -1], [0, 0, 0, -2], [0, 0, 0, -2], [0, 0, 0, -1]]], // leans to look left
+    ['idle-stretch', 'cheerful', 260, [[0, 0, 0], [0, -1, 0], [0, -2, 0], [0, -1, 0]]], // stretches up tall
+  ],
+};
 
 // Adds a dark 1-pixel outline around everything drawn on the canvas.
 function addOutline(c: PixelCanvas): void {
@@ -141,7 +152,7 @@ function addOutline(c: PixelCanvas): void {
 }
 
 // Draws one 32x32 frame of a creature.
-function drawCreature(look: Look, face: Face, [bounce, squash, extra]: Frame, col: number): PixelCanvas {
+function drawCreature(look: Look, face: Face, [bounce, squash, extra, lean = 0]: Frame, col: number): PixelCanvas {
   const c = new PixelCanvas(FRAME, FRAME);
   const px = (x: number, y: number, w: number, h: number, color: string) => {
     c.fillStyle = color;
@@ -317,6 +328,23 @@ function drawCreature(look: Look, face: Face, [bounce, squash, extra]: Frame, co
     px(eyeR + 2, eyeY + 2, 2, 1, PALETTE.blush);
   }
 
+  // Lean the top sideways: the feet stay put and each row moves a bit more
+  // the higher it is, so the head moves the whole way.
+  if (lean) {
+    const copy = c.data.slice();
+    c.data.fill(0);
+    const pivot = bottom - 3;
+    for (let y = 0; y < FRAME; y++) {
+      const shift = Math.round(lean * Math.min(1, Math.max(0, (pivot - y) / (pivot - top))));
+      for (let x = 0; x < FRAME; x++) {
+        const tx = x + shift;
+        if (tx < 0 || tx >= FRAME) continue;
+        const i = (y * FRAME + x) * 4;
+        c.data.set(copy.subarray(i, i + 4), (y * FRAME + tx) * 4);
+      }
+    }
+  }
+
   // A dark outline around everything drawn so far, so the pet stands out
   // on any background.
   addOutline(c);
@@ -382,11 +410,12 @@ function guides(): Uint8Array {
 }
 
 function creatureArt(look: Look | null): Art {
-  const png = new PixelCanvas(FRAME * 4, FRAME * ROWS.length);
+  const rows = [...ROWS, ...(look?.idleSet ? IDLE_SETS[look.idleSet] : [])];
+  const png = new PixelCanvas(FRAME * 4, FRAME * rows.length);
   const cels: (Uint8Array | null)[] = [];
   const frameMs: number[] = [];
   const tags: Art['tags'] = [];
-  ROWS.forEach(([tag, face, ms, frames], row) => {
+  rows.forEach(([tag, face, ms, frames], row) => {
     tags.push({ name: tag, from: cels.length, to: cels.length + frames.length - 1 });
     frames.forEach((f, col) => {
       frameMs.push(ms);
@@ -520,11 +549,11 @@ const LOOKS: Record<string, Look> = {
   'stages/teen': { body: PALETTE.pink, shade: PALETTE.rose, width: 20, height: 16, topper: 'ears' },
   // Basic: soft and simple.
   'characters/basic/dumpling': { body: PALETTE.peach, shade: PALETTE.cocoa, width: 20, height: 15, topper: 'nubs' },
-  'characters/basic/bunbun': { body: PALETTE.cream, shade: PALETTE.peach, width: 22, height: 15, topper: 'bunny' },
+  'characters/basic/bunbun': { body: PALETTE.cream, shade: PALETTE.peach, width: 22, height: 15, topper: 'bunny', idleSet: 'curious' },
   'characters/basic/cloudlet': { body: PALETTE.lavender, shade: PALETTE.lilac, width: 24, height: 17, topper: 'fluff', extras: ['wings'] },
   // Nature: leafy and green.
   'characters/nature/sprig': { body: PALETTE.mint, shade: PALETTE.leaf, width: 20, height: 16, topper: 'sprout' },
-  'characters/nature/mosscap': { body: PALETTE.peach, shade: PALETTE.leaf, width: 22, height: 15, topper: 'mushroom' },
+  'characters/nature/mosscap': { body: PALETTE.peach, shade: PALETTE.leaf, width: 22, height: 15, topper: 'mushroom', idleSet: 'curious' },
   'characters/nature/fernwhisk': { body: PALETTE.leaf, shade: PALETTE.cocoa, width: 24, height: 18, topper: 'leaves' },
   // Cave: spiky and rocky.
   'characters/cave/pebblit': { body: PALETTE.lilac, shade: PALETTE.plum, detail: PALETTE.plum, width: 20, height: 15, topper: 'spikes', extras: ['spots'] },

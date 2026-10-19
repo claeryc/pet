@@ -14,6 +14,12 @@ export const CONFIG = {
   // play with it, in milliseconds.
   reactionMs: 1400,
 
+  // Pets with an idle set (see public/sprites/manifest.json) play one of its
+  // moves, like a stretch or a look around, about this often while they're
+  // idle or cheerful, in milliseconds. Each break comes up to 3 seconds
+  // later than this, at random.
+  idleMoveEveryMs: 9000,
+
   // Starting values for a brand new pet.
   startingStats: {
     hunger: 80, // 100 = completely full, 0 = starving
