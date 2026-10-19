@@ -140,6 +140,23 @@ describe('growing', () => {
     expect(plot.growth).toBeCloseTo(7.5 * HOUR);
     expect(fertilize(wateredCarrot(), 0, START).blocked).toBe('noFertilizer');
   });
+
+  // Finishing while fertilized used to leave some plants a hair short of
+  // ready, stuck at "1h" for good.
+  it('a plant that finishes while fertilized is ready, whatever the timing', () => {
+    const base = { ...wateredCarrot().garden[0], moistUntil: START + 100 * HOUR, rollsFrom: START + 100 * HOUR };
+    for (let k = 0; k < 200; k++) {
+      const t = START + k * 7919;
+      const growth = 16 * HOUR - HOUR - k * 0.25 - 1;
+      const plot = growPlot({ ...base, growth, fertilizedUntil: t + 6 * HOUR }, t, t + 6 * HOUR);
+      expect(plotStage(plot)).toBe('ready');
+    }
+  });
+
+  it('a plant already left a hair short of ready finishes', () => {
+    const plot = { ...wateredCarrot().garden[0], growth: 16 * HOUR - 0.0001, moistUntil: START + 9 * HOUR };
+    expect(plotStage(growPlot(plot, START + HOUR, START + 2 * HOUR))).toBe('ready');
+  });
 });
 
 describe('getting sick', () => {
