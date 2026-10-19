@@ -3921,3 +3921,61 @@ body {
     100% { opacity: 0; }
   }
 }
+
+/* A landed fish flipping up out of the pond (placed by src/ui/fishing.ts). */
+.fish-leap {
+  position: fixed;
+  z-index: 30;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.fish-leap svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* "Perfect!" over the pond, with how many in a row under it. */
+.catch-cheer {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #fff;
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 0 var(--catch-perfect), 2px 0 0 var(--catch-perfect), -2px 0 0 var(--catch-perfect), 0 -2px 0 var(--catch-perfect);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: catch-cheer 1.1s steps(1) forwards;
+}
+
+.catch-cheer small {
+  margin-top: 4px;
+  font-size: 14px;
+  text-shadow: 0 1px 0 var(--plum), 1px 0 0 var(--plum), -1px 0 0 var(--plum), 0 -1px 0 var(--plum);
+}
+
+/* Pops in big, settles, holds, then blinks away (in hard steps, pixel style). */
+@keyframes catch-cheer {
+  0% { transform: translate(-50%, -50%) scale(0.6); }
+  8% { transform: translate(-50%, -50%) scale(1.25); }
+  16% { transform: translate(-50%, -50%) scale(1); }
+  80% { opacity: 1; }
+  86% { opacity: 0; }
+  92% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .catch-cheer {
+    animation: none;
+  }
+}

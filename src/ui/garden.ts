@@ -450,6 +450,7 @@ export function createGarden(cb: GardenCallbacks): Garden {
       if (!active || !state) return null;
       return {
         selected,
+        pouring,
         pots: state.garden.map((p) => {
           const stage = plotStage(p);
           return {
@@ -457,6 +458,7 @@ export function createGarden(cb: GardenCallbacks): Garden {
             crop: p.crop,
             grown: progress(p),
             dry: (stage === 'growing' || stage === 'sick') && moisture(p, now) <= 0,
+            wet: stage === 'growing' || stage === 'sick' ? moisture(p, now) : 0,
           };
         }),
       };

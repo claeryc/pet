@@ -73,6 +73,8 @@ export const STRINGS = {
     slack: 'The line went slack. The fish swam off.',
     grades: { perfect: 'Perfect catch!', good: 'Good catch!', weak: 'Weak catch...', miss: 'No catch.' },
     slipped: (grade: string) => `${grade} The fish slipped off the hook.`,
+    perfect: 'Perfect!',
+    streak: (n: number) => `${n} in a row!`,
     bait: (count: number, on: boolean) => `Use bait (${count} left): ${on ? 'on' : 'off'}`,
   },
   cooking: {
