@@ -2,7 +2,21 @@ import { describe, expect, it } from 'vitest';
 import { CONFIG } from '../src/game/config';
 import { feed, type Food } from '../src/game/actions';
 import { foodCount } from '../src/game/economy';
-import { biteDelayMs, cast, gradeAt, land, markerAt, pickCatch, placeZones, sweptOut } from '../src/game/fishing';
+import {
+  biteDelayMs,
+  cast,
+  gradeAt,
+  land,
+  nextCenter,
+  pickCatch,
+  placeZones,
+  reelGrade,
+  reelOutcome,
+  reelZones,
+  startReel,
+  stepReel,
+  type Reel,
+} from '../src/game/fishing';
 import { createNewGame } from '../src/game/state';
 import { newTeen } from './helpers';
 
@@ -28,7 +42,7 @@ describe('the catch bar', () => {
     expect(placeZones(0.1).perfect.start).not.toBe(placeZones(0.9).perfect.start);
   });
 
-  it('red is perfect, yellow is good, green is weak, blue is no catch', () => {
+  it('green is perfect, yellow is good, red is weak, blue is no catch', () => {
     const z = placeZones(0.5);
     const mid = (z.perfect.start + z.perfect.end) / 2;
     expect(gradeAt(z, mid)).toBe('perfect');
@@ -40,15 +54,78 @@ describe('the catch bar', () => {
     expect(gradeAt(z, 1)).toBe('miss');
   });
 
-  it('the marker bounces between the ends of the bar', () => {
-    const sweep = f.sweepSeconds * 1000;
-    expect(markerAt(0)).toBe(0);
-    expect(markerAt(sweep / 2)).toBeCloseTo(0.5);
-    expect(markerAt(sweep)).toBeCloseTo(1);
-    expect(markerAt(sweep * 1.25)).toBeCloseTo(0.75);
-    expect(markerAt(sweep * 2)).toBeCloseTo(0);
-    expect(sweptOut(sweep * f.maxSweeps - 1)).toBe(false);
-    expect(sweptOut(sweep * f.maxSweeps)).toBe(true);
+  it('moves the zones a bit to the left or right, staying on the bar', () => {
+    const { min, max } = f.reel.shiftBy;
+    expect(nextCenter(0.5, 0)).toBeCloseTo(0.5 - min);
+    expect(nextCenter(0.5, 0.999)).toBeCloseTo(0.5 + max, 2);
+    // Near an end it slides back the other way.
+    const z = placeZones(0);
+    const lowest = (z.weak.start + z.weak.end) / 2;
+    expect(nextCenter(lowest, 0.1)).toBeGreaterThan(lowest);
+  });
+});
+
+// Runs a reel for `ms` in 16ms steps, holding Pull whenever `hold` says so.
+function run(reel: Reel, ms: number, hold: (r: Reel) => boolean, random = 0.5): Reel {
+  for (let t = 0; t < ms && !reelOutcome(reel); t += 16) reel = stepReel(reel, hold(reel), 16, random);
+  return reel;
+}
+
+// Holds Pull while the dot is heading to stop short of the green stripe's
+// middle (letting go a little early, as a player would).
+const chase = (r: Reel) => {
+  const z = reelZones(r);
+  return r.marker + r.speed * 0.1 < (z.perfect.start + z.perfect.end) / 2;
+};
+
+describe('reeling in', () => {
+  it('starts with the dot at the left end', () => {
+    const r = startReel(0.5);
+    expect(r.marker).toBe(0);
+    expect(r.meter).toBe(f.reel.meterStart);
+  });
+
+  it('holding Pull moves the dot right, letting go drifts it back left', () => {
+    const held = run(startReel(0.5), 400, () => true);
+    expect(held.marker).toBeGreaterThan(0.1);
+    const released = run(held, 1200, () => false);
+    expect(released.marker).toBeLessThan(held.marker);
+    expect(run(released, 3000, () => false).marker).toBe(0);
+  });
+
+  it('the dot stays on the bar', () => {
+    const r = run(startReel(0.5), 3000, () => true);
+    expect(r.marker).toBeLessThanOrEqual(1);
+  });
+
+  it('the zones slide to a new spot every few seconds', () => {
+    const start = startReel(0.5);
+    let r = start;
+    // The meter is kept topped up so the fish doesn't get away meanwhile.
+    for (let t = 0; t < (f.reel.shiftEverySeconds.max + f.reel.glideSeconds) * 1000 + 100; t += 16) {
+      r = { ...stepReel(r, false, 16, 0.5), meter: 0.5 };
+    }
+    expect(r.center).not.toBeCloseTo(start.center);
+  });
+
+  it('keeping the dot on green lands a perfect catch', () => {
+    const r = run(startReel(0.5), 20_000, chase);
+    expect(reelOutcome(r)).toBe('landed');
+    expect(reelGrade(r)).toBe('perfect');
+  });
+
+  it('never pulling loses the fish', () => {
+    const r = run(startReel(0.5), 20_000, () => false);
+    expect(reelOutcome(r)).toBe('lost');
+  });
+
+  it('grades a catch by where the dot spent its time', () => {
+    const r = startReel(0.5);
+    const at = (perfect: number, good: number, weak: number, miss = 0) => reelGrade({ ...r, timeIn: { perfect, good, weak, miss } });
+    expect(at(7, 2, 1)).toBe('perfect');
+    expect(at(3, 4, 3)).toBe('good');
+    expect(at(1, 2, 7)).toBe('weak');
+    expect(at(0, 0, 0, 5)).toBe('miss');
   });
 
   it('a fish bites within the set time', () => {
