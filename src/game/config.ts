@@ -430,6 +430,47 @@ export const CONFIG = {
     littleOnes: [1, 3, 10], // little ones from mingling
   },
 
+  // Skills (in the menu, see src/game/skills.ts). Doing things earns Keeper
+  // XP, each Keeper level gives a skill point, and points are spent on
+  // skills. They belong to you, not the pet, so they carry over to every
+  // pet you raise.
+  skills: {
+    // XP for each thing counted for an achievement (per one).
+    xp: { fish: 3, deliveries: 5, harvests: 4, dishes: 3, cravings: 5, gifts: 2, littleOnes: 50 },
+    perfectFishXp: 2, // extra for a perfect catch (5 in all)
+    deliveryXp: { bronze: 0, silver: 5, gold: 15 }, // extra for a fuller order (5 / 10 / 20 in all)
+    grownUpXp: { 1: 20, 2: 40, 3: 80 }, // a pet growing up, by its stars
+    badgeXp: { bronze: 25, silver: 50, gold: 100 },
+    // Going from level n to n + 1 takes base + perLevel × n XP.
+    level: { base: 60, perLevel: 20 },
+    // Points for each rank of a skill: the 1st costs 1, the 2nd 2, the 3rd 3.
+    rankCosts: [1, 2, 3],
+    // Taking a tree's points back costs this much gold per point (the
+    // first time is free).
+    resetGoldPerPoint: 100,
+    // The skills in each tree, and what one rank of each does.
+    trees: {
+      fishing: ['steadyHands', 'headStart', 'luckyLine'],
+      garden: ['quickSprouts', 'deepRoots', 'hardyPlants'],
+      kitchen: ['secondHelping', 'chefsNose', 'wasteNot'],
+      care: ['gentleStart', 'goodHabits', 'cozyHome'],
+    },
+    perRank: {
+      steadyHands: 0.1, // the green stripe is 10% wider
+      headStart: 0.1, // the catch meter starts 10% fuller
+      luckyLine: 5, // lobster 5% likelier (shrimp 5% less)
+      quickSprouts: 0.08, // crops grow 8% faster
+      deepRoots: 2, // soil stays wet 2 hours longer
+      hardyPlants: 0.25, // a quarter less likely to get sick
+      secondHelping: 0.1, // 10% chance a recipe makes 2
+      chefsNose: 1, // one more ingredient of an unknown recipe shows (then its name)
+      wasteNot: 0.25, // 25% chance a Mushy mess gives an ingredient back
+      gentleStart: 5, // a new egg's Care Score starts 5 higher
+      goodHabits: 0.15, // the Care Score rises 15% faster
+      cozyHome: 0.05, // tummy and joy drop 5% slower
+    },
+  },
+
   // How many old messages the Messages page keeps.
   messagesKept: 60,
 

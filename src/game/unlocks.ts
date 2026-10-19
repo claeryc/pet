@@ -9,8 +9,11 @@ import type { GameState } from './state';
 import { canOrder } from './delivery';
 import { logMessage } from './messages';
 import { updateBadges, type AchievementId, type Tier } from './achievements';
+import { creditGrownUps, keeperLevel, updateLevel } from './skills';
+import { getCharacter } from './growth';
 
-export type UnlockId = 'shop' | 'cooking' | 'collection' | 'familyTree' | 'garden' | 'messages' | 'delivery' | 'meet';
+export type UnlockId =
+  | 'shop' | 'cooking' | 'collection' | 'familyTree' | 'garden' | 'messages' | 'delivery' | 'meet' | 'skills';
 
 const RULES: Record<UnlockId, (s: GameState) => boolean> = {
   // Once the egg hatches and there's someone to buy things for.
@@ -32,6 +35,8 @@ const RULES: Record<UnlockId, (s: GameState) => boolean> = {
   delivery: (s) => canOrder(s),
   // Meet (in Play) opens when the first wanderer drops by.
   meet: (s) => !!s.visit?.guest || (s.friends?.length ?? 0) > 0,
+  // Skills open with the first skill point (Keeper level 2).
+  skills: (s) => !!s.keeper && keeperLevel(s) >= 2,
 };
 
 export const UNLOCKS = Object.keys(RULES) as UnlockId[];
@@ -60,13 +65,15 @@ export function characterKey(character: string, variant: string | null): string 
   return variant ? `${character}:${variant}` : character;
 }
 
-// Writes down anything new: the character a grown-up pet became, badges
-// earned, and whatever has just opened up. Returns the ids that opened and
-// the badges earned, so the game can say so.
+// Writes down anything new: the character a grown-up pet became (and its
+// Keeper XP), badges earned, Keeper levels reached and whatever has just
+// opened up. Returns the ids that opened, the badges earned and the levels
+// reached, so the game can say so.
 export function updateProgress(state: GameState): {
   state: GameState;
   unlocked: UnlockId[];
   badges: { id: AchievementId; tier: Tier }[];
+  levels: number[];
 } {
   let s = state;
   for (const pet of [s.pet, ...s.housemates]) {
@@ -74,10 +81,12 @@ export function updateProgress(state: GameState): {
     const key = characterKey(pet.character, pet.variant);
     if (!s.charactersFound.includes(key)) s = { ...s, charactersFound: [...s.charactersFound, key] };
   }
+  s = creditGrownUps(s, [s.pet, ...s.housemates], (pet) => getCharacter(pet.character)?.stars ?? 1);
   const badges = updateBadges(s);
-  s = badges.state;
+  const levels = updateLevel(badges.state);
+  s = levels.state;
   const opened = unlocksFor(s).filter((id) => !s.unlocked.includes(id));
   if (opened.length > 0) s = { ...s, unlocked: [...s.unlocked, ...opened] };
   for (const id of opened) s = logMessage(s, { kind: 'unlocked', at: s.lastUpdated, id });
-  return { state: s, unlocked: opened, badges: badges.earned };
+  return { state: s, unlocked: opened, badges: badges.earned, levels: levels.levels };
 }

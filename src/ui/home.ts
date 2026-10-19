@@ -20,6 +20,7 @@ import { createDelivery, DELIVERY_OUT_MS } from './delivery';
 import { unreadMail } from '../game/messages';
 import type { CropId } from '../game/garden';
 import { isNew, isUnlocked } from '../game/unlocks';
+import { pointsToSpend, reelPerks } from '../game/skills';
 import { petAt, ROOM_HEIGHT, ROOM_WIDTH } from '../render/canvas';
 import { createMeet, MEET_OUT_MS } from './meet';
 import { petStandsLeft } from '../game/friends';
@@ -794,7 +795,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       feedDrawer.setNew(cookIsNew);
       menuDrawer!.setNew(
         isNew(state, 'shop') || isNew(state, 'collection') || isNew(state, 'familyTree') ||
-          isNew(state, 'messages') || unreadMail(state) > 0,
+          isNew(state, 'messages') || unreadMail(state) > 0 || isNew(state, 'skills') ||
+          (isUnlocked(state, 'skills') && pointsToSpend(state) > 0),
       );
       // The pot, then what the pet is craving, then what you fed most
       // recently, then the rest as listed in the config. Rows only move
@@ -810,6 +812,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       }
       cooking.update(state);
       fishing.setBait(baitCount(state), state.baitOn);
+      fishing.setPerks(reelPerks(state));
       garden.update(state, now);
       delivery.update(state, now);
       meet.update(state, now);

@@ -18,6 +18,7 @@ import { simulate } from './simulate';
 import { canPlayMinigames, clampStat } from './stats';
 import { withPet, type ActionResult } from './actions';
 import type { GameState } from './state';
+import { addXp, perk, type ReelPerks } from './skills';
 
 export type CatchGrade = 'perfect' | 'good' | 'weak' | 'miss';
 
@@ -31,17 +32,18 @@ export interface CatchZones {
 }
 
 // Half the width of each zone measured from the middle of the red stripe.
-function reaches() {
+// `widen` stretches the green stripe (the Steady hands skill).
+function reaches(widen = 1) {
   const w = CONFIG.fishing.zoneWidths;
-  const perfect = w.perfect / 2;
+  const perfect = (w.perfect * widen) / 2;
   const good = perfect + w.good;
   const weak = good + w.weak;
   return { perfect, good, weak };
 }
 
 // The zones around a centre spot on the bar, kept fully on it.
-export function zonesAround(center: number): CatchZones {
-  const r = reaches();
+export function zonesAround(center: number, widen = 1): CatchZones {
+  const r = reaches(widen);
   const c = Math.min(1 - r.weak, Math.max(r.weak, center));
   const span = (half: number) => ({ start: c - half, end: c + half });
   return { perfect: span(r.perfect), good: span(r.good), weak: span(r.weak) };
@@ -74,6 +76,7 @@ export interface Reel {
   shiftedAt: number; // when the latest slide started (elapsedMs)
   nextShiftAt: number; // when the next one starts
   meter: number; // the catch meter (0-1)
+  widen: number; // how much wider the green stripe is (skills)
   timeIn: Record<CatchGrade, number>; // ms the dot spent in each zone
 }
 
@@ -84,9 +87,9 @@ function shiftGap(random: number): number {
 
 // Where the zones slide to next: a bit to the left or right of `center`
 // (`random` 0-1 picks the side and how far), staying on the bar.
-export function nextCenter(center: number, random: number): number {
+export function nextCenter(center: number, random: number, widen = 1): number {
   const { min, max } = CONFIG.fishing.reel.shiftBy;
-  const r = reaches();
+  const r = reaches(widen);
   const left = random < 0.5;
   const by = min + ((left ? random : random - 0.5) * 2) * (max - min);
   let to = center + (left ? -by : by);
@@ -96,8 +99,9 @@ export function nextCenter(center: number, random: number): number {
 }
 
 // A fresh reel: the dot at the left end, the zones at a random spot.
-export function startReel(random: number): Reel {
-  const r = reaches();
+// `perks` are the fishing skills (none by default).
+export function startReel(random: number, perks: ReelPerks = { widen: 1, meterStart: CONFIG.fishing.reel.meterStart }): Reel {
+  const r = reaches(perks.widen);
   const center = r.weak + random * (1 - 2 * r.weak);
   return {
     elapsedMs: 0,
@@ -108,13 +112,14 @@ export function startReel(random: number): Reel {
     to: center,
     shiftedAt: 0,
     nextShiftAt: shiftGap(random),
-    meter: CONFIG.fishing.reel.meterStart,
+    meter: perks.meterStart,
+    widen: perks.widen,
     timeIn: { perfect: 0, good: 0, weak: 0, miss: 0 },
   };
 }
 
 export function reelZones(reel: Reel): CatchZones {
-  return zonesAround(reel.center);
+  return zonesAround(reel.center, reel.widen);
 }
 
 // Moves the reel on by `dtMs`. `held` is whether Pull is held down, and
@@ -137,7 +142,7 @@ export function stepReel(reel: Reel, held: boolean, dtMs: number, random: number
   let { from, to, shiftedAt, nextShiftAt } = reel;
   if (elapsedMs >= nextShiftAt) {
     from = reel.center;
-    to = nextCenter(reel.center, random);
+    to = nextCenter(reel.center, random, reel.widen);
     shiftedAt = elapsedMs;
     nextShiftAt = elapsedMs + shiftGap(random);
   }
@@ -148,14 +153,14 @@ export function stepReel(reel: Reel, held: boolean, dtMs: number, random: number
   // The meter fills while the dot is on a coloured zone, drains on blue.
   // For the first moments (while the dot travels over from the left end)
   // it doesn't drain, and that time doesn't count against the grade.
-  const grade = gradeAt(zonesAround(center), marker);
+  const grade = gradeAt(zonesAround(center, reel.widen), marker);
   const grace = elapsedMs <= c.graceSeconds * 1000;
   const change = grade !== 'miss' ? c.fill : grace ? 0 : -c.drain;
   const meter = Math.max(0, Math.min(1, reel.meter + change * dt));
   const counts = !grace || grade === 'perfect';
   const timeIn = counts ? { ...reel.timeIn, [grade]: reel.timeIn[grade] + dt * 1000 } : reel.timeIn;
 
-  return { elapsedMs, marker, speed, center, from, to, shiftedAt, nextShiftAt, meter, timeIn };
+  return { ...reel, elapsedMs, marker, speed, center, from, to, shiftedAt, nextShiftAt, meter, timeIn };
 }
 
 // 'landed' once the meter is full, 'lost' once it's empty, else null.
@@ -199,10 +204,14 @@ export function cast(state: GameState, now: number): ActionResult {
 export type CatchId = keyof typeof CONFIG.fishing.catchOdds.other;
 
 // Which kind of fish bit, from a random number (0-1). A perfect catch
-// makes the rarer ones more likely, and so does bait.
-export function pickCatch(grade: CatchGrade, random: number, baited = false): CatchId {
+// makes the rarer ones more likely, and so does bait. `lucky` (the Lucky
+// line skill) moves that many percent from shrimp to lobster.
+export function pickCatch(grade: CatchGrade, random: number, baited = false, lucky = 0): CatchId {
   const table = baited ? CONFIG.fishing.bait.catchOdds : CONFIG.fishing.catchOdds;
-  const odds = grade === 'perfect' ? table.perfect : table.other;
+  const odds: Record<CatchId, number> = { ...(grade === 'perfect' ? table.perfect : table.other) };
+  const moved = Math.min(lucky, odds.shrimp);
+  odds.shrimp -= moved;
+  odds.lobster += moved;
   const entries = Object.entries(odds) as [CatchId, number][];
   const total = entries.reduce((sum, [, p]) => sum + p, 0);
   let roll = random * total;
@@ -226,12 +235,13 @@ export function land(
   if (landRoll >= CONFIG.fishing.catchChance[grade]) return { state, caught: null, count: 0, baited: false };
   const bait = state.inventory.supplies.bait ?? 0;
   const baited = state.baitOn && bait > 0;
-  const caught = pickCatch(grade, kindRoll, baited);
+  const caught = pickCatch(grade, kindRoll, baited, perk(state, 'luckyLine'));
   const count = CONFIG.fishing.fishPerCatch;
   const food = { ...state.inventory.food, [caught]: (state.inventory.food[caught] ?? 0) + count };
   const supplies = baited ? { ...state.inventory.supplies, bait: bait - 1 } : state.inventory.supplies;
   const kinds = state.caught.includes(caught) ? state.caught : [...state.caught, caught];
-  const next = addTally({ ...state, inventory: { ...state.inventory, food, supplies }, caught: kinds }, 'fish', count);
+  let next = addTally({ ...state, inventory: { ...state.inventory, food, supplies }, caught: kinds }, 'fish', count);
+  if (grade === 'perfect') next = addXp(next, CONFIG.skills.perfectFishXp);
   return { state: next, caught, count, baited };
 }
 

@@ -834,6 +834,23 @@ export const ACHIEVEMENT_ICONS: Record<string, string> = {
   littleOnes: ITEM_ICONS.meet,
 };
 
+// A star: a skill point, and a new Keeper level.
+export const SKILL_POINT_ICON = pixelIcon([
+  '.....kk.....',
+  '....kyyk....',
+  '....kyyk....',
+  '.kkkkywykkk.',
+  'kyyyyywyyyyk',
+  '.kyyyyyyyck.',
+  '..kyyyyyck..',
+  '..kyyyyyck..',
+  '.kyyyckyyck.',
+  '.kyyck.kyck.',
+  'kyck....kcck',
+  '.kk......kk.',
+]);
+
+
 // Small icons (8x8) used next to the numbers.
 // Friendship hearts: full, half and empty.
 export const HEART_ICONS = {
@@ -950,5 +967,49 @@ export const STAT_ICONS = {
     '.kwwwwk.',
     '.kwkwkk.',
     '..kkkk..',
+  ]),
+};
+
+// Each skill's picture in the Skills page.
+export const SKILL_ICONS: Record<string, string> = {
+  steadyHands: ITEM_ICONS.fishing,
+  headStart: ITEM_ICONS.bait,
+  luckyLine: ITEM_ICONS.lobster,
+  quickSprouts: ITEM_ICONS.plantGrowing,
+  deepRoots: ITEM_ICONS.gardenPot,
+  hardyPlants: ITEM_ICONS.plantCure,
+  secondHelping: ITEM_ICONS.cooking,
+  chefsNose: ITEM_ICONS.unknown,
+  wasteNot: ITEM_ICONS.mushyMess,
+  // An egg with a little heart on it.
+  gentleStart: pixelIcon([
+    '....kkkk....',
+    '...keeeek...',
+    '..keeeeeek..',
+    '..kewweeek..',
+    '.keweeeeeek.',
+    '.keeepepeek.',
+    '.keeppppeek.',
+    '.keeeppeeek.',
+    '.keeeeeeeck.',
+    '..keeeeeck..',
+    '...kcccck...',
+    '....kkkk....',
+  ]),
+  goodHabits: STAT_ICONS.happiness,
+  // A little house.
+  cozyHome: pixelIcon([
+    '.....kk.....',
+    '....krrk....',
+    '...krrrrk...',
+    '..krrrrrrk..',
+    '.krrrrrrrrk.',
+    'kkkkkkkkkkkk',
+    '.keeeeeeeek.',
+    '.kesskeeeek.',
+    '.kesskeccek.',
+    '.keeeekccek.',
+    '.keeeekccek.',
+    '.kkkkkkkkkk.',
   ]),
 };

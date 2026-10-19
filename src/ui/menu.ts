@@ -1,5 +1,5 @@
 // The menu inside the gear button's panel (it opens like Feed and Play). It
-// has a main list (Shop, Messages, Collection, Family Tree, Settings) and a
+// has a main list (Shop, Messages, Collection, Skills, Family Tree, Settings) and a
 // page for each, plus the Wardrobe, which opens when you hold the pet.
 // Shop, Collection and Family Tree only appear once they've opened up (see
 // src/game/unlocks.ts), with a "new" dot until you've looked at them.
@@ -16,6 +16,8 @@ import { familyTreePage, type FamilyCallbacks, type TreeView } from './family';
 import { OWNER_MAX } from '../game/family';
 import { messagesPage, type MessagesTab } from './messages';
 import { unreadMail } from '../game/messages';
+import { skillsPage, type SkillsCallbacks } from './skills';
+import { pointsToSpend } from '../game/skills';
 
 export interface DebugCallbacks {
   onFastForward: (hours: number) => void;
@@ -28,7 +30,7 @@ export interface DebugCallbacks {
   onFriendScore: () => void;
 }
 
-export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks, FamilyCallbacks {
+export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks, FamilyCallbacks, SkillsCallbacks {
   onReset: () => void;
   onOwner: (name: string) => void; // the player typed their name in Settings
   onSeen: (id: UnlockId) => void; // the player has looked at something new
@@ -82,7 +84,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
   // The pages redraw whenever the game changes (after buying something,
   // for example), so we remember which page is showing.
   let state: GameState | null = null;
-  let page: 'main' | 'settings' | 'shop' | 'wardrobe' | 'collection' | 'familyTree' | 'messages' = 'main';
+  let page: 'main' | 'settings' | 'shop' | 'wardrobe' | 'collection' | 'skills' | 'familyTree' | 'messages' = 'main';
 
   // Live readout for the testing tools, refreshed by update().
   const debugInfo = document.createElement('p');
@@ -130,6 +132,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
       ...unlockable('shop', STRINGS.menu.shop, () => showShop()),
       ...messagesItem(),
       ...unlockable('collection', STRINGS.menu.collection, () => showCollection()),
+      ...skillsItem(),
       ...unlockable('familyTree', STRINGS.menu.familyTree, () => showFamilyTree()),
       item(STRINGS.menu.settings, showSettings),
     );
@@ -143,6 +146,18 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
       const dot = document.createElement('span');
       dot.className = 'new-dot';
       dot.setAttribute('aria-label', STRINGS.messages.unread);
+      entry[0].append(dot);
+    }
+    return entry;
+  }
+
+  // Skills, with a dot while there's a point to spend.
+  function skillsItem(): HTMLButtonElement[] {
+    const entry = unlockable('skills', STRINGS.menu.skills, () => showSkills());
+    if (entry.length && state && pointsToSpend(state) > 0 && !isNew(state, 'skills')) {
+      const dot = document.createElement('span');
+      dot.className = 'new-dot';
+      dot.setAttribute('aria-label', STRINGS.skills.points(pointsToSpend(state)));
       entry[0].append(dot);
     }
     return entry;
@@ -192,7 +207,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
 
   // The Shop, Wardrobe and Collection: a header (with gold on the right in
   // the Shop, lined up with the prices), then the list.
-  function showList(which: 'shop' | 'wardrobe' | 'collection' | 'familyTree', fresh: boolean): void {
+  function showList(which: 'shop' | 'wardrobe' | 'collection' | 'skills' | 'familyTree', fresh: boolean): void {
     if (fresh) {
       openCategories.clear();
       treeView.focus = null;
@@ -205,6 +220,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
       if (which === 'shop') list.append(...shopPage(state, cb, openCategories));
       else if (which === 'wardrobe') list.append(...wardrobePage(state, cb));
       else if (which === 'collection') list.append(...collectionPage(state, cb, openCategories));
+      else if (which === 'skills') list.append(...skillsPage(state, cb, openCategories));
       else {
         list.classList.add('tree');
         list.append(...familyTreePage(state, cb, treeView, () => {
@@ -217,14 +233,16 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
       shop: STRINGS.shop.title,
       wardrobe: STRINGS.wardrobe.title,
       collection: STRINGS.menu.collection,
+      skills: STRINGS.skills.title,
       familyTree: STRINGS.menu.familyTree,
     }[which];
-    const right = which === 'shop' ? goldPill(state?.gold ?? 0) : undefined;
+    const right = which === 'shop' || which === 'skills' ? goldPill(state?.gold ?? 0) : undefined;
     panel.replaceChildren(header(title, showMain, right), list);
   }
   const showShop = (fresh = true) => showList('shop', fresh);
   const showWardrobe = (fresh = true) => showList('wardrobe', fresh);
   const showCollection = (fresh = true) => showList('collection', fresh);
+  const showSkills = (fresh = true) => showList('skills', fresh);
   const showFamilyTree = (fresh = true) => showList('familyTree', fresh);
 
   function debugSection(): HTMLElement {
@@ -348,7 +366,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
         JSON.stringify([
           s.gold, s.inventory, s.pet.hat, s.pet.stage, s.unlocked, s.seen, s.showAllMenus,
           s.recipesFound, s.caught, s.charactersFound, s.pet.name, s.pet.named, s.owner, s.family,
-          s.messages, s.messagesSeenAt, s.delivery, s.friends, s.visit.guest, s.housemates.map((p) => [p.id, p.name, p.stage]),
+          s.messages, s.messagesSeenAt, s.keeper, s.delivery, s.friends, s.visit.guest, s.housemates.map((p) => [p.id, p.name, p.stage]),
           page === 'messages' && Math.floor(s.lastUpdated / 60_000),
           page === 'familyTree' && [Object.values(s.pet.stats).map(Math.round), Math.floor(s.lastUpdated / 3_600_000)],
         ]);
@@ -359,6 +377,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
         else if (isOpen() && page === 'shop') showShop(false);
         else if (isOpen() && page === 'wardrobe') showWardrobe(false);
         else if (isOpen() && page === 'collection') showCollection(false);
+        else if (isOpen() && page === 'skills') showSkills(false);
         else if (isOpen() && page === 'familyTree') showFamilyTree(false);
         else if (isOpen() && page === 'messages') showMessages(false);
       }

@@ -16,6 +16,7 @@ import { stepDelivery } from './delivery';
 import { stepCraving } from './craving';
 import { stepVisits } from './friends';
 import type { GameState, Pet } from './state';
+import { carePerks, gardenPerks, type CarePerks } from './skills';
 
 const MS_PER_MINUTE = 60_000;
 const TICKS_PER_HOUR = 60 / CONFIG.tickMinutes;
@@ -39,16 +40,18 @@ export function simulate(state: GameState, now: number): GameState {
   const pet = copy(state.pet);
   const housemates = state.housemates.map(copy);
 
+  // The keeper's Care skills help every pet.
+  const perks = carePerks(state);
   let t = state.lastUpdated;
   for (let i = 0; i < ticks; i++) {
     const wasNight = isNight(t);
     t += tickMs;
-    tick(pet, t, wasNight);
-    for (const other of housemates) tick(other, t, wasNight);
+    tick(pet, t, wasNight, perks);
+    for (const other of housemates) tick(other, t, wasNight, perks);
   }
 
   // The garden grows on its own clock, so it catches up in one go.
-  const garden = growGarden(state.garden, state.lastUpdated, t);
+  const garden = growGarden(state.garden, state.lastUpdated, t, gardenPerks(state));
   // So do Percy's orders (a pickup that came due, or a new order), the
   // pet's cravings, and visitors dropping by.
   const next = { ...state, pet, housemates, garden, lastUpdated: t };
@@ -57,7 +60,7 @@ export function simulate(state: GameState, now: number): GameState {
 
 // Advances the pet by one tick ending at time `t`. Changes `pet` in place
 // (it's our private copy from simulate()).
-function tick(pet: Pet, t: number, wasNight: boolean): void {
+function tick(pet: Pet, t: number, wasNight: boolean, perks: CarePerks): void {
   const cfg = CONFIG;
 
   // 0. Growing up. An egg just waits to hatch: nothing else happens to it.
@@ -78,7 +81,7 @@ function tick(pet: Pet, t: number, wasNight: boolean): void {
 
   // 2. Hunger, joy and energy.
   const ageRate = cfg.growth.decayMultiplier[pet.stage];
-  const slow = (pet.asleep ? cfg.sleep.decayMultiplierAsleep : 1) * ageRate;
+  const slow = (pet.asleep ? cfg.sleep.decayMultiplierAsleep : 1) * ageRate * perks.decay;
   const sickJoy = pet.condition === 'sick' ? cfg.sickness.sickJoyMultiplier : 1;
   // Timed food effects: drop any that have worn off, then apply the rest.
   pet.buffs = pet.buffs.filter((b) => t <= b.until);
@@ -125,6 +128,6 @@ function tick(pet: Pet, t: number, wasNight: boolean): void {
   let care = 0;
   if (pet.condition === 'sick') care = -cfg.careScore.lossPerHourWhenSick;
   else if (neglected) care = -cfg.careScore.lossPerHourWhenNeglected;
-  else if (isWellFed(s) && s.health >= cfg.goodStatThreshold) care = cfg.careScore.gainPerHourWhenCared;
+  else if (isWellFed(s) && s.health >= cfg.goodStatThreshold) care = cfg.careScore.gainPerHourWhenCared * perks.careGain;
   pet.careScore = clampStat(pet.careScore + perTick(care));
 }

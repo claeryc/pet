@@ -13,6 +13,7 @@ import { addTally } from './achievements';
 import { foodCount } from './economy';
 import type { FoodId } from './actions';
 import type { GameState } from './state';
+import { perk } from './skills';
 
 export interface Recipe {
   id: FoodId; // the dish it makes
@@ -69,12 +70,22 @@ export function couldBeRecipe(items: readonly FoodId[]): boolean {
 export type CookBlock = 'emptyPot' | 'tooMany' | 'notIngredient' | 'noFood' | 'needMore';
 
 export type CookResult =
-  | { state: GameState; dish: FoodId; recipe: Recipe | null; discovered: boolean; blocked?: undefined }
+  | {
+    state: GameState;
+    dish: FoodId;
+    count: number; // how many were made (Second helping can make 2)
+    recipe: Recipe | null;
+    discovered: boolean;
+    saved: FoodId | null; // an ingredient a Mushy mess gave back (Waste not)
+    blocked?: undefined;
+  }
   | { state: GameState; blocked: CookBlock };
 
 // Cooks what's in the pot: uses up the ingredients and puts the dish (or a
-// Mushy mess) in the inventory.
-export function cook(state: GameState, items: readonly FoodId[]): CookResult {
+// Mushy mess) in the inventory. `luck` (0-1, Math.random() in the game) is
+// rolled for the Kitchen skills: a recipe might make 2 (Second helping),
+// and a Mushy mess might give an ingredient back (Waste not).
+export function cook(state: GameState, items: readonly FoodId[], luck = 1): CookResult {
   if (items.length === 0) return { state, blocked: 'emptyPot' };
   if (items.length > CONFIG.cooking.slots) return { state, blocked: 'tooMany' };
   if (!items.every((id) => INGREDIENTS.includes(id))) return { state, blocked: 'notIngredient' };
@@ -88,7 +99,13 @@ export function cook(state: GameState, items: readonly FoodId[]): CookResult {
   }
   const recipe = matchRecipe(items);
   const dish: FoodId = recipe?.id ?? (CONFIG.cooking.mess as FoodId);
-  food[dish] = (food[dish] ?? 0) + 1;
+  const count = recipe && luck < perk(state, 'secondHelping') ? 2 : 1;
+  food[dish] = (food[dish] ?? 0) + count;
+  // The ingredient given back is the first one that isn't free.
+  const saved = !recipe && luck < perk(state, 'wasteNot')
+    ? (items.find((id) => foodCount(state, id) !== Infinity) ?? null)
+    : null;
+  if (saved) food[saved] = (food[saved] ?? 0) + 1;
   const discovered = recipe !== null && !knowsRecipe(state, recipe.id);
   const cooked: GameState = {
     ...state,
@@ -96,9 +113,11 @@ export function cook(state: GameState, items: readonly FoodId[]): CookResult {
     recipesFound: discovered ? [...state.recipesFound, recipe.id] : state.recipesFound,
   };
   return {
-    state: recipe ? addTally(cooked, 'dishes') : cooked,
+    state: recipe ? addTally(cooked, 'dishes', count) : cooked,
     dish,
+    count,
     recipe,
     discovered,
+    saved,
   };
 }

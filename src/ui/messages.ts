@@ -20,7 +20,7 @@ import { isFull, orderTier } from '../game/delivery';
 import { isUnlocked, type UnlockId } from '../game/unlocks';
 import type { GameState, Message } from '../game/state';
 import type { FoodId } from '../game/actions';
-import { ACHIEVEMENT_ICONS, ITEM_ICONS, STAT_ICONS, UNKNOWN_ICON } from './icons';
+import { ACHIEVEMENT_ICONS, ITEM_ICONS, SKILL_POINT_ICON, STAT_ICONS, UNKNOWN_ICON } from './icons';
 import type { AchievementId } from '../game/achievements';
 import { formatDuration, formatWhen } from './time';
 
@@ -74,6 +74,8 @@ function text(m: Message): string {
       const A = STRINGS.achievements;
       return A.earned(A.names[m.id as AchievementId] ?? m.id, A.tiers[m.tier]);
     }
+    case 'level':
+      return STRINGS.skills.levelUp(m.level);
   }
 }
 
@@ -133,6 +135,7 @@ function messageRow(m: Message, now: number): HTMLElement {
     m.kind === 'order' || m.kind === 'pickup' ? ITEM_ICONS.parcel
     : m.kind === 'visitor' || m.kind === 'littleOne' ? ITEM_ICONS.meet
     : m.kind === 'badge' ? ACHIEVEMENT_ICONS[m.id] ?? ITEM_ICONS.letter
+    : m.kind === 'level' ? SKILL_POINT_ICON
     : ITEM_ICONS.letter;
   const body = el('span', 'shop-row-text');
   body.append(el('b', '', text(m)), el('small', '', formatWhen(m.at, now, STRINGS.messages.today, STRINGS.messages.yesterday)));

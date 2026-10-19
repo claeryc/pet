@@ -1,6 +1,9 @@
 // Every piece of text the player sees lives here, so it is easy to reword
 // things or translate the game later.
 
+// A share (0-1) as a whole percent.
+const pct = (share: number) => Math.round(share * 100);
+
 export const STRINGS = {
   stats: {
     hunger: 'Tummy',
@@ -155,6 +158,7 @@ export const STRINGS = {
   menu: {
     title: 'Menu',
     settings: 'Settings',
+    skills: 'Skills',
     shop: 'Shop',
     collection: 'Collection',
     familyTree: 'Family Tree',
@@ -189,6 +193,7 @@ export const STRINGS = {
     messages: 'New in the Menu: Messages!',
     delivery: 'Percy the pigeon will drop by with orders. Look for the parcel in the room!',
     meet: 'Someone is visiting! Say hello under Play > Meet.',
+    skills: 'New in the Menu: Skills! Spend your first skill point there.',
   },
   // Meeting other pets, friends and little ones (Play > Meet).
   friends: {
@@ -489,6 +494,61 @@ export const STRINGS = {
     checkIn: (gold: number) => `Welcome back! +${gold} gold for checking in.`,
     // The very first visit of a brand-new game.
     firstCheckIn: (gold: number) => `Welcome! Here's +${gold} gold to get you started.`,
+  },
+  // Skills (in the Menu): Keeper XP, levels and the four skill trees.
+  skills: {
+    title: 'Skills',
+    level: (level: number) => `Keeper level ${level}`,
+    xp: (into: number, need: number) => `${into}/${need} XP`,
+    points: (n: number) => (n === 1 ? '1 point to spend' : `${n} points to spend`),
+    noPoints: 'Earn XP by fishing, gardening, cooking and raising pets. Skills stay with you for every pet.',
+    trees: { fishing: 'Fishing', garden: 'Garden', kitchen: 'Kitchen', care: 'Care' },
+    names: {
+      steadyHands: 'Steady hands',
+      headStart: 'Head start',
+      luckyLine: 'Lucky line',
+      quickSprouts: 'Quick sprouts',
+      deepRoots: 'Deep roots',
+      hardyPlants: 'Hardy plants',
+      secondHelping: 'Second helping',
+      chefsNose: "Chef's nose",
+      wasteNot: 'Waste not',
+      gentleStart: 'Gentle start',
+      goodHabits: 'Good habits',
+      cozyHome: 'Cozy home',
+    },
+    // What a skill does, from how strong it is at a rank (`v`: its rank
+    // times CONFIG.skills.perRank; shares are 0-1). Head start gets where
+    // the meter starts instead, and Chef's nose its rank.
+    effects: {
+      steadyHands: (v: number) => `Green stripe ${pct(v)}% wider`,
+      headStart: (start: number) => `Catch meter starts ${pct(start)}% full`,
+      luckyLine: (v: number) => `Lobster ${v}% more likely`,
+      quickSprouts: (v: number) => `Crops grow ${pct(v)}% faster`,
+      deepRoots: (v: number) => `Soil stays wet ${v} hours longer`,
+      hardyPlants: (v: number) => `Plants get sick ${pct(v)}% less`,
+      secondHelping: (v: number) => `${pct(v)}% chance a recipe makes 2`,
+      chefsNose: (rank: number) => (rank >= 3 ? 'Unknown recipes show their name' : `Unknown recipes show ${rank + 1} ingredients`),
+      wasteNot: (v: number) => `${pct(v)}% chance a Mushy mess gives an ingredient back`,
+      gentleStart: (v: number) => `New eggs start with ${v} more care`,
+      goodHabits: (v: number) => `Care builds up ${pct(v)}% faster`,
+      cozyHome: (v: number) => `Tummy and joy drop ${pct(v)}% slower`,
+    },
+    // "Rank 2/3 · Green stripe 20% wider"
+    rank: (rank: number, max: number) => `Rank ${rank}/${max}`,
+    learn: (cost: number) => (cost === 1 ? 'Learn for 1 skill point' : `Learn for ${cost} skill points`),
+    maxed: 'Max',
+    learned: (name: string, rank: number) => `${name} is now rank ${rank}!`,
+    needPoints: (cost: number) => (cost === 1 ? 'You need 1 skill point for that.' : `You need ${cost} skill points for that.`),
+    reset: 'Take points back',
+    resetFree: 'Free',
+    resetNote: (n: number) => (n === 1 ? 'Get your 1 point back to spend again' : `Get your ${n} points back to spend again`),
+    resetDone: (n: number) => (n === 1 ? 'Got 1 point back.' : `Got ${n} points back.`),
+    levelUp: (level: number) => `Keeper level ${level}! +1 skill point`,
+    levelCaption: 'Level up!',
+    point: 'Skill point',
+    secondHelping: 'Second helping!',
+    saved: (food: string) => `Waste not! You saved a ${food}.`,
   },
   confirmReset: 'Start over with a new pet? Your current pet will be gone.',
 } as const;
