@@ -3,7 +3,7 @@
 //                                  |
 //                            saving (src/storage)
 
-import { CONFIG } from './game/config';
+import { CONFIG, STAT_MAX } from './game/config';
 import { createNewGame, type GameState, type Message } from './game/state';
 import { simulate } from './game/simulate';
 import {
@@ -232,11 +232,27 @@ function luckySeed(source: 'fishing' | 'play', perfect = false): void {
   showGot(found.seed, 1, STRINGS.reveal.luckySeed, true);
 }
 
+// Floats how the pet's stats changed since `before` up from the pet. A stat
+// in `raises` (what the action tops up) that was already full says so,
+// rather than leaving only the costs showing.
+type StatId = keyof Pet['stats'];
+function showGains(before: Pet, raises: Partial<Record<StatId, number>>): void {
+  if (state.pet.id !== before.id) return;
+  const stats = Object.keys(before.stats) as StatId[];
+  home.gains(Object.fromEntries(stats.map((k) => {
+    const change = state.pet.stats[k] - before.stats[k];
+    const full = (raises[k] ?? 0) > 0 && Math.round(change) === 0 && state.pet.stats[k] >= STAT_MAX - 0.5;
+    return [k, full ? 'full' : change];
+  })));
+}
+
 // Playing with the pet: a cuddle or tickle might turn up a seed.
 function playWith(activity: 'cuddle' | 'tickle'): void {
+  const before = simulate(state, gameNow()).pet;
   const result = play(state, gameNow(), activity);
   setState(result.state);
   if (result.blocked) return home.toast(STRINGS.blocked[result.blocked](state.pet.name));
+  showGains(before, CONFIG.activities.find((a) => a.id === activity)!);
   react('happy');
   luckySeed('play');
 }
@@ -363,9 +379,11 @@ function characterImage(sheetName: string): string | undefined {
 
 const home = createHomeScreen(root, {
   onFeed: (food) => {
+    const before = simulate(state, gameNow()).pet;
     const result = feed(state, gameNow(), food);
     setState(result.state);
     if (result.blocked) return home.toast(STRINGS.blocked[result.blocked](state.pet.name));
+    showGains(before, (CONFIG.foods as readonly Food[]).find((f) => f.id === food)!);
     if (result.craved) {
       home.toast(STRINGS.craving.loved(state.pet.name, result.craved));
       react('happy');
@@ -376,7 +394,11 @@ const home = createHomeScreen(root, {
   onPlay: (activity) => playWith(activity),
   onPetTap: () => playWith('cuddle'),
   onLights: () => runAction(toggleLights),
-  onMedicine: () => runAction(giveMedicine),
+  onMedicine: () => {
+    const before = simulate(state, gameNow()).pet;
+    runAction(giveMedicine);
+    showGains(before, { health: 1 });
+  },
   onCast: () => {
     const result = cast(state, gameNow());
     setState(result.state);
