@@ -146,9 +146,14 @@ export function stepReel(reel: Reel, held: boolean, dtMs: number, random: number
   const center = from + (to - from) * eased;
 
   // The meter fills while the dot is on a coloured zone, drains on blue.
+  // For the first moments (while the dot travels over from the left end)
+  // it doesn't drain, and that time doesn't count against the grade.
   const grade = gradeAt(zonesAround(center), marker);
-  const meter = Math.max(0, Math.min(1, reel.meter + (grade === 'miss' ? -c.drain : c.fill) * dt));
-  const timeIn = { ...reel.timeIn, [grade]: reel.timeIn[grade] + dt * 1000 };
+  const grace = elapsedMs <= c.graceSeconds * 1000;
+  const change = grade !== 'miss' ? c.fill : grace ? 0 : -c.drain;
+  const meter = Math.max(0, Math.min(1, reel.meter + change * dt));
+  const counts = !grace || grade === 'perfect';
+  const timeIn = counts ? { ...reel.timeIn, [grade]: reel.timeIn[grade] + dt * 1000 } : reel.timeIn;
 
   return { elapsedMs, marker, speed, center, from, to, shiftedAt, nextShiftAt, meter, timeIn };
 }

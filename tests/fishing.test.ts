@@ -114,6 +114,13 @@ describe('reeling in', () => {
     expect(reelGrade(r)).toBe('perfect');
   });
 
+  it('gives a moment of grace at the start', () => {
+    const r = run(startReel(0.5), f.reel.graceSeconds * 1000 - 20, () => false);
+    expect(r.meter).toBe(f.reel.meterStart);
+    // Time spent getting to the green doesn't count against the grade.
+    expect(r.timeIn.miss + r.timeIn.weak + r.timeIn.good).toBe(0);
+  });
+
   it('never pulling loses the fish', () => {
     const r = run(startReel(0.5), 20_000, () => false);
     expect(reelOutcome(r)).toBe('lost');
