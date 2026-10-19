@@ -187,7 +187,8 @@ export type Message =
   | { kind: 'unlocked'; at: number; id: string }
   | { kind: 'growth'; at: number; stage: string; name: string; character: string | null; variant: string | null }
   | { kind: 'visitor'; at: number; name: string; character: string; variant: string | null; friend?: boolean }
-  | { kind: 'littleOne'; at: number; name: string; friend: string };
+  | { kind: 'littleOne'; at: number; name: string; friend: string }
+  | { kind: 'badge'; at: number; id: string; tier: 'bronze' | 'silver' | 'gold' };
 
 export interface GameState {
   // The pet you're looking after right now (its stats show on the home
@@ -244,6 +245,11 @@ export interface GameState {
   stock: Stock;
   // Whether fishing uses bait (switched on in the pond).
   baitOn: boolean;
+  // Achievements (see src/game/achievements.ts): how many times things
+  // have been done ("fish" -> 12), and the badge earned for each ("fish"
+  // -> "bronze").
+  tally: Record<string, number>;
+  badges: Record<string, 'bronze' | 'silver' | 'gold'>;
 }
 
 // Makes a random id. crypto.randomUUID exists in all modern browsers and Node.
@@ -309,5 +315,7 @@ export function createNewGame(now: number): GameState {
     room: { wallpaper: 'plain', curtains: null },
     stock: { day: '', bought: 0 },
     baitOn: false,
+    tally: {},
+    badges: {},
   };
 }

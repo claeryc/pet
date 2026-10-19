@@ -91,10 +91,13 @@ export function label(text: string): HTMLElement {
 // folded-up grid. `mark` highlights the picture (e.g. the hat being worn),
 // `faded` dims it (e.g. a hat you already own, in the Shop), and `count`
 // shows a small number in its corner (how many of a food you have).
+// `tier` colours its outline and fill (an achievement's bronze, silver or
+// gold).
 export interface Entry {
   icon: string;
   row: HTMLElement;
   count?: string;
+  tier?: string;
   mark?: boolean;
   faded?: boolean;
 }
@@ -126,6 +129,7 @@ export function category(id: string, title: string, entries: Entry[], open: Set<
       c.textContent = e.count;
       b.append(c);
     }
+    if (e.tier) b.dataset.tier = e.tier;
     const name = e.row.querySelector('b')?.textContent ?? '';
     b.title = name;
     b.setAttribute('aria-label', name);

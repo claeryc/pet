@@ -30,12 +30,14 @@ art/                               your Aseprite files (the game never loads the
   stages/egg.aseprite, baby, teen
   characters/<theme>/<id>.aseprite
   hats/<hat>.aseprite
+  badges/tiers.aseprite            achievement tiers: bronze, silver, gold
 
 public/sprites/                    exported PNGs the game loads
   manifest.json                    list of every sheet
   stages/egg.png, baby.png, teen.png
   characters/<theme>/<id>.png
   hats/<hat>.png
+  badges/tiers.png
 
 src/data/characters.json           every character: theme, stars, name, sheet, variants
 src/data/hats.json                 every hat: name, price, sheet
@@ -172,6 +174,12 @@ Every other hat and shape stays as it was.
    ```
 
 It then shows up in the Shop. Glasses could work the same way later with an `eyes` point.
+
+## Achievement badges
+
+The Collection shows each achievement's tier as a small picture. They all live in `art/badges/tiers.aseprite`: 16 x 16, three frames tagged `bronze`, `silver` and `gold`. Its palette has the shared colours plus the four shades of each metal (highlight, light, mid, dark). The game shows each frame at twice its size.
+
+To change them, draw over the frames, then export with **Sheet type: Horizontal Strip** (bronze, silver, gold from left to right) to `public/sprites/badges/tiers.png`, so the PNG is 48 x 16. No other file changes.
 
 ## Exporting a sheet from Aseprite
 

@@ -21,6 +21,7 @@
 // Friends from other players will use the same shapes once there's a
 // server (see the Hangout and mingle design doc).
 
+import { addTally } from './achievements';
 import { CONFIG } from './config';
 import { characterOfStars, getCharacter, rollStarsWith, seededRoll } from './growth';
 import { localDay, useFood } from './economy';
@@ -254,7 +255,7 @@ export function giveGift(state: GameState, friendId: string, food: FoodId, now: 
     f.giftedToday += gained;
     f.score = clampStat(f.score + gained);
   });
-  return { state: s, gained };
+  return { state: addTally(s, 'gifts'), gained };
 }
 
 // Adds the visiting wanderer to your friends. It stays for the rest of its
@@ -385,6 +386,7 @@ export function mingle(state: GameState, friendId: string, now: number, roll: nu
     housemates: [{ ...parent, partner: friend.id }, ...s.housemates],
   };
   s = logMessage(s, { kind: 'littleOne', at: now, name: parent.name, friend: friend.name });
+  s = addTally(s, 'littleOnes');
   return { state: s, egg, crowded: allPets(s).length > F.maxPets };
 }
 

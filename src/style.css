@@ -924,6 +924,58 @@ body {
   border-color: var(--accent);
 }
 
+/* Achievements: the tier earned so far colours the outline and fill (of
+   the picture when folded, of the row when open), with its picture on the
+   right and a thin bar showing how close the next tier is. */
+[data-tier='bronze'] { --tier-line: #d29a6c; --tier-fill: #fbeee2; }
+[data-tier='silver'] { --tier-line: #a9b3c9; --tier-fill: #eff2f8; }
+[data-tier='gold'] { --tier-line: #f2c14e; --tier-fill: #fdf3cf; }
+
+.shop-cat-tile[data-tier],
+.achievement-row:not([data-tier='none']) {
+  border-color: var(--tier-line);
+  background: var(--tier-fill);
+}
+
+.achievement-row:not([data-tier='none']) .drawer-option-icon {
+  background: white;
+}
+
+/* The tier's picture: one 16x16 frame of the bronze / silver / gold strip,
+   shown at twice the size. Empty (but the same size) until the first one. */
+.achievement-tier {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  background-size: 300% 100%;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+
+.achievement-tier[data-tier='bronze'] { background-position: 0% 0; }
+.achievement-tier[data-tier='silver'] { background-position: 50% 0; }
+.achievement-tier[data-tier='gold'] { background-position: 100% 0; }
+
+.achievement-bar {
+  display: block;
+  height: 5px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.achievement-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.achievement-row:not([data-tier='none']) .achievement-bar > span {
+  background: var(--tier-line);
+}
+
 .shop-cat-tile.faded {
   opacity: 0.45;
 }

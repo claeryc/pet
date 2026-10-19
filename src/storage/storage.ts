@@ -11,7 +11,7 @@ const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 14;
+export const SAVE_VERSION = 15;
 
 export interface SaveFile {
   version: number;
@@ -140,6 +140,19 @@ export function migrate(save: SaveFile): SaveFile {
     st.stock = { day: '', bought: 0 };
     st.baitOn = false;
     save.version = 14;
+  }
+  // Version 14 -> 15: achievements. Nothing was counted before, so counts
+  // start at zero, except what Messages still remembers: Percy's pickups
+  // and little ones. (Badges for those are handed out on the next update.)
+  if (save.version === 14) {
+    const st = save.state;
+    const messages: any[] = st.messages ?? [];
+    st.tally = {
+      deliveries: messages.filter((m) => m.kind === 'pickup' && m.tier !== 'none').length,
+      littleOnes: messages.filter((m) => m.kind === 'littleOne').length,
+    };
+    st.badges = {};
+    save.version = 15;
   }
   return save;
 }

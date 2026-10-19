@@ -823,6 +823,45 @@ export const ITEM_ICONS: Record<string, string> = {
   ]),
 };
 
+// The pictures for each achievement in the Collection.
+export const ACHIEVEMENT_ICONS: Record<string, string> = {
+  fish: ITEM_ICONS.fishing,
+  deliveries: ITEM_ICONS.parcel,
+  harvests: ITEM_ICONS.garden,
+  dishes: ITEM_ICONS.cooking,
+  // A thought bubble with a strawberry in it.
+  cravings: pixelIcon([
+    '..kkkkkkkk..',
+    '.kwwwwwwwwk.',
+    'kwwwwggwwwwk',
+    'kwwwkrrkwwwk',
+    'kwwkrwrrkwwk',
+    'kwwkrrrrkwwk',
+    'kwwwkrrkwwwk',
+    '.kwwwkkwwwk.',
+    '..kkkkkkkk..',
+    '...kwk......',
+    '....kk......',
+    '.....k......',
+  ]),
+  // A present with a bow.
+  gifts: pixelIcon([
+    '..kk....kk..',
+    '.krrk..krrk.',
+    '..kkrkkrkk..',
+    '.kkkkrrkkkk.',
+    '.klllrrlllk.',
+    '.kkkkrrkkkk.',
+    '..kllrrllk..',
+    '..kllrrllk..',
+    '..kllrrllk..',
+    '..kllrrllk..',
+    '..kkkkkkkk..',
+    '............',
+  ]),
+  littleOnes: ITEM_ICONS.meet,
+};
+
 // Small icons (8x8) used next to the numbers.
 // Friendship hearts: full, half and empty.
 export const HEART_ICONS = {

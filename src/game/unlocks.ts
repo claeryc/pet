@@ -8,6 +8,7 @@
 import type { GameState } from './state';
 import { canOrder } from './delivery';
 import { logMessage } from './messages';
+import { updateBadges, type AchievementId, type Tier } from './achievements';
 
 export type UnlockId = 'shop' | 'cooking' | 'collection' | 'familyTree' | 'garden' | 'messages' | 'delivery' | 'meet';
 
@@ -16,8 +17,10 @@ const RULES: Record<UnlockId, (s: GameState) => boolean> = {
   shop: (s) => s.pet.stage !== 'egg',
   // After the first fish: now there's something to cook with.
   cooking: (s) => s.caught.length > 0 || s.recipesFound.length > 0,
-  // After the first recipe found or the first grown-up character.
-  collection: (s) => s.recipesFound.length > 0 || s.charactersFound.length > 0,
+  // After the first recipe found, the first grown-up character or the
+  // first badge.
+  collection: (s) =>
+    s.recipesFound.length > 0 || s.charactersFound.length > 0 || Object.keys(s.badges ?? {}).length > 0,
   // Once the pet is all grown up.
   familyTree: (s) => s.pet.stage === 'adult',
   // Once the egg hatches, along with the Shop that sells the first seeds.
@@ -57,18 +60,24 @@ export function characterKey(character: string, variant: string | null): string 
   return variant ? `${character}:${variant}` : character;
 }
 
-// Writes down anything new: the character a grown-up pet became, and
-// whatever has just opened up. Returns the ids that opened, so the game
-// can say so.
-export function updateProgress(state: GameState): { state: GameState; unlocked: UnlockId[] } {
+// Writes down anything new: the character a grown-up pet became, badges
+// earned, and whatever has just opened up. Returns the ids that opened and
+// the badges earned, so the game can say so.
+export function updateProgress(state: GameState): {
+  state: GameState;
+  unlocked: UnlockId[];
+  badges: { id: AchievementId; tier: Tier }[];
+} {
   let s = state;
   for (const pet of [s.pet, ...s.housemates]) {
     if (pet.stage !== 'adult' || !pet.character) continue;
     const key = characterKey(pet.character, pet.variant);
     if (!s.charactersFound.includes(key)) s = { ...s, charactersFound: [...s.charactersFound, key] };
   }
+  const badges = updateBadges(s);
+  s = badges.state;
   const opened = unlocksFor(s).filter((id) => !s.unlocked.includes(id));
   if (opened.length > 0) s = { ...s, unlocked: [...s.unlocked, ...opened] };
   for (const id of opened) s = logMessage(s, { kind: 'unlocked', at: s.lastUpdated, id });
-  return { state: s, unlocked: opened };
+  return { state: s, unlocked: opened, badges: badges.earned };
 }

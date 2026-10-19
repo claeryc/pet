@@ -13,6 +13,7 @@
 // that's still going when you come back is waiting in its bubble.
 
 import { CONFIG } from './config';
+import { addTally } from './achievements';
 import type { Food } from './actions';
 import { seededRoll } from './growth';
 import { clampStat, isNight } from './stats';
@@ -81,13 +82,11 @@ export function satisfyCraving(state: GameState, food: string, now: number): { s
     stats: { ...state.pet.stats, happiness: clampStat(state.pet.stats.happiness + reward.happiness) },
     careScore: clampStat(state.pet.careScore + reward.care),
   };
-  return {
-    state: {
-      ...state,
-      pet,
-      gold: state.gold + tip,
-      craving: { ...state.craving, food: null, nextAt: now + C.nextAfterHours * HOUR },
-    },
-    tip,
+  const treated: GameState = {
+    ...state,
+    pet,
+    gold: state.gold + tip,
+    craving: { ...state.craving, food: null, nextAt: now + C.nextAfterHours * HOUR },
   };
+  return { state: addTally(treated, 'cravings'), tip };
 }

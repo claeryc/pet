@@ -41,6 +41,10 @@ describe('art files', () => {
     expect(pngs).toContain(sheetFiles[sheet].file);
   });
 
+  it('the achievement tier pictures exist', () => {
+    expect(pngs).toContain('badges/tiers.png');
+  });
+
   it('every character has a known theme and 1 to 3 stars', () => {
     for (const c of data.characters) {
       expect(Object.keys(data.themes)).toContain(c.theme);

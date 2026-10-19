@@ -9,6 +9,7 @@
 // landing the fish (see CONFIG.fishing.catchChance).
 
 import { CONFIG } from './config';
+import { addTally } from './achievements';
 import { simulate } from './simulate';
 import { canPlayMinigames, clampStat } from './stats';
 import { withPet, type ActionResult } from './actions';
@@ -119,7 +120,8 @@ export function land(
   const food = { ...state.inventory.food, [caught]: (state.inventory.food[caught] ?? 0) + count };
   const supplies = baited ? { ...state.inventory.supplies, bait: bait - 1 } : state.inventory.supplies;
   const kinds = state.caught.includes(caught) ? state.caught : [...state.caught, caught];
-  return { state: { ...state, inventory: { ...state.inventory, food, supplies }, caught: kinds }, caught, count, baited };
+  const next = addTally({ ...state, inventory: { ...state.inventory, food, supplies }, caught: kinds }, 'fish', count);
+  return { state: next, caught, count, baited };
 }
 
 // Switches bait on or off for fishing (the little dot in the pond).

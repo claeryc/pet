@@ -512,6 +512,81 @@ function hatArt(kind: HatKind): Art {
   };
 }
 
+// ---------- Achievement tiers ----------
+// The badges in the Collection: a 16x16 hexagon frame for each tier,
+// bronze (an empty frame), silver (a small gem inside) and gold (a big one).
+// Their metal colours aren't in the shared palette, so the file adds them.
+
+const BADGE = 16;
+type Tier = 'bronze' | 'silver' | 'gold';
+// Highlight, light, mid and dark shades of each metal.
+const METALS: Record<Tier, [string, string, string, string]> = {
+  bronze: ['#f0c8a0', '#d29a6c', '#b67a4c', '#8a5534'],
+  silver: ['#ffffff', '#dfe4ee', '#b7c0d4', '#8590a8'],
+  gold: ['#fff0b0', '#ffd966', '#f2c14e', '#c8902a'],
+};
+
+// How deep a pixel is inside the hexagon: 0 on its outer edge, 1 just
+// inside that, and so on (-1 outside). The hexagon is 14 wide and 16 tall,
+// with straight sides and 2:1 slopes at the top and bottom.
+function hexDepth(x: number, y: number): number {
+  const dx = Math.abs(x - 7.5);
+  const dy = Math.abs(y - 7.5);
+  for (let t = 0; ; t++) if (dx > 7 - t || dx + 2 * dy > 16 - 2.2 * t) return t - 1;
+}
+
+// Which shade a face gets, lit from the top left: 0 (highlight) to 3
+// (dark). The faces of a pointy-top hexagon face right, up-right, up-left,
+// left, down-left and down-right.
+function faceShade(x: number, y: number): number {
+  const angle = (Math.atan2(7.5 - y, x - 7.5) * 180) / Math.PI;
+  const face = Math.round((((angle % 360) + 360) % 360) / 60) % 6;
+  return [2, 1, 0, 1, 2, 3][face];
+}
+
+function drawBadge(tier: Tier): PixelCanvas {
+  const c = new PixelCanvas(BADGE, BADGE);
+  const shades = METALS[tier];
+  // The frame: 2 pixels of metal between outlines.
+  for (let y = 0; y < BADGE; y++) {
+    for (let x = 0; x < BADGE; x++) {
+      const d = hexDepth(x, y);
+      if (d < 0 || d > 3) continue;
+      c.fillStyle = d === 0 || d === 3 ? PALETTE.ink : shades[faceShade(x, y)];
+      c.fillRect(x, y, 1, 1);
+    }
+  }
+  // Inside, silver has a small gem with a gap around it, and gold a big
+  // one filling the frame (H highlight, L light, M mid, D dark).
+  const gem = {
+    bronze: [],
+    silver: ['.HL.', 'HHLM', 'LLMD', '.MD.'],
+    gold: ['.HHLL.', 'HHHLLM', 'HHLLMM', 'LLLMMD', 'LMMMDD', '.MMDD.'],
+  }[tier];
+  gem.forEach((row, gy) =>
+    [...row].forEach((ch, gx) => {
+      const i = 'HLMD'.indexOf(ch);
+      if (i < 0) return;
+      c.fillStyle = shades[i];
+      c.fillRect(8 - row.length / 2 + gx, 8 - gem.length / 2 + gy, 1, 1);
+    }),
+  );
+  return c;
+}
+
+function badgeArt(): Art {
+  const tiers: Tier[] = ['bronze', 'silver', 'gold'];
+  const frames = tiers.map(drawBadge);
+  const png = new PixelCanvas(BADGE * tiers.length, BADGE);
+  frames.forEach((f, i) => png.blit(f, BADGE * i, 0));
+  return {
+    png,
+    layers: [{ name: 'badge', cels: frames.map((f) => f.data) }],
+    frameMs: tiers.map(() => 500),
+    tags: tiers.map((name, i) => ({ name, from: i, to: i })),
+  };
+}
+
 // ---------- Which files to make ----------
 
 // Path (without .png / .aseprite) -> look. Paths must match manifest.json.
@@ -559,6 +634,17 @@ const palette = Object.entries(PALETTE).map(([name, hex]) => ({ name, hex }));
 saveArt('stages/egg', eggArt());
 for (const [path, look] of Object.entries(LOOKS)) saveArt(path, creatureArt(look));
 for (const kind of ['beanie', 'party-hat', 'flower-crown', 'tiny-crown'] as HatKind[]) saveArt(`hats/${kind}`, hatArt(kind), HAT);
+// The badge file also gets the metal colours.
+{
+  const art = badgeArt();
+  const metals = Object.entries(METALS).flatMap(([tier, hexes]) =>
+    hexes.map((hex, i) => ({ name: `${tier}-${['highlight', 'light', 'mid', 'dark'][i]}`, hex })),
+  );
+  save('public/sprites/badges/tiers.png', () => art.png.toPNG());
+  save('art/badges/tiers.aseprite', () =>
+    writeAseprite({ width: BADGE, height: BADGE, palette: [...palette, ...metals], frameMs: art.frameMs, layers: art.layers, tags: art.tags }),
+  );
+}
 // A blank file with the right size, tags, palette and guides.
 const blank = creatureArt(null);
 save('art/_template.aseprite', () =>

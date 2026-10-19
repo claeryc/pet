@@ -9,6 +9,7 @@
 // that isn't a recipe on its own isn't cooked at all.
 
 import { CONFIG } from './config';
+import { addTally } from './achievements';
 import { foodCount } from './economy';
 import type { FoodId } from './actions';
 import type { GameState } from './state';
@@ -89,12 +90,13 @@ export function cook(state: GameState, items: readonly FoodId[]): CookResult {
   const dish: FoodId = recipe?.id ?? (CONFIG.cooking.mess as FoodId);
   food[dish] = (food[dish] ?? 0) + 1;
   const discovered = recipe !== null && !knowsRecipe(state, recipe.id);
+  const cooked: GameState = {
+    ...state,
+    inventory: { ...state.inventory, food },
+    recipesFound: discovered ? [...state.recipesFound, recipe.id] : state.recipesFound,
+  };
   return {
-    state: {
-      ...state,
-      inventory: { ...state.inventory, food },
-      recipesFound: discovered ? [...state.recipesFound, recipe.id] : state.recipesFound,
-    },
+    state: recipe ? addTally(cooked, 'dishes') : cooked,
     dish,
     recipe,
     discovered,
