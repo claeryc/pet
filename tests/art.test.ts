@@ -2,14 +2,15 @@ import { describe, expect, it } from 'vitest';
 import data from '../src/data/characters.json';
 import manifest from '../public/sprites/manifest.json';
 import hatData from '../src/data/hats.json';
-import { pickHatFrame, type Shape } from '../src/render/sprites';
+import { pickHatFrame, type IdleSet, type Shape } from '../src/render/sprites';
 
 // Every PNG in public/sprites, as paths like "stages/egg.png".
 const pngs = Object.keys(import.meta.glob('../public/sprites/**/*.png')).map((p) =>
   p.replace('../public/sprites/', ''),
 );
-const sheetFiles: Record<string, { file: string; shape?: string }> = manifest.sheets;
+const sheetFiles: Record<string, { file: string; shape?: string; idleSet?: string }> = manifest.sheets;
 const shapes: Record<string, Shape> = manifest.shapes as Record<string, Shape>;
+const idleSets: Record<string, IdleSet> = manifest.idleSets;
 
 describe('art files', () => {
   const sheets = [
@@ -35,6 +36,21 @@ describe('art files', () => {
     const used = new Set(Object.values(sheetFiles).map((s) => s.shape));
     for (const name of Object.keys(shapes)) expect(used).toContain(name);
   });
+
+  it.each(Object.entries(idleSets))('idle set "%s" has moves on rows of their own, and is used', (name, set) => {
+    const taken = Object.values(manifest.animations).map((a) => a.row);
+    for (const [move, anim] of Object.entries(set.animations)) {
+      expect(move.startsWith('idle-'), move).toBe(true);
+      expect(taken).not.toContain(anim.row);
+      taken.push(anim.row);
+    }
+    expect(Object.values(sheetFiles).some((s) => s.idleSet === name)).toBe(true);
+  });
+
+  it.each(Object.entries(sheetFiles).filter(([, s]) => s.idleSet))(
+    'sheet "%s" uses a known idle set',
+    (_, sheet) => expect(idleSets[sheet.idleSet!]).toBeDefined(),
+  );
 
   it.each(sheets)('sheet "%s" is in the manifest and its PNG exists', (sheet) => {
     expect(sheetFiles[sheet]).toBeDefined();
