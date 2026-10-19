@@ -52,6 +52,7 @@ export const STRINGS = {
     tickle: 'Tickle',
   },
   effects: {
+    full: 'Full', // a stat that was already full, floating up from the pet
     slowHunger: (percent: number, hours: number) =>
       `Tummy empties ${percent}% slower for ${hours} hours`,
   },

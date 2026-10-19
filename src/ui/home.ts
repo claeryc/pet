@@ -29,6 +29,7 @@ import type { DeliveryScene } from '../render/delivery';
 import { formatDuration } from './time';
 import { createReveal, type RevealItem } from './reveal';
 import type { ShopCategory } from './shop';
+import { createFx, type Gains } from './fx';
 
 export interface HomeCallbacks extends MenuCallbacks {
   onFeed: (food: FoodId) => void;
@@ -64,6 +65,8 @@ export interface HomeScreen {
   notice: (message: string) => void;
   // Shows off something you just got, over the stat bars.
   reveal: (item: RevealItem) => void;
+  // Floats the stat changes from something you just did up from the pet.
+  gains: (gains: Gains) => void;
   fishingPhase: () => FishingPhase; // so the room can draw the line and bobber
   gardenScene: () => GardenScene | null; // so the room can turn into the garden
   deliveryScene: () => DeliveryScene | null; // ...or Percy's meadow, for his order
@@ -133,9 +136,16 @@ function statBar(label: string, icon: string): StatBar {
   let shown = 0; // blocks lit right now
   const litFor = (v: number) => Math.ceil(v / (100 / STAT_SEGMENTS));
   function show(lit: number): void {
+    const before = shown;
     shown = lit;
     const low = value < CONFIG.lowStatThreshold;
     segments.forEach((seg, i) => {
+      // A block that just lit pops in.
+      if (i >= before && i < lit) {
+        seg.classList.remove('pop');
+        void seg.offsetWidth;
+        seg.classList.add('pop');
+      }
       seg.classList.toggle('on', i < lit);
       seg.classList.toggle('low', low);
     });
@@ -231,7 +241,16 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const bubbleFood = bubble.querySelector<HTMLElement>('.craving-cloud')!;
   bubble.hidden = true;
   bubble.addEventListener('click', () => tapBubble());
-  roomWrap.append(canvas, bubble, parcel);
+  // Feedback over the room: stat changes, hearts, food and coins. They
+  // start from the pet: its middle across (see SPOTS in render/canvas.ts),
+  // and about where a grown-up's head and mouth are.
+  const PET_X = { middle: 0.5, left: 0.28, right: 0.72 } as const;
+  const fx = createFx(() => ({
+    x: PET_X[(roomWrap.dataset.spot ?? 'middle') as keyof typeof PET_X] ?? 0.5,
+    head: 0.32,
+    mouth: 0.64,
+  }));
+  roomWrap.append(canvas, fx.el, bubble, parcel);
 
   // Warning / sick / recovering banner, hidden when all is well.
   const banner = document.createElement('div');
@@ -307,7 +326,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       icon: ITEM_ICONS[f.id],
       label: STRINGS.foods[f.id],
       effects,
-      onPick: () => cb.onFeed(f.id),
+      onPick: (row) => fx.feed(row.querySelector('.drawer-option-icon') ?? row, ITEM_ICONS[f.id], () => cb.onFeed(f.id)),
     });
   }
   // The order the Feed rows were last put in, so we only move them when
@@ -449,7 +468,10 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   });
   canvas.addEventListener('pointerup', () => {
     clearTimeout(holdTimer);
-    if (press && !press.held) cuddle();
+    if (press && !press.held) {
+      if (!petIsEgg && !petAsleep) fx.hearts(press.x, press.y); // every tap, even the ones that don't count as a cuddle
+      cuddle();
+    }
     press = null;
   });
   canvas.addEventListener('pointercancel', () => {
@@ -628,6 +650,9 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     }
     actions.hidden = false;
     refreshParcel();
+    // Gold that came in while busy elsewhere flies in now.
+    if (goldFrom !== null && latest) fx.gold(goldFrom, latest.state.gold);
+    goldFrom = null;
     actions.classList.remove('rise-in');
     void actions.offsetHeight;
     actions.classList.add('rise-in');
@@ -713,6 +738,11 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
 
   // Which pet the bars were showing, so switching pets can slide them.
   let barsFor: string | null = null;
+  // Gold at the last update, so coins can fly in when it goes up, and where
+  // it was when gold came in while the buttons were away (fishing, the
+  // garden and so on).
+  let lastGold: number | null = null;
+  let goldFrom: number | null = null;
 
   return {
     canvas,
@@ -720,6 +750,11 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       const switched = barsFor !== null && barsFor !== state.pet.id && !stats.hidden;
       barsFor = state.pet.id;
       latest = { state, now };
+      if (lastGold !== null && state.gold > lastGold) {
+        if (actions.hidden) goldFrom ??= lastGold;
+        else fx.gold(lastGold, state.gold);
+      }
+      lastGold = state.gold;
       const pet = state.pet;
       petName = pet.name;
       petAsleep = pet.asleep;
@@ -828,6 +863,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     toast: showToast,
     notice: showNotice,
     reveal: reveal.show,
+    gains: fx.gains,
     fishingPhase: fishing.phase,
     gardenScene: () => garden.scene(),
     deliveryScene: () => delivery.scene(),

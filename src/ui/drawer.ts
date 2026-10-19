@@ -19,7 +19,7 @@ export interface DrawerOption {
   icon: string; // SVG markup for the item's picture
   label: string;
   effects: Effect[];
-  onPick?: () => void; // leave out to show a disabled "coming soon" row
+  onPick?: (row: HTMLElement) => void; // gets the row tapped; leave out to show a disabled "coming soon" row
 }
 
 export interface Drawer {
@@ -131,7 +131,7 @@ export function createDrawer(setup: DrawerSetup): Drawer {
     if (opt.onPick) {
       b.addEventListener('click', () => {
         close();
-        opt.onPick!();
+        opt.onPick!(b);
       });
     } else {
       b.disabled = true;
