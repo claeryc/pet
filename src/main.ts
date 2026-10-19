@@ -183,8 +183,8 @@ function askName(): void {
 // A short animation the pet plays in response to something (eating,
 // playing). It's only for show, so it lives here and isn't saved.
 let reaction: { animation: string; until: number } | null = null;
-function react(animation: string): void {
-  reaction = { animation, until: performance.now() + CONFIG.reactionMs };
+function react(animation: string, ms: number = CONFIG.reactionMs): void {
+  reaction = { animation, until: performance.now() + ms };
 }
 
 // Runs a player action. If the game refused it, shows a little message why;
@@ -384,11 +384,13 @@ const home = createHomeScreen(root, {
     setState(result.state);
     if (result.blocked) return home.toast(STRINGS.blocked[result.blocked](state.pet.name));
     showGains(before, (CONFIG.foods as readonly Food[]).find((f) => f.id === food)!);
+    // Eating takes a while (the food goes in bites); a craving it loved
+    // gets a happy wiggle after.
+    react('eat', CONFIG.eating.ms);
     if (result.craved) {
       home.toast(STRINGS.craving.loved(state.pet.name, result.craved));
-      react('happy');
-    } else {
-      react('eat');
+      const fed = reaction;
+      window.setTimeout(() => reaction === fed && react('happy'), CONFIG.eating.ms);
     }
   },
   onPlay: (activity) => playWith(activity),

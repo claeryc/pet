@@ -135,13 +135,15 @@ function statBar(label: string, icon: string): StatBar {
   let timer = 0;
   let shown = 0; // blocks lit right now
   const litFor = (v: number) => Math.ceil(v / (100 / STAT_SEGMENTS));
-  function show(lit: number): void {
+  let ready = false; // false until the first value, so the bars don't glow on load
+  // `glow`: blocks that just lit glow softly (when the stat went up, not
+  // while the bar refills or slides on its own).
+  function show(lit: number, glow = false): void {
     const before = shown;
     shown = lit;
     const low = value < CONFIG.lowStatThreshold;
     segments.forEach((seg, i) => {
-      // A block that just lit pops in.
-      if (i >= before && i < lit) {
+      if (glow && i >= before && i < lit) {
         seg.classList.remove('pop');
         void seg.offsetWidth;
         seg.classList.add('pop');
@@ -154,7 +156,8 @@ function statBar(label: string, icon: string): StatBar {
     el,
     set(v: number) {
       value = v;
-      if (!filling) show(litFor(v));
+      if (!filling) show(litFor(v), ready);
+      ready = true;
       el.setAttribute('aria-valuenow', String(Math.round(v)));
       el.title = `${label}: ${Math.round(v)}`;
     },
@@ -249,6 +252,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     x: PET_X[(roomWrap.dataset.spot ?? 'middle') as keyof typeof PET_X] ?? 0.5,
     head: 0.32,
     mouth: 0.64,
+    food: 0.72,
   }));
   roomWrap.append(canvas, fx.el, bubble, parcel);
 
