@@ -27,13 +27,14 @@ import type { Food, FoodId } from '../game/actions';
 import type { GameState } from '../game/state';
 import { createDrawer } from './drawer';
 import { ITEM_ICONS } from './icons';
+import { soldInShop, type ShopCategory } from './shop';
 
 export interface CookingCallbacks {
   // Cooks what's in the pot. Returns the dish made, or null if the game
   // refused (the reason is shown elsewhere).
   onCook: (items: FoodId[]) => FoodId | null;
   onExit: () => void;
-  toast: (message: string) => void;
+  toast: (message: string, shop?: ShopCategory) => void; // `shop`: offer a button to that part of the Shop
 }
 
 export interface Cooking {
@@ -56,6 +57,7 @@ const PANEL_GAP = 12;
 
 const foodName = (id: FoodId) => STRINGS.foods[id];
 const stars = (id: FoodId) => (CONFIG.foods as readonly Food[]).find((f) => f.id === id)?.stars ?? 0;
+const inShop = (id: FoodId) => (CONFIG.foods as readonly Food[]).some((f) => f.id === id && soldInShop(f));
 const countText = (n: number) => (n === Infinity ? '∞' : String(n));
 
 export function createCooking(cb: CookingCallbacks): Cooking {
@@ -192,7 +194,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
 
   function addToPot(id: FoodId): void {
     if (pot.length >= CONFIG.cooking.slots) return cb.toast(STRINGS.cooking.full);
-    if (left(id) <= 0) return cb.toast(STRINGS.cooking.noneLeft(foodName(id)));
+    if (left(id) <= 0) return cb.toast(STRINGS.cooking.noneLeft(foodName(id)), inShop(id) ? 'food' : undefined);
     clearDone();
     pot.push(id);
     render();

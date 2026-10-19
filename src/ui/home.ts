@@ -28,6 +28,7 @@ import { potAt, type GardenScene } from '../render/garden';
 import type { DeliveryScene } from '../render/delivery';
 import { formatDuration } from './time';
 import { createReveal, type RevealItem } from './reveal';
+import type { ShopCategory } from './shop';
 
 export interface HomeCallbacks extends MenuCallbacks {
   onFeed: (food: FoodId) => void;
@@ -58,7 +59,7 @@ export interface HomeCallbacks extends MenuCallbacks {
 export interface HomeScreen {
   canvas: HTMLCanvasElement;
   update: (state: GameState, now: number) => void;
-  toast: (message: string) => void;
+  toast: (message: string, shop?: ShopCategory) => void; // `shop`: offer a button to that part of the Shop
   // Like toast, but waits for the message showing now to finish first.
   notice: (message: string) => void;
   // Shows off something you just got, over the stat bars.
@@ -334,9 +335,6 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       effects: [],
       onPick: () => startGarden(),
     },
-    // More mini-games arrive in Milestone 4.
-    { icon: ITEM_ICONS.catchTreats, label: STRINGS.minigames.catchTreats, effects: [] },
-    { icon: ITEM_ICONS.memoryMatch, label: STRINGS.minigames.memoryMatch, effects: [] },
   ];
 
   const MEET_ROW = CONFIG.activities.length; // after Cuddle and Tickle
@@ -479,7 +477,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const cooking = createCooking({
     onCook: cb.onCook,
     onExit: () => showActions(KITCHEN_OUT_MS),
-    toast: (msg) => showToast(msg),
+    toast: showToast,
   });
   function startCooking(): void {
     cb.onSeen('cooking');
@@ -498,7 +496,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     onHarvest: cb.onHarvest,
     onClear: cb.onClear,
     onExit: () => showActions(GARDEN_OUT_MS),
-    toast: (msg) => showToast(msg),
+    toast: showToast,
   });
   function startGarden(): void {
     cb.onSeen('garden');
@@ -624,20 +622,47 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const reveal = createReveal();
   statSlot.append(stats, fishing.pond, cooking.kitchen, garden.beds, delivery.panel, meet.panel, reveal.el);
 
-  // A short message that pops up and fades, e.g. "Mochi is asleep".
+  // A short message that pops up and fades, e.g. "Mochi is asleep". When
+  // you've run out of something the Shop sells, it has a Shop button too.
   const toastEl = document.createElement('div');
   toastEl.className = 'toast';
+  const toastText = document.createElement('span');
+  const toastShop = button(STRINGS.menu.shop, 'toast-action', () => {
+    toastEl.classList.remove('show');
+    if (toastShopAt) goShop(toastShopAt);
+  });
+  toastEl.append(toastText, toastShop);
+  let toastShopAt: ShopCategory | null = null;
   let toastTimer = 0;
   const waiting: string[] = []; // notices waiting their turn
-  function showToast(message: string): void {
-    toastEl.textContent = message;
+  function showToast(message: string, shop?: ShopCategory): void {
+    toastShopAt = shop && latest && isUnlocked(latest.state, 'shop') ? shop : null;
+    toastText.textContent = message;
+    toastShop.hidden = !toastShopAt;
+    toastEl.classList.toggle('has-action', !!toastShopAt);
     toastEl.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = window.setTimeout(() => {
       toastEl.classList.remove('show');
       const next = waiting.shift();
       if (next) toastTimer = window.setTimeout(() => showToast(next), 300);
-    }, 2500);
+    }, toastShopAt ? 4000 : 2500); // a little longer to reach the button
+  }
+  // Leaves the garden or the kitchen and opens the Shop at `category`.
+  function goShop(category: ShopCategory): void {
+    if (garden.active()) {
+      garden.stop();
+      showActions(GARDEN_OUT_MS);
+    }
+    if (cooking.active()) {
+      cooking.stop();
+      showActions(KITCHEN_OUT_MS);
+    }
+    if (actions.hidden) return; // busy with something else
+    feedDrawer.close();
+    playDrawer.close();
+    if (!menuDrawer!.isOpen()) menuDrawer!.open();
+    menu.showShop(category);
   }
   function showNotice(message: string): void {
     if (toastEl.classList.contains('show')) waiting.push(message);

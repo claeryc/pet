@@ -578,6 +578,35 @@ body {
   transform: translate(-50%, 0);
 }
 
+/* A toast with a Shop button: text and button side by side, and tappable. */
+.toast.has-action {
+  width: min(380px, calc(100% - 32px));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+
+.toast.has-action.show {
+  pointer-events: auto;
+}
+
+.toast-action {
+  flex: none;
+  border: 0;
+  border-radius: 10px;
+  padding: 6px 12px;
+  background: var(--accent);
+  color: white;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.toast-action:active {
+  background: var(--accent-dark);
+}
+
 .debug {
   margin-top: 8px;
   padding-top: 12px;

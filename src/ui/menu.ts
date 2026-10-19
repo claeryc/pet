@@ -48,6 +48,7 @@ export interface Menu {
   reset: () => void; // go back to the main list
   update: (state: GameState) => void;
   showWardrobe: () => void;
+  showShop: (category?: string) => void; // open the Shop, unfolded at `category`
 }
 
 function item(label: string, onClick?: () => void, isNew = false): HTMLButtonElement {
@@ -331,6 +332,13 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     el: panel,
     reset: showMain,
     showWardrobe: () => showWardrobe(),
+    showShop: (category) => {
+      showShop();
+      if (category) {
+        openCategories.add(category);
+        showShop(false);
+      }
+    },
     update(next) {
       // Only redraw a page when something on it changed, so the list
       // doesn't jump while you scroll.
