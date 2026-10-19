@@ -59,8 +59,6 @@ export const STRINGS = {
     fishing: 'Fishing',
     garden: 'Garden',
     meet: 'Meet',
-    catchTreats: 'Catch treats',
-    memoryMatch: 'Memory match',
   },
   fishing: {
     cast: 'Cast',
@@ -485,6 +483,8 @@ export const STRINGS = {
     label: 'Gold',
     amount: (gold: number) => `${gold}`,
     checkIn: (gold: number) => `Welcome back! +${gold} gold for checking in.`,
+    // The very first visit of a brand-new game.
+    firstCheckIn: (gold: number) => `Welcome! Here's +${gold} gold to get you started.`,
   },
   confirmReset: 'Start over with a new pet? Your current pet will be gone.',
 } as const;

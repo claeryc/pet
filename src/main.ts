@@ -248,7 +248,8 @@ function runGarden(action: (s: GameState, now: number) => GardenResult, success?
   setState(result.state);
   if (result.blocked) {
     const message = STRINGS.garden.blocked[result.blocked];
-    if (message) home.toast(message);
+    const fromShop = result.blocked === 'noFertilizer' || result.blocked === 'noCure';
+    if (message) home.toast(message, fromShop ? 'garden' : undefined);
     return false;
   }
   if (success) home.toast(success);
@@ -333,9 +334,10 @@ function onMingle(id: string): void {
 
 // Gives the check-in bonus if one is due (on opening the game or coming back).
 function tryCheckIn(): void {
+  const firstEver = state.checkIn.day === '';
   const { state: next, reward } = checkIn(simulate(state, gameNow()), gameNow());
   setState(next);
-  if (reward > 0) home.toast(STRINGS.gold.checkIn(reward));
+  if (reward > 0) home.toast(firstEver ? STRINGS.gold.firstCheckIn(reward) : STRINGS.gold.checkIn(reward));
 }
 
 // The sprite sheets, filled in once they've loaded.

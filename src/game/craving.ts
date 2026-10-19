@@ -56,14 +56,17 @@ export function pickCraving(state: GameState, now: number): string | null {
 }
 
 // Moves cravings along to time `now`: one that has passed goes away, and a
-// new one comes once it's time, while the pet is awake in the daytime.
+// new one comes once it's time, while the pet is awake in the daytime. A
+// pet that has just hatched gets a little while to settle in (and a name)
+// before its first one.
 export function stepCraving(state: GameState, now: number): GameState {
   let craving = state.craving;
   if (craving.food && now >= craving.until) {
     craving = { ...craving, food: null, nextAt: craving.until + C.nextAfterHours * HOUR };
   }
   const { pet } = state;
-  if (!craving.food && now >= craving.nextAt && pet.stage !== 'egg' && !pet.asleep && !isNight(now)) {
+  const settlingIn = !pet.named || (pet.stage === 'baby' && now - pet.stageStartedAt < C.firstAfterHatchHours * HOUR);
+  if (!craving.food && now >= craving.nextAt && pet.stage !== 'egg' && !settlingIn && !pet.asleep && !isNight(now)) {
     const food = pickCraving({ ...state, craving }, now);
     if (food) craving = { ...craving, food, until: now + C.lastsHours * HOUR, last: food };
   }

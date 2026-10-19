@@ -177,11 +177,16 @@ function decorEntry(state: GameState, d: Decor, cb: ShopCallbacks): Entry {
   return { icon, mark: using, row: row(icon, name, using ? STRINGS.shop.inUse : owned ? STRINGS.shop.owned : '', action) };
 }
 
+// The Shop's categories, in order. Other screens can open the Shop at one.
+export type ShopCategory = 'food' | 'garden' | 'fishing' | 'room' | 'hats';
+
+// Food the Shop sells: only plain ingredients (the energy drink only on its days).
+export const soldInShop = (f: Food) => f.price > 0 && !f.caughtOnly && !f.grownOnly && !f.cookedOnly;
+
 export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>): HTMLElement[] {
   const now = state.lastUpdated;
-  // Only plain ingredients are sold, and the energy drink only on its days.
   const food: Entry[] = CONFIG.foods
-    .filter((f: Food) => f.price > 0 && !f.caughtOnly && !f.grownOnly && !f.cookedOnly)
+    .filter(soldInShop)
     .filter((f: Food) => !f.limited || limitedInStock(localDay(now)))
     .map((f: Food) => {
       const left = f.limited ? limitedLeft(state, now) : Infinity;

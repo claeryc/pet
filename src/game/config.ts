@@ -321,6 +321,7 @@ export const CONFIG = {
   craving: {
     lastsHours: 6, // how long the bubble stays if you don't feed it
     nextAfterHours: 3, // a new craving comes this long after the last one ends
+    firstAfterHatchHours: 2, // a baby's first craving waits this long after hatching
     // What feeding the craved food gives on top of the food itself. Rarer
     // food gives a bigger gold tip, by its stars (0 for Shop food).
     reward: { happiness: 15, care: 2, gold: { 0: 5, 1: 10, 2: 20, 3: 35 } },

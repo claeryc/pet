@@ -41,6 +41,7 @@ import type { Food } from '../game/actions';
 import type { GardenScene } from '../render/garden';
 import { createDrawer } from './drawer';
 import { ITEM_ICONS, STAT_ICONS } from './icons';
+import type { ShopCategory } from './shop';
 import { formatDuration } from './time';
 import { sunflower } from './sunflower';
 
@@ -52,7 +53,7 @@ export interface GardenCallbacks {
   onHarvest: (pot: number) => void;
   onClear: (pot: number) => void;
   onExit: () => void;
-  toast: (message: string) => void;
+  toast: (message: string, shop?: ShopCategory) => void; // `shop`: offer a button to that part of the Shop
 }
 
 export interface Garden {
@@ -233,7 +234,7 @@ export function createGarden(cb: GardenCallbacks): Garden {
     row,
     comingSoon: STRINGS.menu.comingSoon,
     beforeOpen: () => (state && CROPS.some((c) => seedCount(state!, c.id as CropId) > 0) ? null : STRINGS.garden.noSeeds),
-    onBlocked: cb.toast,
+    onBlocked: (msg: string) => cb.toast(msg, 'garden'),
     onOpen: () => fitPanel(),
   });
   const waterBtn = btn(STRINGS.garden.water, 'btn garden-water');

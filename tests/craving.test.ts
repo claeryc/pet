@@ -66,6 +66,16 @@ describe('Cravings', () => {
     expect(stepCraving(newTeen(night), night).craving.food).toBeNull();
   });
 
+  it('waits until a new baby is named and has settled in', () => {
+    const baby = newTeen(START);
+    baby.pet.stage = 'baby';
+    baby.pet.named = false;
+    expect(stepCraving(baby, START).craving.food).toBeNull();
+    baby.pet.named = true;
+    expect(stepCraving(baby, START + HOUR).craving.food).toBeNull();
+    expect(stepCraving(baby, START + C.firstAfterHatchHours * HOUR).craving.food).not.toBeNull();
+  });
+
   it('runs inside simulate, like Percy', () => {
     const s = simulate(newTeen(START), START + 10 * 60_000);
     expect(s.craving.food).not.toBeNull();
