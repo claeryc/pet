@@ -1026,9 +1026,9 @@ body {
 
 :root {
   --catch-miss: #9ad3f0; /* blue: no catch */
-  --catch-weak: #6cc19a; /* green: weak catch */
-  --catch-good: #ffe596; /* yellow: good catch */
-  --catch-perfect: #e05a7a; /* red: perfect catch */
+  --catch-red: #e05a7a; /* red: weak catch */
+  --catch-yellow: #ffe596; /* yellow: good catch */
+  --catch-green: #6cc19a; /* green: perfect catch */
 }
 
 .actions[hidden],
@@ -1036,7 +1036,7 @@ body {
   display: none;
 }
 
-/* [Cancel] [Cast / Reel in / Catch] */
+/* [Cancel] [Cast / Reel in / Pull] */
 .fishing-row .btn {
   height: 52px;
   padding: 0 14px;
@@ -1058,6 +1058,18 @@ body {
 
 .fishing-main:disabled {
   opacity: 0.6;
+}
+
+/* Pull is held down: the button stays pressed in. */
+.fishing-main.pulling {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--accent-dark);
+}
+
+.fishing-row[data-phase='reeling'] .fishing-main {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* A fish is biting: the button wiggles to say "now!". */
@@ -1101,7 +1113,21 @@ body {
   box-shadow: 0 0 0 2px var(--ink);
 }
 
-/* After Catch: the marker blinks where it stopped. */
+/* The catch meter along the bottom of the bar: fills while the dot is on a
+   coloured zone, drains on blue. */
+.catch-meter {
+  height: 6px;
+  margin-top: var(--px);
+  background: var(--ink);
+}
+
+.catch-meter-fill {
+  height: 100%;
+  width: 0;
+  background: var(--catch-green);
+}
+
+/* A catch landed: the dot blinks where it ended up. */
 .catch-bar[data-grade] .catch-marker {
   animation: catch-blink 0.15s steps(1) 4;
 }
@@ -2586,7 +2612,7 @@ body {
   background: linear-gradient(
     to right,
     var(--catch-miss) 0 var(--band-start),
-    var(--catch-weak) var(--band-start) var(--band-end),
+    var(--catch-green) var(--band-start) var(--band-end),
     var(--catch-miss) var(--band-end) 100%
   );
 }
