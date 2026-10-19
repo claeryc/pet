@@ -10,30 +10,49 @@ export interface Animation {
 }
 
 // Where a hat sits on a character: the pixel (in the first idle frame)
-// where the bottom middle of the hat goes, and which hat size fits.
+// where the bottom middle of the hat goes, and how many pixels wide a hat
+// may be there (the room between ears or horns, or the whole head).
 export interface Head {
   x: number;
   y: number;
-  size: 'small' | 'large';
+  width: number;
 }
 
-interface ManifestSheet {
+// A small fix for one hat on one shape: pixels right (x) and down (y), and
+// a different width to pick that hat's size with.
+export interface HatFit {
+  x?: number;
+  y?: number;
+  width?: number;
+}
+
+// A body shape shared by every character drawn on the same body, so where
+// hats sit is set up once per shape instead of once per character.
+export interface Shape {
+  head: Head;
+  headOffsets?: Record<string, number[]>; // optional fix for every sheet of this shape
+  hats?: Record<string, HatFit>; // by hat sheet name
+}
+
+export interface ManifestSheet {
   file: string;
   animations?: Record<string, Animation>;
   frameWidth?: number; // only if different from the shared size (hats)
   frameHeight?: number;
-  head?: Head;
+  shape?: string; // pet sheets: a name from the manifest's 'shapes'
   headOffsets?: Record<string, number[]>; // optional fix for the automatic tracking
 }
 
-interface ManifestFile {
+export interface ManifestFile {
   frameWidth: number;
   frameHeight: number;
   animations: Record<string, Animation>;
+  shapes?: Record<string, Shape>;
   sheets: Record<string, ManifestSheet>;
 }
 
 export interface SpriteSheet {
+  name: string; // its name in the manifest
   image: HTMLImageElement;
   frameWidth: number;
   frameHeight: number;
@@ -43,6 +62,9 @@ export interface SpriteSheet {
   // the first idle frame, per animation. Worked out from the picture, so a
   // hat bobs along with the pet without you listing every frame.
   headOffsets?: Record<string, number[]>;
+  hats?: Record<string, HatFit>; // fixes for single hats, from the shape
+  // Hat sheets: how wide the drawing in each frame is, left to right.
+  hatWidths?: number[];
 }
 
 export type SpriteLibrary = Map<string, SpriteSheet>;
@@ -72,16 +94,26 @@ export async function loadSprites(): Promise<SpriteLibrary> {
   await Promise.all(
     Object.entries(manifest.sheets).map(async ([name, sheet]) => {
       try {
+        const shape = shapeOf(manifest, name);
         const loaded: SpriteSheet = {
+          name,
           image: await loadImage(base + sheet.file),
           frameWidth: sheet.frameWidth ?? manifest.frameWidth,
           frameHeight: sheet.frameHeight ?? manifest.frameHeight,
           // A sheet's own animation list replaces the shared one.
           animations: sheet.animations ?? manifest.animations,
-          head: sheet.head,
+          head: shape?.head,
+          hats: shape?.hats,
         };
-        // Hand-written offsets in the manifest win over the automatic ones.
-        if (loaded.head) loaded.headOffsets = { ...findHeadOffsets(loaded, loaded.head), ...sheet.headOffsets };
+        // Hand-written offsets in the manifest win over the automatic ones,
+        // and the sheet's own win over its shape's.
+        if (shape)
+          loaded.headOffsets = {
+            ...findHeadOffsets(loaded, shape.head),
+            ...shape.headOffsets,
+            ...sheet.headOffsets,
+          };
+        if (name.startsWith('hat-')) loaded.hatWidths = measureHatWidths(loaded);
         library.set(name, loaded);
       } catch (err) {
         console.warn(err);
@@ -91,6 +123,53 @@ export async function loadSprites(): Promise<SpriteLibrary> {
   return library;
 }
 
+// The body shape a sheet is drawn on, or undefined for sheets without one
+// (the egg, hats). Warns about a shape name that isn't in the list.
+export function shapeOf(manifest: ManifestFile, sheetName: string): Shape | undefined {
+  const name = manifest.sheets[sheetName]?.shape;
+  if (!name) return undefined;
+  const shape = manifest.shapes?.[name];
+  if (!shape) console.warn(`Sheet "${sheetName}" uses shape "${name}", which isn't in manifest.json's shapes`);
+  return shape;
+}
+
+// Which frame of a hat sheet to draw on a head with `room` pixels: the
+// widest drawing that fits, or the narrowest one if none does.
+export function pickHatFrame(widths: number[], room: number): number {
+  let best = -1;
+  for (let i = 0; i < widths.length; i++)
+    if (widths[i] <= room && (best < 0 || widths[i] > widths[best])) best = i;
+  if (best >= 0) return best;
+  return widths.indexOf(Math.min(...widths));
+}
+
+// How wide the drawing in each frame of a hat sheet is, from its leftmost
+// to its rightmost coloured column.
+function measureHatWidths(sheet: SpriteSheet): number[] {
+  const { data, width } = pixelsOf(sheet.image);
+  const frames = Math.max(1, Math.floor(sheet.image.width / sheet.frameWidth));
+  return Array.from({ length: frames }, (_, f) => {
+    let left = Infinity;
+    let right = -Infinity;
+    for (let x = 0; x < sheet.frameWidth; x++)
+      for (let y = 0; y < sheet.frameHeight; y++)
+        if (data[(y * width + f * sheet.frameWidth + x) * 4 + 3] !== 0) {
+          left = Math.min(left, x);
+          right = Math.max(right, x);
+        }
+    return right >= left ? right - left + 1 : 0;
+  });
+}
+
+function pixelsOf(image: HTMLImageElement): ImageData {
+  const canvas = document.createElement('canvas');
+  canvas.width = image.width;
+  canvas.height = image.height;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+  ctx.drawImage(image, 0, 0);
+  return ctx.getImageData(0, 0, canvas.width, canvas.height);
+}
+
 // For every frame, works out how far the top of the head has moved compared
 // with the first idle frame. It looks at a few columns around the head
 // point, finds the top of the picture in each, and takes the lowest one:
@@ -98,12 +177,7 @@ export async function loadSprites(): Promise<SpriteLibrary> {
 // the head itself. Effects to the side (Zs, sparkles, hearts) are outside
 // those columns, so they don't confuse it.
 function findHeadOffsets(sheet: SpriteSheet, head: Head): Record<string, number[]> {
-  const canvas = document.createElement('canvas');
-  canvas.width = sheet.image.width;
-  canvas.height = sheet.image.height;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
-  ctx.drawImage(sheet.image, 0, 0);
-  const { data, width } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const { data, width } = pixelsOf(sheet.image);
   const topOf = (row: number, frame: number): number => {
     const ox = frame * sheet.frameWidth;
     const oy = row * sheet.frameHeight;
