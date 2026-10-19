@@ -1,5 +1,5 @@
 {
-  "_help": "Lists every sprite sheet the game can use. See docs/ART_GUIDE.md. Each sheet is a PNG (path relative to this folder) where every frame is frameWidth x frameHeight pixels, each ROW is one animation, and frames go left to right. 'animations' says which row holds which animation; a sheet can override it (like the egg below). If a sheet is missing an animation, the game uses 'idle' instead. Sheet names here are what src/data/characters.json points at. 'shape' (on pet sheets) names a body shape from 'shapes'. Characters with the same body share a shape, so hats are set up once per shape. A shape's 'head' is where a hat sits: the pixel in the first idle frame where the bottom middle of the hat goes, and 'width': how many pixels wide a hat may be there (the room between ears or horns, or the whole head). The game uses the widest hat size that fits. A shape's 'hats' can nudge one hat on that shape, e.g. { \"hat-party\": { \"x\": 1, \"y\": 2, \"width\": 10 } }: pixels right and down, and a different width to pick that hat's size. Hat sheets have one frame per size, smallest on the left; the game measures how wide each drawing is. If the automatic hat tracking is off for an animation, a sheet (or a whole shape) can list 'headOffsets', e.g. { \"happy\": [0, -3, -4, -2] }: how many pixels the head is above (negative) or below the first idle frame, per frame.",
+  "_help": "Lists every sprite sheet the game can use. See docs/ART_GUIDE.md. Each sheet is a PNG (path relative to this folder) where every frame is frameWidth x frameHeight pixels, each ROW is one animation, and frames go left to right. 'animations' says which row holds which animation; a sheet can override it (like the egg below). If a sheet is missing an animation, the game uses 'idle' instead. Sheet names here are what src/data/characters.json points at. 'shape' (on pet sheets) names a body shape from 'shapes'. Characters with the same body share a shape, so hats are set up once per shape. A shape's 'head' is where a hat sits: the pixel in the first idle frame where the bottom middle of the hat goes, and 'width': how many pixels wide a hat may be there (the room between ears or horns, or the whole head). The game uses the widest hat size that fits. A shape's 'hats' can nudge one hat on that shape, e.g. { \"hat-party\": { \"x\": 1, \"y\": 2, \"width\": 10 } }: pixels right and down, and a different width to pick that hat's size. Hat sheets have one frame per size, smallest on the left; the game measures how wide each drawing is. If the automatic hat tracking is off for an animation, a sheet (or a whole shape) can list 'headOffsets', e.g. { \"happy\": [0, -3, -4, -2] }: how many pixels the head is above (negative) or below the first idle frame, per frame. 'idleSets' are extra idle moves (a stretch, a look around...) that a pet plays now and then instead of its plain idle. Each set lists its moves like 'animations' does, on rows after the usual ones; a sheet that has them drawn on those rows uses the set with 'idleSet'. Hats follow these moves too, sideways as well. A set (or a shape, or a sheet) can fix the sideways tracking with 'headShifts', e.g. { \"idle-look\": [-1, -2, -2, -1] }: how many pixels the head is right (positive) or left (negative) of the first idle frame, per frame.",
   "frameWidth": 32,
   "frameHeight": 32,
   "animations": {
@@ -111,6 +111,22 @@
       }
     }
   },
+  "idleSets": {
+    "curious": {
+      "animations": {
+        "idle-look": {
+          "row": 7,
+          "frames": 4,
+          "frameMs": 260
+        },
+        "idle-stretch": {
+          "row": 8,
+          "frames": 4,
+          "frameMs": 260
+        }
+      }
+    }
+  },
   "sheets": {
     "egg": {
       "file": "stages/egg.png",
@@ -136,7 +152,8 @@
     },
     "bunbun": {
       "file": "characters/basic/bunbun.png",
-      "shape": "wide-loaf"
+      "shape": "wide-loaf",
+      "idleSet": "curious"
     },
     "cloudlet": {
       "file": "characters/basic/cloudlet.png",
@@ -148,7 +165,8 @@
     },
     "mosscap": {
       "file": "characters/nature/mosscap.png",
-      "shape": "capped"
+      "shape": "capped",
+      "idleSet": "curious"
     },
     "fernwhisk": {
       "file": "characters/nature/fernwhisk.png",
