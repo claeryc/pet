@@ -17,23 +17,41 @@ export interface Head {
   size: 'small' | 'large';
 }
 
-interface ManifestSheet {
+// A small fix for one hat on one shape: pixels right (x) and down (y), and
+// which hat size to use instead of the head's.
+export interface HatFit {
+  x?: number;
+  y?: number;
+  size?: 'small' | 'large';
+}
+
+// A body shape shared by every character drawn on the same body, so where
+// hats sit is set up once per shape instead of once per character.
+export interface Shape {
+  head: Head;
+  headOffsets?: Record<string, number[]>; // optional fix for every sheet of this shape
+  hats?: Record<string, HatFit>; // by hat sheet name
+}
+
+export interface ManifestSheet {
   file: string;
   animations?: Record<string, Animation>;
   frameWidth?: number; // only if different from the shared size (hats)
   frameHeight?: number;
-  head?: Head;
+  shape?: string; // pet sheets: a name from the manifest's 'shapes'
   headOffsets?: Record<string, number[]>; // optional fix for the automatic tracking
 }
 
-interface ManifestFile {
+export interface ManifestFile {
   frameWidth: number;
   frameHeight: number;
   animations: Record<string, Animation>;
+  shapes?: Record<string, Shape>;
   sheets: Record<string, ManifestSheet>;
 }
 
 export interface SpriteSheet {
+  name: string; // its name in the manifest
   image: HTMLImageElement;
   frameWidth: number;
   frameHeight: number;
@@ -43,6 +61,7 @@ export interface SpriteSheet {
   // the first idle frame, per animation. Worked out from the picture, so a
   // hat bobs along with the pet without you listing every frame.
   headOffsets?: Record<string, number[]>;
+  hats?: Record<string, HatFit>; // fixes for single hats, from the shape
 }
 
 export type SpriteLibrary = Map<string, SpriteSheet>;
@@ -72,16 +91,25 @@ export async function loadSprites(): Promise<SpriteLibrary> {
   await Promise.all(
     Object.entries(manifest.sheets).map(async ([name, sheet]) => {
       try {
+        const shape = shapeOf(manifest, name);
         const loaded: SpriteSheet = {
+          name,
           image: await loadImage(base + sheet.file),
           frameWidth: sheet.frameWidth ?? manifest.frameWidth,
           frameHeight: sheet.frameHeight ?? manifest.frameHeight,
           // A sheet's own animation list replaces the shared one.
           animations: sheet.animations ?? manifest.animations,
-          head: sheet.head,
+          head: shape?.head,
+          hats: shape?.hats,
         };
-        // Hand-written offsets in the manifest win over the automatic ones.
-        if (loaded.head) loaded.headOffsets = { ...findHeadOffsets(loaded, loaded.head), ...sheet.headOffsets };
+        // Hand-written offsets in the manifest win over the automatic ones,
+        // and the sheet's own win over its shape's.
+        if (shape)
+          loaded.headOffsets = {
+            ...findHeadOffsets(loaded, shape.head),
+            ...shape.headOffsets,
+            ...sheet.headOffsets,
+          };
         library.set(name, loaded);
       } catch (err) {
         console.warn(err);
@@ -89,6 +117,16 @@ export async function loadSprites(): Promise<SpriteLibrary> {
     }),
   );
   return library;
+}
+
+// The body shape a sheet is drawn on, or undefined for sheets without one
+// (the egg, hats). Warns about a shape name that isn't in the list.
+export function shapeOf(manifest: ManifestFile, sheetName: string): Shape | undefined {
+  const name = manifest.sheets[sheetName]?.shape;
+  if (!name) return undefined;
+  const shape = manifest.shapes?.[name];
+  if (!shape) console.warn(`Sheet "${sheetName}" uses shape "${name}", which isn't in manifest.json's shapes`);
+  return shape;
 }
 
 // For every frame, works out how far the top of the head has moved compared

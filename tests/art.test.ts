@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import data from '../src/data/characters.json';
 import manifest from '../public/sprites/manifest.json';
 import hatData from '../src/data/hats.json';
+import type { Shape } from '../src/render/sprites';
 
 // Every PNG in public/sprites, as paths like "stages/egg.png".
 const pngs = Object.keys(import.meta.glob('../public/sprites/**/*.png')).map((p) =>
   p.replace('../public/sprites/', ''),
 );
-const sheetFiles: Record<string, { file: string; head?: { x: number; y: number; size: string } }> = manifest.sheets;
+const sheetFiles: Record<string, { file: string; shape?: string }> = manifest.sheets;
+const shapes: Record<string, Shape> = manifest.shapes as Record<string, Shape>;
 
 describe('art files', () => {
   const sheets = [
@@ -16,10 +18,22 @@ describe('art files', () => {
     ...hatData.hats.map((h) => h.sheet),
   ];
 
-  it.each(sheets.filter((s) => s !== 'egg' && !s.startsWith('hat-')))('sheet "%s" says where hats sit', (sheet) => {
-    const head = sheetFiles[sheet].head;
-    expect(head).toBeDefined();
-    expect(['small', 'large']).toContain(head!.size);
+  it.each(sheets.filter((s) => s !== 'egg' && !s.startsWith('hat-')))('sheet "%s" has a known body shape', (sheet) => {
+    expect(Object.keys(shapes)).toContain(sheetFiles[sheet].shape);
+  });
+
+  it.each(Object.entries(shapes))('shape "%s" says where hats sit, and only fits known hats', (_, shape) => {
+    expect(['small', 'large']).toContain(shape.head.size);
+    const hatSheets = hatData.hats.map((h) => h.sheet);
+    for (const [hat, fit] of Object.entries(shape.hats ?? {})) {
+      expect(hatSheets).toContain(hat);
+      if (fit.size) expect(['small', 'large']).toContain(fit.size);
+    }
+  });
+
+  it('every shape is used by a sheet', () => {
+    const used = new Set(Object.values(sheetFiles).map((s) => s.shape));
+    for (const name of Object.keys(shapes)) expect(used).toContain(name);
   });
 
   it.each(sheets)('sheet "%s" is in the manifest and its PNG exists', (sheet) => {

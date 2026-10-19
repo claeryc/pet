@@ -1,5 +1,5 @@
 {
-  "_help": "Lists every sprite sheet the game can use. See docs/ART_GUIDE.md. Each sheet is a PNG (path relative to this folder) where every frame is frameWidth x frameHeight pixels, each ROW is one animation, and frames go left to right. 'animations' says which row holds which animation; a sheet can override it (like the egg below). If a sheet is missing an animation, the game uses 'idle' instead. Sheet names here are what src/data/characters.json points at. 'head' (on pet sheets) is where a hat sits: the pixel in the first idle frame where the bottom middle of the hat goes, and whether the small or large hat fits. Hat sheets are 16x16 with the small hat on the left and the large one on the right. If the automatic hat tracking is off for an animation, a sheet can list 'headOffsets', e.g. { \"happy\": [0, -3, -4, -2] }: how many pixels the head is above (negative) or below the first idle frame, per frame.",
+  "_help": "Lists every sprite sheet the game can use. See docs/ART_GUIDE.md. Each sheet is a PNG (path relative to this folder) where every frame is frameWidth x frameHeight pixels, each ROW is one animation, and frames go left to right. 'animations' says which row holds which animation; a sheet can override it (like the egg below). If a sheet is missing an animation, the game uses 'idle' instead. Sheet names here are what src/data/characters.json points at. 'shape' (on pet sheets) names a body shape from 'shapes'. Characters with the same body share a shape, so hats are set up once per shape. A shape's 'head' is where a hat sits: the pixel in the first idle frame where the bottom middle of the hat goes, and whether the small or large hat fits. A shape's 'hats' can nudge one hat on that shape, e.g. { \"hat-party\": { \"x\": 1, \"y\": 2, \"size\": \"small\" } }: pixels right and down, and which size to use. Hat sheets are 16x16 with the small hat on the left and the large one on the right. If the automatic hat tracking is off for an animation, a sheet (or a whole shape) can list 'headOffsets', e.g. { \"happy\": [0, -3, -4, -2] }: how many pixels the head is above (negative) or below the first idle frame, per frame.",
   "frameWidth": 32,
   "frameHeight": 32,
   "animations": {
@@ -39,6 +39,78 @@
       "frameMs": 320
     }
   },
+  "shapes": {
+    "baby": {
+      "head": {
+        "x": 16,
+        "y": 19,
+        "size": "small"
+      }
+    },
+    "tall": {
+      "head": {
+        "x": 16,
+        "y": 14,
+        "size": "large"
+      }
+    },
+    "loaf": {
+      "head": {
+        "x": 16,
+        "y": 15,
+        "size": "large"
+      }
+    },
+    "wide-loaf": {
+      "head": {
+        "x": 16,
+        "y": 15,
+        "size": "large"
+      }
+    },
+    "capped": {
+      "head": {
+        "x": 16,
+        "y": 12,
+        "size": "large"
+      }
+    },
+    "flat": {
+      "head": {
+        "x": 16,
+        "y": 16,
+        "size": "large"
+      }
+    },
+    "small": {
+      "head": {
+        "x": 16,
+        "y": 17,
+        "size": "small"
+      }
+    },
+    "big": {
+      "head": {
+        "x": 16,
+        "y": 14,
+        "size": "large"
+      }
+    },
+    "cloud": {
+      "head": {
+        "x": 16,
+        "y": 13,
+        "size": "large"
+      }
+    },
+    "big-tall": {
+      "head": {
+        "x": 16,
+        "y": 12,
+        "size": "large"
+      }
+    }
+  },
   "sheets": {
     "egg": {
       "file": "stages/egg.png",
@@ -52,123 +124,63 @@
     },
     "baby": {
       "file": "stages/baby.png",
-      "head": {
-        "x": 16,
-        "y": 19,
-        "size": "small"
-      }
+      "shape": "baby"
     },
     "teen": {
       "file": "stages/teen.png",
-      "head": {
-        "x": 16,
-        "y": 14,
-        "size": "large"
-      }
+      "shape": "tall"
     },
     "dumpling": {
       "file": "characters/basic/dumpling.png",
-      "head": {
-        "x": 16,
-        "y": 15,
-        "size": "large"
-      }
+      "shape": "loaf"
     },
     "bunbun": {
       "file": "characters/basic/bunbun.png",
-      "head": {
-        "x": 16,
-        "y": 15,
-        "size": "large"
-      }
+      "shape": "wide-loaf"
     },
     "cloudlet": {
       "file": "characters/basic/cloudlet.png",
-      "head": {
-        "x": 16,
-        "y": 13,
-        "size": "large"
-      }
+      "shape": "cloud"
     },
     "sprig": {
       "file": "characters/nature/sprig.png",
-      "head": {
-        "x": 16,
-        "y": 14,
-        "size": "large"
-      }
+      "shape": "tall"
     },
     "mosscap": {
       "file": "characters/nature/mosscap.png",
-      "head": {
-        "x": 16,
-        "y": 12,
-        "size": "large"
-      }
+      "shape": "capped"
     },
     "fernwhisk": {
       "file": "characters/nature/fernwhisk.png",
-      "head": {
-        "x": 16,
-        "y": 12,
-        "size": "large"
-      }
+      "shape": "big-tall"
     },
     "pebblit": {
       "file": "characters/cave/pebblit.png",
-      "head": {
-        "x": 16,
-        "y": 15,
-        "size": "large"
-      }
+      "shape": "loaf"
     },
     "pebblit-amber": {
       "file": "characters/cave/pebblit-amber.png",
-      "head": {
-        "x": 16,
-        "y": 15,
-        "size": "large"
-      }
+      "shape": "loaf"
     },
     "crystalback": {
       "file": "characters/cave/crystalback.png",
-      "head": {
-        "x": 16,
-        "y": 15,
-        "size": "large"
-      }
+      "shape": "wide-loaf"
     },
     "geodon": {
       "file": "characters/cave/geodon.png",
-      "head": {
-        "x": 16,
-        "y": 14,
-        "size": "large"
-      }
+      "shape": "big"
     },
     "glimmer": {
       "file": "characters/sparkle/glimmer.png",
-      "head": {
-        "x": 16,
-        "y": 17,
-        "size": "small"
-      }
+      "shape": "small"
     },
     "moonpip": {
       "file": "characters/sparkle/moonpip.png",
-      "head": {
-        "x": 16,
-        "y": 16,
-        "size": "large"
-      }
+      "shape": "flat"
     },
     "starwisp": {
       "file": "characters/sparkle/starwisp.png",
-      "head": {
-        "x": 16,
-        "y": 14,
-        "size": "large"
-      }
+      "shape": "big"
     },
     "hat-beanie": {
       "file": "hats/beanie.png",

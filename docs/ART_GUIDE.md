@@ -78,9 +78,9 @@ That's it. No other file changes, and existing pets pick up the new look.
 1. **Copy the template:** duplicate `art/_template.aseprite` into the theme folder and rename it, for example `art/characters/cave/stalagbun.aseprite`. It already has the size, palette, guides, all 24 frames and the six animation tags (`idle`, `sad`, `sleep`, `sick`, `eat`, `happy`), each with the right speed.
 2. **Draw** each frame on the **pet** layer with the **Pencil** (B) and **Pixel-perfect** ticked. Never use blur or soft brushes. Keep the feet on the pink line and the pet centred.
 3. **Export** the sheet to `public/sprites/characters/cave/stalagbun.png` (see below).
-4. **List the sheet** in `public/sprites/manifest.json` under `"sheets"`:
+4. **List the sheet** in `public/sprites/manifest.json` under `"sheets"`, with the body shape it's drawn on (see [Body shapes](#body-shapes)):
    ```json
-   "stalagbun": { "file": "characters/cave/stalagbun.png" }
+   "stalagbun": { "file": "characters/cave/stalagbun.png", "shape": "wide-loaf" }
    ```
 5. **Add the character** to `src/data/characters.json`:
    ```json
@@ -92,7 +92,7 @@ A new **theme** is one more line under `"themes"` in `characters.json`, then cha
 ## Adding a colour variant
 
 1. Save a copy of the character's file, for example `art/characters/cave/geodon-frost.aseprite`, and recolour it (Edit → Replace Color helps).
-2. Export it to `public/sprites/characters/cave/geodon-frost.png` and add it to `manifest.json`.
+2. Export it to `public/sprites/characters/cave/geodon-frost.png` and add it to `manifest.json` with the same `shape` as the character.
 3. In `characters.json`, give the character a `variants` list. `chance` is the percent of these characters that get the variant:
    ```json
    { "id": "geodon", "theme": "cave", "stars": 3, "name": "Geodon", "sheet": "geodon",
@@ -103,13 +103,51 @@ A new **theme** is one more line under `"themes"` in `characters.json`, then cha
 
 Any hat fits any character, so you draw each hat only once (in two sizes), and never per character.
 
-**How it works:** every pet sheet in `manifest.json` has a `head` point, e.g. `"head": { "x": 16, "y": 14, "size": "large" }`. That's the pixel in the first `idle` frame where the bottom middle of a hat should sit, and whether the character has a small or large head. In every other frame the game finds how far the top of the head has moved (by looking at the picture) and moves the hat with it, so the hat hops, squashes and sleeps along with the pet.
+**How it works:** every pet sheet in `manifest.json` names a body `shape`, and the shape says where hats sit. In every other frame the game finds how far the top of the head has moved (by looking at the picture) and moves the hat with it, so the hat hops, squashes and sleeps along with the pet.
 
-**If a hat doesn't follow an animation properly**, you can tell the game exactly how far the head moves in each frame of that animation, in pixels compared to the first idle frame (negative is up). Add it to the sheet in `manifest.json`, for example `"headOffsets": { "happy": [1, -4, -5, -3] }`.
+**If a hat doesn't follow an animation properly**, you can tell the game exactly how far the head moves in each frame of that animation, in pixels compared to the first idle frame (negative is up). Add it to the sheet in `manifest.json`, for example `"headOffsets": { "happy": [1, -4, -5, -3] }`. If every character of a shape needs the same fix, put it on the shape instead. A sheet's own fix wins over its shape's.
 
-**Setting the head point for a character:** open its sheet, look at the first idle frame, and find the column in the middle of the head (`x`) and the row just below the top of the head (`y`). Use `"size": "small"` for small heads (babies, tiny characters) and `"large"` for the rest. If a hat sits a little too high or low, change `y` by 1.
+### Body shapes
 
-**Drawing a hat:**
+Characters drawn on the same body (same size, same top where a hat rests) share a **shape**. Hats are set up once per shape, so a new character on an existing body needs no hat setup at all. The shapes are listed under `"shapes"` in `manifest.json`:
+
+```json
+"shapes": {
+  "loaf":      { "head": { "x": 16, "y": 15, "size": "large" } },
+  "wide-loaf": { "head": { "x": 16, "y": 15, "size": "large" } },
+  "small":     { "head": { "x": 16, "y": 17, "size": "small" } }
+}
+```
+
+| Shape | Characters |
+| --- | --- |
+| `baby` | baby |
+| `tall` | teen, Sprig |
+| `loaf` | Dumpling, Pebblit (and Amber) |
+| `wide-loaf` | Bunbun, Crystalback |
+| `capped` | Mosscap (hat sits on the mushroom cap) |
+| `flat` | Moonpip |
+| `small` | Glimmer |
+| `big` | Geodon, Starwisp |
+| `cloud` | Cloudlet |
+| `big-tall` | Fernwhisk |
+
+A shape's `head` is the pixel in the first `idle` frame where the bottom middle of a hat should sit, and whether the shape has a small or large head. To find it, open a sheet of that shape, look at the first idle frame, and find the column in the middle of the head (`x`) and the row just below the top of the head (`y`). Use `"size": "small"` for small heads (babies, tiny characters) and `"large"` for the rest. If hats sit a little too high or low, change `y` by 1.
+
+**A new body** is a new shape: add it under `"shapes"` and point the sheet at it. A one-off character is simply a shape of one.
+
+**If one hat looks wrong on one shape** (a crown slipping between bunny ears, a party hat poking through spikes), nudge just that hat on that shape with `"hats"`, keyed by the hat's sheet name. `x` moves it right, `y` moves it down (negative is up), and `size` picks the other hat size:
+
+```json
+"wide-loaf": {
+  "head": { "x": 16, "y": 15, "size": "large" },
+  "hats": { "hat-tiny-crown": { "y": -1 }, "hat-party": { "size": "small" } }
+}
+```
+
+Every other hat and shape stays as it was.
+
+### Drawing a hat
 
 1. Copy any file in `art/hats/`, for example `beanie.aseprite`. It's 16 x 16 with two frames: tag `small` (about 8 pixels wide) and tag `large` (about 12 pixels wide).
 2. Draw the hat with its bottom edge on the last row and centred around column 8. Give it the dark outline.
