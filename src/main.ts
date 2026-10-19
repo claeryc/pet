@@ -23,6 +23,8 @@ import {
 import { useDecor } from './game/decor';
 import { getLook, isNight } from './game/stats';
 import { cast, land, toggleBait } from './game/fishing';
+import { TOSS_MS } from './render/garden';
+import { LEAP_MS } from './ui/fishing';
 import { cook } from './game/cooking';
 import {
   clearPlot,
@@ -412,12 +414,16 @@ const home = createHomeScreen(root, {
     setState(next);
     const label = STRINGS.fishing.grades[grade];
     if (caught) {
-      showGot(caught, count, label);
+      // Show it once it has flipped up out of the water.
+      window.setTimeout(() => {
+        showGot(caught, count, label);
+        luckySeed('fishing', grade === 'perfect');
+      }, LEAP_MS);
       react('happy');
-      luckySeed('fishing', grade === 'perfect');
     } else {
       home.toast(grade === 'miss' ? label : STRINGS.fishing.slipped(label));
     }
+    return caught;
   },
   onToggleBait: () => setState(toggleBait(state)),
   onCook: (items) => {
@@ -450,7 +456,9 @@ const home = createHomeScreen(root, {
     const result = harvest(simulate(state, now), pot);
     setState(result.state);
     if (result.blocked || !result.crop) return;
-    showGot(result.crop, result.count ?? 0, STRINGS.reveal.harvested);
+    // Let the crop bounce out of its pot first.
+    const crop = result.crop;
+    window.setTimeout(() => showGot(crop, result.count ?? 0, STRINGS.reveal.harvested), TOSS_MS);
     react('happy');
   },
   onClear: (pot) => runGarden((s) => clearPlot(s, pot), STRINGS.garden.cleared),

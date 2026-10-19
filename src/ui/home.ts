@@ -37,7 +37,7 @@ export interface HomeCallbacks extends MenuCallbacks {
   onLights: () => void;
   onMedicine: () => void;
   onCast: () => boolean; // throws the fishing line; false if refused
-  onLand: (grade: CatchGrade) => void;
+  onLand: (grade: CatchGrade) => string | null; // the fish landed (a food id), or null
   onToggleBait: () => void;
   onCook: (items: FoodId[]) => FoodId | null; // the dish made, or null if refused
   onPlant: (pot: number, crop: CropId) => void;

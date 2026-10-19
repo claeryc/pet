@@ -3,8 +3,10 @@
 // crisp pixels, like the room.
 //
 // What's in it: water with a moving surface, the bait hanging on the line,
-// dark see-through fish swimming about, and bubbles. While you reel in the
-// surface churns with bigger waves and foam. The fish, bubbles and foam
+// dark see-through fish swimming about, and bubbles. The bait splashes as it
+// goes in and out, and tugs down when a fish bites. While you reel in the
+// surface churns with bigger waves and foam. A landed fish leaves with a
+// splash; one that got off the hook darts away. The fish, bubbles and foam
 // each pick one of a few small sprites at random, so it never looks quite
 // the same twice.
 
@@ -77,11 +79,24 @@ interface Foam {
   y: number;
   life: number; // seconds left
 }
+// Rings spreading out along the surface from a splash.
+interface Ripple {
+  x: number;
+  age: number; // seconds
+}
+// The splash crown that jumps up from the surface for a moment.
+const CROWN: Sprite[] = [
+  ['w...w', '.w.w.'],
+  ['w.....w', '.w.w.w.', '..w.w..'],
+];
+const RIPPLE_SECONDS = 0.7;
 
 export interface Pond {
   canvas: HTMLCanvasElement;
   resize: () => void; // call after the pond's on-screen size changes
   draw: (phase: FishingPhase, timeMs: number) => void;
+  landed: (caught: boolean) => void; // the catch is over: the fish leaves, one way or the other
+  baitAt: () => { x: number; y: number }; // where the bait is, as shares of the pond's size
 }
 
 export function createPond(): Pond {
@@ -100,6 +115,10 @@ export function createPond(): Pond {
   let foamIn = 0;
   let bait = { x: 0, y: 0 }; // where the bait hangs (moves when sinking or reeling)
   let biter: Fish | null = null; // the fish going for the bait
+  let letGo = false; // the catch is over, though the bar is still showing
+  let tug = 0; // how far a biting fish pulls the bait down
+  const ripples: Ripple[] = [];
+  let crown = { x: 0, life: 0 };
 
   function newFish(sprite: Sprite): Fish {
     const vx = rand(4, 9) * (Math.random() < 0.5 ? -1 : 1);
@@ -136,15 +155,29 @@ export function createPond(): Pond {
     foam.push({ sprite, x: x - sprite[0].length / 2, y: SURFACE - 1 + rand(-1, 2), life: rand(0.3, 0.8) });
   }
 
+  // A splash where the bait meets the water: a crown of drops, rings
+  // spreading out and a puff of foam.
+  function splash(x: number): void {
+    crown = { x, life: 0.22 };
+    ripples.push({ x, age: 0 });
+    for (let i = 0; i < 4; i++) spawnFoam(x + rand(-6, 6));
+    for (let i = 0; i < 3; i++) spawnBubble(x + rand(-3, 4), SURFACE + rand(3, 7));
+  }
+
   function update(phase: FishingPhase, dt: number, t: number): void {
-    const reeling = phase === 'reeling';
+    if (phase !== 'reeling') letGo = false;
+    const reeling = phase === 'reeling' && !letGo;
     const biting = phase === 'bite';
 
     // The bait sinks to about halfway down once cast, and comes back up
-    // out of the water when the line is in.
+    // out of the water when the line is in. It splashes going in and out.
     const targetY = phase === 'ready' ? -10 : Math.round(H * 0.45);
+    const wasY = bait.y;
     bait.y += Math.sign(targetY - bait.y) * Math.min(Math.abs(targetY - bait.y), 14 * dt);
+    if ((wasY < SURFACE) !== (bait.y < SURFACE)) splash(bait.x + 2);
     const jerk = biting || reeling ? Math.round(Math.sin(t / 60)) : 0;
+    // A bite tugs the bait down in sharp little pulls.
+    tug = biting ? [3, 3, 1, 0][Math.floor(t / 110) % 4] : 0;
 
     // Pick a fish to go for the bait once it's in the water.
     if (phase === 'waiting' || biting || reeling) biter ??= pick(fish);
@@ -168,8 +201,10 @@ export function createPond(): Pond {
         }
         continue;
       }
-      // Everyone else wanders, turning now and then or at the edges.
+      // Everyone else wanders, turning now and then or at the edges. One
+      // that got off the hook darts away, then slows down again.
       f.x += f.vx * dt * (reeling ? 1.6 : 1); // the splashing spooks them
+      if (Math.abs(f.vx) > 9) f.vx *= 1 - Math.min(1, dt * 1.5);
       f.turnIn -= dt;
       if (f.turnIn <= 0) {
         f.turnIn = rand(2, 5);
@@ -209,6 +244,11 @@ export function createPond(): Pond {
       foam[i].life -= dt;
       if (foam[i].life <= 0) foam.splice(i, 1);
     }
+    for (let i = ripples.length - 1; i >= 0; i--) {
+      ripples[i].age += dt;
+      if (ripples[i].age >= RIPPLE_SECONDS) ripples.splice(i, 1);
+    }
+    crown.life -= dt;
     bait.x = Math.round(W * 0.62) + jerk;
   }
 
@@ -260,9 +300,25 @@ export function createPond(): Pond {
 
     // The line comes in from above, down to the bait.
     if (bait.y > -7) {
+      const y = bait.y + tug;
       ctx.fillStyle = PALETTE.ink;
-      ctx.fillRect(bait.x + 2, 0, 1, Math.max(0, Math.round(bait.y)));
-      drawSprite(ctx, BAIT, bait.x, bait.y, { k: PALETTE.ink, p: PALETTE.pink });
+      ctx.fillRect(bait.x + 2, 0, 1, Math.max(0, Math.round(y)));
+      drawSprite(ctx, BAIT, bait.x, y, { k: PALETTE.ink, p: PALETTE.pink });
+    }
+
+    // Splashes: rings running out along the surface in pixel steps, and
+    // the crown of drops for a moment.
+    ctx.fillStyle = PALETTE.white;
+    for (const r of ripples) {
+      const reach = 2 + Math.floor((r.age / RIPPLE_SECONDS) * 5) * 2;
+      for (const side of [-1, 1]) {
+        ctx.fillRect(Math.round(r.x + side * reach), SURFACE, 2, 1);
+        if (reach > 4) ctx.fillRect(Math.round(r.x + side * (reach - 4)), SURFACE + 1, 1, 1);
+      }
+    }
+    if (crown.life > 0) {
+      const sprite = CROWN[crown.life > 0.11 ? 0 : 1];
+      drawSprite(ctx, sprite, crown.x - Math.floor(sprite[0].length / 2), SURFACE - 2, { w: PALETTE.white });
     }
 
     ctx.globalAlpha = 0.85;
@@ -274,14 +330,41 @@ export function createPond(): Pond {
 
     // A bite: little rings around the bait.
     if (phase === 'bite' && Math.floor(timeMs / 180) % 2 === 0) {
+      const y = bait.y + tug;
       ctx.fillStyle = PALETTE.white;
-      ctx.fillRect(bait.x - 3, bait.y + 2, 1, 1);
-      ctx.fillRect(bait.x + 5, bait.y + 1, 1, 1);
-      ctx.fillRect(bait.x + 1, bait.y - 3, 1, 1);
+      ctx.fillRect(bait.x - 3, y + 2, 1, 1);
+      ctx.fillRect(bait.x + 5, y + 1, 1, 1);
+      ctx.fillRect(bait.x + 1, y - 3, 1, 1);
     }
   }
 
-  return { canvas, resize, draw };
+  function landed(caught: boolean): void {
+    letGo = true;
+    const f = biter;
+    biter = null;
+    if (!f) return;
+    if (caught) {
+      // Out of the water it goes; a new fish swims in from the side later.
+      splash(bait.x + 2);
+      fish.splice(fish.indexOf(f), 1);
+      const next = newFish(f.sprite);
+      next.x = Math.random() < 0.5 ? -next.sprite[0].length - 20 : W + 20;
+      next.vx = next.x < 0 ? Math.abs(next.vx) : -Math.abs(next.vx);
+      fish.push(next);
+    } else {
+      // Off the hook: it darts away.
+      f.vx = f.x + f.sprite[0].length / 2 < bait.x ? -40 : 40;
+      f.turnIn = 3;
+    }
+  }
+
+  return {
+    canvas,
+    resize,
+    draw,
+    landed,
+    baitAt: () => ({ x: (bait.x + 2) / W, y: Math.max(0, bait.y + 3) / H }),
+  };
 }
 
 // The fizzy edge of the water while it rises over the stat bars (and while

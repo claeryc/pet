@@ -6,6 +6,10 @@
 // and drains away again when you stop. The catch bar shows up at the
 // bottom of the pond while you reel in.
 //
+// A bite buzzes the phone. A landed fish flips up out of the water before
+// it's shown to you, and a perfect catch gets a big "Perfect!" with a count
+// of perfects in a row.
+//
 // Only the timing lives here. What a catch is worth, and what casting costs,
 // is decided in src/game/fishing.ts.
 
@@ -31,7 +35,7 @@ export type FishingPhase = 'off' | 'ready' | 'waiting' | 'bite' | 'reeling';
 
 export interface FishingCallbacks {
   onCast: () => boolean; // false if the game refused (the reason is shown elsewhere)
-  onLand: (grade: CatchGrade) => void;
+  onLand: (grade: CatchGrade) => string | null; // the fish landed (a food id), or null if it got away
   onExit: () => void;
   onToggleBait: () => void;
   toast: (message: string) => void;
@@ -52,6 +56,12 @@ const RESULT_MS = 900;
 // style.css). The fizzy edge shows for that long.
 const RISE_MS = 700;
 export const DRAIN_MS = 450;
+// How long a landed fish takes to flip up out of the water.
+export const LEAP_MS = 650;
+// How long "Perfect!" stays up.
+const PERFECT_MS = 1100;
+
+const reduced = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export function createFishing(cb: FishingCallbacks): Fishing {
   const row = document.createElement('div');
@@ -124,6 +134,9 @@ export function createFishing(cb: FishingCallbacks): Fishing {
   let frame = 0;
   let reel: Reel | null = null;
   let held = false; // Pull is held down
+  // Perfect catches in a row, and whether the last cast ended in one.
+  let streak = 0;
+  let lastPerfect = false;
 
   function clearTimers(): void {
     clearTimeout(timer);
@@ -180,12 +193,15 @@ export function createFishing(cb: FishingCallbacks): Fishing {
 
   function castLine(): void {
     if (!cb.onCast()) return;
+    if (!lastPerfect) streak = 0;
+    lastPerfect = false;
     setPhase('waiting');
     timer = window.setTimeout(bite, biteDelayMs(Math.random()));
   }
 
   function bite(): void {
     setPhase('bite');
+    navigator.vibrate?.([30, 40, 30]);
     timer = window.setTimeout(() => {
       cb.toast(STRINGS.fishing.gotAway);
       backToReady();
@@ -229,8 +245,60 @@ export function createFishing(cb: FishingCallbacks): Fishing {
     clearTimers();
     const grade = reelGrade(r);
     bar.dataset.grade = grade;
-    cb.onLand(grade);
+    const caught = cb.onLand(grade);
+    pondView.landed(caught !== null);
+    if (caught) leap(ITEM_ICONS[caught] ?? '');
+    if (grade === 'perfect') {
+      lastPerfect = true;
+      streak++;
+      cheer();
+    }
     backToReady(RESULT_MS);
+  }
+
+  // The landed fish flips up out of the water where the bait was, turning
+  // in quarter turns, and is gone at the top of its jump.
+  function leap(icon: string): void {
+    if (reduced() || !icon) return;
+    const box = pondView.canvas.getBoundingClientRect();
+    const at = pondView.baitAt();
+    const fish = document.createElement('span');
+    fish.className = 'fish-leap';
+    fish.innerHTML = icon;
+    fish.style.left = `${box.left + at.x * box.width}px`;
+    fish.style.top = `${box.top + at.y * box.height}px`;
+    document.body.append(fish);
+    const rise = at.y * box.height + 90;
+    const frames = 8;
+    fish.animate(
+      Array.from({ length: frames + 1 }, (_, i) => {
+        const k = i / frames;
+        const up = Math.round(rise * (1 - (1 - k) * (1 - k)));
+        return {
+          transform: `translate(-50%, calc(-50% - ${up}px)) rotate(${i * 90}deg) scale(${k < 0.2 ? 0.6 : 1})`,
+          opacity: i === frames ? 0 : 1,
+          easing: 'steps(1)',
+        };
+      }),
+      { duration: LEAP_MS },
+    ).onfinish = () => fish.remove();
+  }
+
+  // "Perfect!" pops up over the pond, with the count of perfects in a row.
+  let cheerEl: HTMLElement | null = null;
+  function cheer(): void {
+    cheerEl?.remove();
+    const el = document.createElement('div');
+    el.className = 'catch-cheer';
+    el.textContent = STRINGS.fishing.perfect;
+    if (streak > 1) {
+      const n = document.createElement('small');
+      n.textContent = STRINGS.fishing.streak(streak);
+      el.append(n);
+    }
+    pond.append(el);
+    cheerEl = el;
+    window.setTimeout(() => el.remove(), PERFECT_MS);
   }
 
   main.addEventListener('click', () => {
@@ -296,6 +364,8 @@ export function createFishing(cb: FishingCallbacks): Fishing {
       pond.hidden = false;
       pondView.resize();
       setPhase('ready');
+      streak = 0;
+      lastPerfect = false;
       pondFrame = requestAnimationFrame(animatePond);
       // Start below the stat bars, then rise up over them on the next frame.
       void pond.offsetHeight;
