@@ -120,12 +120,14 @@ export const CONFIG = {
 
   // Bringing a pet back after it passed away. It wakes up a bit weak,
   // with these stats (at least), and rests like it does after medicine.
+  // A Revival Star can always be earned: the Shop sells it for gold too.
   revival: {
     stats: { hunger: 60, happiness: 60, health: 60, energy: 60 },
+    goldPrice: 300,
   },
 
-  // The Star Shop: things bought with real money. `price` is shown as it
-  // is; buying is only a stand-in for now (see src/payments.ts).
+  // Revival Stars bought with real money. `price` is shown as it is;
+  // buying is only a stand-in for now (see src/payments.ts).
   store: [
     { id: 'revival1', item: 'revivalStar', count: 1, price: '$0.99' },
     { id: 'revival3', item: 'revivalStar', count: 3, price: '$2.49' },

@@ -20,7 +20,7 @@ import {
 } from './game/actions';
 import { characterSheet, getCharacter, getVariant, sheetFor } from './game/growth';
 import {
-  buyBait, buyDecor, buyFood, buyGardenItem, buyHat, buyPot, checkIn, earn, getHat, grantPack, revivalStars, wearHat,
+  buyBait, buyDecor, buyFood, buyGardenItem, buyHat, buyPot, checkIn, earn, getHat, grantPack, revivalStars, buyRevivalStar, wearHat,
   type ShopResult,
 } from './game/economy';
 import { purchase, type ProductId } from './payments';
@@ -347,15 +347,32 @@ function askRevive(): void {
     react('happy');
   };
   const have = revivalStars(state);
+  const gold = CONFIG.revival.goldPrice;
   const single = CONFIG.store[0];
+  const notNow = { label: STRINGS.revival.notNow, soft: true, onPick: () => {} };
+  if (have > 0) {
+    choice.open({
+      title: STRINGS.revival.title(name),
+      text: STRINGS.revival.useAsk(name, have),
+      options: [{ label: STRINGS.revival.use, onPick: doRevive }, notNow],
+    });
+    return;
+  }
+  // None yet: buy one with gold (always offered, so it can be earned), or
+  // with real money.
+  const withGold = () => {
+    const result = buyRevivalStar(state);
+    if (result.blocked) return runShop(result);
+    setState(result.state);
+    doRevive();
+  };
   choice.open({
     title: STRINGS.revival.title(name),
-    text: have > 0 ? STRINGS.revival.useAsk(name, have) : STRINGS.revival.buyAsk(name, single.price),
+    text: STRINGS.revival.buyAsk(name, gold),
     options: [
-      have > 0
-        ? { label: STRINGS.revival.use, onPick: doRevive }
-        : { label: STRINGS.revival.buy(single.price), onPick: () => buyPack(single.id).then((ok) => ok && doRevive()) },
-      { label: STRINGS.revival.notNow, soft: true, onPick: () => {} },
+      { label: STRINGS.revival.buyGold(gold), soft: state.gold < gold, onPick: withGold },
+      { label: STRINGS.revival.buy(single.price), onPick: () => buyPack(single.id).then((ok) => ok && doRevive()) },
+      notNow,
     ],
   });
 }
@@ -664,6 +681,7 @@ const home = createHomeScreen(root, {
     STRINGS.shop.bought((kind === 'wallpaper' ? STRINGS.shop.wallpapers : STRINGS.shop.curtains)[id] ?? id)),
   onUseDecor: (kind, id) => runShop(useDecor(state, kind, id)),
   onBuyPack: (id) => void buyPack(id as ProductId),
+  onBuyRevivalStar: () => runShop(buyRevivalStar(state), STRINGS.shop.bought(STRINGS.shop.revivalStar)),
   onBuyHat: (id) => runShop(buyHat(state, id), STRINGS.shop.boughtHat(getHat(id)?.name ?? '', state.pet.name)),
   onWearHat: (id) => runShop(wearHat(state, id)),
   hatImage: (id) => sprites.get(getHat(id)?.sheet ?? '')?.image.src,

@@ -371,9 +371,10 @@ export const STRINGS = {
     title: (name: string) => `Bring ${name} back?`,
     useAsk: (name: string, have: number) =>
       `A Revival Star brings ${name} back, a little weak and needing rest. You have ${have}.`,
-    buyAsk: (name: string, price: string) =>
-      `A Revival Star brings ${name} back, a little weak and needing rest. Get one for ${price}?`,
+    buyAsk: (name: string, gold: number) =>
+      `A Revival Star brings ${name} back, a little weak and needing rest. You can get one for ${gold} gold, earned by playing.`,
     use: 'Use a Revival Star',
+    buyGold: (gold: number) => `Buy for ${gold} gold`,
     buy: (price: string) => `Buy for ${price}`,
     notNow: 'Not now',
     back: (name: string) => `${name} is back! Let ${name} rest for a while.`,
@@ -385,8 +386,8 @@ export const STRINGS = {
     goodbyeYes: 'Say goodbye',
     keep: 'Keep waiting',
     // The stand-in purchase: what a real store's payment sheet would ask.
-    payTitle: 'Star Shop',
-    payAsk: (what: string, price: string) => `Buy ${what} for ${price}?\n\nTest shop: no real money is charged.`,
+    payTitle: 'Revival Star',
+    payAsk: (what: string, price: string) => `Buy ${what} for ${price}? This is a test shop for now, so no real money is charged.`,
     pay: (price: string) => `Pay ${price}`,
     cancel: 'Cancel',
     bought: (count: number) => (count === 1 ? 'You got a Revival Star!' : `You got ${count} Revival Stars!`),
@@ -430,7 +431,7 @@ export const STRINGS = {
     use: 'Use',
     inUse: 'In use',
     takeDown: 'Take down',
-    store: 'Star Shop',
+    revivalTitle: 'Revival Stars',
     revivalStar: 'Revival Star',
     revivalPack: (count: number) => (count === 1 ? 'Revival Star' : `${count} Revival Stars`),
     revivalNote: (have: number) => `Brings back a pet that passed away. You have ${have}`,

@@ -344,10 +344,14 @@ body {
   display: none;
 }
 
-/* A sick pet's last hours: the banner pulses gently so it's hard to miss. */
+/* A sick pet's last hours: the sick banner's border pulses gently so
+   it's hard to miss. A pet that passed away keeps the sick banner. */
+.banner[data-kind='critical'],
+.banner[data-kind='passed'] {
+  border-color: var(--accent-dark);
+}
+
 .banner[data-kind='critical'] {
-  border-color: var(--low-dark);
-  background: var(--low-light);
   animation: banner-urgent 1.6s ease-in-out infinite;
 }
 
@@ -357,11 +361,6 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .banner[data-kind='critical'] { animation: none; }
-}
-
-.banner[data-kind='passed'] {
-  border-color: var(--lilac);
-  background: var(--lavender);
 }
 
 .banner-buttons {
@@ -377,22 +376,11 @@ body {
   flex: 1 1 0;
 }
 
-.btn-revive {
-  background: #e8b931;
+/* The quieter choice next to a main button, like the Shop's soft buttons. */
+.btn-soft {
+  background: var(--lavender);
   color: var(--ink);
-  box-shadow: 0 4px 0 #b88a12;
-}
-
-.btn-goodbye {
-  background: var(--card);
-  color: var(--plum);
   box-shadow: 0 4px 0 var(--lilac);
-}
-
-/* Star Shop prices are in real money, so they look different from gold. */
-.shop-btn.shop-btn-money {
-  background: #e8b931;
-  color: var(--ink);
 }
 
 .dim {

@@ -264,8 +264,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   banner.className = 'banner';
   const bannerText = document.createElement('p');
   const medicine = button(STRINGS.buttons.medicine, 'btn btn-medicine', cb.onMedicine);
-  const revive = button(STRINGS.buttons.revive, 'btn btn-revive', cb.onRevive);
-  const goodbye = button(STRINGS.buttons.goodbye, 'btn btn-goodbye', cb.onGoodbye);
+  const revive = button(STRINGS.buttons.revive, 'btn', cb.onRevive);
+  const goodbye = button(STRINGS.buttons.goodbye, 'btn btn-soft', cb.onGoodbye);
   const passedButtons = document.createElement('div');
   passedButtons.className = 'banner-buttons';
   passedButtons.append(revive, goodbye);
