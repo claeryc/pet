@@ -29,6 +29,7 @@ import {
   type Reel,
 } from '../game/fishing';
 import type { ReelPerks } from '../game/skills';
+import { sound } from '../audio/audio';
 
 // ready: line in, waiting for you to cast. waiting: line out, no bite yet.
 // bite: a fish is nibbling, tap Reel in now! reeling: the catch bar is up.
@@ -206,6 +207,7 @@ export function createFishing(cb: FishingCallbacks): Fishing {
   function bite(): void {
     setPhase('bite');
     navigator.vibrate?.([30, 40, 30]);
+    sound('bite');
     timer = window.setTimeout(() => {
       cb.toast(STRINGS.fishing.gotAway);
       backToReady();

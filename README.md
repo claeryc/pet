@@ -12,6 +12,7 @@ npm run dev      # starts the game; open the link it prints
 npm test         # runs the automated checks
 npm run build    # makes a finished version in the dist/ folder
 npm run sprites  # makes any missing placeholder art (needs Node 22.18+)
+npm run music    # remakes the background music (needs Node 22.18+ and ffmpeg)
 ```
 
 Want to draw your own pet? See [docs/ART_GUIDE.md](docs/ART_GUIDE.md).
@@ -26,5 +27,6 @@ Want to draw your own pet? See [docs/ART_GUIDE.md](docs/ART_GUIDE.md).
 - `src/render/` — drawing the pet on the canvas, the colour palette and sprites.
 - `src/ui/` — the screens and buttons.
 - `src/storage/` — saving and loading.
+- `src/audio/` — music and sound effects. The files are in `public/audio/`, and `public/audio/CREDITS.md` says where each came from and its licence.
 - `src/strings.ts` — all the text the player sees.
 - `tests/` — automated checks.

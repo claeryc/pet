@@ -76,6 +76,7 @@ import { createNamingBox } from './ui/naming';
 import { STRINGS } from './strings';
 import { FRAGMENT_ICON, ITEM_ICONS } from './ui/icons';
 import { DISH_MS, DONE_MS as COOKED_MS } from './ui/cooking';
+import { music, sound, startAudio } from './audio/audio';
 
 const root = document.getElementById('app')!;
 
@@ -122,6 +123,7 @@ function setState(next: GameState): void {
   home.update(state, gameNow());
   for (const pet of grew) {
     if (pet.stage === 'baby') continue;
+    sound('grewUp');
     if (pet.stage === 'adult') {
       const character = getCharacter(pet.character);
       const name = STRINGS.characterName(character?.name ?? '?', getVariant(character, pet.variant)?.name);
@@ -133,6 +135,8 @@ function setState(next: GameState): void {
   }
   showLevels(progress.levels);
   showFragments(progress.fragments);
+  if (progress.badges.length > 0) sound('badge');
+  else if (progress.unlocked.length > 0) sound('unlock');
   const notices = [
     ...progress.badges.map((b) => STRINGS.achievements.earned(STRINGS.achievements.names[b.id], STRINGS.achievements.tiers[b.tier])),
     ...progress.unlocked.map((id) => STRINGS.unlocked[id]),
@@ -145,12 +149,19 @@ function setState(next: GameState): void {
   }
   announceMail(oldMessages);
   askWhoRetires();
+  playMusic();
+}
+
+// Daytime music, or the night song once it's dark or the pet is asleep.
+function playMusic(): void {
+  music(isNight(gameNow()) || state.pet.asleep ? 'night' : 'day');
 }
 
 // Star fragments just found, and a Revival Star they made.
 function showFragments(got: { pieces: number; stars: number }): void {
   if (got.pieces === 0) return;
   const { perStar } = CONFIG.revival.fragments;
+  sound('got');
   if (got.stars > 0) {
     home.reveal({ icon: ITEM_ICONS.revivalStar, name: STRINGS.shop.revivalStar, count: got.stars, stars: 0, caption: STRINGS.revival.fragmentsDone });
   } else {
@@ -164,6 +175,7 @@ function showFragments(got: { pieces: number; stars: number }): void {
 // A new Keeper level: a skill point to spend.
 function showLevels(levels: number[]): void {
   for (const level of levels) {
+    sound('levelUp');
     home.reveal({ icon: SKILL_POINT_ICON, name: STRINGS.skills.point, count: 1, stars: 0, caption: STRINGS.skills.levelUp(level) });
   }
 }
@@ -171,7 +183,9 @@ function showLevels(levels: number[]): void {
 // Says what Percy did since `old` was the message list: picked up an
 // order (maybe while the game was closed), or brought a new one.
 function announceMail(old: Message[]): void {
-  for (const m of state.messages.filter((m) => !old.includes(m)).reverse()) {
+  const news = state.messages.filter((m) => !old.includes(m));
+  if (news.length > 0) sound('mail');
+  for (const m of news.reverse()) {
     if (m.kind === 'order') {
       const items = m.boxes.map((b) => STRINGS.delivery.item(b.want, STRINGS.foods[b.food as FoodId]));
       home.notice(STRINGS.delivery.announced(items.join(', ')));
@@ -209,6 +223,7 @@ function askName(): void {
       if (!first) home.toast(STRINGS.naming.renamed(named));
       else home.toast(pet.stage === 'baby' ? STRINGS.growth.baby(named) : STRINGS.naming.hello(named));
       for (const message of afterNaming.splice(0)) home.notice(message);
+      sound('done');
       react('happy');
       return null;
     },
@@ -223,25 +238,35 @@ function react(animation: string, ms: number = CONFIG.reactionMs): void {
 }
 
 // Runs a player action. If the game refused it, shows a little message why;
-// otherwise plays the matching reaction.
+// otherwise plays the matching reaction. True if it went ahead.
 function runAction(
   action: (s: GameState, now: number) => ActionResult,
   animation?: string,
-): void {
+): boolean {
   const result = action(state, gameNow());
   setState(result.state);
-  if (result.blocked) home.toast(STRINGS.blocked[result.blocked](state.pet.name));
+  if (result.blocked) blocked(STRINGS.blocked[result.blocked](state.pet.name));
   else if (animation) react(animation);
+  return !result.blocked;
+}
+
+// A "can't do that" message, with its sound.
+function blocked(message: string): void {
+  sound('blocked');
+  home.toast(message);
 }
 
 // Shop and inventory actions: show a message for what happened.
 function runShop(result: ShopResult, success?: string): void {
   setState(result.state);
-  if (result.blocked === 'notEnoughGold') home.toast(STRINGS.shop.notEnoughGold);
-  else if (result.blocked === 'alreadyOwned') home.toast(STRINGS.shop.alreadyOwned);
-  else if (result.blocked === 'egg') home.toast(STRINGS.wardrobe.eggNoHat);
-  else if (result.blocked === 'soldOut') home.toast(STRINGS.shop.soldOutToday);
-  else if (!result.blocked && success) home.toast(success);
+  if (result.blocked === 'notEnoughGold') blocked(STRINGS.shop.notEnoughGold);
+  else if (result.blocked === 'alreadyOwned') blocked(STRINGS.shop.alreadyOwned);
+  else if (result.blocked === 'egg') blocked(STRINGS.wardrobe.eggNoHat);
+  else if (result.blocked === 'soldOut') blocked(STRINGS.shop.soldOutToday);
+  else if (!result.blocked && success) {
+    sound('purchase');
+    home.toast(success);
+  }
 }
 
 // What the next rank of a skill costs (0 once it's maxed).
@@ -253,6 +278,7 @@ const starCount = (id: string) => (CONFIG.foods as readonly Food[]).find((f) => 
 // Shows off something you just got (a food, or its seed) over the stat bars.
 function showGot(id: string, count: number, caption?: string, seed = false): void {
   const name = STRINGS.foods[id as FoodId] ?? id;
+  sound('got');
   home.reveal({
     icon: ITEM_ICONS[seed ? `seed_${id}` : id] ?? '',
     name: seed ? STRINGS.garden.seedName(name) : name,
@@ -289,8 +315,9 @@ function playWith(activity: 'cuddle' | 'tickle'): void {
   const before = simulate(state, gameNow()).pet;
   const result = play(state, gameNow(), activity);
   setState(result.state);
-  if (result.blocked) return home.toast(STRINGS.blocked[result.blocked](state.pet.name));
+  if (result.blocked) return blocked(STRINGS.blocked[result.blocked](state.pet.name));
   showGains(before, CONFIG.activities.find((a) => a.id === activity)!);
+  sound('cuddle');
   react('happy');
   luckySeed('play');
 }
@@ -303,6 +330,7 @@ function runGarden(action: (s: GameState, now: number) => GardenResult, success?
   if (result.blocked) {
     const message = STRINGS.garden.blocked[result.blocked];
     const fromShop = result.blocked === 'noFertilizer' || result.blocked === 'noCure';
+    sound('blocked');
     if (message) home.toast(message, fromShop ? 'garden' : undefined);
     return false;
   }
@@ -317,10 +345,12 @@ function runBox(action: (s: GameState) => BoxResult, food?: string): void {
   const wasGold = state.delivery.order ? orderTier(state.delivery.order.boxes) === 'gold' : false;
   setState(result.state);
   const name = food ? STRINGS.foods[food as FoodId] : '';
-  if (result.blocked === 'noFood') home.toast(food ? STRINGS.delivery.noneLeft(name) : STRINGS.delivery.nothingToFill);
-  else if (result.blocked === 'full') home.toast(STRINGS.delivery.full);
+  if (result.blocked === 'noFood') blocked(food ? STRINGS.delivery.noneLeft(name) : STRINGS.delivery.nothingToFill);
+  else if (result.blocked === 'full') blocked(STRINGS.delivery.full);
+  else if (!result.blocked) sound('place');
   const order = state.delivery.order;
   if (!result.blocked && order && !wasGold && orderTier(order.boxes) === 'gold') {
+    sound('done');
     home.toast(STRINGS.delivery.allFull(orderPay(order.boxes).bonus));
     react('happy');
   }
@@ -344,6 +374,7 @@ function buyPack(productId: ProductId): Promise<boolean> {
   return purchase(productId, confirmPay).then((paid) => {
     if (!paid) return false;
     setState(grantPack(state, productId));
+    sound('purchase');
     home.reveal({ icon: ITEM_ICONS[pack.item], name: STRINGS.shop.revivalStar, count: pack.count, stars: 0 });
     home.toast(STRINGS.revival.bought(pack.count));
     return true;
@@ -357,8 +388,9 @@ function askRevive(): void {
   const doRevive = () => {
     const result = revive(state, gameNow());
     setState(result.state);
-    if (result.blocked) return home.toast(STRINGS.blocked[result.blocked](name));
+    if (result.blocked) return blocked(STRINGS.blocked[result.blocked](name));
     home.toast(STRINGS.revival.back(name));
+    sound('grewUp');
     react('happy');
   };
   const have = revivalStars(state);
@@ -399,7 +431,7 @@ function askGoodbye(): void {
 
 // Friends: says why something was refused.
 function friendBlocked(reason: FriendBlock | MingleBlock): void {
-  home.toast(STRINGS.friends.blocked[reason](state.pet.name));
+  blocked(STRINGS.friends.blocked[reason](state.pet.name));
 }
 
 // A pet's portrait, for the choice box.
@@ -435,6 +467,7 @@ function onMingle(id: string): void {
   if (result.blocked) return friendBlocked(result.blocked);
   react('happy');
   if (!result.egg) return home.toast(STRINGS.friends.noLittleOne(parent.name, friend?.name ?? ''));
+  sound('grewUp');
   home.toast(STRINGS.friends.littleOne(parent.name, friend?.name ?? ''));
   // A crowded room asks who retires (from setState). Otherwise the parent
   // can stay or retire.
@@ -499,7 +532,8 @@ const home = createHomeScreen(root, {
     const before = simulate(state, gameNow()).pet;
     const result = feed(state, gameNow(), food);
     setState(result.state);
-    if (result.blocked) return home.toast(STRINGS.blocked[result.blocked](state.pet.name));
+    if (result.blocked) return blocked(STRINGS.blocked[result.blocked](state.pet.name));
+    sound('eat');
     showGains(before, (CONFIG.foods as readonly Food[]).find((f) => f.id === food)!);
     // Eating takes a while (the food goes in bites); a craving it loved
     // gets a happy wiggle after.
@@ -512,7 +546,9 @@ const home = createHomeScreen(root, {
   },
   onPlay: (activity) => playWith(activity),
   onPetTap: () => playWith('cuddle'),
-  onLights: () => runAction(toggleLights),
+  onLights: () => {
+    if (runAction(toggleLights)) sound(state.pet.asleep ? 'lightsOff' : 'lightsOn');
+  },
   onMedicine: () => {
     const before = simulate(state, gameNow()).pet;
     runAction(giveMedicine);
@@ -523,7 +559,8 @@ const home = createHomeScreen(root, {
   onCast: () => {
     const result = cast(state, gameNow());
     setState(result.state);
-    if (result.blocked) home.toast(STRINGS.blocked[result.blocked](state.pet.name));
+    if (result.blocked) blocked(STRINGS.blocked[result.blocked](state.pet.name));
+    else sound('cast');
     return !result.blocked;
   },
   onLand: (grade) => {
@@ -538,6 +575,7 @@ const home = createHomeScreen(root, {
       }, LEAP_MS);
       react('happy');
     } else {
+      sound('missed');
       home.toast(grade === 'miss' ? label : STRINGS.fishing.slipped(label));
     }
     return caught;
@@ -547,7 +585,7 @@ const home = createHomeScreen(root, {
     const result = cook(simulate(state, gameNow()), items, Math.random());
     setState(result.state);
     if (result.blocked) {
-      home.toast(
+      blocked(
         result.blocked === 'noFood' ? STRINGS.blocked.noFood(state.pet.name)
         : result.blocked === 'needMore' ? STRINGS.cooking.needMore(STRINGS.foods[items[0]])
         : STRINGS.cooking.emptyPot,
@@ -566,11 +604,17 @@ const home = createHomeScreen(root, {
     }, DISH_MS);
     return result.dish;
   },
-  onPlant: (pot, crop) =>
-    runGarden((s, now) => plant(s, pot, crop, now, Math.random()), STRINGS.garden.planted(STRINGS.foods[crop])),
-  onWater: (pot, perfect) =>
-    runGarden((s, now) => water(s, pot, now, perfect, Math.random()),
-      perfect ? STRINGS.garden.perfectPour : STRINGS.garden.watered),
+  onPlant: (pot, crop) => {
+    const planted = runGarden((s, now) => plant(s, pot, crop, now, Math.random()), STRINGS.garden.planted(STRINGS.foods[crop]));
+    if (planted) sound('place');
+    return planted;
+  },
+  onWater: (pot, perfect) => {
+    const watered = runGarden((s, now) => water(s, pot, now, perfect, Math.random()),
+      perfect ? STRINGS.garden.perfectPour : STRINGS.garden.watered);
+    if (watered) sound('water');
+    return watered;
+  },
   onFertilize: (pot) => runGarden((s, now) => fertilize(s, pot, now), STRINGS.garden.fertilizedNow),
   onCure: (pot) => runGarden((s, now) => cure(s, pot, now), STRINGS.garden.cured),
   onHarvest: (pot) => {
@@ -591,14 +635,17 @@ const home = createHomeScreen(root, {
   onLearn: (skill) => {
     const result = learn(state, skill);
     setState(result.state);
-    if (result.blocked === 'locked') home.toast(STRINGS.skills.locked(STRINGS.skills.names[skillBefore(skill)!]));
-    else if (result.blocked === 'noPoints') home.toast(STRINGS.skills.needPoints(nextCostOf(skill)));
-    else if (!result.blocked) home.toast(STRINGS.skills.learned(STRINGS.skills.names[skill], rankOf(state, skill)));
+    if (result.blocked === 'locked') blocked(STRINGS.skills.locked(STRINGS.skills.names[skillBefore(skill)!]));
+    else if (result.blocked === 'noPoints') blocked(STRINGS.skills.needPoints(nextCostOf(skill)));
+    else if (!result.blocked) {
+      sound('unlock');
+      home.toast(STRINGS.skills.learned(STRINGS.skills.names[skill], rankOf(state, skill)));
+    }
   },
   onResetTree: (tree) => {
     const result = resetTree(state, tree);
     setState(result.state);
-    if (result.blocked === 'notEnoughGold') home.toast(STRINGS.shop.notEnoughGold);
+    if (result.blocked === 'notEnoughGold') blocked(STRINGS.shop.notEnoughGold);
     else if (result.refunded) home.toast(STRINGS.skills.resetDone(result.refunded));
   },
   onMeet: (id) => {
@@ -609,6 +656,7 @@ const home = createHomeScreen(root, {
       friendBlocked(result.blocked);
       return false;
     }
+    sound('cuddle');
     react('happy');
     const name = friend?.name ?? '';
     home.toast(result.gained ? STRINGS.friends.met(state.pet.name, name, result.gained) : STRINGS.friends.tiredOfMeeting(name));
@@ -618,6 +666,7 @@ const home = createHomeScreen(root, {
     const result = giveGift(simulate(state, gameNow()), id, food, gameNow());
     setState(result.state);
     if (result.blocked) return friendBlocked(result.blocked);
+    sound('cast');
     home.toast(STRINGS.friends.gave(STRINGS.foods[food], getFriend(state, id)?.name ?? '', result.gained ?? 0));
   },
   onMingle,
@@ -739,6 +788,8 @@ const naming = createNamingBox(root);
 const choice = createChoiceBox(root);
 const away = createAwayCard(root);
 home.update(state, gameNow());
+startAudio();
+playMusic();
 askWhoRetires();
 announceMail(lastVisitMessages);
 showLevels(startup.levels); // levels reached while away (Percy's pickups)

@@ -7,6 +7,8 @@
 // (look for "drawer"); this file just builds the pieces and flips a few
 // data attributes that the CSS reacts to.
 
+import { sound } from '../audio/audio';
+
 // One effect shown on the right of a row, e.g. [apple icon] "+20".
 export interface Effect {
   icon: string; // SVG markup
@@ -142,7 +144,10 @@ export function createDrawer(setup: DrawerSetup): Drawer {
 
   function open(): void {
     const blocked = setup.beforeOpen();
-    if (blocked) return setup.onBlocked(blocked);
+    if (blocked) {
+      sound('blocked');
+      return setup.onBlocked(blocked);
+    }
     setup.onOpen?.();
     setup.row.dataset.open = setup.id;
     // The rows slide in one after another, counting only the ones showing,
@@ -164,7 +169,15 @@ export function createDrawer(setup: DrawerSetup): Drawer {
   }
 
   const isOpen = () => el.classList.contains('is-open');
-  head.addEventListener('click', () => (isOpen() ? close() : open()));
+  head.addEventListener('click', () => {
+    if (isOpen()) {
+      sound('close');
+      close();
+    } else {
+      open();
+      if (isOpen()) sound('open');
+    }
+  });
 
   return {
     el,
