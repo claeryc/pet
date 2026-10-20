@@ -37,6 +37,7 @@ import {
   type PlotStage,
 } from '../game/garden';
 import type { GameState, Plot } from '../game/state';
+import { gardenPerks } from '../game/skills';
 import type { Food } from '../game/actions';
 import type { GardenScene } from '../render/garden';
 import { createDrawer } from './drawer';
@@ -370,8 +371,9 @@ export function createGarden(cb: GardenCallbacks): Garden {
     when.hidden = !tended;
     when.dataset.stage = stage;
     if (stage === 'growing') {
-      when.innerHTML = `${STAT_ICONS.hourglass}<b>${hours(timeLeft(plot, now))}</b>`;
-      when.title = STRINGS.garden.timeLeft(formatDuration(timeLeft(plot, now)));
+      const left = timeLeft(plot, now, gardenPerks(s));
+      when.innerHTML = `${STAT_ICONS.hourglass}<b>${hours(left)}</b>`;
+      when.title = STRINGS.garden.timeLeft(formatDuration(left));
     } else if (stage === 'sick') {
       when.innerHTML = `${STAT_ICONS.skull}<b>${hours(diesAt(plot)! - now)}</b>`;
       when.title = STRINGS.garden.diesIn(formatDuration(diesAt(plot)! - now));

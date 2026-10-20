@@ -6,12 +6,15 @@ import { CONFIG } from '../game/config';
 import type { GameState } from '../game/state';
 import { characterKey, unlocksFor } from '../game/unlocks';
 import { newGarden } from '../game/garden';
+import { newKeeper } from '../game/state';
+import { grownUpXp, levelInfo } from '../game/skills';
+import { getCharacter } from '../game/growth';
 
 const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 15;
+export const SAVE_VERSION = 16;
 
 export interface SaveFile {
   version: number;
@@ -153,6 +156,27 @@ export function migrate(save: SaveFile): SaveFile {
     };
     st.badges = {};
     save.version = 15;
+  }
+  // Version 15 -> 16: Keeper XP and skills. Long-time players get XP back
+  // for what they've already done (achievement counts, badges and pets that
+  // grew up), quietly, so they open Skills with a few points to spend.
+  if (save.version === 15) {
+    const st = save.state;
+    const K = CONFIG.skills;
+    let xp = 0;
+    for (const [id, n] of Object.entries(st.tally ?? {})) xp += (K.xp[id as keyof typeof K.xp] ?? 0) * (n as number);
+    for (const tier of Object.values(st.badges ?? {})) {
+      const reached = ['bronze', 'silver', 'gold'].slice(0, ['bronze', 'silver', 'gold'].indexOf(tier as string) + 1);
+      for (const t of reached) xp += K.badgeXp[t as keyof typeof K.badgeXp];
+    }
+    const grown = [
+      ...[st.pet, ...(st.housemates ?? [])].filter((p: any) => p?.stage === 'adult' && p.character),
+      ...(st.family ?? []).filter((m: any) => m.character && !m.fromFriend && !m.fromWild),
+    ];
+    for (const p of grown) xp += grownUpXp(getCharacter(p.character)?.stars ?? 1);
+    st.keeper = { ...newKeeper(), xp, grownUp: grown.map((p: any) => p.id) };
+    st.keeper.level = levelInfo(xp).level;
+    save.version = 16;
   }
   return save;
 }

@@ -22,6 +22,7 @@
 // server (see the Hangout and mingle design doc).
 
 import { addTally } from './achievements';
+import { startingCare } from './skills';
 import { CONFIG } from './config';
 import { characterOfStars, getCharacter, rollStarsWith, seededRoll } from './growth';
 import { localDay, useFood } from './economy';
@@ -376,6 +377,7 @@ export function mingle(state: GameState, friendId: string, now: number, roll: nu
     parents: [parent.id, friend.id],
     themes: [...new Set(themes)],
   });
+  egg.careScore = startingCare(s); // the Gentle start skill
   s = withFriend(s, friendId, (f) => (f.partner = parent.id));
   // The friend goes in the Family Tree, so the little one's tree works.
   const family = s.family.some((m) => m.id === friend.id) ? s.family : [...s.family, rememberFriend(friend)];

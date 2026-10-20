@@ -25,6 +25,7 @@
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import { foodCount } from '../game/economy';
+import { recipeHints } from '../game/skills';
 import { couldBeRecipe, haveAll, ingredientsFor, INGREDIENTS, knowsRecipe, matchRecipe, RECIPES } from '../game/cooking';
 import type { Food, FoodId } from '../game/actions';
 import type { GameState } from '../game/state';
@@ -370,13 +371,14 @@ export function createCooking(cb: CookingCallbacks): Cooking {
 
     const found = RECIPES.filter((r) => knowsRecipe(s, r.id)).length;
     bookHead.textContent = STRINGS.cooking.found(found, RECIPES.length);
+    const hints = recipeHints(s); // the Chef's nose skill
     for (const r of bookRows) {
       const isKnown = knowsRecipe(s, r.recipe.id);
       const needs = ingredientsFor(s, r.recipe);
       r.b.classList.toggle('unknown', !isKnown);
       r.b.classList.toggle('ready', isKnown && haveAll(s, r.recipe.ingredients));
       r.icon.innerHTML = isKnown ? ITEM_ICONS[r.recipe.id] : ITEM_ICONS.unknown;
-      r.label.textContent = isKnown ? foodName(r.recipe.id) : STRINGS.cooking.unknown;
+      r.label.textContent = isKnown || hints.name ? foodName(r.recipe.id) : STRINGS.cooking.unknown;
       const n = stars(r.recipe.id);
       if (isKnown && n) {
         const st = document.createElement('small');
@@ -385,12 +387,13 @@ export function createCooking(cb: CookingCallbacks): Cooking {
         r.label.append(st);
       }
       // Each ingredient: its icon and "have/need". Unknown recipes only
-      // show their first ingredient; the rest are question marks.
+      // show their first ingredient (more with Chef's nose); the rest are
+      // question marks.
       r.needs.replaceChildren(
         ...needs.map((need, i) => {
           const chip = document.createElement('span');
           chip.className = 'recipe-need';
-          const hidden = !isKnown && i > 0;
+          const hidden = !isKnown && i >= hints.ingredients;
           chip.innerHTML = hidden ? ITEM_ICONS.unknown : ITEM_ICONS[need.id];
           if (!hidden) {
             chip.classList.toggle('missing', need.have < need.need);

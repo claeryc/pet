@@ -188,7 +188,18 @@ export type Message =
   | { kind: 'growth'; at: number; stage: string; name: string; character: string | null; variant: string | null }
   | { kind: 'visitor'; at: number; name: string; character: string; variant: string | null; friend?: boolean }
   | { kind: 'littleOne'; at: number; name: string; friend: string }
-  | { kind: 'badge'; at: number; id: string; tier: 'bronze' | 'silver' | 'gold' };
+  | { kind: 'badge'; at: number; id: string; tier: 'bronze' | 'silver' | 'gold' }
+  | { kind: 'level'; at: number; level: number };
+
+// You, the keeper (see src/game/skills.ts): XP and skills stay with you
+// from pet to pet.
+export interface Keeper {
+  xp: number; // all the XP ever earned (the level is worked out from it)
+  level: number; // the highest level already announced
+  skills: Record<string, number>; // skill id -> rank learned (0-3)
+  resets: number; // how many times a tree's points were taken back
+  grownUp: string[]; // ids of pets already given XP for growing up
+}
 
 export interface GameState {
   // The pet you're looking after right now (its stats show on the home
@@ -250,6 +261,11 @@ export interface GameState {
   // -> "bronze").
   tally: Record<string, number>;
   badges: Record<string, 'bronze' | 'silver' | 'gold'>;
+  keeper: Keeper;
+}
+
+export function newKeeper(): Keeper {
+  return { xp: 0, level: 1, skills: {}, resets: 0, grownUp: [] };
 }
 
 // Makes a random id. crypto.randomUUID exists in all modern browsers and Node.
@@ -317,5 +333,6 @@ export function createNewGame(now: number): GameState {
     baitOn: false,
     tally: {},
     badges: {},
+    keeper: newKeeper(),
   };
 }

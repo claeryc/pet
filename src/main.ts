@@ -38,6 +38,8 @@ import {
   type GardenResult,
 } from './game/garden';
 import { markSeen, updateProgress } from './game/unlocks';
+import { learn, nextCost, rankOf, resetTree, skillBefore, type SkillId } from './game/skills';
+import { SKILL_POINT_ICON } from './ui/icons';
 import { fillAll, orderPay, orderTier, putInBox, takeFromBox, type BoxResult } from './game/delivery';
 import { logMessage, markMessagesSeen } from './game/messages';
 import type { FoodId } from './game/actions';
@@ -84,7 +86,8 @@ let state: GameState = saved ?? createNewGame(Date.now());
 // What Messages had at the last visit, so Percy's news from while you were
 // away can be shown once the screen is up.
 const lastVisitMessages = state.messages;
-state = updateProgress(simulate(state, gameNow())).state;
+const startup = updateProgress(simulate(state, gameNow()));
+state = startup.state;
 saveGame(state);
 
 // Messages waiting until the new pet has a name (what opened up when the
@@ -124,6 +127,7 @@ function setState(next: GameState): void {
     }
     if (pet.id === state.pet.id) react('happy');
   }
+  showLevels(progress.levels);
   const notices = [
     ...progress.badges.map((b) => STRINGS.achievements.earned(STRINGS.achievements.names[b.id], STRINGS.achievements.tiers[b.tier])),
     ...progress.unlocked.map((id) => STRINGS.unlocked[id]),
@@ -136,6 +140,13 @@ function setState(next: GameState): void {
   }
   announceMail(oldMessages);
   askWhoRetires();
+}
+
+// A new Keeper level: a skill point to spend.
+function showLevels(levels: number[]): void {
+  for (const level of levels) {
+    home.reveal({ icon: SKILL_POINT_ICON, name: STRINGS.skills.point, count: 1, stars: 0, caption: STRINGS.skills.levelUp(level) });
+  }
 }
 
 // Says what Percy did since `old` was the message list: picked up an
@@ -213,6 +224,9 @@ function runShop(result: ShopResult, success?: string): void {
   else if (result.blocked === 'soldOut') home.toast(STRINGS.shop.soldOutToday);
   else if (!result.blocked && success) home.toast(success);
 }
+
+// What the next rank of a skill costs (0 once it's maxed).
+const nextCostOf = (skill: SkillId) => nextCost(state, skill) ?? 0;
 
 // The stars a food has (0 if none).
 const starCount = (id: string) => (CONFIG.foods as readonly Food[]).find((f) => f.id === id)?.stars ?? 0;
@@ -439,7 +453,7 @@ const home = createHomeScreen(root, {
   },
   onToggleBait: () => setState(toggleBait(state)),
   onCook: (items) => {
-    const result = cook(simulate(state, gameNow()), items);
+    const result = cook(simulate(state, gameNow()), items, Math.random());
     setState(result.state);
     if (result.blocked) {
       home.toast(
@@ -450,11 +464,13 @@ const home = createHomeScreen(root, {
       return null;
     }
     // The pot bubbles and shows the dish first, then the reveal.
-    const caption = result.discovered ? STRINGS.reveal.newRecipe : undefined;
-    window.setTimeout(() => showGot(result.dish, 1, caption), COOKED_MS);
+    const caption = result.discovered ? STRINGS.reveal.newRecipe
+      : result.count > 1 ? STRINGS.skills.secondHelping : undefined;
+    window.setTimeout(() => showGot(result.dish, result.count, caption), COOKED_MS);
     // What it made stays a secret until the lid comes off.
     window.setTimeout(() => {
       if (!result.recipe) home.toast(STRINGS.cooking.mess);
+      if (result.saved) home.notice(STRINGS.skills.saved(STRINGS.foods[result.saved]));
       if (result.discovered) react('happy');
     }, DISH_MS);
     return result.dish;
@@ -481,6 +497,19 @@ const home = createHomeScreen(root, {
   onTakeFromBox: (box) => runBox((s) => takeFromBox(s, box)),
   onFillAll: () => runBox(fillAll),
   onMessagesSeen: () => setState(markMessagesSeen(state, gameNow())),
+  onLearn: (skill) => {
+    const result = learn(state, skill);
+    setState(result.state);
+    if (result.blocked === 'locked') home.toast(STRINGS.skills.locked(STRINGS.skills.names[skillBefore(skill)!]));
+    else if (result.blocked === 'noPoints') home.toast(STRINGS.skills.needPoints(nextCostOf(skill)));
+    else if (!result.blocked) home.toast(STRINGS.skills.learned(STRINGS.skills.names[skill], rankOf(state, skill)));
+  },
+  onResetTree: (tree) => {
+    const result = resetTree(state, tree);
+    setState(result.state);
+    if (result.blocked === 'notEnoughGold') home.toast(STRINGS.shop.notEnoughGold);
+    else if (result.refunded) home.toast(STRINGS.skills.resetDone(result.refunded));
+  },
   onMeet: (id) => {
     const friend = getFriend(state, id);
     const result = meet(simulate(state, gameNow()), id, gameNow());
@@ -620,6 +649,7 @@ const away = createAwayCard(root);
 home.update(state, gameNow());
 askWhoRetires();
 announceMail(lastVisitMessages);
+showLevels(startup.levels); // levels reached while away (Percy's pickups)
 tryCheckIn();
 if (saved) showAway(saved, saved.lastUpdated);
 

@@ -13,6 +13,7 @@
 
 import { CONFIG } from './config';
 import { addTally } from './achievements';
+import { addXp } from './skills';
 import type { Food, FoodId } from './actions';
 import { foodCount, useFood } from './economy';
 import { logMessage } from './messages';
@@ -195,7 +196,8 @@ function pickUp(state: GameState, order: Order): GameState {
   };
   if (seed) s = addSeed(s, seed);
   if (drink) s = { ...s, inventory: { ...s.inventory, food: { ...s.inventory.food, energyDrink: (s.inventory.food.energyDrink ?? 0) + 1 } } };
-  if (orderTier(order.boxes) !== 'none') s = addTally(s, 'deliveries');
+  const tier = orderTier(order.boxes);
+  if (tier !== 'none') s = addXp(addTally(s, 'deliveries'), CONFIG.skills.deliveryXp[tier]);
   return logMessage(s, {
     kind: 'pickup', at: order.pickupAt, boxes: order.boxes, gold, tier: orderTier(order.boxes),
     ...(seed ? { seed } : {}),

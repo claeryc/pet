@@ -7,6 +7,7 @@
 import { CONFIG } from './config';
 import type { GameState } from './state';
 import { logMessage } from './messages';
+import { addXp } from './skills';
 
 export type AchievementId = keyof typeof CONFIG.achievements;
 export type Tier = 'bronze' | 'silver' | 'gold';
@@ -19,9 +20,11 @@ export function tallyOf(state: GameState, id: AchievementId): number {
   return state.tally[id] ?? 0;
 }
 
-// Counts one more (or `n` more) towards an achievement.
+// Counts one more (or `n` more) towards an achievement, with the Keeper XP
+// it's worth (see src/game/skills.ts).
 export function addTally(state: GameState, id: AchievementId, n = 1): GameState {
-  return { ...state, tally: { ...state.tally, [id]: tallyOf(state, id) + n } };
+  const counted = { ...state, tally: { ...state.tally, [id]: tallyOf(state, id) + n } };
+  return addXp(counted, CONFIG.skills.xp[id] * n);
 }
 
 // The best tier a count reaches, or null below bronze.
@@ -57,8 +60,8 @@ export function badgeCount(state: GameState): { earned: number; total: number } 
   return { earned, total: ACHIEVEMENTS.length * TIERS.length };
 }
 
-// Hands out any badge a count has reached (or gone past). Each new badge
-// goes in Messages; returns them so the game can say so.
+// Hands out any badge a count has reached (or gone past), with its XP.
+// Each new badge goes in Messages; returns them so the game can say so.
 export function updateBadges(state: GameState): { state: GameState; earned: { id: AchievementId; tier: Tier }[] } {
   let s = state;
   const earned: { id: AchievementId; tier: Tier }[] = [];
@@ -67,6 +70,9 @@ export function updateBadges(state: GameState): { state: GameState; earned: { id
     const have = badgeOf(s, id);
     if (!tier || (have && TIERS.indexOf(have) >= TIERS.indexOf(tier))) continue;
     s = { ...s, badges: { ...s.badges, [id]: tier } };
+    // Skipping a tier (a count retuned lower) still gives the XP for each.
+    const from = have ? TIERS.indexOf(have) + 1 : 0;
+    for (const t of TIERS.slice(from, TIERS.indexOf(tier) + 1)) s = addXp(s, CONFIG.skills.badgeXp[t]);
     s = logMessage(s, { kind: 'badge', at: s.lastUpdated, id, tier });
     earned.push({ id, tier });
   }

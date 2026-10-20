@@ -28,6 +28,7 @@ import {
   type CatchZones,
   type Reel,
 } from '../game/fishing';
+import type { ReelPerks } from '../game/skills';
 
 // ready: line in, waiting for you to cast. waiting: line out, no bite yet.
 // bite: a fish is nibbling, tap Reel in now! reeling: the catch bar is up.
@@ -48,6 +49,7 @@ export interface Fishing {
   stop: () => void;
   phase: () => FishingPhase;
   setBait: (count: number, on: boolean) => void; // the bait you have, and whether it's switched on
+  setPerks: (perks: ReelPerks) => void; // the fishing skills, for the next reel
 }
 
 // How long the bar stays up after a catch, showing where the dot ended up.
@@ -137,6 +139,8 @@ export function createFishing(cb: FishingCallbacks): Fishing {
   // Perfect catches in a row, and whether the last cast ended in one.
   let streak = 0;
   let lastPerfect = false;
+  // The fishing skills (see src/game/skills.ts), set by the home screen.
+  let perks: ReelPerks = { widen: 1, meterStart: CONFIG.fishing.reel.meterStart };
 
   function clearTimers(): void {
     clearTimeout(timer);
@@ -214,7 +218,7 @@ export function createFishing(cb: FishingCallbacks): Fishing {
       cb.toast(STRINGS.fishing.tooSoon);
       return backToReady();
     }
-    reel = startReel(Math.random());
+    reel = startReel(Math.random(), perks);
     showReel(reel);
     bar.hidden = false;
     setPhase('reeling');
@@ -350,6 +354,9 @@ export function createFishing(cb: FishingCallbacks): Fishing {
   return {
     row,
     pond,
+    setPerks(next) {
+      perks = next;
+    },
     setBait(count, on) {
       bait.hidden = count <= 0;
       bait.classList.toggle('on', on);

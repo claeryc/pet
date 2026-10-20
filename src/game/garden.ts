@@ -19,9 +19,12 @@ import { CONFIG } from './config';
 import { addTally } from './achievements';
 import type { FoodId } from './actions';
 import type { GameState, Plot } from './state';
+import { perk, type GardenPerks } from './skills';
 
 const HOUR = 3_600_000;
 const G = CONFIG.garden;
+// No garden skills learned.
+const PLAIN: GardenPerks = { speed: 1, sick: 1 };
 
 export type CropId = (typeof G.crops)[number]['id'];
 export type SupplyId = keyof typeof G.supplies;
@@ -87,14 +90,15 @@ export function isFertilized(plot: Plot, now: number): boolean {
 }
 
 // Growing time still needed, in real milliseconds at the current speed.
-export function timeLeft(plot: Plot, now: number): number {
+// `perks` are the garden skills (Quick sprouts makes everything faster).
+export function timeLeft(plot: Plot, now: number, perks: GardenPerks = PLAIN): number {
   if (!plot.crop) return 0;
   const need = growMs(plot.crop) - plot.growth;
   if (need <= 0) return 0;
   const fastFor = Math.max(0, plot.fertilizedUntil - now);
-  const fastRate = 1 + G.fertilizer.speedUp;
+  const fastRate = (1 + G.fertilizer.speedUp) * perks.speed;
   if (fastFor * fastRate >= need) return need / fastRate;
-  return fastFor + (need - fastFor * fastRate);
+  return fastFor + (need - fastFor * fastRate) / perks.speed;
 }
 
 // When a sick plant will die if nobody cures it.
@@ -112,8 +116,9 @@ export function rollFor(luck: number, n: number): number {
   return (h >>> 0) / 0x100000000;
 }
 
-// Moves one pot forward from `from` to `to`. Returns a new pot.
-export function growPlot(plot: Plot, from: number, to: number): Plot {
+// Moves one pot forward from `from` to `to`. Returns a new pot. `perks`
+// are the garden skills: faster growing and fewer sick plants.
+export function growPlot(plot: Plot, from: number, to: number, perks: GardenPerks = PLAIN): Plot {
   const p = { ...plot };
   let t = from;
   const rollMs = G.dryHoursPerRoll * HOUR;
@@ -128,7 +133,7 @@ export function growPlot(plot: Plot, from: number, to: number): Plot {
     const need = growMs(p.crop) - p.growth;
     if (need <= 0) break; // ready plants just wait to be picked
     const fast = t < p.fertilizedUntil;
-    const rate = fast ? 1 + G.fertilizer.speedUp : 1;
+    const rate = (fast ? 1 + G.fertilizer.speedUp : 1) * perks.speed;
     const nextRoll = Math.max(p.rollsFrom, p.moistUntil) + (p.rolls + 1) * rollMs;
     const readyAt = t + need / rate;
     const end = Math.min(to, readyAt, fast ? p.fertilizedUntil : Infinity, nextRoll);
@@ -138,7 +143,7 @@ export function growPlot(plot: Plot, from: number, to: number): Plot {
     p.growth = end >= readyAt ? growMs(p.crop) : Math.min(growMs(p.crop), p.growth + (end - t) * rate);
     t = end;
     if (t === nextRoll && p.growth < growMs(p.crop)) {
-      const chance = t < p.fertilizedUntil ? G.sickChanceFertilized : G.sickChance;
+      const chance = (t < p.fertilizedUntil ? G.sickChanceFertilized : G.sickChance) * perks.sick;
       if (rollFor(p.luck, p.rolls) < chance) p.sickSince = t;
       p.rolls++;
     }
@@ -147,9 +152,9 @@ export function growPlot(plot: Plot, from: number, to: number): Plot {
 }
 
 // Catches the whole garden up from `from` to `to`.
-export function growGarden(garden: Plot[], from: number, to: number): Plot[] {
+export function growGarden(garden: Plot[], from: number, to: number, perks: GardenPerks = PLAIN): Plot[] {
   if (to <= from) return garden;
-  return garden.map((p) => (p.crop && !p.dead ? growPlot(p, from, to) : p));
+  return garden.map((p) => (p.crop && !p.dead ? growPlot(p, from, to, perks) : p));
 }
 
 export type GardenBlock =
@@ -206,7 +211,8 @@ export function plant(state: GameState, index: number, crop: CropId, now: number
   };
 }
 
-// Waters a pot. Free; a perfect pour keeps it moist a little longer.
+// Waters a pot. Free; a perfect pour keeps it moist a little longer, and
+// so does the Deep roots skill.
 export function water(state: GameState, index: number, now: number, perfect: boolean, luck: number): GardenResult {
   const plot = state.garden[index];
   if (!plot) return { state, blocked: 'noPlot' };
@@ -214,7 +220,7 @@ export function water(state: GameState, index: number, now: number, perfect: boo
   if (stage !== 'growing' && stage !== 'sick') return { state, blocked: 'nothingToWater' };
   return {
     state: withPlot(state, index, (p) => {
-      p.moistUntil = now + moistMs(perfect);
+      p.moistUntil = now + moistMs(perfect) + perk(state, 'deepRoots') * HOUR;
       p.rollsFrom = p.moistUntil;
       p.rolls = 0;
       p.luck = luck;
