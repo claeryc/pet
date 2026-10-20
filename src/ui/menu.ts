@@ -19,6 +19,7 @@ import { messagesPage, type MessagesTab } from './messages';
 import { unreadMail } from '../game/messages';
 import { canLearnIn, skillsPage, type SkillsCallbacks, type SkillsView } from './skills';
 import { TREES, pointsToSpend } from '../game/skills';
+import { audioSettings, setAudioSettings } from '../audio/audio';
 
 export interface DebugCallbacks {
   onFastForward: (hours: number) => void;
@@ -359,6 +360,26 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     return field;
   }
 
+  // Music and Sounds, each switched on or off.
+  function audioToggles(): HTMLElement {
+    const field = document.createElement('div');
+    field.className = 'settings-field';
+    for (const key of ['music', 'sounds'] as const) {
+      const row = document.createElement('label');
+      row.className = 'settings-toggle';
+      const name = document.createElement('b');
+      name.textContent = STRINGS.settings[key];
+      const box = document.createElement('input');
+      box.type = 'checkbox';
+      box.setAttribute('role', 'switch');
+      box.checked = audioSettings()[key];
+      box.addEventListener('change', () => setAudioSettings({ ...audioSettings(), [key]: box.checked }));
+      row.append(name, box);
+      field.append(row);
+    }
+    return field;
+  }
+
   function showSettings(): void {
     page = 'settings';
     toTop();
@@ -367,7 +388,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
       cb.onReset();
     });
     reset.classList.add('menu-item-danger');
-    panel.replaceChildren(header(STRINGS.menu.settings, showMain), ownerField(), reset);
+    panel.replaceChildren(header(STRINGS.menu.settings, showMain), ownerField(), audioToggles(), reset);
     if (CONFIG.debug.showTools) panel.append(debugSection());
   }
 
