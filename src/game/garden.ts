@@ -135,8 +135,12 @@ export function growPlot(plot: Plot, from: number, to: number, perks: GardenPerk
     const fast = t < p.fertilizedUntil;
     const rate = (fast ? 1 + G.fertilizer.speedUp : 1) * perks.speed;
     const nextRoll = Math.max(p.rollsFrom, p.moistUntil) + (p.rolls + 1) * rollMs;
-    const end = Math.min(to, t + need / rate, fast ? p.fertilizedUntil : Infinity, nextRoll);
-    p.growth = Math.min(growMs(p.crop), p.growth + (end - t) * rate);
+    const readyAt = t + need / rate;
+    const end = Math.min(to, readyAt, fast ? p.fertilizedUntil : Infinity, nextRoll);
+    // Reaching readyAt means ready. Adding (end - t) * rate instead can fall
+    // a hair short (timestamps are too big for fractions of a millisecond),
+    // and then the plant never finishes.
+    p.growth = end >= readyAt ? growMs(p.crop) : Math.min(growMs(p.crop), p.growth + (end - t) * rate);
     t = end;
     if (t === nextRoll && p.growth < growMs(p.crop)) {
       const chance = (t < p.fertilizedUntil ? G.sickChanceFertilized : G.sickChance) * perks.sick;
