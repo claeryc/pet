@@ -9,6 +9,9 @@ export const CONFIG = {
 
   // How often the open game re-runs simulate(), in seconds.
   liveUpdateSeconds: 5,
+  // Coming back after at least this long shows a "While you were away"
+  // card, if anything happened.
+  awayCardMinutes: 30,
 
   // How long the pet's eating / happy animation plays after you feed or
   // play with it, in milliseconds.
