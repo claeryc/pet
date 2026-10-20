@@ -795,6 +795,86 @@ export const ITEM_ICONS: Record<string, string> = {
   ]),
 };
 
+// The tiles in the gear menu's grid, by unlock id (and Settings).
+export const MENU_ICONS: Record<string, string> = {
+  // A market stall with a striped awning.
+  shop: pixelIcon([
+    '............',
+    'kkkkkkkkkkkk',
+    'krrwwrrwwrrk',
+    'krrwwrrwwrrk',
+    '.kkkkkkkkkk.',
+    '..kc....ck..',
+    '..kc....ck..',
+    '.kkkkkkkkkk.',
+    '.koooooooock',
+    '.kooyyoooock',
+    '.koooooooock',
+    '.kkkkkkkkkk.',
+  ]),
+  messages: ITEM_ICONS.letter,
+  // A gold cup.
+  collection: pixelIcon([
+    '..kkkkkkkk..',
+    'kkkyyywyykkk',
+    'kykyyywyykyk',
+    'kykyyyyyykyk',
+    '.kkyyyyyykk.',
+    '...kyyyyck..',
+    '....kyyck...',
+    '....kyck....',
+    '....kyck....',
+    '...kkkkkk...',
+    '..kcccccck..',
+    '..kkkkkkkk..',
+  ]),
+  // A star, for Skills.
+  skills: pixelIcon([
+    '.....kk.....',
+    '....kyyk....',
+    '....kyyk....',
+    '.kkkkywykkk.',
+    'kyyyyywyyyyk',
+    '.kyyyyyyyck.',
+    '..kyyyyyck..',
+    '..kyyyyyck..',
+    '.kyyyckyyck.',
+    '.kyyck.kyck.',
+    'kyck....kcck',
+    '.kk......kk.',
+  ]),
+  // A leafy tree.
+  familyTree: pixelIcon([
+    '....kkkk....',
+    '..kkggmgkk..',
+    '.kggggggmgk.',
+    'kggmgggggggk',
+    'kgggggggmggk',
+    'kggggggggggk',
+    '.kggggggggk.',
+    '..kkkccckk..',
+    '....kcck....',
+    '....kcck....',
+    '..kkkcckkk..',
+    '............',
+  ]),
+  // A lilac gear.
+  settings: pixelIcon([
+    '....kkkk....',
+    '.kk.kllk.kk.',
+    '.klkkllkklk.',
+    '.kllllllllk.',
+    'kkllkkkkllkk',
+    'kllk....kllk',
+    'kllk....kllk',
+    'kkllkkkkllkk',
+    '.kllllllvvk.',
+    '.klkkllkkvk.',
+    '.kk.kllk.kk.',
+    '....kkkk....',
+  ]),
+};
+
 // The pictures for each achievement in the Collection.
 export const ACHIEVEMENT_ICONS: Record<string, string> = {
   fish: ITEM_ICONS.fishing,
