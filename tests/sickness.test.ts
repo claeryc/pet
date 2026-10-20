@@ -32,14 +32,15 @@ describe('warning, sickness and medicine', () => {
 
   it('never skips the warning, even after a long time away', () => {
     // Step through a week of neglect minute by minute and record every
-    // condition change. It must always go healthy -> warning -> sick.
+    // condition change. It must always go healthy -> warning -> sick, and
+    // then (left sick too long) passed away.
     let s = newTeen(START);
     const seen: string[] = [s.pet.condition];
     for (let i = 0; i < 7 * 24 * 60; i++) {
       s = simulate(s, s.lastUpdated + MINUTE);
       if (seen[seen.length - 1] !== s.pet.condition) seen.push(s.pet.condition);
     }
-    expect(seen).toEqual(['healthy', 'warning', 'sick']);
+    expect(seen).toEqual(['healthy', 'warning', 'sick', 'passed']);
   });
 
   it('goes back to healthy if you fix things during the warning', () => {

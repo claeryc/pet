@@ -193,6 +193,7 @@ export function biteDelayMs(random: number): number {
 export function cast(state: GameState, now: number): ActionResult {
   const s = simulate(state, now);
   if (s.pet.stage === 'egg') return { state: s, blocked: 'egg' };
+  if (s.pet.condition === 'passed') return { state: s, blocked: 'passed' };
   if (s.pet.asleep) return { state: s, blocked: 'asleep' };
   if (!canPlayMinigames(s.pet, now)) return { state: s, blocked: 'resting' };
   const cost = CONFIG.fishing.energyPerCast;

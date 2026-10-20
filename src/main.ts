@@ -12,14 +12,18 @@ import {
   giveMedicine,
   growNow,
   play,
+  revive,
+  sayGoodbye,
   toggleLights,
   type ActionResult,
   type Food,
 } from './game/actions';
 import { characterSheet, getCharacter, getVariant, sheetFor } from './game/growth';
 import {
-  buyBait, buyDecor, buyFood, buyGardenItem, buyHat, buyPot, checkIn, earn, getHat, wearHat, type ShopResult,
+  buyBait, buyDecor, buyFood, buyGardenItem, buyHat, buyPot, checkIn, earn, getHat, grantPack, revivalStars, wearHat,
+  type ShopResult,
 } from './game/economy';
+import { purchase, type ProductId } from './payments';
 import { useDecor } from './game/decor';
 import { getLook, isNight } from './game/stats';
 import { cast, land, toggleBait } from './game/fishing';
@@ -70,7 +74,7 @@ import { loadSprites, type SpriteLibrary } from './render/sprites';
 import { createHomeScreen } from './ui/home';
 import { createNamingBox } from './ui/naming';
 import { STRINGS } from './strings';
-import { ITEM_ICONS } from './ui/icons';
+import { FRAGMENT_ICON, ITEM_ICONS } from './ui/icons';
 import { DISH_MS, DONE_MS as COOKED_MS } from './ui/cooking';
 import { music, sound, startAudio } from './audio/audio';
 
@@ -130,6 +134,7 @@ function setState(next: GameState): void {
     if (pet.id === state.pet.id) react('happy');
   }
   showLevels(progress.levels);
+  showFragments(progress.fragments);
   if (progress.badges.length > 0) sound('badge');
   else if (progress.unlocked.length > 0) sound('unlock');
   const notices = [
@@ -150,6 +155,21 @@ function setState(next: GameState): void {
 // Daytime music, or the night song once it's dark or the pet is asleep.
 function playMusic(): void {
   music(isNight(gameNow()) || state.pet.asleep ? 'night' : 'day');
+}
+
+// Star fragments just found, and a Revival Star they made.
+function showFragments(got: { pieces: number; stars: number }): void {
+  if (got.pieces === 0) return;
+  const { perStar } = CONFIG.revival.fragments;
+  sound('got');
+  if (got.stars > 0) {
+    home.reveal({ icon: ITEM_ICONS.revivalStar, name: STRINGS.shop.revivalStar, count: got.stars, stars: 0, caption: STRINGS.revival.fragmentsDone });
+  } else {
+    home.reveal({
+      icon: FRAGMENT_ICON, name: STRINGS.shop.fragment, count: got.pieces, stars: 0,
+      caption: STRINGS.shop.fragmentsCount(state.fragments.pieces, perStar),
+    });
+  }
 }
 
 // A new Keeper level: a skill point to spend.
@@ -337,6 +357,78 @@ function runBox(action: (s: GameState) => BoxResult, food?: string): void {
 }
 const boxFood = (i: number) => state.delivery.order?.boxes[i]?.food;
 
+// The Star Shop: pays (a stand-in for now, see src/payments.ts) and hands
+// out the pack. Resolves true if it was bought.
+function buyPack(productId: ProductId): Promise<boolean> {
+  const pack = CONFIG.store.find((p) => p.id === productId)!;
+  const confirmPay = () => new Promise<boolean>((resolve) => {
+    choice.open({
+      title: STRINGS.revival.payTitle,
+      text: STRINGS.revival.payAsk(STRINGS.shop.revivalPack(pack.count), pack.price),
+      options: [
+        { label: STRINGS.revival.pay(pack.price), onPick: () => resolve(true) },
+        { label: STRINGS.revival.cancel, soft: true, onPick: () => resolve(false) },
+      ],
+    });
+  });
+  return purchase(productId, confirmPay).then((paid) => {
+    if (!paid) return false;
+    setState(grantPack(state, productId));
+    sound('purchase');
+    home.reveal({ icon: ITEM_ICONS[pack.item], name: STRINGS.shop.revivalStar, count: pack.count, stars: 0 });
+    home.toast(STRINGS.revival.bought(pack.count));
+    return true;
+  });
+}
+
+// A pet that passed away: bring it back with a Revival Star, buying one
+// first if there's none.
+function askRevive(): void {
+  const name = state.pet.name;
+  const doRevive = () => {
+    const result = revive(state, gameNow());
+    setState(result.state);
+    if (result.blocked) return blocked(STRINGS.blocked[result.blocked](name));
+    home.toast(STRINGS.revival.back(name));
+    sound('grewUp');
+    react('happy');
+  };
+  const have = revivalStars(state);
+  const single = CONFIG.store[0];
+  const notNow = { label: STRINGS.revival.notNow, soft: true, onPick: () => {} };
+  if (have > 0) {
+    choice.open({
+      title: STRINGS.revival.title(name),
+      text: STRINGS.revival.useAsk(name, have),
+      options: [{ label: STRINGS.revival.use, onPick: doRevive }, notNow],
+    });
+    return;
+  }
+  // None yet: say how far the free star (from fragments) has come, and
+  // offer to buy one.
+  choice.open({
+    title: STRINGS.revival.title(name),
+    text: STRINGS.revival.buyAsk(name, state.fragments.pieces, CONFIG.revival.fragments.perStar),
+    options: [
+      { label: STRINGS.revival.buy(single.price), onPick: () => buyPack(single.id).then((ok) => ok && doRevive()) },
+      notNow,
+    ],
+  });
+}
+
+// ...or let it go into the Family Tree.
+function askGoodbye(): void {
+  const name = state.pet.name;
+  choice.open({
+    title: STRINGS.revival.goodbyeTitle(name),
+    text: state.housemates.length > 0 ? STRINGS.revival.goodbyeAskHousemate(name) : STRINGS.revival.goodbyeAsk(name),
+    options: [
+      { label: STRINGS.revival.keep, onPick: () => {} },
+      { label: STRINGS.revival.goodbyeYes, soft: true, onPick: () => setState(sayGoodbye(state, gameNow())) },
+    ],
+  });
+}
+
 // Friends: says why something was refused.
 function friendBlocked(reason: FriendBlock | MingleBlock): void {
   blocked(STRINGS.friends.blocked[reason](state.pet.name));
@@ -462,6 +554,8 @@ const home = createHomeScreen(root, {
     runAction(giveMedicine);
     showGains(before, { health: 1 });
   },
+  onRevive: askRevive,
+  onGoodbye: askGoodbye,
   onCast: () => {
     const result = cast(state, gameNow());
     setState(result.state);
@@ -642,6 +736,7 @@ const home = createHomeScreen(root, {
   onBuyDecor: (kind, id) => runShop(buyDecor(state, kind, id),
     STRINGS.shop.bought((kind === 'wallpaper' ? STRINGS.shop.wallpapers : STRINGS.shop.curtains)[id] ?? id)),
   onUseDecor: (kind, id) => runShop(useDecor(state, kind, id)),
+  onBuyPack: (id) => void buyPack(id as ProductId),
   onBuyHat: (id) => runShop(buyHat(state, id), STRINGS.shop.boughtHat(getHat(id)?.name ?? '', state.pet.name)),
   onWearHat: (id) => runShop(wearHat(state, id)),
   hatImage: (id) => sprites.get(getHat(id)?.sheet ?? '')?.image.src,
@@ -698,6 +793,7 @@ playMusic();
 askWhoRetires();
 announceMail(lastVisitMessages);
 showLevels(startup.levels); // levels reached while away (Percy's pickups)
+showFragments(startup.fragments);
 tryCheckIn();
 if (saved) showAway(saved, saved.lastUpdated);
 
@@ -718,6 +814,7 @@ function render(timeMs: number): void {
     sprites.get(sheetFor(pet)),
     {
       animation,
+      glow: pet.starGlow && pet.condition !== 'passed',
       night: isNight(gameNow()),
       lightsOff: pet.asleep,
       fishing: home.fishingPhase(),
@@ -727,6 +824,7 @@ function render(timeMs: number): void {
         sheet: sprites.get(sheetFor(other)),
         hat: sprites.get(getHat(other.hat)?.sheet ?? ''),
         animation: getLook(other),
+        glow: other.starGlow && other.condition !== 'passed',
       },
       petOnLeft: petStandsLeft(state),
       room: state.room,

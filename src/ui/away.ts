@@ -38,6 +38,10 @@ function line(note: AwayNote, name: string): { icon: string; text: string } {
       return { icon: STAT_ICONS.health, text: t.sick(name) };
     case 'warning':
       return { icon: STAT_ICONS.health, text: t.warning(name) };
+    case 'critical':
+      return { icon: STAT_ICONS.health, text: t.critical(note.name, formatDuration(note.timeLeft)) };
+    case 'passed':
+      return { icon: ITEM_ICONS.revivalStar, text: t.passed(note.name) };
   }
 }
 

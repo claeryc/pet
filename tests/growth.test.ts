@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { simulate } from '../src/game/simulate';
 import { createNewGame } from '../src/game/state';
 import { feed, growNow, toggleLights } from '../src/game/actions';
@@ -10,6 +10,14 @@ const START = new Date(2026, 0, 1, 10, 0).getTime();
 const { egg, baby, teen } = CONFIG.growth.stageHours;
 
 describe('life stages', () => {
+  // Some of these leave the pet alone for days to watch it grow, which
+  // would see it pass away from being sick so long. Passing away has its
+  // own tests (passing.test.ts), so here the pet just stays sick.
+  const sickness = CONFIG.sickness as { hoursBeforePassing: number };
+  const passing = sickness.hoursBeforePassing;
+  beforeAll(() => void (sickness.hoursBeforePassing = Infinity));
+  afterAll(() => void (sickness.hoursBeforePassing = passing));
+
   it('starts as an egg that needs nothing', () => {
     const s = createNewGame(START);
     expect(s.pet.stage).toBe('egg');

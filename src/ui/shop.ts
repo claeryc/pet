@@ -4,11 +4,11 @@
 
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
-import { HATS, baitCount, canBuyPot, foodCount, limitedInStock, limitedLeft, localDay } from '../game/economy';
+import { HATS, baitCount, revivalStars, canBuyPot, foodCount, limitedInStock, limitedLeft, localDay } from '../game/economy';
 import { CURTAINS, WALLPAPERS, inUse, ownsDecor, type Decor, type DecorKind } from '../game/decor';
 import type { GameState } from '../game/state';
 import type { Food, FoodId } from '../game/actions';
-import { ITEM_ICONS, STAT_ICONS } from './icons';
+import { FRAGMENT_ICON, ITEM_ICONS, STAT_ICONS } from './icons';
 import { SEEDS_FOR_SALE, SUPPLIES, priceOf, seedCount, supplyCount, type ShopItem } from '../game/garden';
 
 export interface ShopCallbacks {
@@ -20,6 +20,7 @@ export interface ShopCallbacks {
   onBuyPot: () => void;
   onBuyDecor: (kind: DecorKind, id: string) => void;
   onUseDecor: (kind: DecorKind, id: string | null) => void;
+  onBuyPack: (productId: string) => void; // Revival Stars, with real money
   // The picture of a hat, as a URL (from its sprite sheet), if loaded.
   hatImage: (hat: string) => string | undefined;
 }
@@ -178,7 +179,7 @@ function decorEntry(state: GameState, d: Decor, cb: ShopCallbacks): Entry {
 }
 
 // The Shop's categories, in order. Other screens can open the Shop at one.
-export type ShopCategory = 'food' | 'garden' | 'fishing' | 'room' | 'hats';
+export type ShopCategory = 'revival' | 'food' | 'garden' | 'fishing' | 'room' | 'hats';
 
 // Food the Shop sells: only plain ingredients (the energy drink only on its days).
 export const soldInShop = (f: Food) => f.price > 0 && !f.caughtOnly && !f.grownOnly && !f.cookedOnly;
@@ -247,7 +248,24 @@ export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>)
       priceButton(CONFIG.fishing.bait.price, state.gold, cb.onBuyBait)),
   }];
   const room: Entry[] = [...WALLPAPERS, ...CURTAINS].map((d) => decorEntry(state, d, cb));
+  // Revival Stars: the star fragments collected so far (free, from good
+  // care), then stars to keep in your pocket, bought with real money.
+  const note = STRINGS.shop.revivalNote(revivalStars(state));
+  const { perStar } = CONFIG.revival.fragments;
+  const pieces = state.fragments.pieces;
+  const revival: Entry[] = [
+    {
+      icon: FRAGMENT_ICON,
+      count: countBadge(pieces),
+      row: row(FRAGMENT_ICON, STRINGS.shop.fragments, STRINGS.shop.fragmentsNote, label(STRINGS.shop.fragmentsCount(pieces, perStar))),
+    },
+    ...CONFIG.store.map((p) => ({
+      icon: ITEM_ICONS[p.item],
+      row: row(ITEM_ICONS[p.item], STRINGS.shop.revivalPack(p.count), note, button(p.price, () => cb.onBuyPack(p.id))),
+    })),
+  ];
   return [
+    category('revival', STRINGS.shop.revivalTitle, revival, open),
     category('food', STRINGS.shop.food, food, open),
     category('garden', STRINGS.shop.garden, garden, open),
     category('fishing', STRINGS.shop.fishing, fishing, open),

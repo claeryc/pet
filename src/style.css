@@ -344,6 +344,45 @@ body {
   display: none;
 }
 
+/* A sick pet's last hours: the sick banner's border pulses gently so
+   it's hard to miss. A pet that passed away keeps the sick banner. */
+.banner[data-kind='critical'],
+.banner[data-kind='passed'] {
+  border-color: var(--accent-dark);
+}
+
+.banner[data-kind='critical'] {
+  animation: banner-urgent 1.6s ease-in-out infinite;
+}
+
+@keyframes banner-urgent {
+  50% { border-color: var(--accent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .banner[data-kind='critical'] { animation: none; }
+}
+
+.banner-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.banner-buttons[hidden] {
+  display: none;
+}
+
+.banner-buttons .btn {
+  flex: 1 1 0;
+}
+
+/* The quieter choice next to a main button, like the Shop's soft buttons. */
+.btn-soft {
+  background: var(--lavender);
+  color: var(--ink);
+  box-shadow: 0 4px 0 var(--lilac);
+}
+
 .dim {
   opacity: 0.5;
 }

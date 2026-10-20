@@ -9,12 +9,13 @@ import { newGarden } from '../game/garden';
 import { newKeeper } from '../game/state';
 import { grownUpXp, levelInfo } from '../game/skills';
 import { getCharacter } from '../game/growth';
+import { countedSoFar } from '../game/fragments';
 
 const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 16;
+export const SAVE_VERSION = 17;
 
 export interface SaveFile {
   version: number;
@@ -177,6 +178,19 @@ export function migrate(save: SaveFile): SaveFile {
     st.keeper = { ...newKeeper(), xp, grownUp: grown.map((p: any) => p.id) };
     st.keeper.level = levelInfo(xp).level;
     save.version = 16;
+  }
+  // Version 16 -> 17: a pet left sick too long can pass away. Pets sick
+  // right now start the countdown from today. Added star fragments.
+  if (save.version === 16) {
+    const st = save.state;
+    for (const p of [st.pet, ...(st.housemates ?? [])]) {
+      if (!p) continue;
+      p.sickMinutes = 0;
+      p.starGlow = false;
+    }
+    // Star fragments only count what's done from now on.
+    st.fragments = { pieces: 0, streak: 0, lastDay: '', from: st.pet ? countedSoFar(st as GameState) : [] };
+    save.version = 17;
   }
   return save;
 }

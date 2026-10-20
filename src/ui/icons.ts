@@ -96,6 +96,39 @@ export const UNKNOWN_ICON = pixelIcon([
   '.....kk.....',
 ]);
 
+// The Revival Star.
+const REVIVAL_STAR = [
+  '.....kk.....',
+  '....kyyk....',
+  '....kyyk....',
+  'kkkkyyyykkkk',
+  'kyyyrryrryyk',
+  '.kyyrrrrryk.',
+  '..kyyrrryk..',
+  '..kyyyryyk..',
+  '.kyyykkyyyk.',
+  '.kyyk..kyyk.',
+  'kyyk....kyyk',
+  'kkk......kkk',
+];
+
+// A star fragment: one point of a Revival Star, broken off with a jagged
+// edge. Five of them make a star.
+export const FRAGMENT_ICON = pixelIcon([
+  '.....kk.....',
+  '....kyyk....',
+  '....kwyk....',
+  '...kwyyyk...',
+  '...kyyyyk...',
+  '..kyyyyyyk..',
+  '..kyyyyyyk..',
+  '.kyyyyyyyyk.',
+  '.kyykyyykyk.',
+  '.kyk.kyk.kk.',
+  '.kk...k.....',
+  '............',
+]);
+
 // Big icons (12x12) shown at the start of each row.
 export const ITEM_ICONS: Record<string, string> = {
   ...ROOM_ICONS,
@@ -638,6 +671,9 @@ export const ITEM_ICONS: Record<string, string> = {
     '.kkkkkkkkkk.',
     '............',
   ]),
+  // A glowing star with a little heart inside: brings back a pet that
+  // passed away.
+  revivalStar: pixelIcon(REVIVAL_STAR),
   plantCure: pixelIcon([
     '....kkkk....',
     '....kwwk....',

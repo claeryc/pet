@@ -186,7 +186,7 @@ function missedVisit(state: GameState, id: string): GameState {
 
 export type FriendBlock =
   | 'egg' | 'asleep' | 'tooTired' | 'resting' | 'gone' | 'away' | 'noFood' | 'freeFood' | 'full' | 'known'
-  | 'busy' | 'invited';
+  | 'busy' | 'invited' | 'passed';
 
 export interface FriendResult {
   state: GameState;
@@ -197,6 +197,7 @@ export interface FriendResult {
 // Can the pet you're looking after go and meet someone right now?
 function meetBlock(pet: Pet, now: number): FriendBlock | null {
   if (pet.stage === 'egg') return 'egg';
+  if (pet.condition === 'passed') return 'passed';
   if (pet.asleep) return 'asleep';
   if (!canPlayMinigames(pet, now)) return 'resting';
   if (pet.stats.energy < -F.meet.energy) return 'tooTired';

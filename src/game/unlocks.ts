@@ -11,6 +11,7 @@ import { logMessage } from './messages';
 import { updateBadges, type AchievementId, type Tier } from './achievements';
 import { creditGrownUps, keeperLevel, updateLevel } from './skills';
 import { getCharacter } from './growth';
+import { stepFragments } from './fragments';
 
 export type UnlockId =
   | 'shop' | 'cooking' | 'collection' | 'familyTree' | 'garden' | 'messages' | 'delivery' | 'meet' | 'skills';
@@ -74,6 +75,7 @@ export function updateProgress(state: GameState): {
   unlocked: UnlockId[];
   badges: { id: AchievementId; tier: Tier }[];
   levels: number[];
+  fragments: { pieces: number; stars: number }; // star fragments just earned
 } {
   let s = state;
   for (const pet of [s.pet, ...s.housemates]) {
@@ -88,5 +90,9 @@ export function updateProgress(state: GameState): {
   const opened = unlocksFor(s).filter((id) => !s.unlocked.includes(id));
   if (opened.length > 0) s = { ...s, unlocked: [...s.unlocked, ...opened] };
   for (const id of opened) s = logMessage(s, { kind: 'unlocked', at: s.lastUpdated, id });
-  return { state: s, unlocked: opened, badges: badges.earned, levels: levels.levels };
+  const frag = stepFragments(s);
+  return {
+    state: frag.state, unlocked: opened, badges: badges.earned, levels: levels.levels,
+    fragments: { pieces: frag.pieces, stars: frag.stars },
+  };
 }

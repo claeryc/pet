@@ -1,7 +1,9 @@
 // Gold, the Shop and the inventory. All gold changes go through this file,
 // so a second currency (or anything else) could be added here later
 // without touching the rest of the game. Gold can only be earned by
-// playing; there are no real-money purchases.
+// playing. The only real-money items are Revival Stars (which can also be
+// earned from star fragments, see fragments.ts); paying for them is
+// handled by src/payments.ts.
 
 import { CONFIG } from './config';
 import hatData from '../data/hats.json';
@@ -86,6 +88,20 @@ export function limitedLeft(state: GameState, now: number): number {
   if (!limitedInStock(day)) return 0;
   const bought = state.stock.day === day ? state.stock.bought : 0;
   return Math.max(0, CONFIG.economy.limited.perDay - bought);
+}
+
+// ---- The Star Shop (real money) ----
+
+export function revivalStars(state: GameState): number {
+  return state.inventory.supplies.revivalStar ?? 0;
+}
+
+// Gives the player what a Star Shop pack holds, once it's been paid for.
+export function grantPack(state: GameState, productId: string): GameState {
+  const pack = CONFIG.store.find((p) => p.id === productId);
+  if (!pack) return state;
+  const supplies = { ...state.inventory.supplies, [pack.item]: (state.inventory.supplies[pack.item] ?? 0) + pack.count };
+  return { ...state, inventory: { ...state.inventory, supplies } };
 }
 
 // ---- Fishing bait, the extra garden pot and room decorations ----
