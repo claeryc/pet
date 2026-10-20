@@ -16,6 +16,9 @@
 //    (missing food is greyed out). Recipes you haven't cooked yet show as
 //    "???" with one ingredient as a hint. Tap a recipe to fill the pot.
 //
+// Cooking takes a moment: each ingredient plops into the pot in turn, the
+// lid rattles and steams while it cooks, and then the dish pops up.
+//
 // What a mix makes, and what cooking uses up, is decided in
 // src/game/cooking.ts.
 
@@ -50,9 +53,18 @@ export interface Cooking {
 // How long the counter takes to slide in and out (matches .kitchen in
 // style.css).
 export const KITCHEN_OUT_MS = 450;
-// How long the "just cooked" dish stays in the pot (the item reveal waits
-// for it, so the pot gets its moment first).
-export const DONE_MS = 1400;
+// Cooking, step by step: the ingredients plop in one after another, then
+// the lid rattles for a while, then the dish shows in the pot for a moment
+// before the item reveal.
+const PLOP_EVERY_MS = 200;
+const PLOPS_MS = 600; // all of them are in by then
+const SIMMER_MS = 1100;
+// When the dish shows in the pot, and when the item reveal comes (it waits
+// so the pot gets its moment first).
+export const DISH_MS = PLOPS_MS + SIMMER_MS;
+export const DONE_MS = DISH_MS + 1400;
+
+const reduced = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 // Space kept between the pot and an open Food or Recipes panel.
 const PANEL_GAP = 12;
 
@@ -66,7 +78,11 @@ export function createCooking(cb: CookingCallbacks): Cooking {
   let active = false;
   const pot: FoodId[] = []; // what's in the pot, in the order it went in
   let justMade: FoodId | null = null;
-  let doneTimer = 0;
+  // While cooking: what's still plopping in (shown in the spots), and
+  // whether the lid is on.
+  let plopping: FoodId[] = [];
+  let simmering = false;
+  let cookTimers: number[] = [];
   let outTimer = 0;
 
   // ---- The counter with the pot ----
@@ -193,7 +209,10 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     return foodCount(state, id) - pot.filter((p) => p === id).length;
   }
 
+  const busy = () => simmering || plopping.length > 0;
+
   function addToPot(id: FoodId): void {
+    if (busy()) return;
     if (pot.length >= CONFIG.cooking.slots) return cb.toast(STRINGS.cooking.full);
     if (left(id) <= 0) return cb.toast(STRINGS.cooking.noneLeft(foodName(id)), inShop(id) ? 'food' : undefined);
     clearDone();
@@ -202,7 +221,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
   }
 
   function pickRecipe(id: FoodId): void {
-    if (!state) return;
+    if (!state || busy()) return;
     const recipe = RECIPES.find((r) => r.id === id)!;
     if (!knowsRecipe(state, id)) return cb.toast(STRINGS.cooking.hint(foodName(recipe.ingredients[0])));
     const missing = ingredientsFor(state, recipe).filter((i) => i.have < i.need);
@@ -216,28 +235,87 @@ export function createCooking(cb: CookingCallbacks): Cooking {
   }
 
   function cookIt(): void {
+    if (busy()) return;
     if (pot.length === 0) return cb.toast(STRINGS.cooking.emptyPot);
-    const dish = cb.onCook([...pot]);
+    const items = [...pot];
+    const dish = cb.onCook(items);
     if (!dish) return;
+    clearDone();
     pot.length = 0;
-    justMade = dish;
-    // Replay the bubbling animation.
-    potRow.classList.remove('cooked');
-    void potRow.offsetHeight;
-    potRow.classList.add('cooked');
-    clearTimeout(doneTimer);
-    doneTimer = window.setTimeout(() => {
+    foodDrawer.close();
+    recipeDrawer.close();
+    plopping = items;
+    simmering = true;
+    potRow.classList.add('simmering');
+    // In they go, one by one from the left.
+    items.forEach((id, i) => later(i * PLOP_EVERY_MS, () => plop(id)));
+    // Lid off: the dish pops up.
+    later(DISH_MS, () => {
+      simmering = false;
+      plopping = [];
+      potRow.classList.remove('simmering');
+      justMade = dish;
+      potRow.classList.add('cooked');
+      render();
+    });
+    later(DONE_MS, () => {
       justMade = null;
       potRow.classList.remove('cooked');
       render();
-    }, DONE_MS);
+    });
     render();
   }
 
+  function later(ms: number, fn: () => void): void {
+    cookTimers.push(window.setTimeout(fn, ms));
+  }
+
+  // The first ingredient left in the spots hops into the pot, and the pot
+  // squishes with a little splash.
+  function plop(id: FoodId): void {
+    const from = slots[0].getBoundingClientRect();
+    const to = potBtn.getBoundingClientRect();
+    plopping = plopping.slice(1);
+    render();
+    if (reduced() || from.width === 0) return;
+    const bit = document.createElement('span');
+    bit.className = 'pot-plop';
+    bit.innerHTML = ITEM_ICONS[id];
+    bit.style.left = `${from.left + from.width / 2}px`;
+    bit.style.top = `${from.top + from.height / 2}px`;
+    bit.style.width = bit.style.height = `${from.width * 0.7}px`;
+    document.body.append(bit);
+    const dx = to.left + to.width / 2 - (from.left + from.width / 2);
+    const dy = to.top + to.height * 0.3 - (from.top + from.height / 2);
+    bit.animate(
+      [
+        { transform: 'translate(-50%, -50%) scale(1)' },
+        { transform: `translate(calc(-50% + ${dx * 0.5}px), calc(-50% + ${dy - 34}px)) scale(0.85)`, offset: 0.5 },
+        { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.4)` },
+      ],
+      { duration: 280, easing: 'cubic-bezier(0.4, 0, 0.6, 1)' },
+    ).onfinish = () => {
+      bit.remove();
+      potBtn.classList.remove('plop');
+      void potBtn.offsetWidth;
+      potBtn.classList.add('plop');
+      for (const side of [-1, 1]) {
+        const drop = document.createElement('span');
+        drop.className = 'pot-drop';
+        drop.style.setProperty('--side', String(side));
+        potBtn.append(drop);
+        drop.addEventListener('animationend', () => drop.remove(), { once: true });
+      }
+    };
+  }
+
   function clearDone(): void {
-    clearTimeout(doneTimer);
+    for (const t of cookTimers) clearTimeout(t);
+    cookTimers = [];
     justMade = null;
-    potRow.classList.remove('cooked');
+    plopping = [];
+    simmering = false;
+    potRow.classList.remove('cooked', 'simmering');
   }
 
   // Redraws everything from the pot and the latest state.
@@ -247,8 +325,9 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     // Drop anything from the pot you no longer have (e.g. eaten meanwhile).
     for (let i = pot.length - 1; i >= 0; i--) if (left(pot[i]) < 0) pot.splice(i, 1);
 
+    const inSpots = plopping.length > 0 ? plopping : pot;
     slots.forEach((slot, i) => {
-      const id = pot[i];
+      const id = inSpots[i];
       slot.innerHTML = id ? ITEM_ICONS[id] : '';
       slot.classList.toggle('filled', id !== undefined);
       slot.setAttribute('aria-label', id ? STRINGS.cooking.inPot(foodName(id)) : STRINGS.cooking.emptySlot);
@@ -260,14 +339,17 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     const preview = justMade ?? (known && knowsRecipe(s, known.id) ? known.id : null);
     const mush = !preview && pot.length > 0 && !couldBeRecipe(pot);
     potIcon.innerHTML =
-      preview ? ITEM_ICONS[preview]
+      simmering ? ITEM_ICONS.cooking
+      : preview ? ITEM_ICONS[preview]
       : mush ? ITEM_ICONS[CONFIG.cooking.mess]
       : pot.length > 0 ? ITEM_ICONS.unknown
       : ITEM_ICONS.cooking;
-    potBtn.dataset.kind = justMade ? 'done' : preview ? 'known' : mush ? 'mush' : pot.length > 0 ? 'mystery' : 'empty';
+    potBtn.dataset.kind = simmering ? 'simmer' : justMade ? 'done' : preview ? 'known' : mush ? 'mush' : pot.length > 0 ? 'mystery' : 'empty';
     potBtn.setAttribute(
       'aria-label',
-      justMade
+      simmering
+        ? STRINGS.cooking.simmering
+        : justMade
         ? foodName(justMade)
         : pot.length === 0
           ? STRINGS.cooking.emptyPotLabel

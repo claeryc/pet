@@ -100,6 +100,7 @@ export const STRINGS = {
     inPot: (name: string) => `${name} in the pot. Tap to take it out`,
     addToPot: (name: string, count: string) => `${name} (${count}). Tap to put it in the pot`,
     emptyPotLabel: 'Empty pot',
+    simmering: 'Cooking...',
     cookInto: (name: string) => `Cook ${name}`,
     cookMystery: 'Cook this mix and see what it makes',
     found: (found: number, total: number) => `${found} of ${total} recipes found`,
@@ -487,6 +488,25 @@ export const STRINGS = {
     // Once gold: "All done! 214 so far"
     allDone: (have: number) => `All done! ${have} so far`,
     earned: (name: string, tier: string) => `New badge: ${name} (${tier})!`,
+  },
+  // The "While you were away" card.
+  away: {
+    title: 'While you were away',
+    gone: (time: string) => `You were gone for ${time}.`,
+    ok: 'Got it',
+    ready: (n: number) => (n === 1 ? 'A plant is ready to harvest.' : `${n} plants are ready to harvest.`),
+    dry: (n: number) => (n === 1 ? 'A pot dried out. Give it some water!' : `${n} pots dried out. Give them some water!`),
+    sickPlant: (n: number) => (n === 1 ? 'A plant got sick.' : `${n} plants got sick.`),
+    deadPlant: (n: number) => (n === 1 ? 'A plant wilted away.' : `${n} plants wilted away.`),
+    missedCraving: (name: string, food: string) => `${name} was craving ${food}, but it passed.`,
+    craving: (name: string, food: string) => `${name} is craving ${food} right now!`,
+    low: {
+      hunger: (name: string) => `${name} got hungry.`,
+      energy: (name: string) => `${name} got tired.`,
+      happiness: (name: string) => `${name} got a bit lonely.`,
+    },
+    sick: (name: string) => `${name} got sick. Medicine will help.`,
+    warning: (name: string) => `${name} isn't feeling well.`,
   },
   gold: {
     label: 'Gold',
