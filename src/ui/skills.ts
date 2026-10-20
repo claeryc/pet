@@ -133,13 +133,28 @@ function treePath(state: GameState, view: SkillsView, redraw: () => void): HTMLE
     node.append(icon, name);
     node.setAttribute('aria-label', `${STRINGS.skills.names[skill]}, ${STRINGS.skills.rank(rank, MAX_RANK)}`);
     node.addEventListener('click', () => {
-      if (view.skill === skill) return;
-      view.skill = skill;
-      redraw();
+      if (view.skill !== skill) {
+        view.skill = skill;
+        redraw();
+      }
+      snapToTree();
     });
     path.append(node);
   });
   return path;
+}
+
+// Scrolls the menu so the tree sits at the top, just under the page's
+// header, with the picked skill's card right below it.
+function snapToTree(): void {
+  const tree = document.querySelector<HTMLElement>('.menu-panel .skill-tree');
+  const box = tree?.closest('.menu-panel')?.parentElement;
+  if (!tree || !box) return;
+  const header = box.querySelector('.menu-header');
+  const top = header ? header.getBoundingClientRect().bottom : box.getBoundingClientRect().top;
+  const by = tree.getBoundingClientRect().top - top - 4;
+  const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  box.scrollBy({ top: by, behavior: smooth ? 'smooth' : 'auto' });
 }
 
 // The open node's card: what it does now and next, and how to learn it.
@@ -155,40 +170,48 @@ function skillCard(state: GameState, skill: SkillId, cb: SkillsCallbacks): HTMLE
   const title = el('span', 'shop-row-text');
   title.append(el('b', '', S.names[skill]), el('small', '', S.rank(rank, MAX_RANK)));
   head.append(icon, title);
-  card.append(head);
-
-  const lines = el('ul', 'skill-card-lines');
-  if (rank > 0) lines.append(el('li', '', S.now(effectText(skill, rank))));
-  if (cost !== null) lines.append(el('li', '', (rank > 0 ? S.nextRank : S.firstRank)(effectText(skill, rank + 1))));
-  card.append(lines);
-
-  if (!isOpen(state, skill)) {
-    card.append(el('p', 'skill-card-note', S.locked(S.names[skillBefore(skill)!])));
-  } else if (cost === null) {
-    card.append(el('p', 'skill-card-note', S.maxed));
-  } else {
+  // On the right of the name: the Learn button with its price, or Max.
+  if (isOpen(state, skill) && cost === null) {
+    head.append(label(S.maxed));
+  } else if (isOpen(state, skill) && cost !== null) {
     const b = el('button', 'shop-btn skill-learn');
     b.append(S.learnButton, pointPill(cost));
     b.setAttribute('aria-label', S.learn(cost));
     b.classList.toggle('too-pricey', pointsToSpend(state) < cost); // still tappable, so it can say why
     b.addEventListener('click', () => cb.onLearn(skill));
-    card.append(b);
+    head.append(b);
   }
+  card.append(head);
+
+  const lines = el('div', 'skill-card-lines');
+  if (rank > 0) lines.append(el('p', '', S.now(effectText(skill, rank))));
+  if (cost !== null) lines.append(el('p', '', (rank > 0 ? S.nextRank : S.firstRank)(effectText(skill, rank + 1))));
+  card.append(lines);
+  if (!isOpen(state, skill)) card.append(el('p', 'skill-card-note', S.locked(S.names[skillBefore(skill)!])));
   return card;
 }
 
-// "Take points back" at the end of a tree, with its price (free the first time).
-function resetRow(state: GameState, tree: TreeId, cb: SkillsCallbacks): HTMLElement {
+// "Take points back" at the end of a tree, with its price (free the first
+// time). Laid out like the skill card above it.
+function resetCard(state: GameState, tree: TreeId, cb: SkillsCallbacks): HTMLElement {
   const S = STRINGS.skills;
   const cost = resetCost(state, tree);
+  const card = el('div', 'skill-card skill-reset');
+  const head = el('div', 'skill-card-head');
+  const icon = el('span', 'drawer-option-icon');
+  icon.innerHTML = SKILL_POINT_ICON;
+  const title = el('span', 'shop-row-text');
+  title.append(el('b', '', S.reset));
   const b = el('button', 'shop-btn shop-btn-soft');
   if (cost > 0) b.append(goldPill(cost));
   else b.textContent = S.resetFree;
   b.classList.toggle('too-pricey', state.gold < cost);
   b.addEventListener('click', () => cb.onResetTree(tree));
-  const r = row(SKILL_POINT_ICON, S.reset, S.resetNote(pointsInTree(state, tree)), b);
-  r.classList.add('skill-reset');
-  return r;
+  head.append(icon, title, b);
+  const lines = el('div', 'skill-card-lines');
+  lines.append(el('p', '', S.resetNote(pointsInTree(state, tree))));
+  card.append(head, lines);
+  return card;
 }
 
 // The skill to show first in a tree: the next one to work on (the last
@@ -203,6 +226,6 @@ export function skillsPage(state: GameState, cb: SkillsCallbacks, view: SkillsVi
   const page: HTMLElement[] = [
     summary(state), tabs(view, redraw), treePath(state, view, redraw), skillCard(state, view.skill, cb),
   ];
-  if (pointsInTree(state, view.tree) > 0) page.push(resetRow(state, view.tree, cb));
+  if (pointsInTree(state, view.tree) > 0) page.push(resetCard(state, view.tree, cb));
   return page;
 }
