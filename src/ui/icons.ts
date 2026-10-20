@@ -96,7 +96,7 @@ export const UNKNOWN_ICON = pixelIcon([
   '.....kk.....',
 ]);
 
-// The Revival Star's grid, shared with the star-fragment icon below.
+// The Revival Star.
 const REVIVAL_STAR = [
   '.....kk.....',
   '....kyyk....',
@@ -112,12 +112,22 @@ const REVIVAL_STAR = [
   'kkk......kkk',
 ];
 
-// Star fragments towards the next Revival Star: the star's outline, filled
-// from the bottom up as fragments come in (pale lilac where it's empty).
-export function fragmentIcon(pieces: number, perStar: number): string {
-  const cut = Math.round(REVIVAL_STAR.length * (1 - Math.min(1, pieces / perStar)));
-  return pixelIcon(REVIVAL_STAR.map((row, y) => (y < cut ? row.replace(/[yr]/g, 'v') : row)));
-}
+// A star fragment: one point of a Revival Star, broken off with a jagged
+// edge. Five of them make a star.
+export const FRAGMENT_ICON = pixelIcon([
+  '.....kk.....',
+  '....kyyk....',
+  '....kwyk....',
+  '...kwyyyk...',
+  '...kyyyyk...',
+  '..kyyyyyyk..',
+  '..kyyyyyyk..',
+  '.kyyyyyyyyk.',
+  '.kyykyyykyk.',
+  '.kyk.kyk.kk.',
+  '.kk...k.....',
+  '............',
+]);
 
 // Big icons (12x12) shown at the start of each row.
 export const ITEM_ICONS: Record<string, string> = {

@@ -74,7 +74,7 @@ import { loadSprites, type SpriteLibrary } from './render/sprites';
 import { createHomeScreen } from './ui/home';
 import { createNamingBox } from './ui/naming';
 import { STRINGS } from './strings';
-import { ITEM_ICONS } from './ui/icons';
+import { FRAGMENT_ICON, ITEM_ICONS } from './ui/icons';
 import { DISH_MS, DONE_MS as COOKED_MS } from './ui/cooking';
 
 const root = document.getElementById('app')!;
@@ -154,7 +154,10 @@ function showFragments(got: { pieces: number; stars: number }): void {
   if (got.stars > 0) {
     home.reveal({ icon: ITEM_ICONS.revivalStar, name: STRINGS.shop.revivalStar, count: got.stars, stars: 0, caption: STRINGS.revival.fragmentsDone });
   } else {
-    home.notice(STRINGS.revival.fragment(state.fragments.pieces, perStar));
+    home.reveal({
+      icon: FRAGMENT_ICON, name: STRINGS.shop.fragment, count: got.pieces, stars: 0,
+      caption: STRINGS.shop.fragmentsCount(state.fragments.pieces, perStar),
+    });
   }
 }
 

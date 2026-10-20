@@ -8,7 +8,7 @@ import { HATS, baitCount, revivalStars, canBuyPot, foodCount, limitedInStock, li
 import { CURTAINS, WALLPAPERS, inUse, ownsDecor, type Decor, type DecorKind } from '../game/decor';
 import type { GameState } from '../game/state';
 import type { Food, FoodId } from '../game/actions';
-import { ITEM_ICONS, STAT_ICONS, fragmentIcon } from './icons';
+import { FRAGMENT_ICON, ITEM_ICONS, STAT_ICONS } from './icons';
 import { SEEDS_FOR_SALE, SUPPLIES, priceOf, seedCount, supplyCount, type ShopItem } from '../game/garden';
 
 export interface ShopCallbacks {
@@ -248,17 +248,16 @@ export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>)
       priceButton(CONFIG.fishing.bait.price, state.gold, cb.onBuyBait)),
   }];
   const room: Entry[] = [...WALLPAPERS, ...CURTAINS].map((d) => decorEntry(state, d, cb));
-  // Revival Stars: the free star filling up from fragments, then stars to
-  // keep in your pocket, bought with real money.
+  // Revival Stars: the star fragments collected so far (free, from good
+  // care), then stars to keep in your pocket, bought with real money.
   const note = STRINGS.shop.revivalNote(revivalStars(state));
   const { perStar } = CONFIG.revival.fragments;
   const pieces = state.fragments.pieces;
-  const filling = fragmentIcon(pieces, perStar);
   const revival: Entry[] = [
     {
-      icon: filling,
-      count: countBadge(revivalStars(state)),
-      row: row(filling, STRINGS.shop.fragments, STRINGS.shop.fragmentsNote, label(STRINGS.shop.fragmentsCount(pieces, perStar))),
+      icon: FRAGMENT_ICON,
+      count: countBadge(pieces),
+      row: row(FRAGMENT_ICON, STRINGS.shop.fragments, STRINGS.shop.fragmentsNote, label(STRINGS.shop.fragmentsCount(pieces, perStar))),
     },
     ...CONFIG.store.map((p) => ({
       icon: ITEM_ICONS[p.item],

@@ -392,7 +392,6 @@ export const STRINGS = {
     cancel: 'Cancel',
     bought: (count: number) => (count === 1 ? 'You got a Revival Star!' : `You got ${count} Revival Stars!`),
     // Star fragments: the free way to a Revival Star.
-    fragment: (pieces: number, perStar: number) => `You found a star fragment! (${pieces}/${perStar})`,
     fragmentsDone: 'Star fragments came together!',
     // Under the dying countdown: what you already have, never a price.
     haveStars: (count: number) => (count === 1 ? 'You have 1 Revival Star.' : `You have ${count} Revival Stars.`),
@@ -442,6 +441,7 @@ export const STRINGS = {
     revivalPack: (count: number) => (count === 1 ? 'Revival Star' : `${count} Revival Stars`),
     revivalNote: (have: number) => `Keep a star in your pocket, just in case. You have ${have}`,
     fragments: 'Star fragments',
+    fragment: 'Star fragment',
     fragmentsNote: 'Free from caring well: a week of daily visits, a finished achievement, a pet growing up',
     fragmentsCount: (pieces: number, perStar: number) => `${pieces}/${perStar}`,
   },
