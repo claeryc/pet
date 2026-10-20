@@ -20,7 +20,7 @@ import {
 } from './game/actions';
 import { characterSheet, getCharacter, getVariant, sheetFor } from './game/growth';
 import {
-  buyBait, buyDecor, buyFood, buyGardenItem, buyHat, buyPot, checkIn, earn, getHat, grantPack, revivalStars, buyRevivalStar, wearHat,
+  buyBait, buyDecor, buyFood, buyGardenItem, buyHat, buyPot, checkIn, earn, getHat, grantPack, revivalStars, wearHat,
   type ShopResult,
 } from './game/economy';
 import { purchase, type ProductId } from './payments';
@@ -132,6 +132,7 @@ function setState(next: GameState): void {
     if (pet.id === state.pet.id) react('happy');
   }
   showLevels(progress.levels);
+  showFragments(progress.fragments);
   const notices = [
     ...progress.badges.map((b) => STRINGS.achievements.earned(STRINGS.achievements.names[b.id], STRINGS.achievements.tiers[b.tier])),
     ...progress.unlocked.map((id) => STRINGS.unlocked[id]),
@@ -144,6 +145,17 @@ function setState(next: GameState): void {
   }
   announceMail(oldMessages);
   askWhoRetires();
+}
+
+// Star fragments just found, and a Revival Star they made.
+function showFragments(got: { pieces: number; stars: number }): void {
+  if (got.pieces === 0) return;
+  const { perStar } = CONFIG.revival.fragments;
+  if (got.stars > 0) {
+    home.reveal({ icon: ITEM_ICONS.revivalStar, name: STRINGS.shop.revivalStar, count: got.stars, stars: 0, caption: STRINGS.revival.fragmentsDone });
+  } else {
+    home.notice(STRINGS.revival.fragment(state.fragments.pieces, perStar));
+  }
 }
 
 // A new Keeper level: a skill point to spend.
@@ -347,7 +359,6 @@ function askRevive(): void {
     react('happy');
   };
   const have = revivalStars(state);
-  const gold = CONFIG.revival.goldPrice;
   const single = CONFIG.store[0];
   const notNow = { label: STRINGS.revival.notNow, soft: true, onPick: () => {} };
   if (have > 0) {
@@ -358,19 +369,12 @@ function askRevive(): void {
     });
     return;
   }
-  // None yet: buy one with gold (always offered, so it can be earned), or
-  // with real money.
-  const withGold = () => {
-    const result = buyRevivalStar(state);
-    if (result.blocked) return runShop(result);
-    setState(result.state);
-    doRevive();
-  };
+  // None yet: say how far the free star (from fragments) has come, and
+  // offer to buy one.
   choice.open({
     title: STRINGS.revival.title(name),
-    text: STRINGS.revival.buyAsk(name, gold),
+    text: STRINGS.revival.buyAsk(name, state.fragments.pieces, CONFIG.revival.fragments.perStar),
     options: [
-      { label: STRINGS.revival.buyGold(gold), soft: state.gold < gold, onPick: withGold },
       { label: STRINGS.revival.buy(single.price), onPick: () => buyPack(single.id).then((ok) => ok && doRevive()) },
       notNow,
     ],
@@ -681,7 +685,6 @@ const home = createHomeScreen(root, {
     STRINGS.shop.bought((kind === 'wallpaper' ? STRINGS.shop.wallpapers : STRINGS.shop.curtains)[id] ?? id)),
   onUseDecor: (kind, id) => runShop(useDecor(state, kind, id)),
   onBuyPack: (id) => void buyPack(id as ProductId),
-  onBuyRevivalStar: () => runShop(buyRevivalStar(state), STRINGS.shop.bought(STRINGS.shop.revivalStar)),
   onBuyHat: (id) => runShop(buyHat(state, id), STRINGS.shop.boughtHat(getHat(id)?.name ?? '', state.pet.name)),
   onWearHat: (id) => runShop(wearHat(state, id)),
   hatImage: (id) => sprites.get(getHat(id)?.sheet ?? '')?.image.src,
@@ -736,6 +739,7 @@ home.update(state, gameNow());
 askWhoRetires();
 announceMail(lastVisitMessages);
 showLevels(startup.levels); // levels reached while away (Percy's pickups)
+showFragments(startup.fragments);
 tryCheckIn();
 if (saved) showAway(saved, saved.lastUpdated);
 
@@ -756,6 +760,7 @@ function render(timeMs: number): void {
     sprites.get(sheetFor(pet)),
     {
       animation,
+      glow: pet.starGlow && pet.condition !== 'passed',
       night: isNight(gameNow()),
       lightsOff: pet.asleep,
       fishing: home.fishingPhase(),
@@ -765,6 +770,7 @@ function render(timeMs: number): void {
         sheet: sprites.get(sheetFor(other)),
         hat: sprites.get(getHat(other.hat)?.sheet ?? ''),
         animation: getLook(other),
+        glow: other.starGlow && other.condition !== 'passed',
       },
       petOnLeft: petStandsLeft(state),
       room: state.room,

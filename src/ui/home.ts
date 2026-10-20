@@ -8,7 +8,7 @@ import { canPlayMinigames, getLook, hasPassed, isCritical, isRecovering, timeLef
 import { stageLengthMs } from '../game/growth';
 import type { GameState, PetStats } from '../game/state';
 import { createMenu, type MenuCallbacks } from './menu';
-import { baitCount, foodCount } from '../game/economy';
+import { baitCount, foodCount, revivalStars } from '../game/economy';
 import { createDrawer, type DrawerOption, type Effect } from './drawer';
 import { ITEM_ICONS, STAT_ICONS } from './icons';
 import type { ActivityId, Food, FoodId } from '../game/actions';
@@ -842,7 +842,13 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       if (isEgg)
         text = STRINGS.status_egg(formatDuration(pet.stageStartedAt + stageLengthMs('egg') - now));
       else if (passed) text = STRINGS.status.passed(pet.name);
-      else if (isCritical(pet)) text = STRINGS.status.critical(pet.name, formatDuration(timeLeftToTreat(pet)));
+      else if (isCritical(pet)) {
+        // Only what you already have, never a price: this is about care.
+        const stars = revivalStars(state);
+        const { perStar } = CONFIG.revival.fragments;
+        const have = stars > 0 ? STRINGS.revival.haveStars(stars) : STRINGS.revival.haveFragments(state.fragments.pieces, perStar);
+        text = `${STRINGS.status.critical(pet.name, formatDuration(timeLeftToTreat(pet)))} ${have}`;
+      }
       else if (pet.condition === 'sick') text = STRINGS.status.sick(pet.name);
       else if (isRecovering(pet, now))
         text = STRINGS.status.recovering(pet.name, formatDuration(pet.recoveryUntil! - now));

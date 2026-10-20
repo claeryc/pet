@@ -4,7 +4,7 @@ import { type GameState } from '../src/game/state';
 import { newTeen } from './helpers';
 import { feed, giveMedicine, play, revive, sayGoodbye } from '../src/game/actions';
 import { CONFIG } from '../src/game/config';
-import { buyRevivalStar, grantPack, revivalStars } from '../src/game/economy';
+import { grantPack, revivalStars } from '../src/game/economy';
 import { getLook, isCritical, timeLeftToTreat } from '../src/game/stats';
 import { awayNotes } from '../src/game/away';
 import { migrate } from '../src/storage/storage';
@@ -88,16 +88,6 @@ describe('Revival Stars', () => {
     expect(revivalStars(grantPack(grantPack(newTeen(START), 'revival1'), 'revival3'))).toBe(4);
   });
 
-  it('can also be bought with gold earned by playing', () => {
-    const poor = newTeen(START);
-    poor.gold = CONFIG.revival.goldPrice - 1;
-    expect(buyRevivalStar(poor).blocked).toBe('notEnoughGold');
-    const rich = { ...poor, gold: CONFIG.revival.goldPrice };
-    const bought = buyRevivalStar(rich).state;
-    expect(revivalStars(bought)).toBe(1);
-    expect(bought.gold).toBe(0);
-  });
-
   it('cannot revive without a star', () => {
     expect(revive(simulate(sickPet(), now), now).blocked).toBe('noRevival');
   });
@@ -111,6 +101,7 @@ describe('Revival Stars', () => {
     }
     expect(back.pet.recoveryUntil).toBe(now + CONFIG.sickness.recoveryHours * HOUR);
     expect(revivalStars(back)).toBe(0);
+    expect(back.pet.starGlow).toBe(true);
   });
 
   it('does nothing to a pet that is still alive', () => {

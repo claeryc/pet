@@ -8,7 +8,7 @@ import { HATS, baitCount, revivalStars, canBuyPot, foodCount, limitedInStock, li
 import { CURTAINS, WALLPAPERS, inUse, ownsDecor, type Decor, type DecorKind } from '../game/decor';
 import type { GameState } from '../game/state';
 import type { Food, FoodId } from '../game/actions';
-import { ITEM_ICONS, STAT_ICONS } from './icons';
+import { ITEM_ICONS, STAT_ICONS, fragmentIcon } from './icons';
 import { SEEDS_FOR_SALE, SUPPLIES, priceOf, seedCount, supplyCount, type ShopItem } from '../game/garden';
 
 export interface ShopCallbacks {
@@ -21,7 +21,6 @@ export interface ShopCallbacks {
   onBuyDecor: (kind: DecorKind, id: string) => void;
   onUseDecor: (kind: DecorKind, id: string | null) => void;
   onBuyPack: (productId: string) => void; // Revival Stars, with real money
-  onBuyRevivalStar: () => void; // ...or with gold
   // The picture of a hat, as a URL (from its sprite sheet), if loaded.
   hatImage: (hat: string) => string | undefined;
 }
@@ -249,14 +248,17 @@ export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>)
       priceButton(CONFIG.fishing.bait.price, state.gold, cb.onBuyBait)),
   }];
   const room: Entry[] = [...WALLPAPERS, ...CURTAINS].map((d) => decorEntry(state, d, cb));
-  // Revival Stars: for gold, like everything else, or with real money.
+  // Revival Stars: the free star filling up from fragments, then stars to
+  // keep in your pocket, bought with real money.
   const note = STRINGS.shop.revivalNote(revivalStars(state));
+  const { perStar } = CONFIG.revival.fragments;
+  const pieces = state.fragments.pieces;
+  const filling = fragmentIcon(pieces, perStar);
   const revival: Entry[] = [
     {
-      icon: ITEM_ICONS.revivalStar,
+      icon: filling,
       count: countBadge(revivalStars(state)),
-      row: row(ITEM_ICONS.revivalStar, STRINGS.shop.revivalStar, note,
-        priceButton(CONFIG.revival.goldPrice, state.gold, cb.onBuyRevivalStar)),
+      row: row(filling, STRINGS.shop.fragments, STRINGS.shop.fragmentsNote, label(STRINGS.shop.fragmentsCount(pieces, perStar))),
     },
     ...CONFIG.store.map((p) => ({
       icon: ITEM_ICONS[p.item],

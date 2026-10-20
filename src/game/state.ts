@@ -53,6 +53,8 @@ export interface Pet {
   themes: string[];
   // The friend it had a little one with. A pet only ever has one partner.
   partner: string | null;
+  // Brought back with a Revival Star: it keeps a faint star-glow.
+  starGlow: boolean;
 }
 
 // Everything the player owns.
@@ -193,6 +195,16 @@ export type Message =
   | { kind: 'badge'; at: number; id: string; tier: 'bronze' | 'silver' | 'gold' }
   | { kind: 'level'; at: number; level: number };
 
+// Star fragments, the free way to a Revival Star (see src/game/fragments.ts).
+export interface Fragments {
+  pieces: number; // fragments towards the next star (0 to 4)
+  streak: number; // days of care in a row so far
+  lastDay: string; // the last local day that counted, e.g. "2026-10-20"
+  // What has already given a fragment, so nothing counts twice:
+  // "grown:<pet id>" and "badge:<achievement id>".
+  from: string[];
+}
+
 // You, the keeper (see src/game/skills.ts): XP and skills stay with you
 // from pet to pet.
 export interface Keeper {
@@ -264,6 +276,7 @@ export interface GameState {
   tally: Record<string, number>;
   badges: Record<string, 'bronze' | 'silver' | 'gold'>;
   keeper: Keeper;
+  fragments: Fragments;
 }
 
 export function newKeeper(): Keeper {
@@ -302,6 +315,7 @@ export function newPet(now: number, family: { generation: number; parents: strin
     hat: null,
     themes: [...family.themes],
     partner: null,
+    starGlow: false,
   };
 }
 
@@ -337,5 +351,6 @@ export function createNewGame(now: number): GameState {
     tally: {},
     badges: {},
     keeper: newKeeper(),
+    fragments: { pieces: 0, streak: 0, lastDay: '', from: [] },
   };
 }

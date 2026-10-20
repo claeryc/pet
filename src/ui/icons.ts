@@ -96,6 +96,29 @@ export const UNKNOWN_ICON = pixelIcon([
   '.....kk.....',
 ]);
 
+// The Revival Star's grid, shared with the star-fragment icon below.
+const REVIVAL_STAR = [
+  '.....kk.....',
+  '....kyyk....',
+  '....kyyk....',
+  'kkkkyyyykkkk',
+  'kyyyrryrryyk',
+  '.kyyrrrrryk.',
+  '..kyyrrryk..',
+  '..kyyyryyk..',
+  '.kyyykkyyyk.',
+  '.kyyk..kyyk.',
+  'kyyk....kyyk',
+  'kkk......kkk',
+];
+
+// Star fragments towards the next Revival Star: the star's outline, filled
+// from the bottom up as fragments come in (pale lilac where it's empty).
+export function fragmentIcon(pieces: number, perStar: number): string {
+  const cut = Math.round(REVIVAL_STAR.length * (1 - Math.min(1, pieces / perStar)));
+  return pixelIcon(REVIVAL_STAR.map((row, y) => (y < cut ? row.replace(/[yr]/g, 'v') : row)));
+}
+
 // Big icons (12x12) shown at the start of each row.
 export const ITEM_ICONS: Record<string, string> = {
   ...ROOM_ICONS,
@@ -639,21 +662,8 @@ export const ITEM_ICONS: Record<string, string> = {
     '............',
   ]),
   // A glowing star with a little heart inside: brings back a pet that
-  // passed away (sold in the Star Shop).
-  revivalStar: pixelIcon([
-    '.....kk.....',
-    '....kyyk....',
-    '....kyyk....',
-    'kkkkyyyykkkk',
-    'kyyyrryrryyk',
-    '.kyyrrrrryk.',
-    '..kyyrrryk..',
-    '..kyyyryyk..',
-    '.kyyykkyyyk.',
-    '.kyyk..kyyk.',
-    'kyyk....kyyk',
-    'kkk......kkk',
-  ]),
+  // passed away.
+  revivalStar: pixelIcon(REVIVAL_STAR),
   plantCure: pixelIcon([
     '....kkkk....',
     '....kwwk....',

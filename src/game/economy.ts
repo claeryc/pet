@@ -2,7 +2,8 @@
 // so a second currency (or anything else) could be added here later
 // without touching the rest of the game. Gold can only be earned by
 // playing. The only real-money items are Revival Stars (which can also be
-// bought with gold); paying for them is handled by src/payments.ts.
+// earned from star fragments, see fragments.ts); paying for them is
+// handled by src/payments.ts.
 
 import { CONFIG } from './config';
 import hatData from '../data/hats.json';
@@ -93,14 +94,6 @@ export function limitedLeft(state: GameState, now: number): number {
 
 export function revivalStars(state: GameState): number {
   return state.inventory.supplies.revivalStar ?? 0;
-}
-
-// The other way to get one: with gold earned by playing.
-export function buyRevivalStar(state: GameState): ShopResult {
-  const price = CONFIG.revival.goldPrice;
-  if (!canAfford(state, price)) return { state, blocked: 'notEnoughGold' };
-  const supplies = { ...state.inventory.supplies, revivalStar: revivalStars(state) + 1 };
-  return { state: { ...state, gold: state.gold - price, inventory: { ...state.inventory, supplies } } };
 }
 
 // Gives the player what a Star Shop pack holds, once it's been paid for.

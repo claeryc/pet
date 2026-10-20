@@ -371,10 +371,10 @@ export const STRINGS = {
     title: (name: string) => `Bring ${name} back?`,
     useAsk: (name: string, have: number) =>
       `A Revival Star brings ${name} back, a little weak and needing rest. You have ${have}.`,
-    buyAsk: (name: string, gold: number) =>
-      `A Revival Star brings ${name} back, a little weak and needing rest. You can get one for ${gold} gold, earned by playing.`,
+    buyAsk: (name: string, pieces: number, perStar: number) =>
+      `A Revival Star brings ${name} back, a little weak and needing rest. You have ${pieces} of ${perStar} star fragments: ` +
+      'they come from caring well, like a week of daily visits, a finished achievement or a pet growing up.',
     use: 'Use a Revival Star',
-    buyGold: (gold: number) => `Buy for ${gold} gold`,
     buy: (price: string) => `Buy for ${price}`,
     notNow: 'Not now',
     back: (name: string) => `${name} is back! Let ${name} rest for a while.`,
@@ -391,6 +391,12 @@ export const STRINGS = {
     pay: (price: string) => `Pay ${price}`,
     cancel: 'Cancel',
     bought: (count: number) => (count === 1 ? 'You got a Revival Star!' : `You got ${count} Revival Stars!`),
+    // Star fragments: the free way to a Revival Star.
+    fragment: (pieces: number, perStar: number) => `You found a star fragment! (${pieces}/${perStar})`,
+    fragmentsDone: 'Star fragments came together!',
+    // Under the dying countdown: what you already have, never a price.
+    haveStars: (count: number) => (count === 1 ? 'You have 1 Revival Star.' : `You have ${count} Revival Stars.`),
+    haveFragments: (pieces: number, perStar: number) => `Star fragments: ${pieces}/${perStar}.`,
   },
   shop: {
     title: 'Shop',
@@ -434,7 +440,10 @@ export const STRINGS = {
     revivalTitle: 'Revival Stars',
     revivalStar: 'Revival Star',
     revivalPack: (count: number) => (count === 1 ? 'Revival Star' : `${count} Revival Stars`),
-    revivalNote: (have: number) => `Brings back a pet that passed away. You have ${have}`,
+    revivalNote: (have: number) => `Keep a star in your pocket, just in case. You have ${have}`,
+    fragments: 'Star fragments',
+    fragmentsNote: 'Free from caring well: a week of daily visits, a finished achievement, a pet growing up',
+    fragmentsCount: (pieces: number, perStar: number) => `${pieces}/${perStar}`,
   },
   // Opened by holding the pet.
   wardrobe: {

@@ -120,17 +120,20 @@ export const CONFIG = {
 
   // Bringing a pet back after it passed away. It wakes up a bit weak,
   // with these stats (at least), and rests like it does after medicine.
-  // A Revival Star can always be earned: the Shop sells it for gold too.
+  // A Revival Star can always be earned: `perStar` star fragments make
+  // one, and fragments come from good care (see src/game/fragments.ts),
+  // e.g. every `careDays` days of care in a row.
   revival: {
     stats: { hunger: 60, happiness: 60, health: 60, energy: 60 },
-    goldPrice: 300,
+    fragments: { perStar: 5, careDays: 7 },
   },
 
-  // Revival Stars bought with real money. `price` is shown as it is;
-  // buying is only a stand-in for now (see src/payments.ts).
+  // Revival Stars bought with real money, sold calmly as "a star in your
+  // pocket" in the Shop (never next to the dying countdown). `price` is
+  // shown as it is; buying is only a stand-in for now (see src/payments.ts).
   store: [
-    { id: 'revival1', item: 'revivalStar', count: 1, price: '$0.99' },
-    { id: 'revival3', item: 'revivalStar', count: 3, price: '$2.49' },
+    { id: 'revival1', item: 'revivalStar', count: 1, price: '€0.99' },
+    { id: 'revival3', item: 'revivalStar', count: 3, price: '€1.99' },
   ],
 
   // The hidden Care Score (0-100) tracks long-term care. Later it decides

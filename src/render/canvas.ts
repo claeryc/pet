@@ -18,11 +18,13 @@ export interface OtherPet {
   sheet: SpriteSheet | undefined;
   hat?: SpriteSheet;
   animation: string;
+  glow?: boolean; // brought back with a Revival Star
 }
 
 // What the room should look like right now.
 export interface Scene {
   animation: string; // which pet animation to play
+  glow?: boolean; // the pet was brought back with a Revival Star
   night: boolean; // night-time outside the window
   lightsOff: boolean; // the room is dark (pet is sleeping)
   fishing?: FishingPhase; // draws a little pond, rod and bobber while fishing
@@ -173,6 +175,20 @@ function drawPetAt(
   }
 }
 
+// A revived pet's faint star-glow: a few tiny sparkles that twinkle in
+// and out around it, two at a time. `x` is the pet's left edge.
+const GLOW_SPOTS = [[5, 14], [27, 18], [3, 30], [29, 31], [16, 8]];
+function drawGlow(ctx: CanvasRenderingContext2D, x: number, timeMs: number): void {
+  const at = Math.floor(timeMs / 450);
+  ctx.fillStyle = PALETTE.butter;
+  for (let i = 0; i < GLOW_SPOTS.length; i++) {
+    if ((at + i * 2) % 5 > 1) continue;
+    const [dx, dy] = GLOW_SPOTS[i];
+    ctx.fillRect(x + dx, dy - 1, 1, 3);
+    ctx.fillRect(x + dx - 1, dy, 3, 1);
+  }
+}
+
 // A small golden ring, bobbing gently, its middle at (cx, just above y).
 function drawHalo(ctx: CanvasRenderingContext2D, cx: number, y: number, timeMs: number): void {
   const bob = Math.floor(timeMs / 600) % 2;
@@ -283,9 +299,12 @@ export function drawRoom(
     const x = Math.round(centre + (-2 - centre) * slide);
     if (housemate) {
       drawRug(ctx, x);
-      drawPetAt(ctx, housemate.sheet, housemate.animation, SPOTS[spot === 'left' ? 'right' : 'left'], timeMs, housemate.hat);
+      const hx = SPOTS[spot === 'left' ? 'right' : 'left'];
+      drawPetAt(ctx, housemate.sheet, housemate.animation, hx, timeMs, housemate.hat);
+      if (housemate.glow) drawGlow(ctx, hx, timeMs);
     }
     drawPetAt(ctx, sheet, scene.animation, x, timeMs, hat);
+    if (scene.glow) drawGlow(ctx, x, timeMs);
     if (meeting) {
       drawPetAt(ctx, meeting.sheet, meeting.animation, SPOTS.right, timeMs, meeting.hat);
       if (meeting.hearts) drawHearts(ctx, timeMs);

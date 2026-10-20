@@ -126,6 +126,7 @@ export function revive(state: GameState, now: number): ActionResult {
         pet.stats[stat] = Math.max(pet.stats[stat], least);
       }
       pet.recoveryUntil = now + CONFIG.sickness.recoveryHours * 3_600_000;
+      pet.starGlow = true;
     }),
   };
 }
