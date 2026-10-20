@@ -12,8 +12,9 @@ export interface PetStats {
   energy: number; // 0-100
 }
 
-// healthy -> warning (a stat is low) -> sick (stayed low too long).
-export type Condition = 'healthy' | 'warning' | 'sick';
+// healthy -> warning (a stat is low) -> sick (stayed low too long) ->
+// passed (sick too long without medicine; a Revival Star brings it back).
+export type Condition = 'healthy' | 'warning' | 'sick' | 'passed';
 
 // A timed effect from food, e.g. "tummy empties 20% slower until 6pm".
 export interface Buff {
@@ -42,6 +43,7 @@ export interface Pet {
   asleep: boolean; // true while the lights are off
   condition: Condition;
   warningMinutes: number; // how long the current warning has lasted
+  sickMinutes: number; // how long it has been sick without medicine
   recoveryUntil: number | null; // resting after medicine until this time
   careScore: number; // hidden 0-100 long-term care rating
   buffs: Buff[]; // active timed effects
@@ -58,7 +60,7 @@ export interface Inventory {
   food: Record<string, number>; // food id -> how many
   hats: string[]; // ids of hats bought (each is bought once)
   seeds: Record<string, number>; // crop id -> how many seeds
-  supplies: Record<string, number>; // 'fertilizer' / 'plantCure' / 'bait' -> how many
+  supplies: Record<string, number>; // 'fertilizer' / 'plantCure' / 'bait' / 'revivalStar' -> how many
   decor: string[]; // room decorations bought, e.g. "wallpaper:dots", "curtains:rose"
 }
 
@@ -293,6 +295,7 @@ export function newPet(now: number, family: { generation: number; parents: strin
     asleep: false,
     condition: 'healthy',
     warningMinutes: 0,
+    sickMinutes: 0,
     recoveryUntil: null,
     careScore: CONFIG.careScore.start,
     buffs: [],

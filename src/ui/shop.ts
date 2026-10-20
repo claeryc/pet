@@ -4,7 +4,7 @@
 
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
-import { HATS, baitCount, canBuyPot, foodCount, limitedInStock, limitedLeft, localDay } from '../game/economy';
+import { HATS, baitCount, revivalStars, canBuyPot, foodCount, limitedInStock, limitedLeft, localDay } from '../game/economy';
 import { CURTAINS, WALLPAPERS, inUse, ownsDecor, type Decor, type DecorKind } from '../game/decor';
 import type { GameState } from '../game/state';
 import type { Food, FoodId } from '../game/actions';
@@ -20,6 +20,7 @@ export interface ShopCallbacks {
   onBuyPot: () => void;
   onBuyDecor: (kind: DecorKind, id: string) => void;
   onUseDecor: (kind: DecorKind, id: string | null) => void;
+  onBuyPack: (productId: string) => void; // Star Shop, with real money
   // The picture of a hat, as a URL (from its sprite sheet), if loaded.
   hatImage: (hat: string) => string | undefined;
 }
@@ -178,7 +179,7 @@ function decorEntry(state: GameState, d: Decor, cb: ShopCallbacks): Entry {
 }
 
 // The Shop's categories, in order. Other screens can open the Shop at one.
-export type ShopCategory = 'food' | 'garden' | 'fishing' | 'room' | 'hats';
+export type ShopCategory = 'store' | 'food' | 'garden' | 'fishing' | 'room' | 'hats';
 
 // Food the Shop sells: only plain ingredients (the energy drink only on its days).
 export const soldInShop = (f: Food) => f.price > 0 && !f.caughtOnly && !f.grownOnly && !f.cookedOnly;
@@ -247,7 +248,15 @@ export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>)
       priceButton(CONFIG.fishing.bait.price, state.gold, cb.onBuyBait)),
   }];
   const room: Entry[] = [...WALLPAPERS, ...CURTAINS].map((d) => decorEntry(state, d, cb));
+  // The Star Shop: priced in real money, not gold.
+  const store: Entry[] = CONFIG.store.map((p) => ({
+    icon: ITEM_ICONS[p.item],
+    count: countBadge(p.count > 1 ? p.count : 0),
+    row: row(ITEM_ICONS[p.item], STRINGS.shop.revivalPack(p.count), STRINGS.shop.revivalNote(revivalStars(state)),
+      button(p.price, () => cb.onBuyPack(p.id), 'shop-btn shop-btn-money')),
+  }));
   return [
+    category('store', STRINGS.shop.store, store, open),
     category('food', STRINGS.shop.food, food, open),
     category('garden', STRINGS.shop.garden, garden, open),
     category('fishing', STRINGS.shop.fishing, fishing, open),

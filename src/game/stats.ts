@@ -34,13 +34,28 @@ export function isRecovering(pet: Pet, now: number): boolean {
 
 // Mini-games (and later breeding) are blocked while sick, recovering or asleep.
 export function canPlayMinigames(pet: Pet, now: number): boolean {
-  return !pet.asleep && pet.condition !== 'sick' && !isRecovering(pet, now);
+  return !pet.asleep && pet.condition !== 'sick' && pet.condition !== 'passed' && !isRecovering(pet, now);
+}
+
+export function hasPassed(pet: Pet): boolean {
+  return pet.condition === 'passed';
+}
+
+// How long a sick pet has left before it passes away, in milliseconds.
+export function timeLeftToTreat(pet: Pet): number {
+  return Math.max(0, CONFIG.sickness.hoursBeforePassing * 60 - pet.sickMinutes) * 60_000;
+}
+
+// True in a sick pet's last hours, when the banner turns urgent.
+export function isCritical(pet: Pet): boolean {
+  return pet.condition === 'sick' && timeLeftToTreat(pet) <= CONFIG.sickness.criticalHours * 3_600_000;
 }
 
 // Which animation to show for the pet right now.
-export type Look = 'idle' | 'cheerful' | 'sad' | 'sleep' | 'sick';
+export type Look = 'idle' | 'cheerful' | 'sad' | 'sleep' | 'sick' | 'passed';
 
 export function getLook(pet: Pet): Look {
+  if (pet.condition === 'passed') return 'passed';
   if (pet.asleep) return 'sleep';
   if (pet.condition === 'sick') return 'sick';
   if (pet.condition === 'warning' || isNeglected(pet.stats)) return 'sad';

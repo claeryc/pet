@@ -7,11 +7,13 @@ import { CONFIG } from './config';
 import { simulate } from './simulate';
 import { clampStat } from './stats';
 import { stageLengthMs } from './growth';
-import { useFood } from './economy';
+import { revivalStars, useFood } from './economy';
 import { satisfyCraving } from './craving';
-import type { GameState, Pet } from './state';
+import { newPet, type GameState, type Pet } from './state';
+import { rememberPet } from './family';
+import { retire } from './friends';
 
-export type BlockReason = 'egg' | 'asleep' | 'tooTired' | 'notSick' | 'noFood' | 'resting';
+export type BlockReason = 'egg' | 'asleep' | 'tooTired' | 'notSick' | 'noFood' | 'resting' | 'passed' | 'noRevival';
 
 export interface ActionResult {
   state: GameState;
@@ -40,6 +42,7 @@ export type ActivityId = (typeof CONFIG.activities)[number]['id'];
 
 export function feed(state: GameState, now: number, foodId: FoodId = 'riceBall'): ActionResult {
   const s = simulate(state, now);
+  if (s.pet.condition === 'passed') return { state: s, blocked: 'passed' };
   if (s.pet.stage === 'egg') return { state: s, blocked: 'egg' };
   if (s.pet.asleep) return { state: s, blocked: 'asleep' };
   const food: Food = CONFIG.foods.find((f) => f.id === foodId)!;
@@ -67,6 +70,7 @@ export function feed(state: GameState, now: number, foodId: FoodId = 'riceBall')
 
 export function play(state: GameState, now: number, activityId: ActivityId = 'cuddle'): ActionResult {
   const s = simulate(state, now);
+  if (s.pet.condition === 'passed') return { state: s, blocked: 'passed' };
   if (s.pet.stage === 'egg') return { state: s, blocked: 'egg' };
   if (s.pet.asleep) return { state: s, blocked: 'asleep' };
   const activity = CONFIG.activities.find((a) => a.id === activityId)!;
@@ -83,6 +87,7 @@ export function play(state: GameState, now: number, activityId: ActivityId = 'cu
 // Turns the lights off (pet goes to sleep) or on (pet wakes up).
 export function toggleLights(state: GameState, now: number): ActionResult {
   const s = simulate(state, now);
+  if (s.pet.condition === 'passed') return { state: s, blocked: 'passed' };
   if (s.pet.stage === 'egg') return { state: s, blocked: 'egg' };
   return { state: withPet(s, (pet) => (pet.asleep = !pet.asleep)) };
 }
@@ -90,14 +95,52 @@ export function toggleLights(state: GameState, now: number): ActionResult {
 // Cures sickness and starts the recovery rest.
 export function giveMedicine(state: GameState, now: number): ActionResult {
   const s = simulate(state, now);
+  if (s.pet.condition === 'passed') return { state: s, blocked: 'passed' };
   if (s.pet.condition !== 'sick') return { state: s, blocked: 'notSick' };
   return {
     state: withPet(s, (pet) => {
       pet.condition = 'healthy';
       pet.warningMinutes = 0;
+      pet.sickMinutes = 0;
       pet.stats.health = clampStat(pet.stats.health + CONFIG.sickness.medicineHealth);
       pet.recoveryUntil = now + CONFIG.sickness.recoveryHours * 3_600_000;
     }),
+  };
+}
+
+// Uses a Revival Star to bring back a pet that passed away. It comes back
+// a little weak and rests, like after medicine.
+export function revive(state: GameState, now: number): ActionResult {
+  const s = simulate(state, now);
+  if (s.pet.condition !== 'passed') return { state: s, blocked: 'notSick' };
+  const stars = revivalStars(s);
+  if (stars < 1) return { state: s, blocked: 'noRevival' };
+  const used = { ...s, inventory: { ...s.inventory, supplies: { ...s.inventory.supplies, revivalStar: stars - 1 } } };
+  return {
+    state: withPet(used, (pet) => {
+      pet.condition = 'healthy';
+      pet.warningMinutes = 0;
+      pet.sickMinutes = 0;
+      pet.asleep = false;
+      for (const [stat, least] of Object.entries(CONFIG.revival.stats) as [keyof Pet['stats'], number][]) {
+        pet.stats[stat] = Math.max(pet.stats[stat], least);
+      }
+      pet.recoveryUntil = now + CONFIG.sickness.recoveryHours * 3_600_000;
+    }),
+  };
+}
+
+// Lets a pet that passed away go: it moves into the Family Tree. The next
+// pet in the room takes its place, or, if it was the only one, a new egg.
+export function sayGoodbye(state: GameState, now: number): GameState {
+  const s = simulate(state, now);
+  if (s.pet.condition !== 'passed') return s;
+  if (s.housemates.length > 0) return retire(s, s.pet.id);
+  return {
+    ...s,
+    pet: newPet(now),
+    family: [...s.family, rememberPet(s.pet, s.owner)],
+    craving: { ...s.craving, food: null },
   };
 }
 

@@ -12,14 +12,18 @@ import {
   giveMedicine,
   growNow,
   play,
+  revive,
+  sayGoodbye,
   toggleLights,
   type ActionResult,
   type Food,
 } from './game/actions';
 import { characterSheet, getCharacter, getVariant, sheetFor } from './game/growth';
 import {
-  buyBait, buyDecor, buyFood, buyGardenItem, buyHat, buyPot, checkIn, earn, getHat, wearHat, type ShopResult,
+  buyBait, buyDecor, buyFood, buyGardenItem, buyHat, buyPot, checkIn, earn, getHat, grantPack, revivalStars, wearHat,
+  type ShopResult,
 } from './game/economy';
+import { purchase, type ProductId } from './payments';
 import { useDecor } from './game/decor';
 import { getLook, isNight } from './game/stats';
 import { cast, land, toggleBait } from './game/fishing';
@@ -308,6 +312,67 @@ function runBox(action: (s: GameState) => BoxResult, food?: string): void {
 }
 const boxFood = (i: number) => state.delivery.order?.boxes[i]?.food;
 
+// The Star Shop: pays (a stand-in for now, see src/payments.ts) and hands
+// out the pack. Resolves true if it was bought.
+function buyPack(productId: ProductId): Promise<boolean> {
+  const pack = CONFIG.store.find((p) => p.id === productId)!;
+  const confirmPay = () => new Promise<boolean>((resolve) => {
+    choice.open({
+      title: STRINGS.revival.payTitle,
+      text: STRINGS.revival.payAsk(STRINGS.shop.revivalPack(pack.count), pack.price),
+      options: [
+        { label: STRINGS.revival.pay(pack.price), onPick: () => resolve(true) },
+        { label: STRINGS.revival.cancel, soft: true, onPick: () => resolve(false) },
+      ],
+    });
+  });
+  return purchase(productId, confirmPay).then((paid) => {
+    if (!paid) return false;
+    setState(grantPack(state, productId));
+    home.reveal({ icon: ITEM_ICONS[pack.item], name: STRINGS.shop.revivalStar, count: pack.count, stars: 0 });
+    home.toast(STRINGS.revival.bought(pack.count));
+    return true;
+  });
+}
+
+// A pet that passed away: bring it back with a Revival Star, buying one
+// first if there's none.
+function askRevive(): void {
+  const name = state.pet.name;
+  const doRevive = () => {
+    const result = revive(state, gameNow());
+    setState(result.state);
+    if (result.blocked) return home.toast(STRINGS.blocked[result.blocked](name));
+    home.toast(STRINGS.revival.back(name));
+    react('happy');
+  };
+  const have = revivalStars(state);
+  const single = CONFIG.store[0];
+  choice.open({
+    title: STRINGS.revival.title(name),
+    text: have > 0 ? STRINGS.revival.useAsk(name, have) : STRINGS.revival.buyAsk(name, single.price),
+    options: [
+      have > 0
+        ? { label: STRINGS.revival.use, onPick: doRevive }
+        : { label: STRINGS.revival.buy(single.price), onPick: () => buyPack(single.id).then((ok) => ok && doRevive()) },
+      { label: STRINGS.revival.notNow, soft: true, onPick: () => {} },
+    ],
+  });
+}
+
+// ...or let it go into the Family Tree.
+function askGoodbye(): void {
+  const name = state.pet.name;
+  choice.open({
+    title: STRINGS.revival.goodbyeTitle(name),
+    text: state.housemates.length > 0 ? STRINGS.revival.goodbyeAskHousemate(name) : STRINGS.revival.goodbyeAsk(name),
+    options: [
+      { label: STRINGS.revival.keep, onPick: () => {} },
+      { label: STRINGS.revival.goodbyeYes, soft: true, onPick: () => setState(sayGoodbye(state, gameNow())) },
+    ],
+  });
+}
+
 // Friends: says why something was refused.
 function friendBlocked(reason: FriendBlock | MingleBlock): void {
   home.toast(STRINGS.friends.blocked[reason](state.pet.name));
@@ -429,6 +494,8 @@ const home = createHomeScreen(root, {
     runAction(giveMedicine);
     showGains(before, { health: 1 });
   },
+  onRevive: askRevive,
+  onGoodbye: askGoodbye,
   onCast: () => {
     const result = cast(state, gameNow());
     setState(result.state);
@@ -596,6 +663,7 @@ const home = createHomeScreen(root, {
   onBuyDecor: (kind, id) => runShop(buyDecor(state, kind, id),
     STRINGS.shop.bought((kind === 'wallpaper' ? STRINGS.shop.wallpapers : STRINGS.shop.curtains)[id] ?? id)),
   onUseDecor: (kind, id) => runShop(useDecor(state, kind, id)),
+  onBuyPack: (id) => void buyPack(id as ProductId),
   onBuyHat: (id) => runShop(buyHat(state, id), STRINGS.shop.boughtHat(getHat(id)?.name ?? '', state.pet.name)),
   onWearHat: (id) => runShop(wearHat(state, id)),
   hatImage: (id) => sprites.get(getHat(id)?.sheet ?? '')?.image.src,

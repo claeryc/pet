@@ -4,7 +4,8 @@
 // It never relies on the browser tab staying open. Whether you closed the game
 // for ten seconds or ten days, it walks forward one minute at a time (a
 // "tick") and applies everything that would have happened in between: stats
-// dropping, sleeping and waking, warnings, sickness and the Care Score. We
+// dropping, sleeping and waking, warnings, sickness (and passing away if
+// it's left sick too long) and the Care Score. We
 // call it when the game loads, when you come back to the tab, and every few
 // seconds while open.
 
@@ -63,6 +64,9 @@ export function simulate(state: GameState, now: number): GameState {
 function tick(pet: Pet, t: number, wasNight: boolean, perks: CarePerks): void {
   const cfg = CONFIG;
 
+  // A pet that passed away stays just as it was until it's revived.
+  if (pet.condition === 'passed') return;
+
   // 0. Growing up. An egg just waits to hatch: nothing else happens to it.
   if (t - pet.stageStartedAt >= stageLengthMs(pet.stage)) growUp(pet, t);
   if (pet.stage === 'egg') return;
@@ -119,10 +123,24 @@ function tick(pet: Pet, t: number, wasNight: boolean, perks: CarePerks): void {
       pet.warningMinutes += cfg.tickMinutes;
       const warnedLongEnough = pet.warningMinutes >= cfg.sickness.warningHoursBeforeSick * 60;
       // A pet resting after medicine can't fall sick again straight away.
-      if (warnedLongEnough && !recovering) pet.condition = 'sick';
+      if (warnedLongEnough && !recovering) {
+        pet.condition = 'sick';
+        pet.sickMinutes = 0;
+      }
     }
   }
-  // A sick pet stays sick until it gets medicine (see actions.ts).
+  // A sick pet stays sick until it gets medicine (see actions.ts). Left
+  // sick for too long, it passes away.
+  if (pet.condition === 'sick') {
+    pet.sickMinutes += cfg.tickMinutes;
+    if (pet.sickMinutes >= cfg.sickness.hoursBeforePassing * 60) {
+      pet.condition = 'passed';
+      pet.asleep = false;
+      pet.buffs = [];
+      s.health = 0;
+      return;
+    }
+  }
 
   // 5. Care Score.
   let care = 0;

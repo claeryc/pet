@@ -110,7 +110,26 @@ export const CONFIG = {
     // After medicine the pet rests. It can't play mini-games or breed, and it
     // can't get sick again, but feeding and cuddling still work.
     recoveryHours: 6,
+    // A pet left sick this long without medicine passes away. It stays in
+    // the room, greyed out, until a Revival Star brings it back or you say
+    // goodbye. With the warning first, that's over a day of neglect.
+    hoursBeforePassing: 24,
+    // In its last hours the banner turns urgent and counts down.
+    criticalHours: 6,
   },
+
+  // Bringing a pet back after it passed away. It wakes up a bit weak,
+  // with these stats (at least), and rests like it does after medicine.
+  revival: {
+    stats: { hunger: 60, happiness: 60, health: 60, energy: 60 },
+  },
+
+  // The Star Shop: things bought with real money. `price` is shown as it
+  // is; buying is only a stand-in for now (see src/payments.ts).
+  store: [
+    { id: 'revival1', item: 'revivalStar', count: 1, price: '$0.99' },
+    { id: 'revival3', item: 'revivalStar', count: 3, price: '$2.49' },
+  ],
 
   // The hidden Care Score (0-100) tracks long-term care. Later it decides
   // which adult form the pet grows into.

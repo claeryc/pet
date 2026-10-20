@@ -638,6 +638,22 @@ export const ITEM_ICONS: Record<string, string> = {
     '.kkkkkkkkkk.',
     '............',
   ]),
+  // A glowing star with a little heart inside: brings back a pet that
+  // passed away (sold in the Star Shop).
+  revivalStar: pixelIcon([
+    '.....kk.....',
+    '....kyyk....',
+    '....kyyk....',
+    'kkkkyyyykkkk',
+    'kyyyrryrryyk',
+    '.kyyrrrrryk.',
+    '..kyyrrryk..',
+    '..kyyyryyk..',
+    '.kyyykkyyyk.',
+    '.kyyk..kyyk.',
+    'kyyk....kyyk',
+    'kkk......kkk',
+  ]),
   plantCure: pixelIcon([
     '....kkkk....',
     '....kwwk....',

@@ -61,12 +61,13 @@ export function pickCraving(state: GameState, now: number): string | null {
 // before its first one.
 export function stepCraving(state: GameState, now: number): GameState {
   let craving = state.craving;
-  if (craving.food && now >= craving.until) {
+  // A pet that passed away doesn't crave anything.
+  if (craving.food && (now >= craving.until || state.pet.condition === 'passed')) {
     craving = { ...craving, food: null, nextAt: craving.until + C.nextAfterHours * HOUR };
   }
   const { pet } = state;
   const settlingIn = !pet.named || (pet.stage === 'baby' && now - pet.stageStartedAt < C.firstAfterHatchHours * HOUR);
-  if (!craving.food && now >= craving.nextAt && pet.stage !== 'egg' && !settlingIn && !pet.asleep && !isNight(now)) {
+  if (!craving.food && now >= craving.nextAt && pet.stage !== 'egg' && pet.condition !== 'passed' && !settlingIn && !pet.asleep && !isNight(now)) {
     const food = pickCraving({ ...state, craving }, now);
     if (food) craving = { ...craving, food, until: now + C.lastsHours * HOUR, last: food };
   }

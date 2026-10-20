@@ -144,10 +144,24 @@ function drawPetAt(
     return;
   }
   const { frameWidth: w, frameHeight: h } = sheet;
+  // A pet that passed away lies still with its eyes closed, faded and
+  // grey, with a little halo floating over its head.
+  const passed = animation === 'passed';
+  if (passed) {
+    ctx.save();
+    ctx.filter = 'grayscale(1)';
+    ctx.globalAlpha = 0.6;
+  }
   // Where it stands keeps two pets' idle moves from happening together.
-  const { sx, sy, headOffset, headShift } = frameFor(sheet, animation, timeMs, x);
+  const { sx, sy, headOffset, headShift } = frameFor(sheet, passed ? 'sleep' : animation, passed ? 0 : timeMs, x);
   const dy = 40 - h;
   ctx.drawImage(sheet.image, sx, sy, w, h, x, dy, w, h);
+  if (passed) {
+    ctx.restore();
+    const head = sheet.head ?? { x: w / 2, y: 6 };
+    drawHalo(ctx, x + head.x, dy + head.y + headOffset, timeMs);
+    return; // no hat
+  }
   if (hat && sheet.head) {
     const { frameWidth: hw, frameHeight: hh } = hat;
     // The pet's shape can nudge this one hat, or give it a different width.
@@ -157,6 +171,17 @@ function drawPetAt(
     const hy = dy + sheet.head.y + (fit?.y ?? 0) + headOffset - hh;
     ctx.drawImage(hat.image, col * hw, 0, hw, hh, hx, hy, hw, hh);
   }
+}
+
+// A small golden ring, bobbing gently, its middle at (cx, just above y).
+function drawHalo(ctx: CanvasRenderingContext2D, cx: number, y: number, timeMs: number): void {
+  const bob = Math.floor(timeMs / 600) % 2;
+  const top = y - 7 - bob;
+  ctx.fillStyle = PALETTE.butter;
+  ctx.fillRect(cx - 3, top, 6, 1);
+  ctx.fillRect(cx - 4, top + 1, 1, 1);
+  ctx.fillRect(cx + 3, top + 1, 1, 1);
+  ctx.fillRect(cx - 3, top + 2, 6, 1);
 }
 
 // Little hearts floating up between two pets that are playing together.

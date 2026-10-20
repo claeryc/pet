@@ -17,6 +17,8 @@ export const STRINGS = {
     lightsOff: 'Lights off',
     lightsOn: 'Lights on',
     medicine: 'Give medicine',
+    revive: 'Revive',
+    goodbye: 'Say goodbye',
     reset: 'Start over',
     menu: 'Menu',
   },
@@ -241,6 +243,7 @@ export const STRINGS = {
       known: (_name: string) => 'Already a friend!',
       notAdult: (name: string) => `Only grown-ups can mingle. ${name} isn't grown up yet.`,
       unwell: (name: string) => `${name} needs to be awake and feeling well to mingle.`,
+      passed: (name: string) => `${name} has passed away. A Revival Star can bring ${name} back.`,
       hearts: (_name: string) => 'You need more hearts first. Keep meeting and giving gifts!',
       taken: (name: string) => `${name} already has a partner, and a pet only ever has one.`,
       family: (name: string) => `They're family! ${name} can't mingle with a parent, a little one or a brother or sister.`,
@@ -340,11 +343,15 @@ export const STRINGS = {
     sad: (name: string) => `${name} needs some love...`,
     sleep: (name: string) => `${name} is sleeping. Shh...`,
     sick: (name: string) => `${name} is sick.`,
+    passed: (name: string) => `${name} has passed away.`,
   },
   status: {
     warning: (name: string) =>
       `${name} isn't feeling great. Fill up the low bars soon, or ${name} may get sick.`,
     sick: (name: string) => `${name} is sick and needs medicine.`,
+    critical: (name: string, timeLeft: string) =>
+      `${name} is very sick! Give medicine within ${timeLeft}, or ${name} will pass away.`,
+    passed: (name: string) => `${name} was sick for too long and passed away. A Revival Star can bring ${name} back.`,
     recovering: (name: string, timeLeft: string) =>
       `${name} is resting after medicine (${timeLeft} left). No mini-games for now, but cuddles and snacks are fine.`,
   },
@@ -355,6 +362,34 @@ export const STRINGS = {
     notSick: (name: string) => `${name} isn't sick, no medicine needed.`,
     noFood: (_name: string) => `You're out of that. Get more in the Shop.`,
     resting: (name: string) => `${name} needs to rest first. No mini-games until ${name} feels better.`,
+    passed: (name: string) => `${name} has passed away. A Revival Star can bring ${name} back.`,
+    noRevival: (_name: string) => "You don't have a Revival Star.",
+  },
+  // Bringing back a pet that passed away, and the Star Shop that sells
+  // Revival Stars for real money (a stand-in purchase for now).
+  revival: {
+    title: (name: string) => `Bring ${name} back?`,
+    useAsk: (name: string, have: number) =>
+      `A Revival Star brings ${name} back, a little weak and needing rest. You have ${have}.`,
+    buyAsk: (name: string, price: string) =>
+      `A Revival Star brings ${name} back, a little weak and needing rest. Get one for ${price}?`,
+    use: 'Use a Revival Star',
+    buy: (price: string) => `Buy for ${price}`,
+    notNow: 'Not now',
+    back: (name: string) => `${name} is back! Let ${name} rest for a while.`,
+    goodbyeTitle: (name: string) => `Say goodbye to ${name}?`,
+    goodbyeAsk: (name: string) =>
+      `${name} will rest in the Family Tree, and you'll get a new egg to look after. This can't be undone.`,
+    goodbyeAskHousemate: (name: string) =>
+      `${name} will rest in the Family Tree. This can't be undone.`,
+    goodbyeYes: 'Say goodbye',
+    keep: 'Keep waiting',
+    // The stand-in purchase: what a real store's payment sheet would ask.
+    payTitle: 'Star Shop',
+    payAsk: (what: string, price: string) => `Buy ${what} for ${price}?\n\nTest shop: no real money is charged.`,
+    pay: (price: string) => `Pay ${price}`,
+    cancel: 'Cancel',
+    bought: (count: number) => (count === 1 ? 'You got a Revival Star!' : `You got ${count} Revival Stars!`),
   },
   shop: {
     title: 'Shop',
@@ -395,6 +430,10 @@ export const STRINGS = {
     use: 'Use',
     inUse: 'In use',
     takeDown: 'Take down',
+    store: 'Star Shop',
+    revivalStar: 'Revival Star',
+    revivalPack: (count: number) => (count === 1 ? 'Revival Star' : `${count} Revival Stars`),
+    revivalNote: (have: number) => `Brings back a pet that passed away. You have ${have}`,
   },
   // Opened by holding the pet.
   wardrobe: {
@@ -506,6 +545,8 @@ export const STRINGS = {
       happiness: (name: string) => `${name} got a bit lonely.`,
     },
     sick: (name: string) => `${name} got sick. Medicine will help.`,
+    critical: (name: string, timeLeft: string) => `${name} is very sick! Only ${timeLeft} left to give medicine.`,
+    passed: (name: string) => `${name} was sick for too long and passed away.`,
     warning: (name: string) => `${name} isn't feeling well.`,
   },
   gold: {

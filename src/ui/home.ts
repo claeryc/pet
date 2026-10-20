@@ -4,7 +4,7 @@
 
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
-import { canPlayMinigames, getLook, isRecovering } from '../game/stats';
+import { canPlayMinigames, getLook, hasPassed, isCritical, isRecovering, timeLeftToTreat } from '../game/stats';
 import { stageLengthMs } from '../game/growth';
 import type { GameState, PetStats } from '../game/state';
 import { createMenu, type MenuCallbacks } from './menu';
@@ -37,6 +37,8 @@ export interface HomeCallbacks extends MenuCallbacks {
   onPlay: (activity: ActivityId) => void;
   onLights: () => void;
   onMedicine: () => void;
+  onRevive: () => void; // a pet that passed away: use (or buy) a Revival Star
+  onGoodbye: () => void; // ...or let it go
   onCast: () => boolean; // throws the fishing line; false if refused
   onLand: (grade: CatchGrade) => string | null; // the fish landed (a food id), or null
   onToggleBait: () => void;
@@ -257,12 +259,17 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   }));
   roomWrap.append(canvas, fx.el, bubble, parcel);
 
-  // Warning / sick / recovering banner, hidden when all is well.
+  // Warning / sick / recovering / passed away banner, hidden when all is well.
   const banner = document.createElement('div');
   banner.className = 'banner';
   const bannerText = document.createElement('p');
   const medicine = button(STRINGS.buttons.medicine, 'btn btn-medicine', cb.onMedicine);
-  banner.append(bannerText, medicine);
+  const revive = button(STRINGS.buttons.revive, 'btn btn-revive', cb.onRevive);
+  const goodbye = button(STRINGS.buttons.goodbye, 'btn btn-goodbye', cb.onGoodbye);
+  const passedButtons = document.createElement('div');
+  passedButtons.className = 'banner-buttons';
+  passedButtons.append(revive, goodbye);
+  banner.append(bannerText, medicine, passedButtons);
 
   const bars: Record<keyof PetStats, StatBar> = {
     hunger: statBar(STRINGS.stats.hunger, STAT_ICONS.hunger),
@@ -828,18 +835,23 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       stats.hidden = isEgg; // an egg has no needs yet
       canvas.setAttribute('aria-label', isEgg ? STRINGS.mood.egg : STRINGS.mood[getLook(pet)](pet.name));
 
-      // Banner: hatching countdown, or sick beats recovering beats warning.
+      // Banner: hatching countdown, or passed away beats sick beats
+      // recovering beats warning. In a sick pet's last hours it counts down.
+      const passed = hasPassed(pet);
       let text = '';
       if (isEgg)
         text = STRINGS.status_egg(formatDuration(pet.stageStartedAt + stageLengthMs('egg') - now));
+      else if (passed) text = STRINGS.status.passed(pet.name);
+      else if (isCritical(pet)) text = STRINGS.status.critical(pet.name, formatDuration(timeLeftToTreat(pet)));
       else if (pet.condition === 'sick') text = STRINGS.status.sick(pet.name);
       else if (isRecovering(pet, now))
         text = STRINGS.status.recovering(pet.name, formatDuration(pet.recoveryUntil! - now));
       else if (pet.condition === 'warning') text = STRINGS.status.warning(pet.name);
       banner.hidden = text === '';
-      banner.dataset.kind = pet.condition === 'sick' ? 'sick' : 'info';
+      banner.dataset.kind = passed ? 'passed' : isCritical(pet) ? 'critical' : pet.condition === 'sick' ? 'sick' : 'info';
       bannerText.textContent = text;
       medicine.hidden = pet.condition !== 'sick';
+      passedButtons.hidden = !passed;
 
       // Lights button shows what pressing it will do.
       const label = pet.asleep ? STRINGS.buttons.lightsOn : STRINGS.buttons.lightsOff;
@@ -848,9 +860,9 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       lights.title = label;
       // Dim Feed and Play while asleep. They still work when tapped, so the
       // game can explain why nothing happened.
-      feedDrawer.setDim(pet.asleep || isEgg);
-      playDrawer.setDim(pet.asleep || isEgg);
-      lights.classList.toggle('dim', isEgg);
+      feedDrawer.setDim(pet.asleep || isEgg || passed);
+      playDrawer.setDim(pet.asleep || isEgg || passed);
+      lights.classList.toggle('dim', isEgg || passed);
       // If the pet falls asleep while a panel is open, close it.
       if (pet.asleep) {
         feedDrawer.close();
