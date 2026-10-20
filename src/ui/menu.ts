@@ -1,6 +1,6 @@
 // The menu inside the gear button's panel (it opens like Feed and Play). It
-// has a main grid of icon tiles (Shop, Messages, Collection, Family Tree,
-// Settings) and a page for each, plus the Wardrobe, which opens when you hold the pet.
+// has a main list (Shop, Messages, Collection, Family Tree, Settings) and a
+// page for each, plus the Wardrobe, which opens when you hold the pet.
 // Shop, Collection and Family Tree only appear once they've opened up (see
 // src/game/unlocks.ts), with a "new" dot until you've looked at them.
 // Items for features we haven't built yet are shown greyed out with
@@ -10,13 +10,13 @@ import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import type { GameState } from '../game/state';
 import { isNew, isUnlocked, type UnlockId } from '../game/unlocks';
+import { MENU_ICONS } from './icons';
 import { goldPill, shopPage, wardrobePage, type ShopCallbacks } from './shop';
 import { collectionPage } from './collection';
 import { familyTreePage, type FamilyCallbacks, type TreeView } from './family';
 import { OWNER_MAX } from '../game/family';
 import { messagesPage, type MessagesTab } from './messages';
 import { unreadMail } from '../game/messages';
-import { MENU_ICONS } from './icons';
 
 export interface DebugCallbacks {
   onFastForward: (hours: number) => void;
@@ -136,6 +136,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     ];
   }
 
+  // The main list, shown as a grid of icon tiles.
   function showMain(): void {
     page = 'main';
     toTop();
