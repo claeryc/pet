@@ -10,6 +10,7 @@ import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import type { GameState } from '../game/state';
 import { isNew, isUnlocked, type UnlockId } from '../game/unlocks';
+import { MENU_ICONS } from './icons';
 import { goldPill, shopPage, wardrobePage, type ShopCallbacks } from './shop';
 import { collectionPage } from './collection';
 import { familyTreePage, type FamilyCallbacks, type TreeView } from './family';
@@ -53,10 +54,22 @@ export interface Menu {
   showShop: (category?: string) => void; // open the Shop, unfolded at `category`
 }
 
-function item(label: string, onClick?: () => void, isNew = false): HTMLButtonElement {
+// A row button, or with an `icon`, a square tile for the main grid.
+function item(label: string, onClick?: () => void, isNew = false, icon?: string): HTMLButtonElement {
   const b = document.createElement('button');
-  b.className = 'menu-item';
-  b.textContent = label;
+  if (icon) {
+    b.className = 'menu-tile';
+    const pic = document.createElement('span');
+    pic.className = 'menu-tile-icon';
+    pic.innerHTML = icon;
+    const name = document.createElement('span');
+    name.className = 'menu-tile-label';
+    name.textContent = label;
+    b.append(pic, name);
+  } else {
+    b.className = 'menu-item';
+    b.textContent = label;
+  }
   if (isNew) {
     const dot = document.createElement('span');
     dot.className = 'new-dot';
@@ -121,21 +134,25 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
       item(label, onClick && (() => {
         cb.onSeen(id);
         onClick();
-      }), !!onClick && isNew(state, id)), // no dot on "coming soon" items
+      }), !!onClick && isNew(state, id), MENU_ICONS[id]), // no dot on "coming soon" items
     ];
   }
 
+  // The main list, shown as a grid of icon tiles.
   function showMain(): void {
     page = 'main';
     toTop();
-    panel.replaceChildren(
+    const grid = document.createElement('div');
+    grid.className = 'menu-grid';
+    grid.append(
       ...unlockable('shop', STRINGS.menu.shop, () => showShop()),
       ...messagesItem(),
       ...unlockable('collection', STRINGS.menu.collection, () => showCollection()),
       ...skillsItem(),
       ...unlockable('familyTree', STRINGS.menu.familyTree, () => showFamilyTree()),
-      item(STRINGS.menu.settings, showSettings),
+      item(STRINGS.menu.settings, showSettings, false, MENU_ICONS.settings),
     );
+    panel.replaceChildren(grid);
   }
 
   // Messages, with a dot while there's new mail from Percy (or until it's

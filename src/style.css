@@ -833,6 +833,71 @@ body {
   background: transparent;
 }
 
+/* The main menu: a grid of icon tiles, three across, big enough to tap. */
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: 1fr; /* every tile as tall as the tallest */
+  gap: 8px;
+}
+
+.menu-tile {
+  font: inherit;
+  position: relative; /* for the "new" dot */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start; /* icons line up even when a name wraps */
+  gap: 6px;
+  min-height: 92px;
+  padding: 12px 4px 10px;
+  border: 2px solid var(--lavender);
+  border-radius: 16px;
+  background: white;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.menu-tile:active {
+  transform: translateY(1px);
+  background: var(--bg);
+}
+
+.menu-tile-icon {
+  width: 40px;
+  height: 40px;
+}
+
+.menu-tile-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.menu-tile-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.menu-tile .new-dot {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
+.menu-tile:disabled {
+  opacity: 0.5;
+  border-style: dashed;
+  background: transparent;
+  cursor: default;
+}
+
+.menu-tile .menu-soon {
+  font-size: 0.7rem;
+}
+
 .menu-panel .menu-header {
   margin-bottom: 0;
   /* Stays at the top while the list scrolls, so the gold is always in view. */
