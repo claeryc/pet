@@ -38,7 +38,7 @@ import {
   type GardenResult,
 } from './game/garden';
 import { markSeen, updateProgress } from './game/unlocks';
-import { learn, nextCost, rankOf, resetTree, type SkillId } from './game/skills';
+import { learn, nextCost, rankOf, resetTree, skillBefore, type SkillId } from './game/skills';
 import { SKILL_POINT_ICON } from './ui/icons';
 import { fillAll, orderPay, orderTier, putInBox, takeFromBox, type BoxResult } from './game/delivery';
 import { logMessage, markMessagesSeen } from './game/messages';
@@ -485,7 +485,8 @@ const home = createHomeScreen(root, {
   onLearn: (skill) => {
     const result = learn(state, skill);
     setState(result.state);
-    if (result.blocked === 'noPoints') home.toast(STRINGS.skills.needPoints(nextCostOf(skill)));
+    if (result.blocked === 'locked') home.toast(STRINGS.skills.locked(STRINGS.skills.names[skillBefore(skill)!]));
+    else if (result.blocked === 'noPoints') home.toast(STRINGS.skills.needPoints(nextCostOf(skill)));
     else if (!result.blocked) home.toast(STRINGS.skills.learned(STRINGS.skills.names[skill], rankOf(state, skill)));
   },
   onResetTree: (tree) => {

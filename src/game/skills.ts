@@ -2,7 +2,8 @@
 // things (fishing, harvesting, cooking, Percy's orders, pets growing up,
 // badges) earns Keeper XP. Each new Keeper level gives one skill point,
 // and points are spent on skills in four trees: Fishing, Garden, Kitchen
-// and Care. Each skill has three ranks, costing 1, 2 and 3 points.
+// and Care. Each skill has three ranks, costing 1, 2 and 3 points. A tree
+// is climbed in order: a skill opens once the one before it has rank 1.
 //
 // Points can be taken back a tree at a time, for gold (the first time is
 // free), so a different mix can be tried.
@@ -105,9 +106,24 @@ export function pointsToSpend(state: GameState): number {
   return keeperLevel(state) - 1 - spent;
 }
 
-export type SkillBlock = 'maxed' | 'noPoints';
+// The skill before this one in its tree (null for the first).
+export function skillBefore(skill: SkillId): SkillId | null {
+  const list = skillsIn(treeOf(skill));
+  const i = list.indexOf(skill);
+  return i > 0 ? list[i - 1] : null;
+}
+
+// True once a skill can be learned: the first in each tree always can, the
+// others once the one before has rank 1.
+export function isOpen(state: GameState, skill: SkillId): boolean {
+  const before = skillBefore(skill);
+  return before === null || rankOf(state, before) > 0;
+}
+
+export type SkillBlock = 'locked' | 'maxed' | 'noPoints';
 
 export function learn(state: GameState, skill: SkillId): { state: GameState; blocked?: SkillBlock } {
+  if (!isOpen(state, skill)) return { state, blocked: 'locked' };
   const cost = nextCost(state, skill);
   if (cost === null) return { state, blocked: 'maxed' };
   if (pointsToSpend(state) < cost) return { state, blocked: 'noPoints' };

@@ -16,8 +16,8 @@ import { familyTreePage, type FamilyCallbacks, type TreeView } from './family';
 import { OWNER_MAX } from '../game/family';
 import { messagesPage, type MessagesTab } from './messages';
 import { unreadMail } from '../game/messages';
-import { skillsPage, type SkillsCallbacks } from './skills';
-import { pointsToSpend } from '../game/skills';
+import { canLearnIn, skillsPage, type SkillsCallbacks, type SkillsView } from './skills';
+import { TREES, pointsToSpend } from '../game/skills';
 
 export interface DebugCallbacks {
   onFastForward: (hours: number) => void;
@@ -204,6 +204,9 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
   // List or Tree, and whose tree, in the Family Tree. The choice of view
   // stays while the game is open; the tree starts at your pet each time.
   const treeView: TreeView = { mode: 'list', focus: null };
+  // The tree tab and skill picked in Skills. Each visit starts at Fishing
+  // (or the first tree with a point to spend) and its next skill.
+  const skillsView: SkillsView = { tree: 'fishing', skill: null };
 
   // The Shop, Wardrobe and Collection: a header (with gold on the right in
   // the Shop, lined up with the prices), then the list.
@@ -220,7 +223,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
       if (which === 'shop') list.append(...shopPage(state, cb, openCategories));
       else if (which === 'wardrobe') list.append(...wardrobePage(state, cb));
       else if (which === 'collection') list.append(...collectionPage(state, cb, openCategories));
-      else if (which === 'skills') list.append(...skillsPage(state, cb, openCategories));
+      else if (which === 'skills') list.append(...skillsPage(state, cb, skillsView, () => showSkills(false)));
       else {
         list.classList.add('tree');
         list.append(...familyTreePage(state, cb, treeView, () => {
@@ -242,7 +245,13 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
   const showShop = (fresh = true) => showList('shop', fresh);
   const showWardrobe = (fresh = true) => showList('wardrobe', fresh);
   const showCollection = (fresh = true) => showList('collection', fresh);
-  const showSkills = (fresh = true) => showList('skills', fresh);
+  const showSkills = (fresh = true) => {
+    if (fresh) {
+      skillsView.tree = (state && TREES.find((t) => canLearnIn(state!, t))) ?? 'fishing';
+      skillsView.skill = null;
+    }
+    showList('skills', fresh);
+  };
   const showFamilyTree = (fresh = true) => showList('familyTree', fresh);
 
   function debugSection(): HTMLElement {

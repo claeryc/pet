@@ -1013,3 +1013,15 @@ export const SKILL_ICONS: Record<string, string> = {
     '.kkkkkkkkkk.',
   ]),
 };
+
+// A small padlock (8x8): a skill that hasn't opened yet.
+export const LOCK_ICON = pixelIcon([
+  '..kkkk..',
+  '.kk..kk.',
+  '.k....k.',
+  'kkkkkkkk',
+  'kyyyyyck',
+  'kyykkyck',
+  'kyyyyyck',
+  'kkkkkkkk',
+]);

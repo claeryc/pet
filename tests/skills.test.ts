@@ -3,7 +3,7 @@ import { CONFIG } from '../src/game/config';
 import type { FoodId } from '../src/game/actions';
 import { addTally, updateBadges } from '../src/game/achievements';
 import {
-  TREES, carePerks, gardenPerks, keeperLevel, learn, levelInfo, nextCost, pointsInTree, pointsToSpend, rankOf,
+  TREES, carePerks, isOpen, gardenPerks, keeperLevel, learn, levelInfo, nextCost, pointsInTree, pointsToSpend, rankOf,
   recipeHints, reelPerks, resetCost, resetTree, skillsIn, startingCare, updateLevel, xpToNext, type SkillId,
 } from '../src/game/skills';
 import { land, pickCatch, reelZones, startReel } from '../src/game/fishing';
@@ -105,9 +105,30 @@ describe('learning skills', () => {
   });
 
   it("can't learn without enough points", () => {
-    const s = learn(atLevel(3), 'headStart').state; // 2 points, 1 left
-    expect(learn(s, 'headStart').blocked).toBe('noPoints');
+    const s = learn(atLevel(3), 'steadyHands').state; // 2 points, 1 left
+    expect(learn(s, 'steadyHands').blocked).toBe('noPoints');
+    expect(learn(s, 'headStart').blocked).toBeUndefined();
+  });
+
+  it('each tree opens in order: a skill needs rank 1 in the one before', () => {
+    let s = atLevel(10);
+    expect(isOpen(s, 'steadyHands')).toBe(true);
+    expect(isOpen(s, 'headStart')).toBe(false);
+    expect(learn(s, 'headStart').blocked).toBe('locked');
+    expect(learn(s, 'luckyLine').blocked).toBe('locked');
+    s = learn(s, 'steadyHands').state;
+    expect(isOpen(s, 'headStart')).toBe(true);
+    expect(isOpen(s, 'luckyLine')).toBe(false);
+    s = learn(s, 'headStart').state;
     expect(learn(s, 'luckyLine').blocked).toBeUndefined();
+    // The first skill of every tree is open from the start.
+    for (const tree of TREES) expect(isOpen(atLevel(1), skillsIn(tree)[0])).toBe(true);
+  });
+
+  it('taking a tree back locks it again', () => {
+    const s = learn(learn(atLevel(3), 'steadyHands').state, 'headStart').state;
+    const out = resetTree(s, 'fishing').state;
+    expect(isOpen(out, 'headStart')).toBe(false);
   });
 
   it('taking a tree back is free once, then costs gold per point', () => {
@@ -118,7 +139,7 @@ describe('learning skills', () => {
     expect(pointsToSpend(free.state)).toBe(3);
     expect(free.state.gold).toBe(s.gold);
 
-    s = learn(free.state, 'headStart').state;
+    s = learn(free.state, 'steadyHands').state;
     expect(resetCost(s, 'fishing')).toBe(K.resetGoldPerPoint);
     expect(resetTree({ ...s, gold: 0 }, 'fishing').blocked).toBe('notEnoughGold');
     const paid = resetTree({ ...s, gold: 500 }, 'fishing');
@@ -128,9 +149,9 @@ describe('learning skills', () => {
   });
 
   it('only takes back the one tree', () => {
-    const s = learn(learn(atLevel(3), 'steadyHands').state, 'cozyHome').state;
+    const s = learn(learn(atLevel(3), 'steadyHands').state, 'gentleStart').state;
     const out = resetTree(s, 'fishing').state;
-    expect(rankOf(out, 'cozyHome')).toBe(1);
+    expect(rankOf(out, 'gentleStart')).toBe(1);
   });
 });
 

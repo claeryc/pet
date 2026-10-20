@@ -4006,3 +4006,205 @@ body {
     animation: none;
   }
 }
+
+/* ---- Skills (Menu > Skills) ----
+   Tabs for the four trees, then the tree: nodes joined by lines from left
+   to right. A node is dimmed with a padlock until the one before has rank
+   1, the line into it fills in once it opens, and a maxed node gets a gold
+   frame. The picked node's card sits under the tree. */
+.skill-tabs {
+  align-self: stretch;
+  margin: 4px 0 2px;
+}
+
+.skill-tabs .tree-switch-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 4px;
+  font-size: 0.8rem;
+}
+
+.skill-tree {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 10px 0 4px;
+}
+
+/* Level with the middle of the node pictures. */
+.skill-line {
+  flex: 1;
+  max-width: 40px;
+  min-width: 10px;
+  height: 6px;
+  margin-top: 25px;
+  border-radius: 3px;
+  background: var(--seg-empty-shade);
+}
+
+.skill-line[data-lit='true'] {
+  background: var(--butter);
+  box-shadow: 0 0 0 2px #f2c14e inset;
+}
+
+.skill-node {
+  font: inherit;
+  width: 76px;
+  flex: none;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.skill-node-icon {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid var(--lavender);
+  border-radius: 14px;
+  background: white;
+  transition: transform 0.15s var(--snap);
+}
+
+.skill-node-icon > svg {
+  width: 36px;
+  height: 36px;
+}
+
+.skill-node:active .skill-node-icon {
+  transform: scale(0.94);
+}
+
+.skill-node[aria-pressed='true'] .skill-node-icon {
+  box-shadow: 0 0 0 3px var(--accent);
+}
+
+.skill-node[data-state='learned'] .skill-node-icon {
+  border-color: var(--lilac);
+  background: #fff5f8;
+}
+
+.skill-node[data-state='maxed'] .skill-node-icon {
+  border-color: #f2c14e;
+  background: #fdf3cf;
+}
+
+.skill-node[data-state='open'] .skill-node-icon > svg {
+  opacity: 0.55;
+}
+
+.skill-node[data-state='locked'] .skill-node-icon {
+  background: var(--seg-empty);
+}
+
+.skill-node[data-state='locked'] .skill-node-icon > svg {
+  opacity: 0.3;
+  filter: grayscale(1);
+}
+
+.skill-node-lock {
+  position: absolute;
+  right: -7px;
+  bottom: -7px;
+  width: 22px;
+  height: 22px;
+  padding: 3px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 0 0 2px var(--lavender);
+}
+
+.skill-node-lock svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.skill-node-rank {
+  position: absolute;
+  right: -9px;
+  bottom: -8px;
+  padding: 0 5px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 2px #fff5f8;
+}
+
+.skill-node[data-state='open'] .skill-node-rank {
+  background: var(--lilac);
+}
+
+.skill-node[data-state='maxed'] .skill-node-rank {
+  background: #e0a92a;
+}
+
+.skill-node-name {
+  margin-top: 4px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.skill-node[data-state='locked'] .skill-node-name {
+  opacity: 0.55;
+}
+
+/* The picked skill's card, under its node. */
+.skill-card {
+  align-self: stretch;
+  margin-top: 2px;
+  padding: 10px 12px;
+  border: 2px solid var(--lavender);
+  border-radius: 14px;
+  background: white;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.skill-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.skill-card-lines {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.85rem;
+}
+
+.skill-card-note {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.skill-learn {
+  align-self: flex-end;
+  gap: 8px;
+  align-items: center;
+}
+
+.skill-learn .gold-pill {
+  width: auto;
+  gap: 4px;
+}
