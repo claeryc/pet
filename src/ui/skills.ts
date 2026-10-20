@@ -137,22 +137,23 @@ function treePath(state: GameState, view: SkillsView, redraw: () => void): HTMLE
         view.skill = skill;
         redraw();
       }
-      snapToTree();
+      snapToTabs();
     });
     path.append(node);
   });
   return path;
 }
 
-// Scrolls the menu so the tree sits at the top, just under the page's
-// header, with the picked skill's card right below it.
-function snapToTree(): void {
-  const tree = document.querySelector<HTMLElement>('.menu-panel .skill-tree');
-  const box = tree?.closest('.menu-panel')?.parentElement;
-  if (!tree || !box) return;
+// Scrolls the menu so the tree tabs (Fishing, Garden, ...) sit at the top,
+// just under the page's header, with the tree and the picked skill's card
+// right below them.
+function snapToTabs(): void {
+  const tabs = document.querySelector<HTMLElement>('.menu-panel .skill-tabs');
+  const box = tabs?.closest('.menu-panel')?.parentElement;
+  if (!tabs || !box) return;
   const header = box.querySelector('.menu-header');
   const top = header ? header.getBoundingClientRect().bottom : box.getBoundingClientRect().top;
-  const by = tree.getBoundingClientRect().top - top - 4;
+  const by = tabs.getBoundingClientRect().top - top - 4;
   const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches;
   box.scrollBy({ top: by, behavior: smooth ? 'smooth' : 'auto' });
 }
