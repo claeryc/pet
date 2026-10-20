@@ -4350,16 +4350,22 @@ body {
 }
 
 .skill-card-lines {
-  margin: 0;
-  padding-left: 18px;
   font-size: 0.85rem;
+}
+
+.skill-card-lines p {
+  margin: 0;
 }
 
 .skill-card-note {
   margin: 0;
   font-size: 0.85rem;
-  font-weight: 700;
+  font-style: italic;
   opacity: 0.7;
+}
+
+.skill-reset {
+  margin-top: 8px;
 }
 
 .skill-card-head .shop-row-text {
