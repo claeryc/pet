@@ -4362,8 +4362,13 @@ body {
   opacity: 0.7;
 }
 
+.skill-card-head .shop-row-text {
+  flex: 1;
+  min-width: 0;
+}
+
 .skill-learn {
-  align-self: flex-end;
+  flex: none;
   gap: 8px;
   align-items: center;
 }

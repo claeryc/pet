@@ -133,13 +133,28 @@ function treePath(state: GameState, view: SkillsView, redraw: () => void): HTMLE
     node.append(icon, name);
     node.setAttribute('aria-label', `${STRINGS.skills.names[skill]}, ${STRINGS.skills.rank(rank, MAX_RANK)}`);
     node.addEventListener('click', () => {
-      if (view.skill === skill) return;
-      view.skill = skill;
-      redraw();
+      if (view.skill !== skill) {
+        view.skill = skill;
+        redraw();
+      }
+      snapToTree();
     });
     path.append(node);
   });
   return path;
+}
+
+// Scrolls the menu so the tree sits at the top, just under the page's
+// header, with the picked skill's card right below it.
+function snapToTree(): void {
+  const tree = document.querySelector<HTMLElement>('.menu-panel .skill-tree');
+  const box = tree?.closest('.menu-panel')?.parentElement;
+  if (!tree || !box) return;
+  const header = box.querySelector('.menu-header');
+  const top = header ? header.getBoundingClientRect().bottom : box.getBoundingClientRect().top;
+  const by = tree.getBoundingClientRect().top - top - 4;
+  const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  box.scrollBy({ top: by, behavior: smooth ? 'smooth' : 'auto' });
 }
 
 // The open node's card: what it does now and next, and how to learn it.
@@ -155,25 +170,24 @@ function skillCard(state: GameState, skill: SkillId, cb: SkillsCallbacks): HTMLE
   const title = el('span', 'shop-row-text');
   title.append(el('b', '', S.names[skill]), el('small', '', S.rank(rank, MAX_RANK)));
   head.append(icon, title);
+  // On the right of the name: the Learn button with its price, or Max.
+  if (isOpen(state, skill) && cost === null) {
+    head.append(label(S.maxed));
+  } else if (isOpen(state, skill) && cost !== null) {
+    const b = el('button', 'shop-btn skill-learn');
+    b.append(S.learnButton, pointPill(cost));
+    b.setAttribute('aria-label', S.learn(cost));
+    b.classList.toggle('too-pricey', pointsToSpend(state) < cost); // still tappable, so it can say why
+    b.addEventListener('click', () => cb.onLearn(skill));
+    head.append(b);
+  }
   card.append(head);
 
   const lines = el('ul', 'skill-card-lines');
   if (rank > 0) lines.append(el('li', '', S.now(effectText(skill, rank))));
   if (cost !== null) lines.append(el('li', '', (rank > 0 ? S.nextRank : S.firstRank)(effectText(skill, rank + 1))));
   card.append(lines);
-
-  if (!isOpen(state, skill)) {
-    card.append(el('p', 'skill-card-note', S.locked(S.names[skillBefore(skill)!])));
-  } else if (cost === null) {
-    card.append(el('p', 'skill-card-note', S.maxed));
-  } else {
-    const b = el('button', 'shop-btn skill-learn');
-    b.append(S.learnButton, pointPill(cost));
-    b.setAttribute('aria-label', S.learn(cost));
-    b.classList.toggle('too-pricey', pointsToSpend(state) < cost); // still tappable, so it can say why
-    b.addEventListener('click', () => cb.onLearn(skill));
-    card.append(b);
-  }
+  if (!isOpen(state, skill)) card.append(el('p', 'skill-card-note', S.locked(S.names[skillBefore(skill)!])));
   return card;
 }
 
