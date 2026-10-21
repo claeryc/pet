@@ -3003,6 +3003,166 @@ body {
 }
 
 /* Light beams turning slowly behind the item, fading out towards the edges. */
+/* A backpack home from a journey, over the stat bars until it's tapped
+   open (see src/ui/backpack.ts). */
+.pack-open {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  border: none;
+  border-radius: 16px;
+  /* Room at the top for the flap when it flips open. */
+  padding: 20px 16px 6px;
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-rows: 1fr 1fr;
+  column-gap: 16px;
+  align-content: center;
+  justify-content: center;
+  background: #e9defa;
+  font: inherit;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.pack-open[hidden] {
+  display: none;
+}
+
+.pack-open.in {
+  animation: reveal-in 0.3s ease-out;
+}
+
+.pack-open.out {
+  animation: reveal-out 0.3s ease-in forwards;
+}
+
+.pack-open-title {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+  font-size: 1.05rem;
+}
+
+.pack-open-hint {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: start;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #8b7aa0;
+}
+
+.pack-open.is-open .pack-open-hint {
+  visibility: hidden;
+}
+
+.pack-open-bag {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  align-self: center;
+  position: relative;
+  width: 68px;
+  height: 68px;
+  animation: pack-wiggle 1.4s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+
+.pack-open-body,
+.pack-open-flap {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* The flap is hinged at the top of the bag (row 2 of 16). */
+.pack-open-flap {
+  transform-origin: 50% 12.5%;
+  transition: transform 0.3s cubic-bezier(0.3, 1.6, 0.6, 1);
+}
+
+.pack-open.is-open .pack-open-bag {
+  animation: pack-hop 0.5s ease-out;
+}
+
+.pack-open.is-open .pack-open-flap {
+  transform: scaleY(-0.7);
+}
+
+.pack-open-glow {
+  position: absolute;
+  left: 50%;
+  top: 22%;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: rgba(255, 229, 150, 0.9);
+  box-shadow: 0 0 18px 10px rgba(255, 229, 150, 0.8);
+  opacity: 0;
+}
+
+.pack-open.is-open .pack-open-glow {
+  animation: pack-glow 0.65s ease-out forwards;
+}
+
+.pack-open-spark {
+  position: absolute;
+  left: 50%;
+  top: 20%;
+  font-style: normal;
+  font-size: 18px;
+  line-height: 1;
+  color: #f5b82e;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pack-open.is-open .pack-open-spark {
+  animation: pack-spark 0.6s ease-out forwards;
+}
+
+.pack-open-spark.s1 { --sx: -46px; --sy: -40px; }
+.pack-open-spark.s2 { --sx: 40px; --sy: -48px; animation-delay: 0.05s !important; }
+.pack-open-spark.s3 { --sx: -24px; --sy: -62px; animation-delay: 0.1s !important; }
+.pack-open-spark.s4 { --sx: 30px; --sy: -24px; animation-delay: 0.08s !important; }
+
+@keyframes pack-wiggle {
+  0%, 60%, 100% { transform: rotate(0deg); }
+  70% { transform: rotate(-6deg); }
+  80% { transform: rotate(5deg); }
+  90% { transform: rotate(-3deg); }
+}
+
+@keyframes pack-hop {
+  0% { transform: translateY(0) scale(1, 1); }
+  25% { transform: translateY(0) scale(1.12, 0.88); }
+  55% { transform: translateY(-14px) scale(0.95, 1.06); }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+
+@keyframes pack-glow {
+  0% { opacity: 0; transform: scale(0.5); }
+  40% { opacity: 1; transform: scale(2.4); }
+  100% { opacity: 0.8; transform: scale(3); }
+}
+
+@keyframes pack-spark {
+  0% { opacity: 0; transform: translate(-50%, 0) scale(0.4); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--sx)), var(--sy)) scale(1.1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pack-open-bag,
+  .pack-open.is-open .pack-open-bag {
+    animation: none;
+  }
+}
+
 .reveal-beams {
   position: absolute;
   left: 50%;
@@ -5428,6 +5588,20 @@ body {
 
 .lunch-tile.is-full {
   opacity: 0.5;
+}
+
+/* Something picked, on its way into the box (see jumpIn). */
+.lunch-flier {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.2));
+}
+
+.lunch-flier svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .lunch-tile-icon {

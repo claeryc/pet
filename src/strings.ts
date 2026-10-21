@@ -145,6 +145,8 @@ export const STRINGS = {
     home: (name: string, place: string) => `${name} is home from ${place}!`,
     openBackpack: 'Open backpack',
     backpackNote: 'A backpack full of finds',
+    backpackOf: (name: string) => `${name}'s backpack`,
+    tapToOpenBag: 'Tap to open',
     inLunch: (name: string) => `${name} in the lunchbox. Tap to take it out`,
     percyName: 'Percy',
     percyNote: 'Percy comes along and flies home halfway with the best find',
