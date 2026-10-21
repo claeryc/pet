@@ -327,6 +327,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   let petAsleep = false;
   let petIsEgg = false;
   let petAway = false; // out on a journey: nobody's home
+  let someoneAway = false; // this pet or the other one is out on a journey
   const drawerSetup = {
     row: actions,
     comingSoon: STRINGS.menu.comingSoon,
@@ -334,7 +335,10 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       petAway ? STRINGS.blocked.away(petName)
       : petIsEgg ? STRINGS.blocked.egg(petName) : petAsleep ? STRINGS.blocked.asleep(petName) : null,
     onBlocked: (msg: string) => showToast(msg),
-    onOpen: () => fitDrawers(),
+    onOpen: () => {
+      trip.close();
+      fitDrawers();
+    },
   };
 
   // The Feed panel: the cooking pot first (once cooking has opened up),
@@ -428,6 +432,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     icon: GEAR_ICON,
     content: menu.el,
     onOpen: () => {
+      trip.close();
       fitDrawers();
       menu.reset();
     },
@@ -687,7 +692,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   });
   function toggleTrip(): void {
     if (trip.active()) return trip.close();
-    if (!petAway || journeys.active()) return;
+    if (!someoneAway || journeys.active()) return;
     feedDrawer.close();
     playDrawer.close();
     menuDrawer!.close();
@@ -698,6 +703,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   // Off to another scene: the normal buttons go, and the parcel and the
   // craving bubble with them, straight away rather than on the next tick.
   function hideActions(): void {
+    trip.close();
     actions.hidden = true;
     refreshParcel();
   }
@@ -921,7 +927,9 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       meet.update(state, now);
       journeys.update(state, now);
       trip.update(state, now);
-      noteBtn.hidden = !petAway;
+      someoneAway = [pet, ...state.housemates].some(isAway);
+      noteBtn.hidden = !someoneAway;
+      noteBtn.classList.toggle('is-low', !petAway);
       refreshParcel();
       parcel.classList.toggle('all-full', !!state.delivery.order?.boxes.every((b) => b.have >= b.want));
       playDrawer.setHidden(GARDEN_ROW, !isUnlocked(state, 'garden'));

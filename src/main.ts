@@ -907,6 +907,7 @@ function render(timeMs: number): void {
       animation,
       glow: !away && pet.starGlow && pet.condition !== 'passed',
       note: away,
+      noteLow: !away && state.housemates.some(isAway),
       night: isNight(gameNow()),
       lightsOff: pet.asleep,
       fishing: home.fishingPhase(),

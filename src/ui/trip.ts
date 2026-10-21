@@ -162,11 +162,13 @@ export function createTripView({ characterImage, onClose }: TripSetup): TripView
   let drawnShare = -1;
   let drawnFaces = '';
 
-  // The pets on the trip: yours, and the other one if it went too.
+  // The pets on the trip: yours, or the other one while yours stays home,
+  // and the one it went with, if any.
   const travellers = (s: GameState): Pet[] => {
-    const pet = s.pet;
-    if (!isAway(pet)) return [];
-    const mate = s.housemates.find((h) => h.id === pet.trip!.with && isAway(h));
+    const all = [s.pet, ...s.housemates];
+    const pet = all.find(isAway);
+    if (!pet) return [];
+    const mate = all.find((h) => h !== pet && h.id === pet.trip!.with && isAway(h));
     return mate ? [pet, mate] : [pet];
   };
 
@@ -174,15 +176,15 @@ export function createTripView({ characterImage, onClose }: TripSetup): TripView
     if (!open || !latest) return;
     const { state, now } = latest;
     const pets = travellers(state);
-    const trip = state.pet.trip;
-    if (!trip || pets.length === 0) return;
+    const trip = pets[0]?.trip;
+    if (!trip) return;
     const place = T.places[trip.place] ?? trip.place;
     placeIcon.innerHTML = ITEM_ICONS[`place_${trip.place}`] ?? ITEM_ICONS.journey;
     there.innerHTML = placeIcon.innerHTML;
     title.textContent = T.offer(T.trips[trip.rarity], place);
     who.textContent = pets.length > 1 ? T.tripWho2(pets[0].name, pets[1].name) : T.tripWho(pets[0].name);
     back.textContent = T.tripBack(formatClock(trip.endsAt));
-    const share = tripProgress(state.pet, now);
+    const share = tripProgress(pets[0], now);
     left.textContent = share >= 1 ? T.tripAlmost : T.tripLeft(formatDuration(trip.endsAt - now));
     // The trail only changes a pixel at a time, so it's redrawn only then.
     const step = Math.round(share * (TRAIL.length - 1));
@@ -249,8 +251,8 @@ export function createTripView({ characterImage, onClose }: TripSetup): TripView
     scene() {
       if (!open || !latest) return null;
       const pets = travellers(latest.state);
-      const trip = latest.state.pet.trip;
-      return trip && pets.length ? { place: trip.place, pets } : null;
+      const trip = pets[0]?.trip;
+      return trip ? { place: trip.place, pets } : null;
     },
   };
 }
