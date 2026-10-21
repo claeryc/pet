@@ -539,8 +539,12 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
   }
 
   // What you can pack: a tab each for food, drinks and charms, with what
-  // you have (less what's packed) as tiles.
+  // you have (less what's packed) as tiles in one row you swipe along, the
+  // most filling (or the strongest drink) first. Packing something keeps
+  // the row where it was; a new tab or box starts it at the beginning.
   function lunchTiles(s: GameState): void {
+    const shown = lunchContent.querySelector<HTMLElement>('.lunch-grid');
+    const keepScroll = shown && shown.dataset.for === `${who}:${tab}` ? shown.scrollLeft : 0;
     const tabs = el('div', 'lunch-tabs');
     const tabList = [['food', STAT_ICONS.hunger, T.foodTab], ['drink', STAT_ICONS.energy, T.drinkTab], ['charm', ITEM_ICONS.charm_clover, T.charmTab]] as const;
     for (const [id, svg, text] of tabList) {
@@ -554,6 +558,7 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
       tabs.append(t);
     }
     const grid = el('div', 'lunch-grid');
+    grid.dataset.for = `${who}:${tab}`;
     const tile = (svg: string, name: string, left: number, gives: string, full: boolean, onPick: () => void) => {
       const b = el('button', `lunch-tile${full ? ' is-full' : ''}`);
       b.append(icon(svg, 'lunch-tile-icon'), el('i', 'lunch-count', left === Infinity ? '∞' : `×${left}`), el('small', '', gives));
@@ -573,13 +578,14 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
         tile(ITEM_ICONS[`charm_${c.id}`] ?? '', T.charms[c.id]?.name ?? c.id, left, T.charms[c.id]?.short ?? '', !!box().charm, () => (box().charm = c.id));
       }
     } else {
-      for (const f of FOODS) {
+      const gives = (f: Food) => (tab === 'drink' ? f.energy ?? 0 : f.hunger);
+      for (const f of [...FOODS].sort((a, b) => gives(b) - gives(a))) {
         if (f.id === CONFIG.cooking.mess || isDrink(f.id) !== (tab === 'drink') || f.hunger + (f.energy ?? 0) <= 0) continue;
         const left = foodCount(s, f.id) - packed().filter((id) => id === f.id).length;
         if (left <= 0) continue;
         const b = box();
         const full = tab === 'drink' ? !!b.drink : b.food.length >= J.lunch.food;
-        tile(ITEM_ICONS[f.id] ?? '', STRINGS.foods[f.id], left, `+${tab === 'drink' ? f.energy : f.hunger}`, full, () => {
+        tile(ITEM_ICONS[f.id] ?? '', STRINGS.foods[f.id], left, `+${gives(f)}`, full, () => {
           if (tab === 'drink') b.drink = f.id;
           else b.food.push(f.id);
         });
@@ -587,6 +593,7 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     }
     if (!grid.childElementCount) grid.append(el('p', 'trip-note', T.nothingToPack[tab]));
     lunchContent.replaceChildren(tabs, grid);
+    grid.scrollLeft = keepScroll;
   }
 
   // Other pets out on a journey, or home with a backpack, in a line each.

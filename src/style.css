@@ -5375,8 +5375,30 @@ body {
 
 .lunch-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-auto-flow: column;
+  /* Four and a bit fit across, so a cut-off tile shows there's more. */
+  grid-auto-columns: calc((100% - 3 * 8px) / 4.4);
   gap: 8px;
+  /* Room for the counts that stick out at the top. */
+  margin: -8px -8px 0;
+  padding: 8px 8px 4px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+
+.lunch-grid::-webkit-scrollbar {
+  display: none;
+}
+
+.lunch-grid > .lunch-tile {
+  scroll-snap-align: start;
+  scroll-margin-left: 8px;
+}
+
+.lunch-grid:has(> .trip-note) {
+  display: block;
 }
 
 .lunch-grid > .trip-note {
