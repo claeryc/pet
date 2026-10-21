@@ -8,12 +8,13 @@ import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import { CHARACTERS, THEMES } from '../game/growth';
 import { RECIPES } from '../game/cooking';
-import { characterKey } from '../game/unlocks';
+import { characterKey, isUnlocked } from '../game/unlocks';
 import type { GameState } from '../game/state';
 import type { Food, FoodId } from '../game/actions';
 import { category, label, row, type Entry } from './shop';
 import { ACHIEVEMENTS, badgeCount, badgeOf, nextGoal, tallyOf, type AchievementId } from '../game/achievements';
 import { ACHIEVEMENT_ICONS, ITEM_ICONS, UNKNOWN_ICON } from './icons';
+import { journalCategory } from './journeys';
 
 export interface CollectionCallbacks {
   // A character's picture (its first idle frame) as a URL, if loaded.
@@ -102,5 +103,7 @@ export function collectionPage(state: GameState, cb: CollectionCallbacks, open: 
     category('characters', title(STRINGS.collection.characters, characters), characters, open),
     category('recipes', title(STRINGS.collection.recipes, recipes), recipes, open),
     category('catches', title(STRINGS.collection.catches, fish), fish, open),
+    // The travel journal: a postcard per place.
+    ...(isUnlocked(state, 'journeys') ? [journalCategory(state, open)] : []),
   ];
 }

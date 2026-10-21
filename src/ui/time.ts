@@ -8,6 +8,12 @@ export function formatDuration(ms: number): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
+// A time of day, like "14:05".
+export function formatClock(at: number): string {
+  const d = new Date(at);
+  return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 // When something happened, for the Messages page: "Today 14:05",
 // "Yesterday 9:30" or a date like "12 Oct".
 export function formatWhen(at: number, now: number, today: (t: string) => string, yesterday: (t: string) => string): string {

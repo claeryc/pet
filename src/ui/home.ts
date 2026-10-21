@@ -31,6 +31,9 @@ import { formatDuration } from './time';
 import { createReveal, type RevealItem } from './reveal';
 import type { ShopCategory } from './shop';
 import { createFx, type Gains } from './fx';
+import { hasBackpack, isAway } from '../game/presence';
+import { formatClock } from './time';
+import { createJourneys, JOURNEYS_OUT_MS } from './journeys';
 
 export interface HomeCallbacks extends MenuCallbacks {
   onFeed: (food: FoodId) => void;
@@ -208,6 +211,9 @@ function statBar(label: string, icon: string): StatBar {
 // block.
 const SLIDE_MS_PER_SEGMENT = 70;
 
+// Two pets in the room: the other one is there, not out on a journey.
+const twoHome = (s: GameState) => s.housemates.length > 0 && !isAway(s.housemates[0]);
+
 function button(label: string, className: string, onClick: () => void): HTMLButtonElement {
   const b = document.createElement('button');
   b.textContent = label;
@@ -269,7 +275,11 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const passedButtons = document.createElement('div');
   passedButtons.className = 'banner-buttons';
   passedButtons.append(revive, goodbye);
-  banner.append(bannerText, medicine, passedButtons);
+  // A pet out on a journey can be called home, and one that's back has a
+  // backpack to open.
+  const callHome = button(STRINGS.journeys.callHome, 'btn btn-soft', () => latest && cb.onCallHome(latest.state.pet.id));
+  const openBackpack = button(STRINGS.journeys.openBackpack, 'btn', () => latest && cb.onOpenBackpack(latest.state.pet.id));
+  banner.append(bannerText, medicine, passedButtons, callHome, openBackpack);
 
   const bars: Record<keyof PetStats, StatBar> = {
     hunger: statBar(STRINGS.stats.hunger, STAT_ICONS.hunger),
@@ -302,11 +312,13 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   let petName = '';
   let petAsleep = false;
   let petIsEgg = false;
+  let petAway = false; // out on a journey: nobody's home
   const drawerSetup = {
     row: actions,
     comingSoon: STRINGS.menu.comingSoon,
     beforeOpen: () =>
-      petIsEgg ? STRINGS.blocked.egg(petName) : petAsleep ? STRINGS.blocked.asleep(petName) : null,
+      petAway ? STRINGS.blocked.away(petName)
+      : petIsEgg ? STRINGS.blocked.egg(petName) : petAsleep ? STRINGS.blocked.asleep(petName) : null,
     onBlocked: (msg: string) => showToast(msg),
     onOpen: () => fitDrawers(),
   };
@@ -372,10 +384,18 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       effects: [],
       onPick: () => startGarden(),
     },
+    // Journeys take over the stat bars, like the garden.
+    {
+      icon: ITEM_ICONS.journey,
+      label: STRINGS.minigames.journeys,
+      effects: [],
+      onPick: () => openJourneys(),
+    },
   ];
 
   const MEET_ROW = CONFIG.activities.length; // after Cuddle and Tickle
   const GARDEN_ROW = MEET_ROW + 2; // after Meet and Fishing
+  const JOURNEYS_ROW = GARDEN_ROW + 1;
   const feedDrawer = createDrawer({ id: 'feed', label: STRINGS.buttons.feed, options: feedOptions, ...drawerSetup });
   const playDrawer = createDrawer({ id: 'play', label: STRINGS.buttons.play, options: playOptions, ...drawerSetup });
 
@@ -383,7 +403,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   // same way Feed and Play open. It always opens, even for an egg.
   let menuDrawer: ReturnType<typeof createDrawer> | null = null;
   const menu = createMenu(
-    { ...cb, onOpenDelivery: () => startDelivery(), onOpenMeet: () => startMeet() },
+    { ...cb, onOpenDelivery: () => startDelivery(), onOpenMeet: () => startMeet(), onOpenJourneys: () => openJourneys() },
     () => menuDrawer?.isOpen() ?? false,
     () => menuDrawer?.close(),
   );
@@ -413,6 +433,20 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
 
   actions.append(feedDrawer.el, playDrawer.el, menuDrawer.el, lights);
 
+  // Journeys: the board of trips, then the lunchbox, over the stat bars.
+  function openJourneys(): void {
+    if (petAway) return showToast(STRINGS.blocked.away(petName));
+    if (actions.hidden) return; // already busy with something else
+    cb.onSeen('journeys');
+    feedDrawer.close();
+    playDrawer.close();
+    menuDrawer!.close();
+    hideActions();
+    stats.hidden = true; // the board takes the bars' place, and can be taller
+    if (latest) journeys.update(latest.state, latest.now);
+    journeys.start();
+  }
+
   // Holding the pet opens the Wardrobe, in the gear panel.
   function openWardrobe(): void {
     if (petIsEgg) return showToast(STRINGS.wardrobe.eggNoHat);
@@ -440,7 +474,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const tappedPet = (e: PointerEvent) => {
     const { x, y } = roomPoint(e);
     const s = latest?.state;
-    return petAt(x, y, !!s && s.housemates.length > 0, !s || petStandsLeft(s));
+    if (petAway) return null; // nobody's home
+    return petAt(x, y, !!s && twoHome(s), !s || petStandsLeft(s));
   };
   function cuddle(): void {
     const now = performance.now();
@@ -552,6 +587,11 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     toast: showToast,
   });
   function startGarden(): void {
+    if (petAway) return showToast(STRINGS.blocked.away(petName));
+    if (actions.hidden) return; // already busy with something else
+    feedDrawer.close();
+    playDrawer.close();
+    menuDrawer!.close();
     cb.onSeen('garden');
     hideActions();
     stats.setAttribute('aria-hidden', 'true'); // covered by the garden for now
@@ -572,6 +612,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   });
   function startDelivery(): void {
     if (actions.hidden) return; // already busy with something else
+    if (petAway) return showToast(STRINGS.blocked.away(petName));
     feedDrawer.close();
     playDrawer.close();
     menuDrawer!.close();
@@ -593,6 +634,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   });
   function startMeet(): void {
     if (actions.hidden) return; // already busy with something else
+    if (petAway) return showToast(STRINGS.blocked.away(petName));
     cb.onSeen('meet');
     feedDrawer.close();
     playDrawer.close();
@@ -602,6 +644,21 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     if (latest) meet.update(latest.state, latest.now);
     meet.start();
   }
+  const journeys = createJourneys({
+    onSetOff: cb.onSetOff,
+    onCallHome: cb.onCallHome,
+    onOpenBackpack: cb.onOpenBackpack,
+    onExit: () => {
+      stats.hidden = latest?.state.pet.stage === 'egg';
+      showActions(JOURNEYS_OUT_MS);
+    },
+    onWater: () => {
+      stats.hidden = false;
+      showActions(0);
+      startGarden();
+    },
+    toast: (msg) => showToast(msg),
+  });
   // Off to another scene: the normal buttons go, and the parcel and the
   // craving bubble with them, straight away rather than on the next tick.
   function hideActions(): void {
@@ -609,7 +666,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     refreshParcel();
   }
   function refreshParcel(): void {
-    parcel.hidden = !latest?.state.delivery.order || actions.hidden || latest.state.pet.stage === 'egg';
+    parcel.hidden = !latest?.state.delivery.order || actions.hidden || latest.state.pet.stage === 'egg' || petAway;
     refreshBubble();
   }
   // The bubble shows while the pet is craving something, it's awake and
@@ -618,7 +675,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   function refreshBubble(): void {
     const s = latest?.state;
     const food = s?.craving.food ?? null;
-    bubble.hidden = !s || !food || actions.hidden || s.pet.asleep || s.pet.stage === 'egg';
+    bubble.hidden = !s || !food || actions.hidden || s.pet.asleep || s.pet.stage === 'egg' || petAway;
     if (!food) {
       bubbleFor = null;
       return;
@@ -676,7 +733,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   statSlot.className = 'stat-slot';
   // The item reveal plays over all of them.
   const reveal = createReveal();
-  statSlot.append(stats, fishing.pond, cooking.kitchen, garden.beds, delivery.panel, meet.panel, reveal.el);
+  statSlot.append(stats, journeys.panel, fishing.pond, cooking.kitchen, garden.beds, delivery.panel, meet.panel, reveal.el);
 
   // A short message that pops up and fades, e.g. "Mochi is asleep". When
   // you've run out of something the Shop sells, it has a Shop button too.
@@ -746,7 +803,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     else showToast(message);
   }
 
-  root.append(roomWrap, banner, statSlot, garden.pour, actions, fishing.row, cooking.row, garden.row, delivery.row, meet.row, toastEl);
+  root.append(roomWrap, banner, statSlot, garden.pour, actions, fishing.row, cooking.row, garden.row, delivery.row, meet.row, journeys.sheet, journeys.row, toastEl);
 
   // Which pet the bars were showing, so switching pets can slide them.
   let barsFor: string | null = null;
@@ -772,13 +829,14 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       petAsleep = pet.asleep;
       const isEgg = pet.stage === 'egg';
       petIsEgg = isEgg;
+      petAway = isAway(pet);
       for (const key of Object.keys(bars) as (keyof PetStats)[]) {
         if (switched) bars[key].slide(pet.stats[key]);
         else bars[key].set(pet.stats[key]);
       }
       // With two pets, the craving bubble floats over the one you're
       // looking after.
-      roomWrap.dataset.spot = state.housemates.length === 0 ? 'middle' : petStandsLeft(state) ? 'left' : 'right';
+      roomWrap.dataset.spot = !twoHome(state) ? 'middle' : petStandsLeft(state) ? 'left' : 'right';
       // How many of each food you have ("Free" for food that never runs out).
       // Caught fish and cooked dishes also show their stars. Dishes only
       // show up once you have some, to keep the list short.
@@ -801,7 +859,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       feedDrawer.setOptionNew(COOK_ROW, cookIsNew);
       feedDrawer.setNew(cookIsNew);
       menuDrawer!.setNew(
-        isNew(state, 'shop') || isNew(state, 'collection') || isNew(state, 'familyTree') ||
+        isNew(state, 'shop') || isNew(state, 'collection') || isNew(state, 'familyTree') || isNew(state, 'journeys') ||
+          [pet, ...state.housemates].some(hasBackpack) ||
           isNew(state, 'messages') || unreadMail(state) > 0 || isNew(state, 'skills') ||
           (isUnlocked(state, 'skills') && pointsToSpend(state) > 0),
       );
@@ -823,6 +882,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       garden.update(state, now);
       delivery.update(state, now);
       meet.update(state, now);
+      journeys.update(state, now);
       refreshParcel();
       parcel.classList.toggle('all-full', !!state.delivery.order?.boxes.every((b) => b.have >= b.want));
       playDrawer.setHidden(GARDEN_ROW, !isUnlocked(state, 'garden'));
@@ -831,15 +891,21 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       playDrawer.setHidden(MEET_ROW, !isUnlocked(state, 'meet'));
       const meetIsNew = isNew(state, 'meet');
       playDrawer.setOptionNew(MEET_ROW, meetIsNew);
-      playDrawer.setNew(gardenIsNew || meetIsNew);
-      stats.hidden = isEgg; // an egg has no needs yet
-      canvas.setAttribute('aria-label', isEgg ? STRINGS.mood.egg : STRINGS.mood[getLook(pet)](pet.name));
+      playDrawer.setHidden(JOURNEYS_ROW, !isUnlocked(state, 'journeys'));
+      const journeysIsNew = isNew(state, 'journeys');
+      playDrawer.setOptionNew(JOURNEYS_ROW, journeysIsNew);
+      playDrawer.setNew(gardenIsNew || meetIsNew || journeysIsNew);
+      stats.hidden = isEgg || journeys.active(); // an egg has no needs yet
+      canvas.setAttribute('aria-label', petAway ? STRINGS.blocked.away(pet.name) : isEgg ? STRINGS.mood.egg : STRINGS.mood[getLook(pet)](pet.name));
 
       // Banner: hatching countdown, or passed away beats sick beats
       // recovering beats warning. In a sick pet's last hours it counts down.
       const passed = hasPassed(pet);
       let text = '';
-      if (isEgg)
+      const place = pet.trip ? STRINGS.journeys.places[pet.trip.place] ?? pet.trip.place : '';
+      if (petAway) text = STRINGS.journeys.banner(pet.name, place, formatClock(pet.trip!.endsAt));
+      else if (hasBackpack(pet)) text = STRINGS.journeys.bannerHome(pet.name, place);
+      else if (isEgg)
         text = STRINGS.status_egg(formatDuration(pet.stageStartedAt + stageLengthMs('egg') - now));
       else if (passed) text = STRINGS.status.passed(pet.name);
       else if (isCritical(pet)) {
@@ -854,10 +920,12 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
         text = STRINGS.status.recovering(pet.name, formatDuration(pet.recoveryUntil! - now));
       else if (pet.condition === 'warning') text = STRINGS.status.warning(pet.name);
       banner.hidden = text === '';
-      banner.dataset.kind = passed ? 'passed' : isCritical(pet) ? 'critical' : pet.condition === 'sick' ? 'sick' : 'info';
+      banner.dataset.kind = pet.trip ? 'info' : passed ? 'passed' : isCritical(pet) ? 'critical' : pet.condition === 'sick' ? 'sick' : 'info';
       bannerText.textContent = text;
-      medicine.hidden = pet.condition !== 'sick';
-      passedButtons.hidden = !passed;
+      medicine.hidden = pet.condition !== 'sick' || !!pet.trip;
+      passedButtons.hidden = !passed || !!pet.trip;
+      callHome.hidden = !petAway;
+      openBackpack.hidden = !hasBackpack(pet);
 
       // Lights button shows what pressing it will do.
       const label = pet.asleep ? STRINGS.buttons.lightsOn : STRINGS.buttons.lightsOff;
@@ -866,11 +934,11 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       lights.title = label;
       // Dim Feed and Play while asleep. They still work when tapped, so the
       // game can explain why nothing happened.
-      feedDrawer.setDim(pet.asleep || isEgg || passed);
-      playDrawer.setDim(pet.asleep || isEgg || passed);
-      lights.classList.toggle('dim', isEgg || passed);
-      // If the pet falls asleep while a panel is open, close it.
-      if (pet.asleep) {
+      feedDrawer.setDim(pet.asleep || isEgg || passed || petAway);
+      playDrawer.setDim(pet.asleep || isEgg || passed || petAway);
+      lights.classList.toggle('dim', isEgg || passed || petAway);
+      // If the pet falls asleep (or sets off) while a panel is open, close it.
+      if (pet.asleep || petAway) {
         feedDrawer.close();
         playDrawer.close();
       }

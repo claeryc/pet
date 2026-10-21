@@ -1,6 +1,8 @@
 // The menu inside the gear button's panel (it opens like Feed and Play). It
-// has a main list (Shop, Messages, Collection, Skills, Family Tree, Settings) and a
-// page for each, plus the Wardrobe, which opens when you hold the pet.
+// has a main list (Shop, Messages, Journeys, Collection, Skills, Family Tree,
+// Settings) and a page for each, plus the Wardrobe, which opens when you
+// hold the pet. The Journeys tile opens Journeys over the stat bars, as
+// Play > Journeys does.
 // Shop, Collection and Family Tree only appear once they've opened up (see
 // src/game/unlocks.ts), with a "new" dot until you've looked at them.
 // Items for features we haven't built yet are shown greyed out with
@@ -20,6 +22,8 @@ import { unreadMail } from '../game/messages';
 import { canLearnIn, skillsPage, type SkillsCallbacks, type SkillsView } from './skills';
 import { TREES, pointsToSpend } from '../game/skills';
 import { audioSettings, setAudioSettings } from '../audio/audio';
+import type { JourneysCallbacks } from './journeys';
+import { hasBackpack } from '../game/presence';
 
 export interface DebugCallbacks {
   onFastForward: (hours: number) => void;
@@ -32,7 +36,7 @@ export interface DebugCallbacks {
   onFriendScore: () => void;
 }
 
-export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks, FamilyCallbacks, SkillsCallbacks {
+export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks, FamilyCallbacks, SkillsCallbacks, JourneysCallbacks {
   onReset: () => void;
   onOwner: (name: string) => void; // the player typed their name in Settings
   onSeen: (id: UnlockId) => void; // the player has looked at something new
@@ -45,6 +49,7 @@ export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks, FamilyCall
 export interface MenuActions {
   onOpenDelivery: () => void; // go out to Percy to fill Percy's order
   onOpenMeet: () => void; // meet whoever is over (Play > Meet)
+  onOpenJourneys: () => void; // the journey board (Play > Journeys)
 }
 
 export interface Menu {
@@ -148,6 +153,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     grid.append(
       ...unlockable('shop', STRINGS.menu.shop, () => showShop()),
       ...messagesItem(),
+      ...journeysItem(),
       ...unlockable('collection', STRINGS.menu.collection, () => showCollection()),
       ...skillsItem(),
       ...unlockable('familyTree', STRINGS.menu.familyTree, () => showFamilyTree()),
@@ -164,6 +170,21 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
       const dot = document.createElement('span');
       dot.className = 'new-dot';
       dot.setAttribute('aria-label', STRINGS.messages.unread);
+      entry[0].append(dot);
+    }
+    return entry;
+  }
+
+  // Journeys, with a dot while a backpack is waiting to be opened.
+  function journeysItem(): HTMLButtonElement[] {
+    const entry = unlockable('journeys', STRINGS.menu.journeys, () => {
+      close();
+      cb.onOpenJourneys();
+    });
+    if (entry.length && state && [state.pet, ...state.housemates].some(hasBackpack) && !isNew(state, 'journeys')) {
+      const dot = document.createElement('span');
+      dot.className = 'new-dot';
+      dot.setAttribute('aria-label', STRINGS.journeys.backpackNote);
       entry[0].append(dot);
     }
     return entry;
@@ -414,6 +435,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
           s.gold, s.inventory, s.pet.hat, s.pet.stage, s.unlocked, s.seen, s.showAllMenus,
           s.recipesFound, s.caught, s.charactersFound, s.pet.name, s.pet.named, s.owner, s.family,
           s.messages, s.messagesSeenAt, s.keeper, s.delivery, s.friends, s.visit.guest, s.housemates.map((p) => [p.id, p.name, p.stage]),
+          s.journeys, [s.pet, ...s.housemates].map((p) => [p.id, p.trip?.backAt, p.trip?.percy]),
           page === 'messages' && Math.floor(s.lastUpdated / 60_000),
           page === 'familyTree' && [Object.values(s.pet.stats).map(Math.round), Math.floor(s.lastUpdated / 3_600_000)],
         ]);

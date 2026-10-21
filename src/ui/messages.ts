@@ -18,7 +18,7 @@ import { heartRow } from './meet';
 import { canInvite, visitor } from '../game/friends';
 import { isFull, orderTier } from '../game/delivery';
 import { isUnlocked, type UnlockId } from '../game/unlocks';
-import type { GameState, Message } from '../game/state';
+import type { Find, GameState, Message } from '../game/state';
 import type { FoodId } from '../game/actions';
 import { ACHIEVEMENT_ICONS, ITEM_ICONS, SKILL_POINT_ICON, STAT_ICONS, UNKNOWN_ICON } from './icons';
 import type { AchievementId } from '../game/achievements';
@@ -43,6 +43,10 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, te
 }
 
 const foodName = (id: string) => STRINGS.foods[id as FoodId] ?? id;
+// "3 gold", "a Pumpkin seed" or "Honey".
+const findName = (f: Find) =>
+  f.kind === 'gold' ? `${f.count} ${STRINGS.gold.label.toLowerCase()}`
+  : f.kind === 'seed' ? STRINGS.garden.seedName(foodName(f.id)) : foodName(f.id);
 const items = (boxes: { food: string; want: number }[]) =>
   boxes.map((b) => STRINGS.delivery.item(b.want, foodName(b.food))).join(', ');
 
@@ -76,6 +80,10 @@ function text(m: Message): string {
     }
     case 'level':
       return STRINGS.skills.levelUp(m.level);
+    case 'tripHome':
+      return STRINGS.journeys.tripHome(m.name, STRINGS.journeys.places[m.place] ?? m.place);
+    case 'courier':
+      return STRINGS.journeys.courier(m.name, STRINGS.journeys.places[m.place] ?? m.place, findName(m.find));
   }
 }
 
@@ -136,6 +144,8 @@ function messageRow(m: Message, now: number): HTMLElement {
     : m.kind === 'visitor' || m.kind === 'littleOne' ? ITEM_ICONS.meet
     : m.kind === 'badge' ? ACHIEVEMENT_ICONS[m.id] ?? ITEM_ICONS.letter
     : m.kind === 'level' ? SKILL_POINT_ICON
+    : m.kind === 'tripHome' ? ITEM_ICONS.journey
+    : m.kind === 'courier' ? ITEM_ICONS.percy
     : ITEM_ICONS.letter;
   const body = el('span', 'shop-row-text');
   body.append(el('b', '', text(m)), el('small', '', formatWhen(m.at, now, STRINGS.messages.today, STRINGS.messages.yesterday)));

@@ -4492,3 +4492,1006 @@ body {
   width: auto;
   gap: 4px;
 }
+
+/* ---- Journeys ---- */
+
+/* Rarity colours: green, blue and a shiny purple. */
+[data-rarity='common'] { --r-light: #f1fbf5; --r-mid: #6cc19a; --r-dark: #4a9a76; --r-band: #6cc19a; }
+[data-rarity='rare'] { --r-light: #f1f9ff; --r-mid: #8fd0f2; --r-dark: #3f95d2; --r-band: #3f95d2; }
+[data-rarity='epic'] {
+  --r-light: #f8f1ff;
+  --r-mid: #e6ccff;
+  --r-dark: #7a3fc4;
+  --r-band: linear-gradient(135deg, #d9b8ff, #8a4fd8 40%, #f0e0ff 55%, #6a2fb8);
+}
+
+/* In the place of the stat bars (which are hidden while it's open), so it
+   can be taller than them. */
+.journeys {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.journeys[hidden],
+.journeys-sheet[hidden],
+.journeys-row > [hidden] {
+  display: none;
+}
+
+/* The info card or the things to pack, at the bottom just above the
+   buttons. */
+.journeys-sheet {
+  margin-top: auto;
+}
+
+.journeys-sheet:not([hidden]) + .journeys-row {
+  margin-top: 0;
+}
+
+/* On a short screen the page stays one screen tall, so the buttons stay at
+   the bottom, and the sheet scrolls instead. */
+#app:has(> .journeys-row:not([hidden])) {
+  height: 100vh;
+  height: 100dvh;
+}
+
+#app:has(> .journeys-row:not([hidden])) > * {
+  flex-shrink: 0;
+}
+
+#app:has(> .journeys-row:not([hidden])) > .journeys-sheet {
+  flex-shrink: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.journeys-sheet > .is-new,
+.journeys-sheet > .lunch-panel {
+  animation: rise-in 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+/* No double taps while the lid is moving. */
+.journeys-row.is-busy {
+  pointer-events: none;
+}
+
+.journeys.is-in {
+  animation: rise-in 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+/* [Back] [Pack a lunch], [Back] [Lunch] [Close the lid], [Open] [Set off] */
+.journeys-row:not([hidden]) {
+  animation: rise-in 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.journeys-row > .btn {
+  height: 52px;
+  padding: 0 14px;
+  flex: 1 1 0;
+}
+
+.journeys-row > .btn-soft {
+  flex: 0 0 auto;
+}
+
+.journeys-row > .btn.is-waiting {
+  opacity: 0.6;
+}
+
+.trip-note {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #6c5c80;
+  text-align: center;
+}
+
+.trip-pick-hint {
+  padding: 10px;
+}
+
+/* A pet out on a trip, or home with a backpack. */
+.trip-other {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 10px;
+  border-radius: 14px;
+  background: var(--card);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.trip-other > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+
+.trip-cost-icon {
+  display: inline-block;
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.trip-cost-icon svg,
+.trip-ticket-icon svg,
+.trip-card-place svg,
+.trip-loot-icon svg,
+.trip-percy-icon svg,
+.trip-meter-icon svg,
+.bento-spot-icon svg,
+.bento-spot-hint svg,
+.bento-label-icon svg,
+.lunch-tile-icon svg,
+.postcard-place svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---- The board: tickets with a gem band ---- */
+
+.trip-board {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 9px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.trip-ticket {
+  position: relative;
+  overflow: hidden;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 2px solid var(--r-dark, var(--lavender));
+  border-radius: 11px;
+  background: var(--r-light, white);
+  font: inherit;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.trip-ticket[data-rarity='epic'] {
+  background: linear-gradient(90deg, #efe0ff, #faf5ff);
+}
+
+.trip-ticket:active:not(.is-empty) {
+  transform: scale(0.98);
+}
+
+.trip-ticket.is-picked {
+  box-shadow: 0 0 0 2px white, 0 0 0 4px var(--accent);
+}
+
+.trip-ticket.is-empty {
+  border-style: dashed;
+  background: transparent;
+  opacity: 0.65;
+  padding-left: 10px;
+  cursor: default;
+  font-size: 0.85rem;
+}
+
+.trip-band {
+  align-self: stretch;
+  width: 38px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--r-band);
+  position: relative;
+  z-index: 1;
+}
+
+.trip-gems {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.trip-gem {
+  display: block;
+  width: 7px;
+  height: 7px;
+  transform: rotate(45deg);
+  background: white;
+}
+
+.trip-ticket-icon {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  position: relative;
+  z-index: 1;
+}
+
+.trip-ticket-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+  position: relative;
+  z-index: 1;
+}
+
+.trip-ticket-text b {
+  font-size: 0.92rem;
+}
+
+.trip-ticket-text span {
+  font-size: 0.82rem;
+  color: #5b4a6e;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trip-stub {
+  align-self: stretch;
+  width: 62px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  line-height: 1;
+  border-left: 2px dashed var(--lavender);
+  position: relative;
+  z-index: 1;
+}
+
+.trip-stub b {
+  font-size: 0.95rem;
+}
+
+.trip-stub small {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--r-dark);
+}
+
+/* The shine on epic things: a sweep of light and three twinkles. */
+.trip-sheen {
+  position: absolute;
+  top: -20px;
+  bottom: -20px;
+  left: -20%;
+  width: 38px;
+  transform: skewX(-24deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9), transparent);
+  animation: trip-sheen 2.6s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.trip-spark {
+  position: absolute;
+  font-style: normal;
+  line-height: 1;
+  color: white;
+  text-shadow: 0 0 4px #b07cf0, 0 0 1px #7a3fc4;
+  animation: trip-twinkle 1.6s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.trip-spark.s1 { top: 1px; left: 28px; font-size: 11px; }
+.trip-spark.s2 { bottom: 0; left: 58%; font-size: 12px; animation-delay: 0.5s; }
+.trip-spark.s3 { top: 2px; right: 70px; font-size: 10px; animation-delay: 1s; }
+
+@keyframes trip-sheen {
+  0% { left: -20%; }
+  60%, 100% { left: 120%; }
+}
+
+@keyframes trip-twinkle {
+  0%, 100% { opacity: 0.35; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trip-sheen,
+  .trip-spark {
+    animation: none;
+  }
+  .trip-sheen {
+    display: none;
+  }
+}
+
+/* ---- The trip's info card ---- */
+
+.trip-card {
+  background: var(--r-light);
+  border: 2px solid var(--r-dark);
+  border-radius: 16px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.trip-card-top {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.trip-card-tile {
+  position: relative;
+  overflow: hidden;
+  width: 60px;
+  height: 60px;
+  flex: none;
+  border-radius: 14px;
+  background: var(--r-band);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.trip-card-tile .trip-gem {
+  width: 6px;
+  height: 6px;
+}
+
+.trip-card-tile .trip-spark.s1 { top: 2px; left: 4px; }
+.trip-card-tile .trip-spark.s2 { bottom: 2px; left: auto; right: 4px; }
+.trip-card-tile .trip-spark.s3 { top: 4px; right: 6px; }
+
+.trip-card-place {
+  width: 36px;
+  height: 36px;
+  padding: 3px;
+  border-radius: 9px;
+  background: white;
+}
+
+.trip-card-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.trip-card-name b {
+  font-size: 1.1rem;
+}
+
+.trip-card-name span {
+  font-size: 0.8rem;
+  color: #5b4a6e;
+}
+
+/* Percy's switch, at the card's top right. */
+.trip-percy {
+  align-self: flex-start;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px 5px;
+  border: 2px solid var(--lavender);
+  border-radius: 12px;
+  background: white;
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.trip-percy.is-on {
+  border-color: var(--good);
+}
+
+.trip-percy:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.trip-percy-icon {
+  width: 26px;
+  height: 26px;
+}
+
+.trip-percy-name {
+  font-size: 0.65rem;
+  font-weight: 800;
+}
+
+.trip-percy-rest,
+.trip-percy-state {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #8b7aa0;
+}
+
+.trip-percy.is-on .trip-percy-state {
+  color: var(--good-dark);
+}
+
+.trip-card-sec {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #8b7aa0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.trip-card-sec > span {
+  margin-right: auto;
+}
+
+.trip-cost {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px 1px 4px;
+  border: 2px solid var(--lavender);
+  border-radius: 99px;
+  background: white;
+  font-style: normal;
+  font-size: 0.8rem;
+  color: var(--ink);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.trip-loots {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.trip-loot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-height: 50px;
+  padding: 5px 2px 3px;
+  border: 2px solid var(--lavender);
+  border-radius: 12px;
+  background: white;
+  text-align: center;
+}
+
+.trip-loot-icon {
+  width: 26px;
+  height: 26px;
+}
+
+.trip-loot small {
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.trip-loot.is-star,
+.trip-loot.is-count {
+  border-color: var(--r-dark);
+  background: var(--r-mid);
+  color: var(--ink);
+}
+
+.trip-loot.is-star {
+  background: linear-gradient(160deg, #f3e6ff, #e3ccff);
+  color: #6a2fb8;
+}
+
+.trip-loot.is-star small,
+.trip-loot.is-count small {
+  font-size: 0.8rem;
+  white-space: pre-line;
+}
+
+.trip-card-warn {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--low-dark);
+  text-align: center;
+}
+
+.trip-card-dry {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.trip-card-dry .shop-btn {
+  margin-left: auto;
+}
+
+/* ---- The lunchbox ---- */
+
+.trip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.trip-head > b {
+  font-size: 1.05rem;
+}
+
+.trip-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 10px 2px 6px;
+  border: 2px solid var(--r-dark);
+  border-radius: 99px;
+  background: var(--r-light);
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--r-dark);
+  white-space: nowrap;
+}
+
+/* The box is a small pixel canvas, scaled up. The spots on top of it are
+   placed in fractions of its 119 × 57 pixels (see drawBento). */
+.bento {
+  position: relative;
+  width: 100%;
+}
+
+.bento-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+.bento-spot {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.bento-spot:active {
+  transform: scale(0.94);
+}
+
+/* The big compartment, x 7 to 64 and y 18 to 45, as two halves. */
+.bento-food {
+  top: 31.6%;
+  height: 47.4%;
+  width: 23.9%;
+}
+
+.bento-food-0 { left: 5.9%; }
+.bento-food-1 { left: 29.8%; }
+
+/* The small ones on the right: x 68 to 113, above and below the divider. */
+.bento-drink,
+.bento-charm {
+  left: 57.1%;
+  width: 37.8%;
+  height: 21%;
+}
+
+.bento-drink { top: 26.3%; }
+.bento-charm { top: 54.4%; }
+
+.bento-spot-icon {
+  height: 82%;
+  aspect-ratio: 1;
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.25));
+}
+
+.bento-food .bento-spot-icon {
+  height: 62%;
+}
+
+.bento-spot-hint {
+  height: 58%;
+  aspect-ratio: 1;
+  opacity: 0.3;
+  filter: grayscale(1) brightness(1.6);
+}
+
+.bento-food .bento-spot-hint {
+  height: 40%;
+}
+
+/* Lid on: the trip's label on the ribbon, and a rarity seal. */
+.bento-label {
+  position: absolute;
+  left: 40.4%;
+  top: 20%;
+  width: 20%;
+  height: 55%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  border: 2px solid #4a2a1a;
+  background: #fffaf0;
+  box-shadow: 2px 2px 0 rgba(74, 42, 26, 0.35);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.bento-label-top {
+  width: 100%;
+  height: 30%;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--r-band);
+}
+
+.bento-label-icon {
+  height: 80%;
+  aspect-ratio: 1;
+  padding: 1px;
+  border-radius: 4px;
+  background: white;
+}
+
+.bento-label b {
+  font-size: 0.75rem;
+  line-height: 1.05;
+  text-align: center;
+  color: #4a2a1a;
+}
+
+.bento-label small {
+  margin-top: auto;
+  margin-bottom: 3px;
+  padding-top: 1px;
+  border-top: 1px dashed var(--lavender);
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--r-dark);
+}
+
+.bento-tap {
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.bento-items {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.bento-items > * {
+  pointer-events: auto;
+}
+
+/* Once the lid is on, the label is stuck on top of it. */
+.bento.is-closed .bento-label {
+  animation: bento-label 0.25s steps(3) both;
+}
+
+@keyframes bento-label {
+  0% { transform: translateY(-6px); opacity: 0; }
+  100% { transform: none; opacity: 1; }
+}
+
+/* Tummy and energy, now (striped) and back home (solid). */
+.trip-bars {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 8px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.trip-bars-head {
+  align-self: flex-end;
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #8b7aa0;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.trip-meter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.trip-meter-icon {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+.trip-track {
+  position: relative;
+  flex: 1;
+  height: 16px;
+  border-radius: 6px;
+  background: var(--seg-empty);
+  box-shadow: inset 0 0 0 2px var(--seg-empty-shade);
+  overflow: hidden;
+}
+
+.trip-fill-now,
+.trip-fill-after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  transition: width 0.3s;
+}
+
+.trip-fill-now {
+  background: repeating-linear-gradient(135deg, #8fd9b4 0 5px, #c2f2d6 5px 10px);
+}
+
+.trip-fill-after {
+  background: var(--good);
+}
+
+.trip-lowline {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 2px dashed var(--low);
+}
+
+.trip-meter-text {
+  flex: none;
+  min-width: 72px;
+  text-align: right;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.trip-meter-text.is-ok { color: var(--good-dark); }
+.trip-meter-text.is-short { color: var(--low-dark); }
+
+/* ---- What to pack ---- */
+
+.lunch-panel {
+  padding: 8px;
+  border-radius: 16px;
+  background: var(--card);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lunch-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--seg-empty);
+}
+
+.lunch-tab {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 34px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #6c5c80;
+  cursor: pointer;
+}
+
+.lunch-tab.is-on {
+  background: white;
+  color: var(--ink);
+  box-shadow: 0 2px 0 var(--seg-empty-shade);
+}
+
+.lunch-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.lunch-grid > .trip-note {
+  grid-column: 1 / -1;
+  padding: 8px 0;
+}
+
+.lunch-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 2px 4px;
+  border: 2px solid var(--lavender);
+  border-radius: 12px;
+  background: white;
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.lunch-tile:active:not(.is-full) {
+  transform: scale(0.94);
+}
+
+.lunch-tile.is-full {
+  opacity: 0.5;
+}
+
+.lunch-tile-icon {
+  width: 30px;
+  height: 30px;
+}
+
+.lunch-tile small {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--good-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.lunch-count {
+  position: absolute;
+  top: -7px;
+  right: -4px;
+  padding: 0 5px;
+  border-radius: 99px;
+  background: var(--plum);
+  color: white;
+  font-style: normal;
+  font-size: 0.65rem;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+/* ---- The travel journal: a postcard per place ---- */
+
+.journal-cat .shop-cat-rows {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.postcard {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 6px 8px;
+  border-radius: 4px;
+  background: #fffdf7;
+  box-shadow: 0 2px 0 rgba(43, 33, 64, 0.12), 0 0 0 1px #eadfcf;
+  transform: rotate(-1.5deg);
+}
+
+.postcard:nth-child(even) {
+  transform: rotate(1.2deg);
+}
+
+.postcard b {
+  margin-top: 3px;
+  font-size: 0.85rem;
+}
+
+.postcard small {
+  font-size: 0.72rem;
+  color: #6c5c80;
+}
+
+.postcard-pic {
+  --sky: #cbe7fb;
+  position: relative;
+  height: 90px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: linear-gradient(var(--sky), white 90%);
+}
+
+.postcard[data-place='woods'] .postcard-pic { --sky: #bfe7d0; }
+.postcard[data-place='caves'] .postcard-pic { --sky: #c9d4f5; }
+.postcard[data-place='market'] .postcard-pic { --sky: #e2cff8; }
+.postcard[data-place='hill'] .postcard-pic { --sky: #d6c8f2; }
+
+.postcard-ground {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 26px;
+  background: #a8d8a0;
+  border-top: 3px solid var(--good);
+}
+
+.postcard-place {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  width: 54px;
+  height: 54px;
+}
+
+.postcard-stamp {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 32px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px dotted white;
+  outline: 2px solid var(--r-dark);
+  background: var(--r-band);
+}
+
+.postcard-stamp .trip-gems {
+  gap: 2px;
+}
+
+.postcard-stamp .trip-gem {
+  width: 5px;
+  height: 5px;
+}
+
+.postcard.is-new {
+  opacity: 0.55;
+}
+
+.postcard.is-new .postcard-pic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: repeating-linear-gradient(45deg, #efe6f7 0 8px, #f7f1fb 8px 16px);
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #b8a3d4;
+}
+
+.banner > .btn[hidden] {
+  display: none;
+}

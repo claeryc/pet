@@ -12,8 +12,9 @@ import { satisfyCraving } from './craving';
 import { newPet, type GameState, type Pet } from './state';
 import { rememberPet } from './family';
 import { retire } from './friends';
+import { isAway } from './presence';
 
-export type BlockReason = 'egg' | 'asleep' | 'tooTired' | 'notSick' | 'noFood' | 'resting' | 'passed' | 'noRevival';
+export type BlockReason = 'egg' | 'asleep' | 'tooTired' | 'notSick' | 'noFood' | 'resting' | 'passed' | 'noRevival' | 'away';
 
 export interface ActionResult {
   state: GameState;
@@ -35,6 +36,7 @@ export type Food = (typeof CONFIG.foods)[number] & {
   caughtOnly?: boolean;
   grownOnly?: boolean;
   cookedOnly?: boolean;
+  foundOnly?: boolean;
   stars?: number;
 };
 export type FoodId = Food['id'];
@@ -42,6 +44,7 @@ export type ActivityId = (typeof CONFIG.activities)[number]['id'];
 
 export function feed(state: GameState, now: number, foodId: FoodId = 'riceBall'): ActionResult {
   const s = simulate(state, now);
+  if (isAway(s.pet)) return { state: s, blocked: 'away' };
   if (s.pet.condition === 'passed') return { state: s, blocked: 'passed' };
   if (s.pet.stage === 'egg') return { state: s, blocked: 'egg' };
   if (s.pet.asleep) return { state: s, blocked: 'asleep' };
@@ -70,6 +73,7 @@ export function feed(state: GameState, now: number, foodId: FoodId = 'riceBall')
 
 export function play(state: GameState, now: number, activityId: ActivityId = 'cuddle'): ActionResult {
   const s = simulate(state, now);
+  if (isAway(s.pet)) return { state: s, blocked: 'away' };
   if (s.pet.condition === 'passed') return { state: s, blocked: 'passed' };
   if (s.pet.stage === 'egg') return { state: s, blocked: 'egg' };
   if (s.pet.asleep) return { state: s, blocked: 'asleep' };
@@ -87,6 +91,7 @@ export function play(state: GameState, now: number, activityId: ActivityId = 'cu
 // Turns the lights off (pet goes to sleep) or on (pet wakes up).
 export function toggleLights(state: GameState, now: number): ActionResult {
   const s = simulate(state, now);
+  if (isAway(s.pet)) return { state: s, blocked: 'away' };
   if (s.pet.condition === 'passed') return { state: s, blocked: 'passed' };
   if (s.pet.stage === 'egg') return { state: s, blocked: 'egg' };
   return { state: withPet(s, (pet) => (pet.asleep = !pet.asleep)) };

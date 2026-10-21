@@ -42,6 +42,8 @@ function line(note: AwayNote, name: string): { icon: string; text: string } {
       return { icon: STAT_ICONS.health, text: t.critical(note.name, formatDuration(note.timeLeft)) };
     case 'passed':
       return { icon: ITEM_ICONS.revivalStar, text: t.passed(note.name) };
+    case 'tripHome':
+      return { icon: ITEM_ICONS.journey, text: t.tripHome(note.name, STRINGS.journeys.places[note.place] ?? note.place) };
   }
 }
 

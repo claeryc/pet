@@ -188,6 +188,18 @@ export const CONFIG = {
     // `limited` food isn't in the Shop every day (see `economy.limited`),
     // and Percy sometimes leaves one after a gold-frame order.
     { id: 'energyDrink', price: 35, hunger: 0, happiness: 4, health: -2, energy: 40, limited: true },
+    // `foundOnly` food isn't sold or grown: a pet brings it home from a
+    // journey, one kind per place (see `journeys` below). There are no
+    // seeds for these.
+    { id: 'honey', price: 15, hunger: 8, happiness: 8, health: 2, foundOnly: true, stars: 1 },
+    { id: 'wildMushroom', price: 15, hunger: 10, happiness: 0, health: 6, foundOnly: true, stars: 1 },
+    { id: 'glowSalt', price: 20, hunger: 2, happiness: 4, health: 6, foundOnly: true, stars: 2 },
+    { id: 'stardustSugar', price: 25, hunger: 4, happiness: 14, health: 0, foundOnly: true, stars: 2 },
+    // Dishes made with what journeys bring home.
+    { id: 'honeyCake', price: 45, hunger: 30, happiness: 26, health: 4, cookedOnly: true, stars: 2 },
+    { id: 'mushroomSoup', price: 45, hunger: 36, happiness: 6, health: 14, cookedOnly: true, stars: 2, slowHunger: { percent: 15, hours: 4 } },
+    { id: 'glowSalmon', price: 55, hunger: 34, happiness: 12, health: 12, cookedOnly: true, stars: 2 },
+    { id: 'stardustPudding', price: 80, hunger: 32, happiness: 36, health: 6, cookedOnly: true, stars: 3 },
     // What you get when the pot holds a mix that isn't a recipe.
     { id: 'mushyMess', price: 1, hunger: 8, happiness: 0, health: 0, cookedOnly: true },
   ],
@@ -271,6 +283,7 @@ export const CONFIG = {
       'riceBall', 'strawberry', 'warmMilk', 'cookie',
       'shrimp', 'salmon', 'lobster',
       'carrot', 'pumpkin', 'dragonFruit',
+      'honey', 'wildMushroom', 'glowSalt', 'stardustSugar',
     ],
     recipes: [
       { id: 'grilledShrimp', ingredients: ['shrimp'] },
@@ -289,6 +302,10 @@ export const CONFIG = {
       { id: 'heartyStew', ingredients: ['carrot', 'pumpkin', 'salmon'] },
       { id: 'dragonFruitTart', ingredients: ['dragonFruit', 'cookie'] },
       { id: 'dragonFruitSmoothie', ingredients: ['dragonFruit', 'strawberry', 'warmMilk'] },
+      { id: 'honeyCake', ingredients: ['honey', 'cookie', 'warmMilk'] },
+      { id: 'mushroomSoup', ingredients: ['wildMushroom', 'carrot', 'warmMilk'] },
+      { id: 'glowSalmon', ingredients: ['glowSalt', 'salmon'] },
+      { id: 'stardustPudding', ingredients: ['stardustSugar', 'warmMilk', 'strawberry'] },
     ],
     mess: 'mushyMess',
   },
@@ -425,6 +442,100 @@ export const CONFIG = {
     wandererStars: { 1: 65, 2: 25, 3: 10 },
   },
 
+  // Journeys (Play > Journeys, see src/game/journeys.ts). A teen or
+  // grown-up pet goes out to one of the places for a while and comes home
+  // with a backpack of finds. Three offers are on the board at a time; each
+  // has a place and a rarity, and the rarity sets how long the trip is.
+  journeys: {
+    // Trip length (hours) by rarity.
+    hours: { common: 1, rare: 4, epic: 10 },
+    // The first offer on the board is always common, so there's always a
+    // short trip. The other two are rare or epic, by these odds (percent).
+    odds: { rare: 75, epic: 25 },
+    // A taken offer is replaced this many hours later.
+    refillHours: 4,
+    // What a trip uses up. The lunchbox and the pet's own tummy and energy
+    // have to cover it, with the pet still at or above the low line
+    // (`lowStatThreshold`) when it's home. Only tummy and energy go down on
+    // the way: joy and health stay put, and the pet can't get sick.
+    cost: {
+      common: { hunger: 8, energy: 10 },
+      rare: { hunger: 25, energy: 30 },
+      epic: { hunger: 55, energy: 60 },
+    },
+    // The lunchbox: a bento with two spots for food in the big compartment,
+    // one for a drink (anything that gives energy) and one for a charm.
+    lunch: { food: 2, drink: 1 },
+    // Charms, bought in the Shop and used up on one trip, make it bring
+    // home more: `extraFinds` more finds, `twoStar` added to the chance of
+    // each find having 2 stars, or `threeStar` (by rarity) added to the
+    // chance of a 3-star find.
+    charms: [
+      { id: 'clover', price: 60, extraFinds: 1 },
+      { id: 'compass', price: 90, twoStar: 0.25 },
+      { id: 'starCharm', price: 150, threeStar: { rare: 0.15, epic: 0.15 } },
+    ],
+    joy: { common: 4, rare: 8, epic: 12 }, // joy gained on the trip
+    // A pet that's home again waits this share of the trip before going
+    // out again (it can do everything else straight away).
+    waitShare: 0.5,
+    // How many finds a trip brings back, and the most stars they can have.
+    // An epic trip turns one find into a 3-star find `threeStarChance` of
+    // the time. A pet whose character is of the place's theme finds one more.
+    finds: {
+      common: { min: 1, max: 2, twoStarChance: 0 },
+      rare: { min: 3, max: 4, twoStarChance: 0.4 },
+      epic: { min: 5, max: 6, twoStarChance: 0.6 },
+    },
+    threeStarChance: 0.3,
+    // The place's own ingredient: always one on rare and epic trips (two on
+    // epic), and on common trips this often.
+    ingredientChance: 0.35,
+    // Percy can come along, if he's picked before setting off: halfway (or
+    // when the trip is called off early) he flies home with the best find.
+    // Then he rests for `restHours`, which the Shop can cut short for gold.
+    percy: { restHours: 60, resetPrice: 150 },
+    // The places, one per theme. Each opens with `opens` (see journeys.ts)
+    // and has finds by stars: a food, a seed ("seed:pumpkin") or gold
+    // ("gold:12").
+    places: [
+      {
+        id: 'market', theme: 'basic', ingredient: 'honey', opens: 'start',
+        finds: {
+          1: ['strawberry', 'warmMilk', 'cookie', 'gold:10', 'seed:carrot'],
+          2: ['gold:25', 'salmon', 'berryShortcake', 'seed:pumpkin'],
+          3: ['gold:60', 'seed:dragonFruit', 'energyDrink'],
+        },
+      },
+      {
+        id: 'woods', theme: 'nature', ingredient: 'wildMushroom', opens: 'harvest',
+        finds: {
+          1: ['strawberry', 'carrot', 'seed:carrot', 'gold:8'],
+          2: ['pumpkin', 'seed:pumpkin', 'gold:20'],
+          3: ['dragonFruit', 'seed:dragonFruit'],
+        },
+      },
+      {
+        id: 'caves', theme: 'cave', ingredient: 'glowSalt', opens: 'fish',
+        finds: {
+          1: ['shrimp', 'warmMilk', 'gold:12'],
+          2: ['salmon', 'gold:30'],
+          3: ['lobster', 'gold:70'],
+        },
+      },
+      {
+        id: 'hill', theme: 'sparkle', ingredient: 'stardustSugar', opens: 'grownUp',
+        finds: {
+          1: ['cookie', 'strawberry', 'gold:12'],
+          2: ['berryShortcake', 'gold:30', 'seed:pumpkin'],
+          3: ['dragonFruitTart', 'seed:dragonFruit', 'gold:80'],
+        },
+      },
+    ],
+    // `opens: 'fish'` needs this many fish landed.
+    fishToOpen: 10,
+  },
+
   // Decorating the room, from the Shop: a wallpaper and window curtains.
   // Each is bought once, then you pick which to use. Every room starts
   // with the plain wallpaper and no curtains.
@@ -455,6 +566,7 @@ export const CONFIG = {
     cravings: [5, 25, 100], // cravings treated with just the right food
     gifts: [5, 25, 100], // gifts given to friends
     littleOnes: [1, 3, 10], // little ones from mingling
+    journeys: [5, 25, 100], // journeys finished (not called home early)
   },
 
   // Skills (in the menu, see src/game/skills.ts). Doing things earns Keeper
@@ -463,7 +575,7 @@ export const CONFIG = {
   // pet you raise.
   skills: {
     // XP for each thing counted for an achievement (per one).
-    xp: { fish: 3, deliveries: 5, harvests: 4, dishes: 3, cravings: 5, gifts: 2, littleOnes: 50 },
+    xp: { fish: 3, deliveries: 5, harvests: 4, dishes: 3, cravings: 5, gifts: 2, littleOnes: 50, journeys: 8 },
     perfectFishXp: 2, // extra for a perfect catch (5 in all)
     deliveryXp: { bronze: 0, silver: 5, gold: 15 }, // extra for a fuller order (5 / 10 / 20 in all)
     grownUpXp: { 1: 20, 2: 40, 3: 80 }, // a pet growing up, by its stars

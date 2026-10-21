@@ -4,12 +4,14 @@
 // `careDaysPerFragment` such days give a fragment. The days don't have to
 // be in a row: a missed day just doesn't count. A day counts once however
 // many pets you have. That's about one free star a month for someone who
-// plays every day.
+// plays every day. A day when every pet is away on a journey doesn't count
+// (nobody was home to look after).
 
 import { CONFIG } from './config';
 import { localDay } from './economy';
 import { allPets } from './friends';
 import type { GameState } from './state';
+import { nobodyHome } from './presence';
 
 const F = CONFIG.revival.fragments;
 
@@ -19,25 +21,28 @@ const F = CONFIG.revival.fragments;
 export function stepFragments(state: GameState): { state: GameState; pieces: number; stars: number } {
   const fr = state.fragments;
   let { careDays, day, dayGood } = fr;
+  let home = fr.home ?? true; // someone was home that day
   let earned = 0;
 
   // A new day: the one before counts if it went well.
   const today = localDay(state.lastUpdated);
   if (day !== today) {
-    if (day !== '' && dayGood) careDays += 1;
+    if (day !== '' && dayGood && home) careDays += 1;
     if (careDays >= F.careDaysPerFragment) {
       careDays -= F.careDaysPerFragment;
       earned = 1;
     }
     day = today;
     dayGood = true;
+    home = false;
   }
+  if (!nobodyHome(state)) home = true;
   // Any pet not doing well spoils the day (an egg needs nothing, but a day
   // with only eggs doesn't count either).
   const pets = allPets(state).filter((p) => p.stage !== 'egg');
   if (pets.length === 0 || pets.some((p) => p.condition !== 'healthy')) dayGood = false;
 
-  if (earned === 0 && careDays === fr.careDays && day === fr.day && dayGood === fr.dayGood) {
+  if (earned === 0 && careDays === fr.careDays && day === fr.day && dayGood === fr.dayGood && home === (fr.home ?? true)) {
     return { state, pieces: 0, stars: 0 };
   }
   const total = fr.pieces + earned;
@@ -48,7 +53,7 @@ export function stepFragments(state: GameState): { state: GameState; pieces: num
   return {
     state: {
       ...state,
-      fragments: { pieces: total % F.perStar, careDays, day, dayGood },
+      fragments: { pieces: total % F.perStar, careDays, day, dayGood, home },
       inventory: { ...state.inventory, supplies },
     },
     pieces: earned,

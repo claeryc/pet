@@ -28,6 +28,7 @@ import { characterOfStars, getCharacter, rollStarsWith, seededRoll } from './gro
 import { localDay, useFood } from './economy';
 import { clampStat, canPlayMinigames } from './stats';
 import { rememberPet } from './family';
+import { backHomeAt, isAway } from './presence';
 import { logMessage } from './messages';
 import { newPet, type FamilyMember, type Friend, type GameState, type Pet } from './state';
 import type { Food, FoodId } from './actions';
@@ -133,7 +134,8 @@ export function stepVisits(state: GameState, t: number): GameState {
     if (v.until > 0) {
       // Someone's over: they stay until `until`.
       if (t < v.until) break;
-      if (v.friendId && !v.met) s = missedVisit(s, v.friendId);
+      // (Nobody's fault if every pet was out on a journey.)
+      if (v.friendId && !v.met && backHomeAt(s, v.until) === null) s = missedVisit(s, v.friendId);
       v = { ...v, guest: null, friendId: null, met: false, until: 0, nextAt: v.until + gapAfter(v.until) };
       continue;
     }
@@ -399,7 +401,7 @@ export function mingle(state: GameState, friendId: string, now: number, roll: nu
 // were looking after.
 export function switchPet(state: GameState, id: string): GameState {
   const other = state.housemates.find((p) => p.id === id);
-  if (!other) return state;
+  if (!other || isAway(other)) return state; // a pet out on a journey isn't in the room
   return {
     ...state,
     pet: other,

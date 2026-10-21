@@ -10,6 +10,7 @@ import { CONFIG } from './config';
 import { moisture, plotStage } from './garden';
 import { isCritical, timeLeftToTreat } from './stats';
 import type { GameState } from './state';
+import { hasBackpack, isAway } from './presence';
 
 export type AwayNote =
   | { kind: 'ready' | 'dry' | 'sickPlant' | 'deadPlant'; count: number; crop: string | null }
@@ -18,6 +19,7 @@ export type AwayNote =
   | { kind: 'sick' | 'warning' }
   // Any pet in the room, so these carry its name.
   | { kind: 'passed'; name: string }
+  | { kind: 'tripHome'; name: string; place: string }
   | { kind: 'critical'; name: string; timeLeft: number };
 
 // What to tell you, comparing the game as you left it (`before`) with the
@@ -51,6 +53,12 @@ export function awayNotes(before: GameState, after: GameState, leftAt: number, n
   for (const food of missed) notes.push({ kind: 'missedCraving', food });
   if (after.craving.food && after.craving.food !== before.craving.food) notes.push({ kind: 'craving', food: after.craving.food });
 
+  // Pets that came home from a journey with a backpack to open.
+  const wasAway = new Set([before.pet, ...before.housemates].filter(isAway).map((p) => p.id));
+  for (const p of [after.pet, ...after.housemates]) {
+    if (wasAway.has(p.id) && hasBackpack(p)) notes.push({ kind: 'tripHome', name: p.name, place: p.trip!.place });
+  }
+
   // Any pet in the room that passed away, or is close to it.
   const beforePets = new Map([before.pet, ...before.housemates].map((p) => [p.id, p]));
   for (const p of [after.pet, ...after.housemates]) {
@@ -62,7 +70,7 @@ export function awayNotes(before: GameState, after: GameState, leftAt: number, n
 
   // The pet: if it got ill, or a need ran low.
   const pet = after.pet;
-  if (pet.id === before.pet.id && pet.stage !== 'egg' && pet.condition !== 'passed') {
+  if (pet.id === before.pet.id && pet.stage !== 'egg' && pet.condition !== 'passed' && !pet.trip) {
     if (pet.condition === 'sick' && before.pet.condition !== 'sick') notes.push({ kind: 'sick' });
     else if (pet.condition === 'warning' && before.pet.condition === 'healthy') notes.push({ kind: 'warning' });
     for (const stat of ['hunger', 'energy', 'happiness'] as const) {

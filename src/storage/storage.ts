@@ -6,7 +6,7 @@ import { CONFIG } from '../game/config';
 import type { GameState } from '../game/state';
 import { characterKey, unlocksFor } from '../game/unlocks';
 import { newGarden } from '../game/garden';
-import { newKeeper } from '../game/state';
+import { newJourneys, newKeeper } from '../game/state';
 import { grownUpXp, levelInfo } from '../game/skills';
 import { getCharacter } from '../game/growth';
 
@@ -14,7 +14,7 @@ const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 18;
+export const SAVE_VERSION = 19;
 
 export interface SaveFile {
   version: number;
@@ -197,6 +197,17 @@ export function migrate(save: SaveFile): SaveFile {
     const st = save.state;
     st.fragments = { pieces: st.fragments?.pieces ?? 0, careDays: 0, day: '', dayGood: false };
     save.version = 18;
+  }
+  // Version 18 -> 19: journeys and the travel journal. Nobody is away yet.
+  if (save.version === 18) {
+    const st = save.state;
+    for (const p of [st.pet, ...(st.housemates ?? [])]) {
+      if (!p) continue;
+      p.trip = null;
+      p.tripReadyAt = 0;
+    }
+    st.journeys = newJourneys();
+    save.version = 19;
   }
   return save;
 }

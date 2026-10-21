@@ -10,6 +10,9 @@ import type { GameState } from '../game/state';
 import type { Food, FoodId } from '../game/actions';
 import { FRAGMENT_ICON, ITEM_ICONS, STAT_ICONS } from './icons';
 import { SEEDS_FOR_SALE, SUPPLIES, priceOf, seedCount, supplyCount, type ShopItem } from '../game/garden';
+import { CHARMS, charmCount, percyFree } from '../game/journeys';
+import { isUnlocked } from '../game/unlocks';
+import { formatDuration } from './time';
 
 export interface ShopCallbacks {
   onBuyFood: (food: FoodId) => void;
@@ -17,10 +20,12 @@ export interface ShopCallbacks {
   onBuyGardenItem: (item: ShopItem) => void;
   onWearHat: (hat: string | null) => void;
   onBuyBait: () => void;
+  onBuyCharm: (charm: string) => void; // a charm for the journey lunchbox
   onBuyPot: () => void;
   onBuyDecor: (kind: DecorKind, id: string) => void;
   onUseDecor: (kind: DecorKind, id: string | null) => void;
   onBuyPack: (productId: string) => void; // Revival Stars, with real money
+  onWakePercy: () => void; // ends Percy's rest after a journey, for gold
   // The picture of a hat, as a URL (from its sprite sheet), if loaded.
   hatImage: (hat: string) => string | undefined;
 }
@@ -179,10 +184,10 @@ function decorEntry(state: GameState, d: Decor, cb: ShopCallbacks): Entry {
 }
 
 // The Shop's categories, in order. Other screens can open the Shop at one.
-export type ShopCategory = 'revival' | 'food' | 'garden' | 'fishing' | 'room' | 'hats';
+export type ShopCategory = 'revival' | 'food' | 'garden' | 'fishing' | 'journeys' | 'room' | 'hats';
 
 // Food the Shop sells: only plain ingredients (the energy drink only on its days).
-export const soldInShop = (f: Food) => f.price > 0 && !f.caughtOnly && !f.grownOnly && !f.cookedOnly;
+export const soldInShop = (f: Food) => f.price > 0 && !f.caughtOnly && !f.grownOnly && !f.cookedOnly && !f.foundOnly;
 
 export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>): HTMLElement[] {
   const now = state.lastUpdated;
@@ -247,6 +252,25 @@ export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>)
     row: row(ITEM_ICONS.bait, STRINGS.shop.bait, STRINGS.shop.baitNote(baitCount(state)),
       priceButton(CONFIG.fishing.bait.price, state.gold, cb.onBuyBait)),
   }];
+  // Percy rests after coming along on a journey: gold wakes him up early.
+  const resting = !percyFree(state, now);
+  // Charms for the lunchbox, used up on one trip.
+  const journeys: Entry[] = isUnlocked(state, 'journeys') ? [{
+    icon: ITEM_ICONS.percy,
+    faded: !resting,
+    row: row(ITEM_ICONS.percy, STRINGS.journeys.percyRest,
+      resting ? STRINGS.journeys.percyRestNote(formatDuration(state.journeys.percyFreeAt - now)) : STRINGS.journeys.percyReady,
+      resting ? priceButton(CONFIG.journeys.percy.resetPrice, state.gold, cb.onWakePercy) : label(STRINGS.journeys.ready)),
+  }, ...CHARMS.map((c) => {
+    const text = STRINGS.journeys.charms[c.id];
+    const have = charmCount(state, c.id);
+    return {
+      icon: ITEM_ICONS[`charm_${c.id}`] ?? '',
+      count: countBadge(have),
+      row: row(ITEM_ICONS[`charm_${c.id}`] ?? '', text?.name ?? c.id, STRINGS.journeys.charmShopNote(text?.note ?? '', have),
+        priceButton(c.price, state.gold, () => cb.onBuyCharm(c.id))),
+    };
+  })] : [];
   const room: Entry[] = [...WALLPAPERS, ...CURTAINS].map((d) => decorEntry(state, d, cb));
   // Revival Stars: the star fragments collected so far (free, from good
   // care), then stars to keep in your pocket, bought with real money.
@@ -269,6 +293,7 @@ export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>)
     category('food', STRINGS.shop.food, food, open),
     category('garden', STRINGS.shop.garden, garden, open),
     category('fishing', STRINGS.shop.fishing, fishing, open),
+    ...(journeys.length > 0 ? [category('journeys', STRINGS.shop.journeys, journeys, open)] : []),
     category('room', STRINGS.shop.room, room, open),
     category('hats', STRINGS.shop.hats, hats, open),
   ];
