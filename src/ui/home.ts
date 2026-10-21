@@ -34,6 +34,8 @@ import { createFx, type Gains } from './fx';
 import { hasBackpack, isAway } from '../game/presence';
 import { formatClock } from './time';
 import { createJourneys, JOURNEYS_OUT_MS } from './journeys';
+import { createTripView } from './trip';
+import type { Pet } from '../game/state';
 
 export interface HomeCallbacks extends MenuCallbacks {
   onFeed: (food: FoodId) => void;
@@ -77,6 +79,7 @@ export interface HomeScreen {
   gardenScene: () => GardenScene | null; // so the room can turn into the garden
   deliveryScene: () => DeliveryScene | null; // ...or Percy's meadow, for his order
   meetScene: () => { friend: Friend; hearts: boolean } | null; // a friend over to play
+  tripScene: () => { place: string; pets: Pet[] } | null; // looking at the current trip
 }
 
 // Pixel icons drawn on a 12x12 grid, so they match the pixel-art style.
@@ -243,6 +246,14 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   parcel.title = STRINGS.delivery.open;
   parcel.hidden = true;
   parcel.addEventListener('click', () => startDelivery());
+  // The note pinned on the wall while the pet is out on a journey (drawn in
+  // render/canvas.ts): tapping it shows the current trip.
+  const noteBtn = document.createElement('button');
+  noteBtn.className = 'note-btn';
+  noteBtn.setAttribute('aria-label', STRINGS.journeys.tripOpen);
+  noteBtn.title = STRINGS.journeys.tripOpen;
+  noteBtn.hidden = true;
+  noteBtn.addEventListener('click', () => toggleTrip());
   // The pet's craving: a thought bubble over its head with the food in it.
   // Tapping it opens Feed when you have that food. Where to get it is for
   // the player to work out (the recipe book helps), so otherwise it just
@@ -263,7 +274,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     mouth: 0.64,
     food: 0.72,
   }));
-  roomWrap.append(canvas, fx.el, bubble, parcel);
+  roomWrap.append(canvas, fx.el, bubble, parcel, noteBtn);
 
   // Warning / sick / recovering / passed away banner, hidden when all is well.
   const banner = document.createElement('div');
@@ -660,6 +671,27 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     toast: (msg) => showToast(msg),
     characterImage: cb.characterImage,
   });
+  // The current trip: the place in the room, and a map over the stat bars.
+  const trip = createTripView({
+    characterImage: cb.characterImage,
+    onClose: () => {
+      noteBtn.classList.remove('is-open');
+      stats.hidden = latest?.state.pet.stage === 'egg';
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        for (const bar of Object.values(bars)) bar.refill(0);
+      }
+    },
+  });
+  function toggleTrip(): void {
+    if (trip.active()) return trip.close();
+    if (!petAway || journeys.active()) return;
+    feedDrawer.close();
+    playDrawer.close();
+    menuDrawer!.close();
+    stats.hidden = true;
+    trip.open();
+    noteBtn.classList.toggle('is-open', trip.active());
+  }
   // Off to another scene: the normal buttons go, and the parcel and the
   // craving bubble with them, straight away rather than on the next tick.
   function hideActions(): void {
@@ -734,7 +766,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   statSlot.className = 'stat-slot';
   // The item reveal plays over all of them.
   const reveal = createReveal();
-  statSlot.append(stats, journeys.panel, fishing.pond, cooking.kitchen, garden.beds, delivery.panel, meet.panel, reveal.el);
+  statSlot.append(stats, journeys.panel, trip.panel, fishing.pond, cooking.kitchen, garden.beds, delivery.panel, meet.panel, reveal.el);
 
   // A short message that pops up and fades, e.g. "Mochi is asleep". When
   // you've run out of something the Shop sells, it has a Shop button too.
@@ -884,6 +916,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       delivery.update(state, now);
       meet.update(state, now);
       journeys.update(state, now);
+      trip.update(state, now);
+      noteBtn.hidden = !petAway;
       refreshParcel();
       parcel.classList.toggle('all-full', !!state.delivery.order?.boxes.every((b) => b.have >= b.want));
       playDrawer.setHidden(GARDEN_ROW, !isUnlocked(state, 'garden'));
@@ -896,7 +930,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       const journeysIsNew = isNew(state, 'journeys');
       playDrawer.setOptionNew(JOURNEYS_ROW, journeysIsNew);
       playDrawer.setNew(gardenIsNew || meetIsNew || journeysIsNew);
-      stats.hidden = isEgg || journeys.active(); // an egg has no needs yet
+      stats.hidden = isEgg || journeys.active() || trip.active(); // an egg has no needs yet
       canvas.setAttribute('aria-label', petAway ? STRINGS.blocked.away(pet.name) : isEgg ? STRINGS.mood.egg : STRINGS.mood[getLook(pet)](pet.name));
 
       // Banner: hatching countdown, or passed away beats sick beats
@@ -965,5 +999,6 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     gardenScene: () => garden.scene(),
     deliveryScene: () => delivery.scene(),
     meetScene: () => meet.scene(),
+    tripScene: () => trip.scene(),
   };
 }

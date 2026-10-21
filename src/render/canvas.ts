@@ -8,6 +8,7 @@ import { pickHatFrame, type SpriteSheet } from './sprites';
 import type { FishingPhase } from '../ui/fishing';
 import { drawGardenBackground, drawGardenPots, type GardenScene } from './garden';
 import { drawDelivery, type DeliveryScene } from './delivery';
+import { drawPlace } from './places';
 
 export const ROOM_WIDTH = 64;
 export const ROOM_HEIGHT = 48;
@@ -40,6 +41,14 @@ export interface Scene {
   // Nobody's home (out on a journey): no pet, just a little note pinned to
   // the wall.
   note?: boolean;
+  // Looking at the current trip (tap the note): the place, with the pets
+  // that went there, left to right.
+  trip?: TripScene | null;
+}
+
+export interface TripScene {
+  place: string; // a place id from CONFIG.journeys.places
+  pets: OtherPet[];
 }
 
 export function setupCanvas(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
@@ -270,6 +279,34 @@ function stepOutside(scene: Scene, timeMs: number): { mix: number; outside: Outs
   return { mix: easeInOut(outsideMix), outside: outsideMix > 0 ? lastOutside : null };
 }
 
+// Looking at the trip and back: the place fades in over the room.
+const TRIP_FADE_MS = 300;
+let tripMix = 0; // 0 = the room, 1 = the place
+let lastTrip: TripScene | null = null; // kept while it fades away
+let lastTripFrameMs = 0;
+
+function stepTrip(scene: Scene, timeMs: number): number {
+  const dt = lastTripFrameMs ? Math.max(0, timeMs - lastTripFrameMs) : 0;
+  lastTripFrameMs = timeMs;
+  if (scene.trip) lastTrip = scene.trip;
+  const target = scene.trip ? 1 : 0;
+  const instant = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const step = instant ? 1 : dt / TRIP_FADE_MS;
+  tripMix = target > tripMix ? Math.min(target, tripMix + step) : Math.max(target, tripMix - step);
+  return tripMix;
+}
+
+// The place the pets went to, with them standing in it: one in the
+// middle, two side by side.
+function drawTrip(ctx: CanvasRenderingContext2D, trip: TripScene, night: boolean, timeMs: number): void {
+  drawPlace(ctx, trip.place, ROOM_WIDTH, ROOM_HEIGHT, night, timeMs);
+  const spots: Spot[] = trip.pets.length > 1 ? ['left', 'right'] : ['middle'];
+  trip.pets.slice(0, 2).forEach((p, i) => {
+    drawPetAt(ctx, p.sheet, p.animation, SPOTS[spots[i]], timeMs, p.hat);
+    if (p.glow) drawGlow(ctx, SPOTS[spots[i]], timeMs);
+  });
+}
+
 // Clips drawing to everything below a grassy edge `edge` pixels down.
 function clipBelowGrass(ctx: CanvasRenderingContext2D, edge: number, timeMs: number): void {
   const sway = Math.floor(timeMs / 120) % 3;
@@ -346,6 +383,13 @@ export function drawRoom(
   }
 
   if (!percys && !scene.note) drawPet(mix);
+
+  const trip = stepTrip(scene, timeMs);
+  if (trip > 0 && lastTrip) {
+    ctx.globalAlpha = trip;
+    drawTrip(ctx, lastTrip, scene.night, timeMs);
+    ctx.globalAlpha = 1;
+  }
 
   // Lights off: dim the whole room.
   if (scene.lightsOff) {
