@@ -1,5 +1,5 @@
-// The current trip: tap the note on the wall while the pet is out on a
-// journey. The room shows the place it went to, with the pet (or both
+// The current trip: tap the note in the corner of the room while a pet is
+// out on a journey. The room shows the place it went to, with the pet (or both
 // pets) there, and the stat bars make way for a little map: a red dashed
 // trail from home to the place, red as far as they've got and faded the
 // rest of the way, with the pets' pictures on it where they are now.
@@ -31,15 +31,12 @@ const MAP_H = 36;
 const FROM = { x: 12, y: 25 };
 const TO = { x: 108, y: 14 };
 
-// The notes pinned on the wall: one for each trip that's on (two pets
-// that went together share one), with the pet it's for. With a pet home
-// the note goes under the window, out of its way; with nobody home they
-// go side by side on the wall.
-export function tripNotes(state: GameState): { petId: string; spot: 'high' | 'high2' | 'low' }[] {
-  const away = [state.pet, ...state.housemates].filter(isAway);
-  const firsts = away.filter((p, i) => !away.slice(0, i).some((q) => q.id === p.trip!.with));
-  const someoneHome = away.length <= state.housemates.length;
-  return firsts.map((p, i) => ({ petId: p.id, spot: someoneHome ? 'low' : i === 0 ? 'high' : 'high2' }));
+// The notes in the corner of the room, one for each trip that's on (two
+// pets that went together share one), by the pet it's for, in id order so
+// they keep their places.
+export function tripNotes(state: GameState): Pet[] {
+  const away = [state.pet, ...state.housemates].filter(isAway).sort((a, b) => (a.id < b.id ? -1 : 1));
+  return away.filter((p, i) => !away.slice(0, i).some((q) => q.id === p.trip!.with));
 }
 
 // How far along a trip is, 0 to 1.

@@ -445,16 +445,14 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
       }));
     }
     // A pet out on another journey, faded, with how long until it's back
-    // and a little timer where the tick would be, emptying as it goes.
+    // and an hourglass where the tick would be.
     for (const p of allPets(s).filter(isAway)) {
       const trip = p.trip!;
       const row = el('button', 'lineup-row is-away');
       row.disabled = true;
       const left = trip.endsAt - now;
       row.title = T.backAt(formatClock(trip.endsAt));
-      const timer = el('i', 'lineup-timer');
-      const done = Math.min(1, Math.max(0, (now - trip.startedAt) / (trip.endsAt - trip.startedAt)));
-      timer.style.setProperty('--left', `${Math.round((1 - done) * 360)}deg`);
+      const timer = icon(STAT_ICONS.hourglass, 'lineup-timer');
       row.append(portrait(p, 'lineup-pic'), el('b', 'lineup-name', p.name), el('small', 'lineup-why', shortLeft(left)), timer);
       row.setAttribute('aria-label', `${p.name}, ${T.backAt(formatClock(trip.endsAt))}`);
       list.append(row);

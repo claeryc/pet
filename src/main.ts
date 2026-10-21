@@ -72,7 +72,6 @@ import { clearSave, loadGame, saveGame } from './storage/storage';
 import { setupCanvas, drawRoom } from './render/canvas';
 import { loadSprites, type SpriteLibrary } from './render/sprites';
 import { createHomeScreen } from './ui/home';
-import { tripNotes } from './ui/trip';
 import { createNamingBox } from './ui/naming';
 import { STRINGS } from './strings';
 import { FRAGMENT_ICON, ITEM_ICONS } from './ui/icons';
@@ -925,7 +924,6 @@ function render(timeMs: number): void {
       animation,
       glow: !away && pet.starGlow && pet.condition !== 'passed',
       note: away,
-      notes: tripNotes(state).map((n) => n.spot),
       night: isNight(gameNow()),
       lightsOff: pet.asleep,
       fishing: home.fishingPhase(),

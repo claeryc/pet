@@ -377,6 +377,37 @@ export const ITEM_ICONS: Record<string, string> = {
     '.kyk....kyk.',
     '.kk......kk.',
   ], { y: '#c79bff', w: '#fff' }),
+  // A pet's "gone exploring" note (in the corner of the room while it's
+  // out on a journey), and the same paper with no writing, for a pet's
+  // picture to go on once you've looked.
+  tripNote: pixelIcon([
+    '.....rr.....',
+    '.kkkkrrkkkk.',
+    '.keeeeeeeek.',
+    '.kellllllek.',
+    '.keeeeeeeek.',
+    '.kellllleek.',
+    '.keeeeeeeek.',
+    '.kellllllek.',
+    '.keeeeeeeek.',
+    '.kellleeeek.',
+    '.keeeeeeeek.',
+    '.kkkkkkkkkk.',
+  ]),
+  tripNoteBlank: pixelIcon([
+    '.....rr.....',
+    '.kkkkrrkkkk.',
+    '.keeeeeeeek.',
+    '.keeeeeeeek.',
+    '.keeeeeeeek.',
+    '.keeeeeeeek.',
+    '.keeeeeeeek.',
+    '.keeeeeeeek.',
+    '.keeeeeeeek.',
+    '.keeeeeeeek.',
+    '.keeeeeeeek.',
+    '.kkkkkkkkkk.',
+  ]),
   // The four journey places.
   place_market: pixelIcon([
     '............',
