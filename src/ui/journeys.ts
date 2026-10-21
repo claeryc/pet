@@ -436,6 +436,10 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
         render(true);
       }));
     }
+    // A pet out on another journey, faded, with when it's back.
+    for (const p of allPets(s).filter(isAway)) {
+      list.append(lineupRow(portrait(p, 'lineup-pic'), p.name, false, T.backAt(formatClock(p.trip!.endsAt)), () => {}));
+    }
     // Percy, last: along or not, unless he's resting.
     const free = percyFree(s, now);
     if (!free) percy = false;
@@ -635,16 +639,16 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     grid.scrollLeft = keepScroll;
   }
 
-  // Other pets out on a journey, or home with a backpack, in a line each.
+  // Other pets home with a backpack, in a line each. (One out on a
+  // journey only shows in the line-up: its trip is behind the note on the
+  // wall at home.)
   function others(s: GameState): HTMLElement[] {
-    return s.housemates.filter((p) => p.trip).map((p) => {
+    return s.housemates.filter(hasBackpack).map((p) => {
       const line = el('div', 'trip-other');
       const trip = p.trip!;
-      const away = isAway(p);
-      line.append(icon(away ? placeIcon(trip.place) : ITEM_ICONS.journey, 'trip-cost-icon'),
-        el('span', '', away ? `${T.away(p.name, placeName(trip.place))} · ${T.backAt(formatClock(trip.endsAt))}` : T.home(p.name, placeName(trip.place))));
-      const b = el('button', `shop-btn${away ? ' shop-btn-soft' : ''}`, away ? T.callHome : T.openBackpack);
-      b.addEventListener('click', () => (away ? cb.onCallHome(p.id) : cb.onOpenBackpack(p.id)));
+      line.append(icon(ITEM_ICONS.journey, 'trip-cost-icon'), el('span', '', T.home(p.name, placeName(trip.place))));
+      const b = el('button', 'shop-btn', T.openBackpack);
+      b.addEventListener('click', () => cb.onOpenBackpack(p.id));
       line.append(b);
       return line;
     });
