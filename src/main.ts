@@ -802,11 +802,16 @@ const home = createHomeScreen(root, {
     if (result.blocked) blocked(STRINGS.journeys.blocked[result.blocked](allPets(state).find((p) => p.id === id)?.name ?? ''));
   },
   onOpenBackpack: (id) => {
-    const result = openBackpack(simulate(state, gameNow()), id);
-    setState(result.state);
-    if (!result.place) return;
-    for (const f of result.finds) showFind(f, STRINGS.journeys.found(placeName(result.place)));
-    if (state.pet.id === id) react('happy');
+    const pet = allPets(state).find((p) => p.id === id);
+    if (!pet) return;
+    // The bag first, over the stat bars; the finds come out once it's tapped.
+    home.backpack(pet.name, () => {
+      const result = openBackpack(simulate(state, gameNow()), id);
+      setState(result.state);
+      if (!result.place) return;
+      for (const f of result.finds) showFind(f, STRINGS.journeys.found(placeName(result.place)));
+      if (state.pet.id === id) react('happy');
+    });
   },
   onBuyHat: (id) => runShop(buyHat(state, id), STRINGS.shop.boughtHat(getHat(id)?.name ?? '', state.pet.name)),
   onWearHat: (id) => runShop(wearHat(state, id)),

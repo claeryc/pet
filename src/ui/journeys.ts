@@ -538,6 +538,43 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     return out;
   }
 
+  // The spot in the open box where the last thing packed went.
+  function landing(): HTMLElement | null {
+    const b = box();
+    const at = tab === 'charm' ? '.bento-charm' : tab === 'drink' ? '.bento-drink' : `.bento-food-${b.food.length - 1}`;
+    return panel.querySelector<HTMLElement>(`${at} .bento-spot-icon`);
+  }
+
+  // What you picked jumps from its tile into its spot in the box, in a
+  // little arc, and lands with a bounce.
+  function jumpIn(svg: string, from: DOMRect): void {
+    const target = landing();
+    if (!target || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const to = target.getBoundingClientRect();
+    const flier = icon(svg, 'lunch-flier');
+    Object.assign(flier.style, { left: `${from.left}px`, top: `${from.top}px`, width: `${from.width}px`, height: `${from.height}px` });
+    document.body.append(flier);
+    target.style.visibility = 'hidden';
+    const dx = to.left + to.width / 2 - (from.left + from.width / 2);
+    const dy = to.top + to.height / 2 - (from.top + from.height / 2);
+    const scale = to.width / from.width;
+    const hop = Math.min(-60, dy * 0.25 - 60); // the top of the arc, above the higher end
+    const move = flier.animate([
+      { transform: 'translate(0, 0) scale(1) rotate(0deg)' },
+      { transform: `translate(${dx * 0.5}px, ${dy * 0.5 + hop}px) scale(${(1 + scale) / 2 + 0.2}) rotate(-12deg)`, offset: 0.45 },
+      { transform: `translate(${dx}px, ${dy}px) scale(${scale}) rotate(0deg)` },
+    ], { duration: 480, easing: 'cubic-bezier(0.3, 0, 0.6, 1)' });
+    const land = () => {
+      flier.remove();
+      target.style.visibility = '';
+      target.animate([
+        { transform: 'scale(1.25, 0.75)' }, { transform: 'scale(0.9, 1.12)' }, { transform: 'scale(1)' },
+      ], { duration: 260, easing: 'ease-out' });
+    };
+    move.onfinish = land;
+    move.oncancel = land;
+  }
+
   // What you can pack: a tab each for food, drinks and charms, with what
   // you have (less what's packed) as tiles in one row you swipe along, the
   // most filling (or the strongest drink) first. Packing something keeps
@@ -566,8 +603,10 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
       b.setAttribute('aria-label', T.packFood(name, left === Infinity ? STRINGS.shop.free : String(left)));
       b.addEventListener('click', () => {
         if (full) return cb.toast(T.spotFull[tab]);
+        const from = b.querySelector('.lunch-tile-icon')!.getBoundingClientRect();
         onPick();
         render(true);
+        jumpIn(svg, from);
       });
       grid.append(b);
     };
