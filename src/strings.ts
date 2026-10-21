@@ -160,6 +160,14 @@ export const STRINGS = {
     leftTogether: (a: string, b: string, place: string) => `${a} and ${b} set off for ${place}!`,
     banner: (name: string, place: string, time: string) => `${name} is at ${place}. Back at ${time}.`,
     bannerTogether: (a: string, b: string, place: string, time: string) => `${a} and ${b} are at ${place}. Back at ${time}.`,
+    // The current trip, from the note on the wall.
+    tripOpen: 'See the trip',
+    tripClose: 'Tap to go back',
+    tripWho: (name: string) => `${name} is on the way`,
+    tripWho2: (a: string, b: string) => `${a} and ${b} are on the way`,
+    tripBack: (time: string) => `Back at ${time}`,
+    tripLeft: (left: string) => `${left} to go`,
+    tripAlmost: 'Almost home!',
     bannerHome: (name: string, place: string) => `${name} is home from ${place} with a backpack of finds!`,
     // The reveal over the stat bars.
     found: (place: string) => `Found at ${place}`,

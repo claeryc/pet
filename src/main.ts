@@ -899,6 +899,7 @@ function render(timeMs: number): void {
   // The other pet in the room, and a friend over to play.
   const other = state.housemates.find((p) => !isAway(p));
   const meeting = home.meetScene();
+  const trip = home.tripScene();
   drawRoom(
     ctx,
     away ? undefined : sprites.get(sheetFor(pet)),
@@ -919,6 +920,15 @@ function render(timeMs: number): void {
       },
       petOnLeft: petStandsLeft(state),
       room: state.room,
+      trip: trip && {
+        place: trip.place,
+        pets: trip.pets.map((p) => ({
+          sheet: sprites.get(sheetFor(p)),
+          hat: sprites.get(getHat(p.hat)?.sheet ?? ''),
+          animation: 'cheerful',
+          glow: p.starGlow,
+        })),
+      },
       meeting: meeting && {
         sheet: sprites.get(characterSheet(meeting.friend.character, meeting.friend.variant)),
         animation: meeting.hearts ? 'happy' : 'cheerful',
