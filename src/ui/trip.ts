@@ -1,9 +1,10 @@
-// The current trip: tap the note on the wall while the pet is out on a
-// journey. The room shows the place it went to, with the pet (or both
+// The current trip: tap the note in the corner of the room while a pet is
+// out on a journey. The room shows the place it went to, with the pet (or both
 // pets) there, and the stat bars make way for a little map: a red dashed
 // trail from home to the place, red as far as they've got and faded the
 // rest of the way, with the pets' pictures on it where they are now.
-// Tap the map (or the note's spot again) to go back to the bars.
+// The buttons below change to [Close] [Call home] while it's open.
+// With two pets on different trips there's a note for each.
 
 import { STRINGS } from '../strings';
 import type { GameState, Pet } from '../game/state';
@@ -15,7 +16,8 @@ import { formatClock, formatDuration } from './time';
 
 export interface TripView {
   panel: HTMLElement; // shown in place of the stat bars
-  open: () => void;
+  row: HTMLElement; // [Close] [Call home], in place of the normal buttons
+  open: (petId: string) => void; // the trip this pet is on
   close: () => void;
   active: () => boolean;
   update: (state: GameState, now: number) => void;
@@ -28,6 +30,14 @@ const MAP_W = 120;
 const MAP_H = 36;
 const FROM = { x: 12, y: 25 };
 const TO = { x: 108, y: 14 };
+
+// The notes in the corner of the room, one for each trip that's on (two
+// pets that went together share one), by the pet it's for, in id order so
+// they keep their places.
+export function tripNotes(state: GameState): Pet[] {
+  const away = [state.pet, ...state.housemates].filter(isAway).sort((a, b) => (a.id < b.id ? -1 : 1));
+  return away.filter((p, i) => !away.slice(0, i).some((q) => q.id === p.trip!.with));
+}
 
 // How far along a trip is, 0 to 1.
 export function tripProgress(pet: Pet, now: number): number {
@@ -114,15 +124,13 @@ function icon(svg: string, className: string): HTMLElement {
 export interface TripSetup {
   characterImage: (sheet: string) => string | undefined;
   onClose: () => void; // back to the stat bars
+  onCallHome: (petId: string) => void; // asks first (see main.ts)
 }
 
-export function createTripView({ characterImage, onClose }: TripSetup): TripView {
+export function createTripView({ characterImage, onClose, onCallHome }: TripSetup): TripView {
   const T = STRINGS.journeys;
   const panel = el('div', 'trip-now');
   panel.hidden = true;
-  panel.setAttribute('role', 'button');
-  panel.tabIndex = 0;
-  panel.setAttribute('aria-label', T.tripClose);
 
   const head = el('div', 'trip-now-head');
   const placeIcon = icon('', 'trip-now-icon');
@@ -157,16 +165,22 @@ export function createTripView({ characterImage, onClose }: TripSetup): TripView
 
   panel.append(head, map, foot);
 
+  const row = el('div', 'actions trip-row');
+  row.hidden = true;
+  const closeBtn = el('button', 'btn btn-soft', T.tripClose);
+  const callBtn = el('button', 'btn', T.callHome);
+  row.append(closeBtn, callBtn);
+
   let open = false;
   let latest: { state: GameState; now: number } | null = null;
   let drawnShare = -1;
   let drawnFaces = '';
+  let showing = ''; // the id of the pet whose trip is on show
 
-  // The pets on the trip: yours, or the other one while yours stays home,
-  // and the one it went with, if any.
+  // The pets on the trip: that pet, and the one it went with, if any.
   const travellers = (s: GameState): Pet[] => {
     const all = [s.pet, ...s.housemates];
-    const pet = all.find(isAway);
+    const pet = all.find((p) => p.id === showing && isAway(p));
     if (!pet) return [];
     const mate = all.find((h) => h !== pet && h.id === pet.trip!.with && isAway(h));
     return mate ? [pet, mate] : [pet];
@@ -209,29 +223,28 @@ export function createTripView({ characterImage, onClose }: TripSetup): TripView
       );
       if (!pets.some((p) => characterImage(sheetFor(p)))) drawnFaces = ''; // try again once the art loads
     }
-    panel.setAttribute('aria-label', `${title.textContent}. ${back.textContent} ${left.textContent}. ${T.tripClose}`);
   }
 
   const close = () => {
     if (!open) return;
     open = false;
     panel.hidden = true;
+    row.hidden = true;
     panel.classList.remove('is-in');
     onClose();
   };
-  panel.addEventListener('click', close);
-  panel.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') {
-      e.preventDefault();
-      close();
-    }
-  });
+  closeBtn.addEventListener('click', close);
+  callBtn.addEventListener('click', () => onCallHome(showing));
 
   return {
     panel,
-    open() {
-      if (open || !latest || travellers(latest.state).length === 0) return;
+    row,
+    open(petId) {
+      if (open || !latest) return;
+      showing = petId;
+      if (travellers(latest.state).length === 0) return;
       open = true;
+      row.hidden = false;
       drawnShare = -1;
       drawnFaces = '';
       panel.hidden = false;

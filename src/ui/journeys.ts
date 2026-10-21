@@ -83,6 +83,14 @@ const GEMS: Record<Rarity, number> = { common: 1, rare: 2, epic: 3 };
 const placeName = (id: string) => STRINGS.journeys.places[id] ?? id;
 const placeIcon = (id: string) => ITEM_ICONS[`place_${id}`] ?? ITEM_ICONS.journey;
 
+// How long until a pet is back, short enough for the line-up: whole and
+// half hours ("1h", "1.5h", "0.5h"), and minutes under half an hour.
+export function shortLeft(ms: number): string {
+  const minutes = Math.max(0, Math.ceil(ms / 60_000));
+  if (minutes < 30) return `${Math.max(1, minutes)}m`;
+  return `${Math.ceil(minutes / 30) / 2}h`;
+}
+
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text?: string): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
   e.className = className;
@@ -436,6 +444,19 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
         render(true);
       }));
     }
+    // A pet out on another journey, faded, with how long until it's back
+    // and an hourglass where the tick would be.
+    for (const p of allPets(s).filter(isAway)) {
+      const trip = p.trip!;
+      const row = el('button', 'lineup-row is-away');
+      row.disabled = true;
+      const left = trip.endsAt - now;
+      row.title = T.backAt(formatClock(trip.endsAt));
+      const timer = icon(STAT_ICONS.hourglass, 'lineup-timer');
+      row.append(portrait(p, 'lineup-pic'), el('b', 'lineup-name', p.name), el('small', 'lineup-why', shortLeft(left)), timer);
+      row.setAttribute('aria-label', `${p.name}, ${T.backAt(formatClock(trip.endsAt))}`);
+      list.append(row);
+    }
     // Percy, last: along or not, unless he's resting.
     const free = percyFree(s, now);
     if (!free) percy = false;
@@ -635,16 +656,16 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     grid.scrollLeft = keepScroll;
   }
 
-  // Other pets out on a journey, or home with a backpack, in a line each.
+  // Other pets home with a backpack, in a line each. (One out on a
+  // journey only shows in the line-up: its trip is behind the note on the
+  // wall at home.)
   function others(s: GameState): HTMLElement[] {
-    return s.housemates.filter((p) => p.trip).map((p) => {
+    return s.housemates.filter(hasBackpack).map((p) => {
       const line = el('div', 'trip-other');
       const trip = p.trip!;
-      const away = isAway(p);
-      line.append(icon(away ? placeIcon(trip.place) : ITEM_ICONS.journey, 'trip-cost-icon'),
-        el('span', '', away ? `${T.away(p.name, placeName(trip.place))} · ${T.backAt(formatClock(trip.endsAt))}` : T.home(p.name, placeName(trip.place))));
-      const b = el('button', `shop-btn${away ? ' shop-btn-soft' : ''}`, away ? T.callHome : T.openBackpack);
-      b.addEventListener('click', () => (away ? cb.onCallHome(p.id) : cb.onOpenBackpack(p.id)));
+      line.append(icon(ITEM_ICONS.journey, 'trip-cost-icon'), el('span', '', T.home(p.name, placeName(trip.place))));
+      const b = el('button', 'shop-btn', T.openBackpack);
+      b.addEventListener('click', () => cb.onOpenBackpack(p.id));
       line.append(b);
       return line;
     });

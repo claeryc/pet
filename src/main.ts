@@ -795,11 +795,28 @@ const home = createHomeScreen(root, {
     home.toast(b ? STRINGS.journeys.leftTogether(a, b, place) : STRINGS.journeys.leftFor(a, place));
     return true;
   },
+  // Calling a pet home cuts the trip short, so it asks first.
   onCallHome: (id) => {
-    const now = gameNow();
-    const result = callHome(simulate(state, now), now, id);
-    setState(result.state);
-    if (result.blocked) blocked(STRINGS.journeys.blocked[result.blocked](allPets(state).find((p) => p.id === id)?.name ?? ''));
+    const pet = allPets(state).find((p) => p.id === id);
+    if (!pet?.trip || choice.isOpen()) return;
+    const mate = allPets(state).find((p) => p.id === pet.trip!.with && isAway(p));
+    const T = STRINGS.journeys;
+    choice.open({
+      title: T.callHomeTitle,
+      text: T.callHomeAsk(mate ? T.together(pet.name, mate.name) : pet.name, placeName(pet.trip.place)),
+      options: [
+        {
+          label: T.callHomeYes,
+          onPick: () => {
+            const now = gameNow();
+            const result = callHome(simulate(state, now), now, id);
+            setState(result.state);
+            if (result.blocked) blocked(T.blocked[result.blocked](pet.name));
+          },
+        },
+        { label: T.callHomeNo, soft: true, onPick: () => {} },
+      ],
+    });
   },
   onOpenBackpack: (id) => {
     const pet = allPets(state).find((p) => p.id === id);
@@ -907,7 +924,6 @@ function render(timeMs: number): void {
       animation,
       glow: !away && pet.starGlow && pet.condition !== 'passed',
       note: away,
-      noteLow: !away && state.housemates.some(isAway),
       night: isNight(gameNow()),
       lightsOff: pet.asleep,
       fishing: home.fishingPhase(),

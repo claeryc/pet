@@ -161,8 +161,15 @@ export const STRINGS = {
     banner: (name: string, place: string, time: string) => `${name} is at ${place}. Back at ${time}.`,
     bannerTogether: (a: string, b: string, place: string, time: string) => `${a} and ${b} are at ${place}. Back at ${time}.`,
     // The current trip, from the note on the wall.
-    tripOpen: 'See the trip',
-    tripClose: 'Tap to go back',
+    tripOpen: (name: string) => `See ${name}'s trip`,
+    tripClose: 'Close',
+    // Calling a pet home early, from the trip.
+    callHomeTitle: 'Call home early?',
+    callHomeAsk: (who: string, place: string) =>
+      `${who} will leave ${place} now and only bring home what's been found so far. The trip won't go in the travel journal.`,
+    callHomeYes: 'Call home',
+    callHomeNo: 'Keep exploring',
+    together: (a: string, b: string) => `${a} and ${b}`,
     tripWho: (name: string) => `${name} is on the way`,
     tripWho2: (a: string, b: string) => `${a} and ${b} are on the way`,
     tripBack: (time: string) => `Back at ${time}`,

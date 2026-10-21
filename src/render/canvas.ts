@@ -38,12 +38,9 @@ export interface Scene {
   meeting?: (OtherPet & { hearts: boolean }) | null; // a friend over to play
   // How the room is decorated: a wallpaper id, and curtains (or none).
   room?: { wallpaper: string; curtains: string | null };
-  // Nobody's home (out on a journey): no pet, just a little note pinned to
-  // the wall.
+  // Nobody's home (out on a journey): no pet in the room. (Its note sits
+  // in the room's corner, see src/ui/home.ts.)
   note?: boolean;
-  // One pet is out on a journey and the other is home: the note is pinned
-  // under the window instead, out of the way of the pet at home.
-  noteLow?: boolean;
   // Looking at the current trip (tap the note): the place, with the pets
   // that went there, left to right.
   trip?: TripScene | null;
@@ -64,21 +61,6 @@ export function setupCanvas(canvas: HTMLCanvasElement): CanvasRenderingContext2D
 
 // The window's glass, in room pixels (its frame is one pixel bigger).
 const WINDOW = { x: 6, y: 6, w: 14, h: 12 };
-
-// "Gone exploring!": a little paper note pinned beside the window, with a
-// few scribbled lines.
-export const NOTE_SPOTS = { high: { x: 42, y: 9 }, low: { x: 7, y: 22 } } as const;
-function drawNote(ctx: CanvasRenderingContext2D, spot: keyof typeof NOTE_SPOTS): void {
-  const { x, y } = NOTE_SPOTS[spot];
-  ctx.fillStyle = PALETTE.ink;
-  ctx.fillRect(x - 1, y - 1, 10, 12);
-  ctx.fillStyle = PALETTE.cream;
-  ctx.fillRect(x, y, 8, 10);
-  ctx.fillStyle = PALETTE.lilac;
-  for (const [dy, w] of [[2, 6], [4, 5], [6, 6], [8, 3]]) ctx.fillRect(x + 1, y + dy, w, 1);
-  ctx.fillStyle = PALETTE.rose; // the pin
-  ctx.fillRect(x + 3, y - 2, 2, 2);
-}
 
 function drawWindow(ctx: CanvasRenderingContext2D, night: boolean, timeMs: number): void {
   const { x, y, w, h } = WINDOW;
@@ -339,8 +321,6 @@ export function drawRoom(
     drawWindow(ctx, scene.night, timeMs);
     if (scene.room?.curtains) drawCurtains(ctx, scene.room.curtains, WINDOW.x, WINDOW.y, WINDOW.w, WINDOW.h);
     if (scene.fishing && scene.fishing !== 'off') drawFishing(ctx, scene.fishing, timeMs);
-    if (scene.note) drawNote(ctx, 'high');
-    else if (scene.noteLow) drawNote(ctx, 'low');
   }
 
   // The pet, centred and standing on the floor. In the garden it walks over

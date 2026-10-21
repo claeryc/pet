@@ -377,6 +377,22 @@ export const ITEM_ICONS: Record<string, string> = {
     '.kyk....kyk.',
     '.kk......kk.',
   ], { y: '#c79bff', w: '#fff' }),
+  // A pet's "gone exploring" note, on its trip tile until its picture is
+  // ready.
+  tripNote: pixelIcon([
+    '.....rr.....',
+    '.kkkkrrkkkk.',
+    '.keeeeeeeek.',
+    '.kellllllek.',
+    '.keeeeeeeek.',
+    '.kellllleek.',
+    '.keeeeeeeek.',
+    '.kellllllek.',
+    '.keeeeeeeek.',
+    '.kellleeeek.',
+    '.keeeeeeeek.',
+    '.kkkkkkkkkk.',
+  ]),
   // The four journey places.
   place_market: pixelIcon([
     '............',

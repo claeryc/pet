@@ -5229,6 +5229,25 @@ body {
   color: #8b7aa0;
 }
 
+/* A pet out on another trip: an hourglass in the tick's spot (faded
+   with the rest of the row). */
+.lineup-timer {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  padding: 4px;
+  border: 2px solid var(--lavender);
+  border-radius: 8px;
+  background: white;
+  box-sizing: border-box;
+}
+
+.lineup-timer svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 /* ---- The lunchbox ---- */
 
 .trip-head {
@@ -5751,52 +5770,78 @@ body {
   display: none;
 }
 
-/* ---- The current trip (tap the note on the wall) ---- */
+/* ---- The current trip (tap the note in the corner) ---- */
 
-/* Over the note drawn in the room (see drawNote in render/canvas.ts), a
-   bit bigger than it for small fingers. */
-.note-btn {
+/* Percy's parcel and the trip notes, side by side in the room's top
+   corner, the parcel on the right. */
+.room-corner {
   position: absolute;
-  left: 60%;
-  top: 10%;
-  width: 24%;
-  height: 38%;
-  padding: 0;
-  border: 0;
-  border-radius: 12px;
-  background: transparent;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  flex-direction: row-reverse;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.room-corner > * {
+  pointer-events: auto;
+}
+
+.room-corner .parcel-btn {
+  position: static;
+}
+
+/* A note: the same white tile as the parcel, bobbing out of step with it. */
+.note-btn {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  padding: 7px;
+  border: 3px solid var(--card);
+  border-radius: 14px;
+  background: white;
+  box-shadow: 0 3px 0 rgba(43, 33, 64, 0.2);
   cursor: pointer;
   touch-action: manipulation;
+  animation: parcel-bob 1.8s ease-in-out 0.6s infinite;
 }
 
 .note-btn[hidden] {
   display: none;
 }
 
-.note-btn:focus-visible {
-  outline: 3px solid var(--lilac);
-  outline-offset: -3px;
+.note-btn svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
-/* A little sparkle by the note, so it looks like something to tap. */
-.note-btn::after {
-  content: '✦';
-  position: absolute;
-  right: 4%;
-  top: 2%;
-  color: var(--butter);
-  font-size: 14px;
-  text-shadow: 0 0 2px var(--plum);
-  animation: note-twinkle 1.6s ease-in-out infinite;
+.note-btn:active {
+  transform: translateY(2px);
 }
 
-.note-btn.is-open::after {
-  display: none;
+/* The trip on show. */
+.note-btn.is-open {
+  border-color: var(--lilac);
+  animation: none;
 }
 
-@keyframes note-twinkle {
-  0%, 100% { opacity: 0.2; transform: scale(0.7); }
-  50% { opacity: 1; transform: scale(1.1); }
+/* The pet on the tile, as big as fits (its frame has room around it). */
+.note-btn:has(.note-face) {
+  padding: 1px;
+}
+
+.note-face {
+  display: block;
+  background-size: 125%;
+  background-position: center 70%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .note-btn {
+    animation: none;
+  }
 }
 
 .trip-now {
@@ -5934,7 +5979,6 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .note-btn::after,
   .trip-map-face,
   .trip-now.is-in {
     animation: none;
@@ -5944,8 +5988,17 @@ body {
   }
 }
 
-/* Under the window, while the other pet is home. */
-.note-btn.is-low {
-  left: 7%;
-  top: 41%;
+/* [Close] [Call home] while looking at a trip. */
+.trip-row {
+  gap: 10px;
+}
+
+.trip-row:not([hidden]) {
+  animation: rise-in 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.trip-row > .btn {
+  height: 52px;
+  padding: 0 14px;
+  flex: 1 1 0;
 }

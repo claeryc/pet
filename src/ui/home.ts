@@ -5,7 +5,7 @@
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import { canPlayMinigames, getLook, hasPassed, isCritical, isRecovering, timeLeftToTreat } from '../game/stats';
-import { stageLengthMs } from '../game/growth';
+import { sheetFor, stageLengthMs } from '../game/growth';
 import type { GameState, PetStats } from '../game/state';
 import { createMenu, type MenuCallbacks } from './menu';
 import { baitCount, foodCount, revivalStars } from '../game/economy';
@@ -35,7 +35,7 @@ import { createFx, type Gains } from './fx';
 import { hasBackpack, isAway } from '../game/presence';
 import { formatClock } from './time';
 import { createJourneys, JOURNEYS_OUT_MS } from './journeys';
-import { createTripView } from './trip';
+import { createTripView, tripNotes } from './trip';
 import type { Pet } from '../game/state';
 
 export interface HomeCallbacks extends MenuCallbacks {
@@ -249,14 +249,59 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   parcel.title = STRINGS.delivery.open;
   parcel.hidden = true;
   parcel.addEventListener('click', () => startDelivery());
-  // The note pinned on the wall while the pet is out on a journey (drawn in
-  // render/canvas.ts): tapping it shows the current trip.
-  const noteBtn = document.createElement('button');
-  noteBtn.className = 'note-btn';
-  noteBtn.setAttribute('aria-label', STRINGS.journeys.tripOpen);
-  noteBtn.title = STRINGS.journeys.tripOpen;
-  noteBtn.hidden = true;
-  noteBtn.addEventListener('click', () => toggleTrip());
+  // A tile in the corner, next to the parcel, with the pet's picture while
+  // it's out on a journey: tapping it shows the current trip. Two pets on
+  // different trips get a tile each.
+  const noteBtns = [0, 1].map((i) => {
+    const b = document.createElement('button');
+    b.className = 'note-btn';
+    b.hidden = true;
+    b.addEventListener('click', () => {
+      const pet = latest && tripNotes(latest.state)[i];
+      if (!latest || !pet) return;
+      toggleTrip(pet.id);
+    });
+    return b;
+  });
+  const noteShows = ['', ''];
+  let noteRetry = 0;
+  // The trip tiles in the corner: the pet on each.
+  function refreshNotes(state: GameState): void {
+    const notes = tripNotes(state);
+    noteBtns.forEach((b, i) => {
+      const p = notes[i];
+      b.hidden = !p;
+      if (!p) return;
+      b.setAttribute('aria-label', STRINGS.journeys.tripOpen(p.name));
+      b.title = STRINGS.journeys.tripOpen(p.name);
+      // The note until the pet's picture is ready.
+      const url = cb.characterImage(sheetFor(p));
+      if (!url) {
+        if (noteShows[i] !== 'note') b.innerHTML = ITEM_ICONS.tripNote;
+        noteShows[i] = 'note';
+        // Look again shortly: the sprites may still be loading.
+        if (!noteRetry) {
+          noteRetry = window.setTimeout(() => {
+            noteRetry = 0;
+            if (latest) refreshNotes(latest.state);
+          }, 400);
+        }
+        return;
+      }
+      const shows = `${p.id}:${sheetFor(p)}`;
+      if (shows === noteShows[i]) return;
+      noteShows[i] = shows;
+      const face = document.createElement('span');
+      face.className = 'portrait note-face';
+      face.style.backgroundImage = `url('${url}')`;
+      b.replaceChildren(face);
+    });
+  }
+  // Percy's parcel and the notes, side by side in the top corner, the
+  // parcel first (from the right).
+  const corner = document.createElement('div');
+  corner.className = 'room-corner';
+  corner.append(parcel, ...noteBtns);
   // The pet's craving: a thought bubble over its head with the food in it.
   // Tapping it opens Feed when you have that food. Where to get it is for
   // the player to work out (the recipe book helps), so otherwise it just
@@ -277,7 +322,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     mouth: 0.64,
     food: 0.72,
   }));
-  roomWrap.append(canvas, fx.el, bubble, parcel, noteBtn);
+  roomWrap.append(canvas, fx.el, bubble, corner);
 
   // Warning / sick / recovering / passed away banner, hidden when all is well.
   const banner = document.createElement('div');
@@ -291,9 +336,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   passedButtons.append(revive, goodbye);
   // A pet out on a journey can be called home, and one that's back has a
   // backpack to open.
-  const callHome = button(STRINGS.journeys.callHome, 'btn btn-soft', () => latest && cb.onCallHome(latest.state.pet.id));
   const openBackpack = button(STRINGS.journeys.openBackpack, 'btn', () => latest && cb.onOpenBackpack(latest.state.pet.id));
-  banner.append(bannerText, medicine, passedButtons, callHome, openBackpack);
+  banner.append(bannerText, medicine, passedButtons, openBackpack);
 
   const bars: Record<keyof PetStats, StatBar> = {
     hunger: statBar(STRINGS.stats.hunger, STAT_ICONS.hunger),
@@ -327,7 +371,6 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   let petAsleep = false;
   let petIsEgg = false;
   let petAway = false; // out on a journey: nobody's home
-  let someoneAway = false; // this pet or the other one is out on a journey
   const drawerSetup = {
     row: actions,
     comingSoon: STRINGS.menu.comingSoon,
@@ -335,10 +378,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       petAway ? STRINGS.blocked.away(petName)
       : petIsEgg ? STRINGS.blocked.egg(petName) : petAsleep ? STRINGS.blocked.asleep(petName) : null,
     onBlocked: (msg: string) => showToast(msg),
-    onOpen: () => {
-      trip.close();
-      fitDrawers();
-    },
+    onOpen: () => fitDrawers(),
   };
 
   // The Feed panel: the cooking pot first (once cooking has opened up),
@@ -432,7 +472,6 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     icon: GEAR_ICON,
     content: menu.el,
     onOpen: () => {
-      trip.close();
       fitDrawers();
       menu.reset();
     },
@@ -683,27 +722,38 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const trip = createTripView({
     characterImage: cb.characterImage,
     onClose: () => {
-      noteBtn.classList.remove('is-open');
+      for (const b of noteBtns) b.classList.remove('is-open');
       stats.hidden = latest?.state.pet.stage === 'egg';
-      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        for (const bar of Object.values(bars)) bar.refill(0);
-      }
+      showActions(0);
     },
+    onCallHome: cb.onCallHome,
   });
-  function toggleTrip(): void {
-    if (trip.active()) return trip.close();
-    if (!someoneAway || journeys.active()) return;
+  // Tapping a note opens that trip, in place of the bars and the buttons;
+  // tapping it again (or Close) goes back.
+  let tripFor = '';
+  function toggleTrip(petId: string): void {
+    if (trip.active()) {
+      const same = petId === tripFor;
+      trip.close();
+      if (same) return;
+    }
+    if (actions.hidden) return; // busy with something else
     feedDrawer.close();
     playDrawer.close();
     menuDrawer!.close();
+    hideActions();
     stats.hidden = true;
-    trip.open();
-    noteBtn.classList.toggle('is-open', trip.active());
+    tripFor = petId;
+    trip.open(petId);
+    if (!trip.active()) {
+      showActions(0);
+      return;
+    }
+    if (latest) tripNotes(latest.state).forEach((p, i) => noteBtns[i].classList.toggle('is-open', p.id === petId));
   }
   // Off to another scene: the normal buttons go, and the parcel and the
   // craving bubble with them, straight away rather than on the next tick.
   function hideActions(): void {
-    trip.close();
     actions.hidden = true;
     refreshParcel();
   }
@@ -846,7 +896,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     else showToast(message);
   }
 
-  root.append(roomWrap, banner, statSlot, garden.pour, actions, fishing.row, cooking.row, garden.row, delivery.row, meet.row, journeys.sheet, journeys.row, toastEl);
+  root.append(roomWrap, banner, statSlot, garden.pour, actions, trip.row, fishing.row, cooking.row, garden.row, delivery.row, meet.row, journeys.sheet, journeys.row, toastEl);
 
   // Which pet the bars were showing, so switching pets can slide them.
   let barsFor: string | null = null;
@@ -927,9 +977,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       meet.update(state, now);
       journeys.update(state, now);
       trip.update(state, now);
-      someoneAway = [pet, ...state.housemates].some(isAway);
-      noteBtn.hidden = !someoneAway;
-      noteBtn.classList.toggle('is-low', !petAway);
+      refreshNotes(state);
       refreshParcel();
       parcel.classList.toggle('all-full', !!state.delivery.order?.boxes.every((b) => b.have >= b.want));
       playDrawer.setHidden(GARDEN_ROW, !isUnlocked(state, 'garden'));
@@ -950,10 +998,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       const passed = hasPassed(pet);
       let text = '';
       const place = pet.trip ? STRINGS.journeys.places[pet.trip.place] ?? pet.trip.place : '';
-      // Both away together: "Mochi and Bean are at ...".
-      const mate = petAway ? state.housemates.find((h) => h.id === pet.trip!.with && isAway(h)) : undefined;
-      if (petAway && mate) text = STRINGS.journeys.bannerTogether(pet.name, mate.name, place, formatClock(pet.trip!.endsAt));
-      else if (petAway) text = STRINGS.journeys.banner(pet.name, place, formatClock(pet.trip!.endsAt));
+      // Out on a journey: nothing here, the note on the wall has it all.
+      if (petAway) text = '';
       else if (hasBackpack(pet)) text = STRINGS.journeys.bannerHome(pet.name, place);
       else if (isEgg)
         text = STRINGS.status_egg(formatDuration(pet.stageStartedAt + stageLengthMs('egg') - now));
@@ -974,7 +1020,6 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       bannerText.textContent = text;
       medicine.hidden = pet.condition !== 'sick' || !!pet.trip;
       passedButtons.hidden = !passed || !!pet.trip;
-      callHome.hidden = !petAway;
       openBackpack.hidden = !hasBackpack(pet);
 
       // Lights button shows what pressing it will do.
