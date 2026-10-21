@@ -4,18 +4,19 @@
 //
 //   1. The board: the three trips on offer as tickets, the size of the stat
 //      bars. A coloured band shows the rarity with 1, 2 or 3 gems (green,
-//      blue, a shiny purple). Tapping one shows its info card below: the
-//      place, how long, when it's back, what it can bring home, what it
-//      uses on the way, and Percy's switch at the top right.
-//      Buttons: [Back] [Pack a lunch].
+//      blue, a shiny purple). Tapping one shows its info card at the bottom,
+//      just above the buttons: the place, how long, when it's back, what it
+//      can bring home, what it uses on the way, and whether Percy comes
+//      along (top right). Buttons: [Back] [Pack a lunch].
 //   2. The lunchbox: a wooden bento box seen from above. Two foods go in
 //      the big compartment, a drink in the small one at the top and a charm
 //      in the one below, and the pet's tummy and energy show now and when
-//      it's back home. The Lunch panel opens from the bottom with what you
-//      have (Food, Drinks and Charms tabs). Tapping something in the box
-//      takes it out again. Buttons: [Back] [Lunch] [Close the lid].
-//   3. Lid on: the wooden lid with the trip's label. Tap the box (or Open)
-//      to change the lunch. Buttons: [Open] [Set off].
+//      it's back home. What you have (Food, Drinks and Charms tabs) sits at
+//      the bottom. Tapping something in the box takes it out again.
+//      Buttons: [Back] [Close the lid].
+//   3. Lid on: the wooden lid slides over bit by bit and the trip's label
+//      goes on. Tap the box (or Open) to change the lunch.
+//      Buttons: [Open] [Set off].
 //
 // The rules live in src/game/journeys.ts.
 
@@ -29,8 +30,7 @@ import {
 } from '../game/journeys';
 import { hasBackpack, isAway } from '../game/presence';
 import { ITEM_ICONS, STAT_ICONS } from './icons';
-import { createDrawer } from './drawer';
-import { BENTO_HEIGHT, BENTO_WIDTH, drawBento } from './bento';
+import { BENTO_HEIGHT, BENTO_WIDTH, drawBento, LID_FRAMES, lidCover } from './bento';
 import { category, type Entry } from './shop';
 import { formatClock, formatDuration } from './time';
 
@@ -50,6 +50,7 @@ export interface JourneysSetup extends JourneysCallbacks {
 export interface JourneysScene {
   row: HTMLElement; // the buttons, shown in place of the normal button row
   panel: HTMLElement; // shown in place of the stat bars
+  sheet: HTMLElement; // the info card or the lunch tiles, just above the buttons
   start: () => void;
   stop: () => void;
   active: () => boolean;
@@ -146,9 +147,16 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
   let tab: 'food' | 'drink' | 'charm' = 'food';
   const lunch = (): FoodId[] => (drink ? [...food, drink] : [...food]);
   let shownKey = '';
+  let lidMoving = false; // the lid is going on or coming off
 
   const panel = el('div', 'journeys');
   panel.hidden = true;
+
+  // At the bottom, above the buttons: the trip's info card on the board,
+  // what you have to pack while packing.
+  const sheet = el('div', 'journeys-sheet');
+  sheet.hidden = true;
+  const lunchContent = el('div', 'lunch-panel');
 
   // The button row. Each step shows its own buttons.
   const row = el('div', 'actions journeys-row');
@@ -158,19 +166,7 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
   const closeLid = el('button', 'btn', T.closeLid);
   const openLid = el('button', 'btn btn-soft', T.openLid);
   const go = el('button', 'btn', T.go);
-
-  // The Lunch panel: tabs, the food you have as tiles, and Close the lid.
-  const lunchContent = el('div', 'lunch-panel');
-  const lunchDrawer = createDrawer({
-    id: 'lunch',
-    label: T.lunch,
-    content: lunchContent,
-    row,
-    comingSoon: '',
-    beforeOpen: () => null,
-    onBlocked: cb.toast,
-  });
-  row.append(back, openLid, lunchDrawer.el, pack, closeLid, go);
+  row.append(back, openLid, pack, closeLid, go);
 
   const pet = (): Pet | null => state?.pet ?? null;
   const offer = (): Offer | null => (state && slot !== null ? state.journeys.offers[slot] ?? null : null);
@@ -186,7 +182,6 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
       cb.onExit();
       return;
     }
-    lunchDrawer.close();
     setStage('board');
   });
   pack.addEventListener('click', () => {
@@ -196,7 +191,6 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     const why = cantGo(p, now);
     if (why) return cb.toast(T.blocked[why](p.name));
     setStage('pack');
-    lunchDrawer.open();
   });
   const tryClose = () => {
     const p = pet();
@@ -204,14 +198,10 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     if (!p || !result) return;
     if (!result.enoughFood) return cb.toast(T.blocked.notEnoughFood(p.name));
     if (!result.enoughEnergy) return cb.toast(T.blocked.notEnoughEnergy(p.name));
-    lunchDrawer.close();
-    setStage('closed');
+    moveLid(true);
   };
   closeLid.addEventListener('click', tryClose);
-  openLid.addEventListener('click', () => {
-    setStage('pack');
-    lunchDrawer.open();
-  });
+  openLid.addEventListener('click', () => moveLid(false));
   go.addEventListener('click', () => {
     if (slot === null) return;
     if (cb.onSetOff(slot, lunch(), percy, charm)) {
@@ -223,6 +213,35 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
   function setStage(next: typeof stage): void {
     stage = next;
     render(true);
+  }
+
+  // The lid slides over the box (or off it) a few pixels at a time. Packed
+  // things are covered along with it; the label goes on once it's shut.
+  function moveLid(shut: boolean): void {
+    if (lidMoving) return;
+    if (!shut) setStage('pack'); // the open box, with the lid still drawn on top
+    const canvas = panel.querySelector<HTMLCanvasElement>('.bento-canvas');
+    const items = panel.querySelector<HTMLElement>('.bento-items');
+    if (!canvas || !items) return setStage(shut ? 'closed' : 'pack');
+    lidMoving = true;
+    row.classList.add('is-busy');
+    let frame = 0;
+    const step = () => {
+      const t = frame / LID_FRAMES;
+      const cover = shut ? t : 1 - t;
+      drawBento(canvas, false, cover);
+      items.style.clipPath = `inset(${(lidCover(cover) / BENTO_HEIGHT) * 100}% 0 0 0)`;
+      if (frame++ < LID_FRAMES) {
+        setTimeout(step, 45);
+        return;
+      }
+      lidMoving = false;
+      row.classList.remove('is-busy');
+      items.style.clipPath = '';
+      if (shut) setStage('closed');
+      else render(true);
+    };
+    step();
   }
 
   // ---- 1. The board and the trip's info card ----
@@ -253,7 +272,7 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     b.setAttribute('aria-checked', String(percy));
     b.append(icon(ITEM_ICONS.percy, 'trip-percy-icon'), el('span', 'trip-percy-name', T.percyName));
     if (free) {
-      b.append(el('i', 'trip-switch'));
+      b.append(el('small', 'trip-percy-state', percy ? T.percyOn : T.percyOff));
       b.title = T.percyNote;
       b.setAttribute('aria-label', T.percyNote);
       b.addEventListener('click', () => {
@@ -355,16 +374,10 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
       const head = el('span', 'bento-label-top');
       head.append(icon(placeIcon(o.place), 'bento-label-icon'));
       label.append(head, el('b', '', placeName(o.place)), el('small', '', `${tripHours(o.rarity)}h`));
-      const seal = el('span', 'bento-seal');
-      seal.dataset.rarity = o.rarity;
-      seal.append(gems(o.rarity));
       const reopen = el('button', 'bento-tap');
       reopen.setAttribute('aria-label', T.openLid);
-      reopen.addEventListener('click', () => {
-        setStage('pack');
-        lunchDrawer.open();
-      });
-      wrap.append(label, seal, reopen);
+      reopen.addEventListener('click', () => moveLid(false));
+      wrap.append(label, reopen);
       return wrap;
     }
     // A spot in the box: what's in it (tap to take it out), or a faint
@@ -384,21 +397,22 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
         b.setAttribute('aria-label', T.emptySpot[want]);
         b.addEventListener('click', () => {
           tab = want;
-          lunchTiles(state!);
-          lunchDrawer.open();
+          render(true);
         });
       }
       return b;
     };
+    const items = el('div', 'bento-items');
     for (let i = 0; i < J.lunch.food; i++) {
       const id = food[i] ?? null;
-      wrap.append(spot(`bento-food bento-food-${i}`, id, STAT_ICONS.hunger, id ? STRINGS.foods[id] : '', () => food.splice(i, 1), 'food'));
+      items.append(spot(`bento-food bento-food-${i}`, id, STAT_ICONS.hunger, id ? STRINGS.foods[id] : '', () => food.splice(i, 1), 'food'));
     }
-    wrap.append(
+    items.append(
       spot('bento-drink', drink, STAT_ICONS.energy, drink ? STRINGS.foods[drink] : '', () => (drink = null), 'drink'),
       spot('bento-charm', charm ? `charm_${charm}` : null, ITEM_ICONS.charm_clover, charm ? T.charms[charm]?.name ?? charm : '',
         () => (charm = null), 'charm'),
     );
+    wrap.append(items);
     return wrap;
   }
 
@@ -422,8 +436,8 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     return out;
   }
 
-  // The Lunch panel: a tab each for food, drinks and charms, with what you
-  // have (less what's packed) as tiles, and Close the lid at the bottom.
+  // What you can pack: a tab each for food, drinks and charms, with what
+  // you have (less what's packed) as tiles.
   function lunchTiles(s: GameState): void {
     const tabs = el('div', 'lunch-tabs');
     const tabList = [['food', STAT_ICONS.hunger, T.foodTab], ['drink', STAT_ICONS.energy, T.drinkTab], ['charm', ITEM_ICONS.charm_clover, T.charmTab]] as const;
@@ -469,9 +483,7 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
       }
     }
     if (!grid.childElementCount) grid.append(el('p', 'trip-note', T.nothingToPack[tab]));
-    const done = el('button', 'btn lunch-done', T.closeLid);
-    done.addEventListener('click', tryClose);
-    lunchContent.replaceChildren(tabs, grid, done);
+    lunchContent.replaceChildren(tabs, grid);
   }
 
   // Other pets out on a journey, or home with a backpack, in a line each.
@@ -497,10 +509,7 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     // The offer picked went (another pet took it): back to the board.
     if (slot !== null && !s.journeys.offers[slot]) {
       slot = null;
-      if (stage !== 'board') {
-        lunchDrawer.close();
-        stage = 'board';
-      }
+      if (stage !== 'board') stage = 'board';
     }
     // Packed food you've run out of comes out of the box.
     food = food.filter((id, i) => foodCount(s, id) > food.slice(0, i).filter((f) => f === id).length);
@@ -509,23 +518,33 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     const key = JSON.stringify([stage, slot, food, drink, charm, percy, tab, s.inventory.supplies, s.journeys, p.id, p.stage, p.asleep, p.condition, p.tripReadyAt,
       Math.round(p.stats.hunger), Math.round(p.stats.energy), Math.round(p.stats.happiness), Math.round(p.stats.health),
       s.housemates.map((h) => [h.id, h.trip?.backAt, h.trip?.endsAt]), s.inventory.food, Math.floor(now / 60_000)]);
-    if (!force && key === shownKey) return;
+    if (lidMoving || (!force && key === shownKey)) return;
     shownKey = key;
 
     const o = offer();
     panel.dataset.stage = stage;
     if (stage === 'board') {
-      const parts: HTMLElement[] = [...others(s), board(s)];
-      parts.push(o ? infoCard(s, o) : el('p', 'trip-note trip-pick-hint', T.pickHint));
-      panel.replaceChildren(...parts);
+      panel.replaceChildren(...others(s), board(s));
+      if (!o) panel.append(el('p', 'trip-note trip-pick-hint', T.pickHint));
+      const shown = sheet.firstElementChild as HTMLElement | null;
+      const card = o ? infoCard(s, o) : null;
+      // A newly picked trip slides up; the same one just refreshes.
+      if (card && shown?.dataset.slot !== String(slot)) card.classList.add('is-new');
+      if (card) card.dataset.slot = String(slot);
+      sheet.replaceChildren(...(card ? [card] : []));
     } else if (o) {
       panel.replaceChildren(...others(s), ...lunchbox(s, o));
-      lunchTiles(s);
+      if (stage === 'pack') {
+        lunchTiles(s);
+        sheet.replaceChildren(lunchContent);
+      } else {
+        sheet.replaceChildren();
+      }
     }
+    sheet.hidden = !sheet.childElementCount;
     // The buttons for this step.
     back.hidden = stage === 'closed';
     pack.hidden = stage !== 'board';
-    lunchDrawer.el.hidden = stage !== 'pack';
     closeLid.hidden = stage !== 'pack';
     openLid.hidden = stage !== 'closed';
     go.hidden = stage !== 'closed';
@@ -536,8 +555,8 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
   function stop(): void {
     if (!active) return;
     active = false;
-    lunchDrawer.close();
     row.hidden = true;
+    sheet.hidden = true;
     // Gone straight away: the stat bars come back in its place.
     panel.classList.remove('is-in');
     panel.hidden = true;
@@ -546,6 +565,7 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
   return {
     row,
     panel,
+    sheet,
     start() {
       active = true;
       stage = 'board';
@@ -555,6 +575,7 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
       charm = null;
       percy = false;
       tab = 'food';
+      sheet.replaceChildren();
       row.hidden = false;
       panel.hidden = false;
       render(true);

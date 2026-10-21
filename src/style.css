@@ -4514,9 +4514,46 @@ body {
 }
 
 .journeys[hidden],
-.journeys-row > [hidden],
-.journeys-row > .drawer[hidden] {
-  display: none !important;
+.journeys-sheet[hidden],
+.journeys-row > [hidden] {
+  display: none;
+}
+
+/* The info card or the things to pack, at the bottom just above the
+   buttons. */
+.journeys-sheet {
+  margin-top: auto;
+}
+
+.journeys-sheet:not([hidden]) + .journeys-row {
+  margin-top: 0;
+}
+
+/* On a short screen the page stays one screen tall, so the buttons stay at
+   the bottom, and the sheet scrolls instead. */
+#app:has(> .journeys-row:not([hidden])) {
+  height: 100vh;
+  height: 100dvh;
+}
+
+#app:has(> .journeys-row:not([hidden])) > * {
+  flex-shrink: 0;
+}
+
+#app:has(> .journeys-row:not([hidden])) > .journeys-sheet {
+  flex-shrink: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.journeys-sheet > .is-new,
+.journeys-sheet > .lunch-panel {
+  animation: rise-in 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+/* No double taps while the lid is moving. */
+.journeys-row.is-busy {
+  pointer-events: none;
 }
 
 .journeys.is-in {
@@ -4536,11 +4573,6 @@ body {
 
 .journeys-row > .btn-soft {
   flex: 0 0 auto;
-}
-
-.journeys-row[data-open] > .btn {
-  padding: 0;
-  flex-shrink: 1;
 }
 
 .journeys-row > .btn.is-waiting {
@@ -4883,39 +4915,15 @@ body {
   font-weight: 800;
 }
 
-.trip-percy-rest {
+.trip-percy-rest,
+.trip-percy-state {
   font-size: 0.65rem;
   font-weight: 700;
+  color: #8b7aa0;
 }
 
-.trip-switch {
-  position: relative;
-  display: block;
-  width: 34px;
-  height: 20px;
-  border-radius: 99px;
-  background: var(--track);
-  transition: background 0.2s;
-}
-
-.trip-switch::after {
-  content: '';
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: white;
-  transition: transform 0.2s var(--snap);
-}
-
-.trip-percy.is-on .trip-switch {
-  background: var(--good);
-}
-
-.trip-percy.is-on .trip-switch::after {
-  transform: translateX(14px);
+.trip-percy.is-on .trip-percy-state {
+  color: var(--good-dark);
 }
 
 .trip-card-sec {
@@ -5171,36 +5179,6 @@ body {
   color: var(--r-dark);
 }
 
-.bento-seal {
-  position: absolute;
-  left: 79%;
-  top: 23%;
-  width: 11%;
-  aspect-ratio: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--r-band);
-  box-shadow: 0 0 0 2px white;
-  transform: rotate(-10deg);
-  pointer-events: none;
-}
-
-.bento-seal[data-rarity='epic'] {
-  background: radial-gradient(circle at 35% 30%, #f0e0ff, #8a4fd8 60%, #6a2fb8);
-  box-shadow: 0 0 8px #c79bff, 0 0 0 2px white;
-}
-
-.bento-seal .trip-gem {
-  width: 5px;
-  height: 5px;
-}
-
-.bento-seal .trip-gems {
-  gap: 2px;
-}
-
 .bento-tap {
   position: absolute;
   inset: 0;
@@ -5209,13 +5187,24 @@ body {
   cursor: pointer;
 }
 
-.bento.is-closed {
-  animation: bento-close 0.3s cubic-bezier(0.34, 1.4, 0.64, 1);
+.bento-items {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
 
-@keyframes bento-close {
-  0% { transform: translateY(-4px) scale(1.02); }
-  100% { transform: none; }
+.bento-items > * {
+  pointer-events: auto;
+}
+
+/* Once the lid is on, the label is stuck on top of it. */
+.bento.is-closed .bento-label {
+  animation: bento-label 0.25s steps(3) both;
+}
+
+@keyframes bento-label {
+  0% { transform: translateY(-6px); opacity: 0; }
+  100% { transform: none; opacity: 1; }
 }
 
 /* Tummy and energy, now (striped) and back home (solid). */
@@ -5295,19 +5284,12 @@ body {
 .trip-meter-text.is-ok { color: var(--good-dark); }
 .trip-meter-text.is-short { color: var(--low-dark); }
 
-/* ---- The Lunch panel ---- */
-
-.drawer[data-drawer='lunch'] .drawer-content {
-  height: auto;
-  max-height: var(--drawer-fit, 268px);
-  overflow-y: auto;
-}
+/* ---- What to pack ---- */
 
 .lunch-panel {
-  margin: 6px 6px 0;
   padding: 8px;
-  border-radius: 12px;
-  background: #fff5f8;
+  border-radius: 16px;
+  background: var(--card);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -5406,13 +5388,6 @@ body {
   font-size: 0.65rem;
   font-weight: 800;
   line-height: 1.5;
-}
-
-.lunch-done {
-  height: 48px;
-  width: 100%;
-  padding: 0;
-  flex: none;
 }
 
 /* ---- The travel journal: a postcard per place ---- */

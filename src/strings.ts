@@ -92,7 +92,6 @@ export const STRINGS = {
     closeLid: 'Close the lid',
     openLid: 'Open',
     go: 'Set off',
-    lunch: 'Lunch',
     lunchTitle: 'Pack a lunch',
     readyTitle: 'Ready to go',
     tapToOpen: 'Tap the box to open it again.',
@@ -142,6 +141,8 @@ export const STRINGS = {
     percyName: 'Percy',
     percyNote: 'Percy comes along and flies home halfway with the best find',
     percyAway: 'away',
+    percyOn: 'Active',
+    percyOff: 'Not active',
     percyResting: (time: string) => `Percy is resting (${time})`,
     percyFlying: 'Percy is on a trip',
     dryPots: (n: number, name: string) =>

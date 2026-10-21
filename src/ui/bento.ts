@@ -3,12 +3,24 @@
 // compartment and two small ones (the food sits on top as icons, see
 // .bento-food in style.css). Closed, it has a wooden lid with a pink ribbon
 // (the trip's label sits on the ribbon). Chopsticks in a paper sleeve lie
-// along the top.
+// along the top. The lid slides on and off in steps of a couple of pixels.
 
 // The canvas size in pixels. The places of the compartments and the label
 // in style.css are fractions of this.
 export const BENTO_WIDTH = 119;
 export const BENTO_HEIGHT = 57;
+
+// How many steps the lid takes to go on or come off.
+export const LID_FRAMES = 10;
+const TOP = 9; // room above the box for the chopsticks
+const LID_HEIGHT = 40;
+
+// Where the lid's front edge is when it's `cover` (0 to 1) of the way on,
+// in canvas pixels from the top. Everything above it is lid.
+export function lidCover(cover: number): number {
+  if (cover <= 0) return 0;
+  return TOP + Math.min(LID_HEIGHT, Math.round((cover * LID_HEIGHT) / 2) * 2);
+}
 
 const OUTLINE = '#4a2a1a';
 const RIM = '#f0c185';
@@ -25,7 +37,8 @@ const RIBBON_EDGE = '#e05a7a';
 const STICK = '#f2cf96';
 const SLEEVE = '#fff7ec';
 
-export function drawBento(canvas: HTMLCanvasElement, closed: boolean): void {
+// `cover` draws the open box with the lid part of the way on (0 to 1).
+export function drawBento(canvas: HTMLCanvasElement, closed: boolean, cover = closed ? 1 : 0): void {
   canvas.width = BENTO_WIDTH;
   canvas.height = BENTO_HEIGHT;
   const g = canvas.getContext('2d');
@@ -43,7 +56,7 @@ export function drawBento(canvas: HTMLCanvasElement, closed: boolean): void {
     }
     rect(x, y + cut, w, h - 2 * cut, c);
   };
-  const top = 9; // room above for the chopsticks
+  const top = TOP;
   const w = BENTO_WIDTH - 2;
 
   // The box, with its front side showing at the bottom.
@@ -55,7 +68,15 @@ export function drawBento(canvas: HTMLCanvasElement, closed: boolean): void {
   rect(6, top + 1, w - 10, 1, RIM);
   rect(2, top + 5, 1, 32, RIM);
 
-  if (closed) {
+  // The lid, slid down by `dy` (0 = all the way on): drawn only over the
+  // box, as if it comes in from the far edge.
+  const lid = (dy: number) => {
+    const edge = lidCover(cover);
+    g.save();
+    g.beginPath();
+    g.rect(0, top, BENTO_WIDTH, edge - top + (dy === 0 ? 8 : 0));
+    g.clip();
+    g.translate(0, dy);
     box(2, top, w - 2, 40, OUTLINE, 5);
     box(3, top + 1, w - 4, 38, LID, 4);
     rect(7, top + 2, w - 12, 1, LID_LIGHT);
@@ -67,7 +88,10 @@ export function drawBento(canvas: HTMLCanvasElement, closed: boolean): void {
     rect(56, top, 8, 47, RIBBON);
     rect(56, top, 1, 47, RIBBON_EDGE);
     rect(63, top, 1, 47, RIBBON_EDGE);
-  } else {
+    g.restore();
+  };
+
+  if (!closed) {
     // Inside: the back wall in shadow, the floor, and the dividers.
     rect(7, top + 5, 106, 31, INSIDE);
     rect(7, top + 9, 106, 27, FLOOR);
@@ -82,6 +106,7 @@ export function drawBento(canvas: HTMLCanvasElement, closed: boolean): void {
     rect(68, top + 19, 45, 1, RIM);
     rect(68, top + 21, 45, 1, GRAIN);
   }
+  if (cover > 0) lid(lidCover(cover) - top - LID_HEIGHT);
 
   // Chopsticks in their paper sleeve.
   rect(10, 2, 96, 2, STICK);

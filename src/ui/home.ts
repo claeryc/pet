@@ -445,7 +445,6 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     stats.hidden = true; // the board takes the bars' place, and can be taller
     if (latest) journeys.update(latest.state, latest.now);
     journeys.start();
-    fitJourneys();
   }
 
   // Holding the pet opens the Wardrobe, in the gear panel.
@@ -660,11 +659,6 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     },
     toast: (msg) => showToast(msg),
   });
-  // The Lunch panel reaches up to just under the lunchbox, like Feed does.
-  function fitJourneys(): void {
-    const room = journeys.row.getBoundingClientRect().bottom - statSlot.getBoundingClientRect().bottom - DRAWER_GAP;
-    journeys.row.style.setProperty('--drawer-fit', `${Math.max(180, Math.floor(room - 74))}px`);
-  }
   // Off to another scene: the normal buttons go, and the parcel and the
   // craving bubble with them, straight away rather than on the next tick.
   function hideActions(): void {
@@ -809,7 +803,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     else showToast(message);
   }
 
-  root.append(roomWrap, banner, statSlot, garden.pour, actions, fishing.row, cooking.row, garden.row, delivery.row, meet.row, journeys.row, toastEl);
+  root.append(roomWrap, banner, statSlot, garden.pour, actions, fishing.row, cooking.row, garden.row, delivery.row, meet.row, journeys.sheet, journeys.row, toastEl);
 
   // Which pet the bars were showing, so switching pets can slide them.
   let barsFor: string | null = null;
@@ -889,7 +883,6 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       delivery.update(state, now);
       meet.update(state, now);
       journeys.update(state, now);
-      if (journeys.active()) fitJourneys();
       refreshParcel();
       parcel.classList.toggle('all-full', !!state.delivery.order?.boxes.every((b) => b.have >= b.want));
       playDrawer.setHidden(GARDEN_ROW, !isUnlocked(state, 'garden'));
