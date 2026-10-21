@@ -658,7 +658,9 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
       panel.replaceChildren(...others(s), ...lunchbox(s, o));
       if (stage === 'pack') {
         lunchTiles(s);
-        sheet.replaceChildren(lunchContent);
+        // Put back in only when it isn't up yet: moving it would play the
+        // slide-up again on every pick.
+        if (sheet.firstElementChild !== lunchContent) sheet.replaceChildren(lunchContent);
       } else {
         sheet.replaceChildren();
       }

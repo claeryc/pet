@@ -88,13 +88,19 @@ export function play(state: GameState, now: number, activityId: ActivityId = 'cu
   };
 }
 
-// Turns the lights off (pet goes to sleep) or on (pet wakes up).
+// Turns the lights off (pets go to sleep) or on (pets wake up). The pets
+// share one room, so the other pet at home sleeps or wakes along with this
+// one (unless it's away, an egg or passed away).
 export function toggleLights(state: GameState, now: number): ActionResult {
   const s = simulate(state, now);
   if (isAway(s.pet)) return { state: s, blocked: 'away' };
   if (s.pet.condition === 'passed') return { state: s, blocked: 'passed' };
   if (s.pet.stage === 'egg') return { state: s, blocked: 'egg' };
-  return { state: withPet(s, (pet) => (pet.asleep = !pet.asleep)) };
+  const asleep = !s.pet.asleep;
+  const housemates = s.housemates.map((p) =>
+    isAway(p) || p.condition === 'passed' || p.stage === 'egg' || p.asleep === asleep ? p : { ...p, asleep },
+  );
+  return { state: withPet({ ...s, housemates }, (pet) => (pet.asleep = asleep)) };
 }
 
 // Cures sickness and starts the recovery rest.
