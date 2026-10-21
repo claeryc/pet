@@ -2858,6 +2858,7 @@ body {
   background: none;
   cursor: pointer;
   touch-action: manipulation;
+  transform-origin: 0 100%;
   animation: craving-float 2.4s ease-in-out infinite;
 }
 
@@ -2918,8 +2919,8 @@ body {
 }
 
 @keyframes craving-pop {
-  from { transform: scale(0.2); opacity: 0; transform-origin: 0 100%; }
-  to { transform: scale(1); opacity: 1; transform-origin: 0 100%; }
+  from { transform: scale(0.2); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3572,7 +3573,26 @@ body {
   left: 31%;
 }
 
+/* The pet on the right shares its corner with Percy's parcel, so its
+   bubble floats above and to the left of its head instead, with the dots
+   trailing down the other way. */
 .room-wrap[data-spot='right'] .craving-bubble {
+  left: auto;
+  right: 26%;
+  transform-origin: 100% 100%;
+}
+
+.room-wrap[data-spot='right'] .craving-cloud {
+  right: auto;
+  left: 0;
+}
+
+.room-wrap[data-spot='right'] .craving-dot-1 {
+  left: auto;
+  right: 6px;
+}
+
+.room-wrap[data-spot='right'] .craving-dot-2 {
   left: auto;
   right: 0;
 }
