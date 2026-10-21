@@ -90,10 +90,12 @@ export const STRINGS = {
     back: 'Back',
     lineUp: 'Line up',
     lineUpTitle: "Who's going?",
-    together: 'Two can go together. Each packs its own lunch and brings home its own backpack.',
-    going: 'Going',
-    staying: 'Stays home',
-    lunchFor: (name: string) => `${name}'s lunch`,
+    nextBox: 'Next lunchbox',
+    // Why a pet can't go, short enough for its row in the line-up.
+    cantGoShort: {
+      tooYoung: 'Too little', sick: 'Sick', resting: 'Resting', asleep: 'Asleep', backpack: 'Backpack to open',
+      sad: 'Feeling down', unwell: 'Not well',
+    } as Partial<Record<string, string>>,
     packLunch: 'Pack a lunch',
     closeLid: 'Close the lid',
     openLid: 'Open',
@@ -147,8 +149,6 @@ export const STRINGS = {
     percyName: 'Percy',
     percyNote: 'Percy comes along and flies home halfway with the best find',
     percyAway: 'away',
-    percyOn: 'Coming',
-    percyOff: 'Stays home',
     percyResting: (time: string) => `Percy is resting (${time})`,
     percyFlying: 'Percy is on a trip',
     dryPots: (n: number, name: string) =>

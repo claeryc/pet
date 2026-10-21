@@ -4618,7 +4618,6 @@ body {
 .trip-ticket-icon svg,
 .trip-card-place svg,
 .trip-loot-icon svg,
-.lineup-percy-icon svg,
 .trip-meter-icon svg,
 .bento-spot-icon svg,
 .bento-spot-hint svg,
@@ -4981,104 +4980,15 @@ body {
 
 /* ---- The line-up ---- */
 
-.lineup-pets {
+/* A row like a ticket on the board: picture, name, tick. */
+.lineup-row {
+  height: 52px;
   display: flex;
-  gap: 10px;
-}
-
-/* A pet's card: tap to take it along (a green border and a tick). */
-.lineup-pet {
-  position: relative;
-  flex: 1 1 0;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 10px 8px 9px;
-  border: 3px solid var(--lavender);
-  border-radius: 16px;
-  background: white;
-  font: inherit;
-  color: var(--ink);
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-.lineup-pet.is-on {
-  border-color: var(--good);
-  background: #f3fcf6;
-}
-
-.lineup-pet:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.lineup-tick {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 22px;
-  height: 22px;
+  gap: 10px;
+  padding: 0 12px 0 8px;
   border: 2px solid var(--lavender);
-  border-radius: 50%;
-  background: white;
-  font-style: normal;
-  font-weight: 900;
-  font-size: 0.8rem;
-  line-height: 18px;
-  color: white;
-}
-
-.lineup-pet.is-on .lineup-tick {
-  border-color: var(--good-dark);
-  background: var(--good);
-}
-
-.lineup-pic {
-  width: 64px;
-  height: 64px;
-}
-
-.lineup-pic .portrait,
-.box-tab-pic .portrait {
-  display: block;
-}
-
-.lineup-name {
-  font-size: 1rem;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.lineup-stats {
-  display: flex;
-  gap: 4px;
-}
-
-.lineup-state,
-.lineup-why {
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: #8b7aa0;
-  line-height: 1.2;
-}
-
-.lineup-pet.is-on .lineup-state {
-  color: var(--good-dark);
-}
-
-/* Percy's card, under the pets: take him along or not. */
-.lineup-percy {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  border: 3px solid var(--lavender);
-  border-radius: 16px;
+  border-radius: 11px;
   background: white;
   font: inherit;
   color: var(--ink);
@@ -5087,74 +4997,64 @@ body {
   touch-action: manipulation;
 }
 
-.lineup-percy.is-on {
-  border-color: var(--good);
+.lineup-row.is-on {
+  border-color: var(--good-dark);
   background: #f3fcf6;
 }
 
-.lineup-percy:disabled {
+.lineup-row:disabled {
   opacity: 0.6;
   cursor: default;
 }
 
-.lineup-percy-icon {
+.lineup-pic {
+  display: block;
   flex: none;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
 }
 
-.lineup-percy-text {
+.lineup-pic .portrait,
+.lineup-pic svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.lineup-name {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  line-height: 1.25;
-}
-
-.lineup-percy-text small {
-  font-size: 0.72rem;
-  color: #5b4a6e;
-}
-
-.lineup-percy-state {
-  flex: none;
-  padding: 3px 9px;
-  border-radius: 99px;
-  background: var(--lavender);
-  font-size: 0.75rem;
-  font-weight: 800;
-  color: #5b4a6e;
-  white-space: nowrap;
-}
-
-.lineup-percy.is-on .lineup-percy-state {
-  background: var(--good);
-  color: white;
-}
-
-/* Whose lunchbox, when two are going (in place of the title). */
-.box-tabs {
-  flex: 1;
-  min-width: 0;
-}
-
-.box-tabs .lunch-tab {
-  min-width: 0;
-  height: 30px;
-  padding: 0 6px;
-}
-
-.box-tab-name {
+  font-size: 1rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.box-tab-pic {
-  display: block;
-  width: 20px;
-  height: 20px;
+.lineup-tick {
   flex: none;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--lavender);
+  border-radius: 8px;
+  background: white;
+  font-style: normal;
+  font-weight: 900;
+  font-size: 0.95rem;
+  line-height: 22px;
+  text-align: center;
+  color: white;
+}
+
+.lineup-row.is-on .lineup-tick {
+  border-color: var(--good-dark);
+  background: var(--good);
+}
+
+.lineup-why {
+  flex: none;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #8b7aa0;
 }
 
 /* ---- The lunchbox ---- */
@@ -5348,7 +5248,23 @@ body {
   gap: 7px;
 }
 
+.trip-bars-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.trip-bars-name {
+  min-width: 0;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .trip-bars-head {
+  flex: none;
   align-self: flex-end;
   font-size: 0.65rem;
   font-weight: 800;
