@@ -4618,7 +4618,6 @@ body {
 .trip-ticket-icon svg,
 .trip-card-place svg,
 .trip-loot-icon svg,
-.trip-percy-icon svg,
 .trip-meter-icon svg,
 .bento-spot-icon svg,
 .bento-spot-hint svg,
@@ -4879,53 +4878,6 @@ body {
   color: #5b4a6e;
 }
 
-/* Percy's switch, at the card's top right. */
-.trip-percy {
-  align-self: flex-start;
-  flex: none;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 4px 6px 5px;
-  border: 2px solid var(--lavender);
-  border-radius: 12px;
-  background: white;
-  font: inherit;
-  color: var(--ink);
-  cursor: pointer;
-}
-
-.trip-percy.is-on {
-  border-color: var(--good);
-}
-
-.trip-percy:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.trip-percy-icon {
-  width: 26px;
-  height: 26px;
-}
-
-.trip-percy-name {
-  font-size: 0.65rem;
-  font-weight: 800;
-}
-
-.trip-percy-rest,
-.trip-percy-state {
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: #8b7aa0;
-}
-
-.trip-percy.is-on .trip-percy-state {
-  color: var(--good-dark);
-}
-
 .trip-card-sec {
   display: flex;
   align-items: center;
@@ -5024,6 +4976,85 @@ body {
 
 .trip-card-dry .shop-btn {
   margin-left: auto;
+}
+
+/* ---- The line-up ---- */
+
+/* A row like a ticket on the board: picture, name, tick. */
+.lineup-row {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px 0 8px;
+  border: 2px solid var(--lavender);
+  border-radius: 11px;
+  background: white;
+  font: inherit;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.lineup-row.is-on {
+  border-color: var(--good-dark);
+  background: #f3fcf6;
+}
+
+.lineup-row:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.lineup-pic {
+  display: block;
+  flex: none;
+  width: 40px;
+  height: 40px;
+}
+
+.lineup-pic .portrait,
+.lineup-pic svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.lineup-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lineup-tick {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--lavender);
+  border-radius: 8px;
+  background: white;
+  font-style: normal;
+  font-weight: 900;
+  font-size: 0.95rem;
+  line-height: 22px;
+  text-align: center;
+  color: white;
+}
+
+.lineup-row.is-on .lineup-tick {
+  border-color: var(--good-dark);
+  background: var(--good);
+}
+
+.lineup-why {
+  flex: none;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #8b7aa0;
 }
 
 /* ---- The lunchbox ---- */
@@ -5217,7 +5248,23 @@ body {
   gap: 7px;
 }
 
+.trip-bars-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.trip-bars-name {
+  min-width: 0;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .trip-bars-head {
+  flex: none;
   align-self: flex-end;
   font-size: 0.65rem;
   font-weight: 800;
@@ -5328,8 +5375,30 @@ body {
 
 .lunch-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-auto-flow: column;
+  /* Four and a bit fit across, so a cut-off tile shows there's more. */
+  grid-auto-columns: calc((100% - 3 * 8px) / 4.4);
   gap: 8px;
+  /* Room for the counts that stick out at the top. */
+  margin: -8px -8px 0;
+  padding: 8px 8px 4px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+
+.lunch-grid::-webkit-scrollbar {
+  display: none;
+}
+
+.lunch-grid > .lunch-tile {
+  scroll-snap-align: start;
+  scroll-margin-left: 8px;
+}
+
+.lunch-grid:has(> .trip-note) {
+  display: block;
 }
 
 .lunch-grid > .trip-note {

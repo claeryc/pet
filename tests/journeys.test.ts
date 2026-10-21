@@ -5,6 +5,7 @@ import { simulate } from '../src/game/simulate';
 import { feed } from '../src/game/actions';
 import {
   buyCharm, callHome, cantGo, charmCount, getPlace, openBackpack, planTrip, potsDryingBy, restPercy, rollFinds, setOff,
+  goTogether,
   tripPreview, type Place,
 } from '../src/game/journeys';
 import { isAway, hasBackpack, nobodyHome } from '../src/game/presence';
@@ -304,5 +305,64 @@ describe('saves', () => {
     const out = migrate({ version: 18, state: { pet: { stage: 'teen' }, housemates: [] } });
     expect(out.state.pet.trip).toBeNull();
     expect(out.state.journeys.offers).toEqual([null, null, null]);
+  });
+});
+
+describe('going together', () => {
+  function two(): GameState {
+    const s = ready();
+    const other = newPet(START);
+    other.stage = 'teen';
+    other.name = 'Bean';
+    other.stats = { hunger: 100, happiness: 100, health: 100, energy: 100 };
+    s.housemates = [other];
+    s.inventory.food = { ...s.inventory.food, energyDrink: 2 };
+    return s;
+  }
+
+  it('both pets set off on the same trip, each with its own lunch, and nobody is home', () => {
+    const s = two();
+    const [a, b] = [s.pet.id, s.housemates[0].id];
+    const left = goTogether(s, START, 2, [
+      { pet: a, lunch: ['energyDrink'], charm: null },
+      { pet: b, lunch: ['energyDrink'], charm: null },
+    ], true).state;
+    expect(nobodyHome(left)).toBe(true);
+    expect(left.inventory.food.energyDrink ?? 0).toBe(0);
+    const trips = [left.pet, ...left.housemates].map((p) => p.trip!);
+    expect(trips.map((t) => t.endsAt)).toEqual([START + 10 * HOUR, START + 10 * HOUR]);
+    expect(trips.filter((t) => t.percy === 'coming')).toHaveLength(1);
+    expect(left.journeys.offers[2]).toBeNull();
+  });
+
+  it("checks each pet's lunch, and says whose isn't enough", () => {
+    const s = two();
+    s.housemates[0].stats.energy = 60;
+    const b = s.housemates[0].id;
+    const result = goTogether(s, START, 2, [
+      { pet: s.pet.id, lunch: ['energyDrink'], charm: null },
+      { pet: b, lunch: [], charm: null },
+    ], false);
+    expect(result.blocked).toBe('notEnoughEnergy');
+    expect(result.pet).toBe(b);
+    expect(result.state).toBe(s);
+  });
+
+  it('just the other pet can go, and you keep looking after the one at home', () => {
+    const s = two();
+    const left = goTogether(s, START, 0, [{ pet: s.housemates[0].id, lunch: [], charm: null }], false).state;
+    expect(isAway(left.pet)).toBe(false);
+    expect(isAway(left.housemates[0])).toBe(true);
+  });
+
+  it('calling one home brings both home', () => {
+    const s = two();
+    const left = goTogether(s, START, 1, [
+      { pet: s.pet.id, lunch: [], charm: null },
+      { pet: s.housemates[0].id, lunch: [], charm: null },
+    ], false).state;
+    const now = START + 2 * HOUR;
+    const back = callHome(simulate(left, now), now, left.pet.id).state;
+    expect([back.pet, ...back.housemates].every(hasBackpack)).toBe(true);
   });
 });

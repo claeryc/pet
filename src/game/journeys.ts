@@ -13,6 +13,8 @@
 // they were to where they'll end up (it eats its lunch as it goes); joy and
 // health wait, it can't get sick, and growing up is paused.
 //
+// One pet can go, or both together on the same trip, each with its own
+// lunchbox and backpack (they're picked in the line-up before packing).
 // What it finds is rolled when it sets off and stays a surprise until the
 // backpack is opened. Percy can come along if he's picked before setting
 // off: halfway (or when the trip is called off early) he flies home with
@@ -246,7 +248,7 @@ function noteFound(state: GameState, place: string, finds: readonly Find[]): Gam
 
 export type JourneyBlock =
   | 'tooYoung' | 'passed' | 'sick' | 'resting' | 'asleep' | 'away' | 'backpack' | 'wait' | 'sad' | 'unwell'
-  | 'noOffer' | 'noFood' | 'tooMuch' | 'notEnoughFood' | 'notEnoughEnergy' | 'percyBusy' | 'noCharm' | 'home';
+  | 'noOffer' | 'nobody' | 'noFood' | 'tooMuch' | 'notEnoughFood' | 'notEnoughEnergy' | 'percyBusy' | 'noCharm' | 'home';
 
 export interface JourneyResult {
   state: GameState;
@@ -271,58 +273,83 @@ export function cantGo(pet: Pet, now: number): JourneyBlock | null {
 
 export const percyFree = (state: GameState, now: number): boolean => now >= state.journeys.percyFreeAt;
 
+// One pet in the line-up, with its own lunch (food ids: up to two foods
+// and a drink) and charm.
+export interface Packed {
+  pet: string;
+  lunch: readonly FoodId[];
+  charm: string | null;
+}
+
 // The pet you're looking after sets off on the offer in spot `slot`, with
-// `lunch` packed (food ids, used up now: up to two foods and a drink), a
-// charm if `charm` (used up too) and Percy along if `percy`. The
-// state should already be caught up to `now`. If the other pet is at home,
-// you look after it while this one is away.
+// `lunch` packed, a charm if `charm` and Percy along if `percy`.
 export function setOff(
   state: GameState, now: number, slot: number, lunch: readonly FoodId[], percy: boolean, charm: string | null = null,
 ): JourneyResult {
-  const pet = state.pet;
+  return goTogether(state, now, slot, [{ pet: state.pet.id, lunch, charm }], percy);
+}
+
+// The pets in `party` (one, or both) set off together on the offer in spot
+// `slot`, each with its own lunch and charm (used up now), and Percy along
+// if `percy` (he goes with the first, and flies home with its best find).
+// The state should already be caught up to `now`. If a pet stays home, you
+// look after it while the others are away. If something's wrong, `pet` says
+// whose it is.
+export function goTogether(
+  state: GameState, now: number, slot: number, party: readonly Packed[], percy: boolean,
+): JourneyResult & { pet?: string } {
   const offer = state.journeys.offers[slot];
-  const why = cantGo(pet, now);
-  if (why) return { state, blocked: why };
-  if (!offer) return { state, blocked: 'noOffer' };
-  const drinks = lunch.filter(isDrink).length;
-  if (drinks > J.lunch.drink || lunch.length - drinks > J.lunch.food) return { state, blocked: 'tooMuch' };
-  if (charm && (!getCharm(charm) || charmCount(state, charm) < 1)) return { state, blocked: 'noCharm' };
-  const plan = planTrip(pet, offer.rarity, lunch);
-  if (!plan.enoughFood) return { state, blocked: 'notEnoughFood' };
-  if (!plan.enoughEnergy) return { state, blocked: 'notEnoughEnergy' };
-  if (percy && !percyFree(state, now)) return { state, blocked: 'percyBusy' };
+  const ids = party.map((m) => m.pet);
+  const pets = ids.map((id) => allPets(state).find((p) => p.id === id));
+  if (!party.length || new Set(ids).size !== ids.length || pets.some((p) => !p)) return { state, blocked: 'nobody' };
   let s: GameState = state;
-  for (const id of lunch) {
-    const used = useFood(s, id);
-    if (!used) return { state, blocked: 'noFood' };
-    s = used;
+  const trips: Pet[] = [];
+  for (const [n, m] of party.entries()) {
+    const pet = pets[n]!;
+    const stop = (blocked: JourneyBlock) => ({ state, blocked, pet: pet.id });
+    const why = cantGo(pet, now);
+    if (why) return stop(why);
+    if (!offer) return stop('noOffer');
+    const drinks = m.lunch.filter(isDrink).length;
+    if (drinks > J.lunch.drink || m.lunch.length - drinks > J.lunch.food) return stop('tooMuch');
+    if (m.charm && (!getCharm(m.charm) || charmCount(s, m.charm) < 1)) return stop('noCharm');
+    const plan = planTrip(pet, offer.rarity, m.lunch);
+    if (!plan.enoughFood) return stop('notEnoughFood');
+    if (!plan.enoughEnergy) return stop('notEnoughEnergy');
+    if (n === 0 && percy && !percyFree(state, now)) return stop('percyBusy');
+    for (const id of m.lunch) {
+      const used = useFood(s, id);
+      if (!used) return stop('noFood');
+      s = used;
+    }
+    if (m.charm) {
+      const supplies = { ...s.inventory.supplies, [`charm:${m.charm}`]: charmCount(s, m.charm) - 1 };
+      s = { ...s, inventory: { ...s.inventory, supplies } };
+    }
+    const trip: Trip = {
+      place: offer.place,
+      rarity: offer.rarity,
+      startedAt: now,
+      endsAt: now + tripHours(offer.rarity) * HOUR,
+      from: { hunger: pet.stats.hunger, energy: pet.stats.energy },
+      to: plan.to,
+      joy: J.joy[offer.rarity],
+      finds: rollFinds(pet, getPlace(offer.place)!, offer.rarity, now, m.charm),
+      percy: n === 0 && percy ? 'coming' : 'none',
+      charm: m.charm,
+      with: ids.find((id) => id !== pet.id) ?? null,
+      backAt: null,
+      early: false,
+    };
+    trips.push({ ...pet, trip, asleep: false });
   }
-  if (charm) {
-    const supplies = { ...s.inventory.supplies, [`charm:${charm}`]: charmCount(s, charm) - 1 };
-    s = { ...s, inventory: { ...s.inventory, supplies } };
-  }
-  const place = getPlace(offer.place)!;
-  const endsAt = now + tripHours(offer.rarity) * HOUR;
-  const trip: Trip = {
-    place: offer.place,
-    rarity: offer.rarity,
-    startedAt: now,
-    endsAt,
-    from: { hunger: pet.stats.hunger, energy: pet.stats.energy },
-    to: plan.to,
-    joy: J.joy[offer.rarity],
-    finds: rollFinds(pet, place, offer.rarity, now, charm),
-    percy: percy ? 'coming' : 'none',
-    charm,
-    backAt: null,
-    early: false,
-  };
+  const endsAt = now + tripHours(offer!.rarity) * HOUR;
+  for (const pet of trips) s = replacePet(s, pet);
   const j = s.journeys;
   s = {
     ...s,
-    pet: { ...pet, trip, asleep: false },
-    // The craving was this pet's: it goes with it.
-    craving: { ...s.craving, food: null, nextAt: Math.max(s.craving.nextAt, endsAt) },
+    // The craving was the pet you're looking after's: it goes with it.
+    craving: ids.includes(state.pet.id) ? { ...s.craving, food: null, nextAt: Math.max(s.craving.nextAt, endsAt) } : s.craving,
     journeys: {
       ...j,
       offers: j.offers.map((o, i) => (i === slot ? null : o)),
@@ -416,15 +443,23 @@ function lookAfterSomeoneHome(state: GameState): GameState {
   return { ...state, pet: home, housemates: state.housemates.map((p) => (p.id === home.id ? state.pet : p)) };
 }
 
-// Calls the pet you're looking after home early (the state should already
-// be caught up to `now`). It brings home the share of its finds for how
-// much of the trip it did, rounded down. If Percy came along and hasn't
-// flown yet, he brings the best find straight away, so it's never for
-// nothing.
+// Calls a pet home early (the state should already be caught up to
+// `now`), and the pet that went with it, if any. Each brings home the
+// share of its finds for how much of the trip it did, rounded down. If
+// Percy came along and hasn't flown yet, he brings the best find straight
+// away, so it's never for nothing.
 export function callHome(state: GameState, now: number, petId: string): JourneyResult {
   const pet = allPets(state).find((p) => p.id === petId);
   if (!pet || !isAway(pet)) return { state, blocked: 'home' };
+  const mate = allPets(state).find((p) => p.id === pet.trip!.with && isAway(p) && p.trip!.startedAt === pet.trip!.startedAt);
+  let s = callOneHome(state, now, pet.id);
+  if (mate) s = callOneHome(s, now, mate.id);
+  return { state: s };
+}
+
+function callOneHome(state: GameState, now: number, petId: string): GameState {
   let s = state;
+  const pet = allPets(s).find((p) => p.id === petId)!;
   if (pet.trip!.percy === 'coming') {
     s = percyFlies(s, pet, now);
     s = { ...s, journeys: { ...s.journeys, percyFreeAt: now + J.percy.restHours * HOUR } };
@@ -439,7 +474,7 @@ export function callHome(state: GameState, now: number, petId: string): JourneyR
   };
   comeHome(home, now);
   s = replacePet(s, home);
-  return { state: logMessage(s, { kind: 'tripHome', at: now, name: home.name, place: trip.place }) };
+  return logMessage(s, { kind: 'tripHome', at: now, name: home.name, place: trip.place });
 }
 
 // Opens the backpack of a pet that's home: everything in it goes into the

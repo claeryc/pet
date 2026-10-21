@@ -6,17 +6,23 @@
 //      bars. A coloured band shows the rarity with 1, 2 or 3 gems (green,
 //      blue, a shiny purple). Tapping one shows its info card at the bottom,
 //      just above the buttons: the place, how long, when it's back, what it
-//      can bring home, what it uses on the way, and whether Percy comes
-//      along (top right). Buttons: [Back] [Pack a lunch].
-//   2. The lunchbox: a wooden bento box seen from above. Two foods go in
+//      can bring home and what it uses on the way.
+//      Buttons: [Back] [Line up].
+//   2. The line-up: who's going. A list like the board, with a row for
+//      each pet at home (one, or both together) and Percy last, each with
+//      a tick.
+//      Buttons: [Back] [Pack a lunch].
+//   3. The lunchbox: a wooden bento box seen from above. Two foods go in
 //      the big compartment, a drink in the small one at the top and a charm
 //      in the one below, and the pet's tummy and energy show now and when
 //      it's back home. What you have (Food, Drinks and Charms tabs) sits at
 //      the bottom. Tapping something in the box takes it out again.
-//      Buttons: [Back] [Close the lid].
-//   3. Lid on: the wooden lid slides over bit by bit and the trip's label
+//      The pet's name is at the top of its stats. Buttons: [Back]
+//      [Close the lid]. With two going, each packs its own box in turn.
+//   4. Lid on: the wooden lid slides over bit by bit and the trip's label
 //      goes on. Tap the box (or Open) to change the lunch.
-//      Buttons: [Open] [Set off].
+//      Buttons: [Open] [Set off], or [Open] [Next lunchbox] after the first
+//      of two.
 //
 // The rules live in src/game/journeys.ts.
 
@@ -24,9 +30,11 @@ import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import type { Food, FoodId } from '../game/actions';
 import type { GameState, Offer, Pet, Rarity } from '../game/state';
+import { sheetFor } from '../game/growth';
 import { foodCount } from '../game/economy';
 import {
   CHARMS, cantGo, charmCount, getPlace, isDrink, percyFree, planTrip, PLACES, potsDryingBy, tripHours, tripPreview,
+  type Packed,
 } from '../game/journeys';
 import { hasBackpack, isAway } from '../game/presence';
 import { ITEM_ICONS, STAT_ICONS } from './icons';
@@ -35,8 +43,8 @@ import { category, type Entry } from './shop';
 import { formatClock, formatDuration } from './time';
 
 export interface JourneysCallbacks {
-  // The pet you're looking after sets off; true if it went.
-  onSetOff: (slot: number, lunch: FoodId[], percy: boolean, charm: string | null) => boolean;
+  // The pets in the line-up set off, each with its lunch; true if they went.
+  onSetOff: (slot: number, party: Packed[], percy: boolean) => boolean;
   onCallHome: (pet: string) => void;
   onOpenBackpack: (pet: string) => void;
 }
@@ -45,6 +53,7 @@ export interface JourneysSetup extends JourneysCallbacks {
   onExit: () => void;
   onWater: () => void; // out to the garden, to water before going
   toast: (message: string) => void;
+  characterImage: (sheet: string) => string | undefined;
 }
 
 export interface JourneysScene {
@@ -55,6 +64,13 @@ export interface JourneysScene {
   stop: () => void;
   active: () => boolean;
   update: (state: GameState, now: number) => void;
+}
+
+// One pet's lunchbox: the big compartment, the drink and the charm.
+interface Box {
+  food: FoodId[];
+  drink: FoodId | null;
+  charm: string | null;
 }
 
 // How long the stat bars wait to fill back up after Journeys closes.
@@ -137,15 +153,25 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
   let state: GameState | null = null;
   let now = 0;
   let active = false;
-  // What's picked: a trip, the lunch and Percy, and which step it's on.
-  let stage: 'board' | 'pack' | 'closed' = 'board';
+  // What's picked: a trip, who's going with their lunches, Percy, and
+  // which step it's on.
+  let stage: 'board' | 'lineup' | 'pack' | 'closed' = 'board';
   let slot: number | null = null;
-  let food: FoodId[] = []; // the big compartment
-  let drink: FoodId | null = null;
-  let charm: string | null = null;
+  let going: string[] = []; // pet ids, in the order they were picked
+  let boxes = new Map<string, Box>(); // each pet's lunchbox
+  let who = ''; // whose box is on show
   let percy = false;
   let tab: 'food' | 'drink' | 'charm' = 'food';
-  const lunch = (): FoodId[] => (drink ? [...food, drink] : [...food]);
+  const box = (): Box => {
+    let b = boxes.get(who);
+    if (!b) boxes.set(who, (b = { food: [], drink: null, charm: null }));
+    return b;
+  };
+  const lunchOf = (b: Box): FoodId[] => (b.drink ? [...b.food, b.drink] : [...b.food]);
+  const lunch = (): FoodId[] => lunchOf(box());
+  // Everything packed in every box going (to count what's left).
+  const packed = (): FoodId[] => going.flatMap((id) => (boxes.has(id) ? lunchOf(boxes.get(id)!) : []));
+  const charmsPacked = (id: string) => going.filter((p) => boxes.get(p)?.charm === id).length;
   let shownKey = '';
   let lidMoving = false; // the lid is going on or coming off
 
@@ -162,19 +188,19 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
   const row = el('div', 'actions journeys-row');
   row.hidden = true;
   const back = el('button', 'btn btn-soft', T.back);
+  const lineUp = el('button', 'btn', T.lineUp);
   const pack = el('button', 'btn', T.packLunch);
   const closeLid = el('button', 'btn', T.closeLid);
   const openLid = el('button', 'btn btn-soft', T.openLid);
   const go = el('button', 'btn', T.go);
-  row.append(back, openLid, pack, closeLid, go);
+  const nextBox = el('button', 'btn', T.nextBox);
+  row.append(back, openLid, lineUp, pack, closeLid, nextBox, go);
 
-  const pet = (): Pet | null => state?.pet ?? null;
+  const allPets = (s: GameState): Pet[] => [s.pet, ...s.housemates];
+  // Pets at home, who could be in the line-up.
+  const homePets = (s: GameState): Pet[] => allPets(s).filter((p) => !isAway(p) && p.condition !== 'passed');
+  const pet = (): Pet | null => (state && allPets(state).find((p) => p.id === who)) ?? null;
   const offer = (): Offer | null => (state && slot !== null ? state.journeys.offers[slot] ?? null : null);
-  const plan = () => {
-    const p = pet();
-    const o = offer();
-    return p && o ? planTrip(p, o.rarity, lunch()) : null;
-  };
 
   back.addEventListener('click', () => {
     if (stage === 'board') {
@@ -182,20 +208,50 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
       cb.onExit();
       return;
     }
-    setStage('board');
+    // Packing the second box: back to the first, lid on.
+    const i = going.indexOf(who);
+    if (stage === 'pack' && i > 0) {
+      who = going[i - 1];
+      setStage('closed');
+      return;
+    }
+    setStage(stage === 'pack' ? 'lineup' : 'board');
+  });
+  nextBox.addEventListener('click', () => {
+    const i = going.indexOf(who);
+    if (i < 0 || i >= going.length - 1) return;
+    who = going[i + 1];
+    setStage('pack');
+  });
+  lineUp.addEventListener('click', () => {
+    if (!state) return;
+    if (!offer()) return cb.toast(T.blocked.noOffer(state.pet.name));
+    const can = homePets(state).filter((p) => !cantGo(p, now));
+    if (!can.length) {
+      const why = cantGo(state.pet, now)!;
+      return cb.toast(T.blocked[why](state.pet.name));
+    }
+    // Who goes, to start with: whoever was picked last time and still
+    // can, or else the pet you're looking after (or the other one).
+    going = going.filter((id) => can.some((p) => p.id === id));
+    if (!going.length) going = [can[0].id];
+    setStage('lineup');
   });
   pack.addEventListener('click', () => {
-    const p = pet();
-    if (!p || !state) return;
-    if (!offer()) return cb.toast(T.blocked.noOffer(p.name));
-    const why = cantGo(p, now);
-    if (why) return cb.toast(T.blocked[why](p.name));
+    if (!state) return;
+    if (!going.length) return cb.toast(T.blocked.nobody(state.pet.name));
+    for (const p of allPets(state).filter((p) => going.includes(p.id))) {
+      const why = cantGo(p, now);
+      if (why) return cb.toast(T.blocked[why](p.name));
+    }
+    who = going[0];
     setStage('pack');
   });
   const tryClose = () => {
     const p = pet();
-    const result = plan();
-    if (!p || !result) return;
+    const o = offer();
+    if (!p || !o) return;
+    const result = planTrip(p, o.rarity, lunch());
     if (!result.enoughFood) return cb.toast(T.blocked.notEnoughFood(p.name));
     if (!result.enoughEnergy) return cb.toast(T.blocked.notEnoughEnergy(p.name));
     moveLid(true);
@@ -204,7 +260,11 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
   openLid.addEventListener('click', () => moveLid(false));
   go.addEventListener('click', () => {
     if (slot === null) return;
-    if (cb.onSetOff(slot, lunch(), percy, charm)) {
+    const party = going.map((id) => {
+      const b = boxes.get(id) ?? { food: [], drink: null, charm: null };
+      return { pet: id, lunch: lunchOf(b), charm: b.charm };
+    });
+    if (cb.onSetOff(slot, party, percy)) {
       stop();
       cb.onExit();
     }
@@ -263,32 +323,6 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     return list;
   }
 
-  function percySwitch(s: GameState): HTMLElement {
-    const free = percyFree(s, now);
-    const flying = [s.pet, ...s.housemates].some((p) => p.trip?.percy === 'coming');
-    if (!free) percy = false;
-    const b = el('button', `trip-percy${percy ? ' is-on' : ''}`);
-    b.setAttribute('role', 'switch');
-    b.setAttribute('aria-checked', String(percy));
-    b.append(icon(ITEM_ICONS.percy, 'trip-percy-icon'), el('span', 'trip-percy-name', T.percyName));
-    if (free) {
-      b.append(el('small', 'trip-percy-state', percy ? T.percyOn : T.percyOff));
-      b.title = T.percyNote;
-      b.setAttribute('aria-label', T.percyNote);
-      b.addEventListener('click', () => {
-        percy = !percy;
-        render(true);
-      });
-    } else {
-      const rest = flying ? T.percyAway : formatDuration(s.journeys.percyFreeAt - now);
-      b.append(el('small', 'trip-percy-rest', rest));
-      b.disabled = true;
-      b.title = flying ? T.percyFlying : T.percyResting(rest);
-      b.setAttribute('aria-label', b.title);
-    }
-    return b;
-  }
-
   function loot(svg: string, text: string, className = ''): HTMLElement {
     const tile = el('div', `trip-loot ${className}`);
     if (svg) tile.append(icon(svg, 'trip-loot-icon'));
@@ -309,13 +343,13 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     const name = el('div', 'trip-card-name');
     name.append(el('b', '', placeName(o.place)), el('span', '', T.tripLine(T.trips[o.rarity], T.hours(hours))),
       el('span', '', T.backAt(formatClock(now + hours * HOUR))));
-    top.append(tile, name, percySwitch(s));
+    top.append(tile, name);
 
     // What it can bring home.
     const place = getPlace(o.place);
     const loots = el('div', 'trip-loots');
     if (place) {
-      const preview = tripPreview(place, o.rarity, charm);
+      const preview = tripPreview(place, o.rarity, boxes.get(who)?.charm ?? null);
       loots.append(loot(ITEM_ICONS[preview.ingredient] ?? '', preview.ingredientSure
         ? STRINGS.foods[preview.ingredient as FoodId] : T.maybe(STRINGS.foods[preview.ingredient as FoodId])));
       if (preview.gold) loots.append(loot(STAT_ICONS.gold, T.goldFind));
@@ -336,8 +370,8 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     }
     card.append(top, el('div', 'trip-card-sec', T.bringsHome), loots, costs);
 
-    // Why it can't go yet, if it can't.
-    const why = cantGo(p, now);
+    // Why it can't go yet, if nobody can.
+    const why = homePets(s).some((h) => !cantGo(h, now)) ? null : cantGo(p, now);
     if (why) {
       const text = why === 'wait' ? T.wait(formatDuration(p.tripReadyAt - now)) : T.blocked[why](p.name);
       card.append(el('p', 'trip-card-warn', text));
@@ -358,7 +392,72 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     return card;
   }
 
-  // ---- 2 and 3. The lunchbox ----
+  // ---- 2. The line-up ----
+
+  function portrait(p: Pet, className: string): HTMLElement {
+    const pic = el('span', className);
+    const url = cb.characterImage(sheetFor(p));
+    if (url) {
+      const img = el('span', 'portrait');
+      img.style.backgroundImage = `url('${url}')`;
+      pic.append(img);
+    }
+    return pic;
+  }
+
+  // A row in the line-up, like a ticket: a picture, a name and a tick.
+  // One that can't go is faded, with why (or how long) on the right.
+  function lineupRow(pic: HTMLElement, name: string, on: boolean, blocked: string | null, onTap: () => void): HTMLElement {
+    const b = el('button', `lineup-row${on ? ' is-on' : ''}`);
+    b.setAttribute('role', 'checkbox');
+    b.setAttribute('aria-checked', String(on));
+    b.append(pic, el('b', 'lineup-name', name));
+    if (blocked) {
+      b.append(el('small', 'lineup-why', blocked));
+      b.disabled = true;
+      b.title = blocked;
+    } else {
+      b.append(el('i', 'lineup-tick', on ? '✓' : ''));
+      b.addEventListener('click', onTap);
+    }
+    return b;
+  }
+
+  function lineup(s: GameState, o: Offer): HTMLElement[] {
+    const head = el('div', 'trip-head');
+    head.append(el('b', '', T.lineUpTitle), tripChip(o));
+    const list = el('div', 'trip-board lineup-list');
+    for (const p of homePets(s)) {
+      const why = cantGo(p, now);
+      const on = !why && going.includes(p.id);
+      const blocked = why ? (why === 'wait' ? formatDuration(p.tripReadyAt - now) : T.cantGoShort[why] ?? T.blocked[why](p.name)) : null;
+      list.append(lineupRow(portrait(p, 'lineup-pic'), p.name, on, blocked, () => {
+        going = on ? going.filter((id) => id !== p.id) : [...going, p.id];
+        render(true);
+      }));
+    }
+    // Percy, last: along or not, unless he's resting.
+    const free = percyFree(s, now);
+    if (!free) percy = false;
+    const flying = allPets(s).some((p) => p.trip?.percy === 'coming');
+    const rest = free ? null : flying ? T.percyAway : formatDuration(s.journeys.percyFreeAt - now);
+    const row = lineupRow(icon(ITEM_ICONS.percy, 'lineup-pic'), T.percyName, percy, rest, () => {
+      percy = !percy;
+      render(true);
+    });
+    row.title = free ? T.percyNote : flying ? T.percyFlying : T.percyResting(rest!);
+    list.append(row);
+    return [head, list];
+  }
+
+  function tripChip(o: Offer): HTMLElement {
+    const chip = el('span', 'trip-chip');
+    chip.dataset.rarity = o.rarity;
+    chip.append(icon(placeIcon(o.place), 'trip-cost-icon'), T.tripLine(T.trips[o.rarity], `${tripHours(o.rarity)}h`));
+    return chip;
+  }
+
+  // ---- 3 and 4. The lunchbox ----
 
   // Where the food sits in the open box: the big compartment, then the two
   // small ones (fractions of the canvas, see drawBento).
@@ -403,29 +502,32 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
       return b;
     };
     const items = el('div', 'bento-items');
+    const { food } = box();
     for (let i = 0; i < J.lunch.food; i++) {
       const id = food[i] ?? null;
       items.append(spot(`bento-food bento-food-${i}`, id, STAT_ICONS.hunger, id ? STRINGS.foods[id] : '', () => food.splice(i, 1), 'food'));
     }
+    const { drink, charm } = box();
     items.append(
-      spot('bento-drink', drink, STAT_ICONS.energy, drink ? STRINGS.foods[drink] : '', () => (drink = null), 'drink'),
+      spot('bento-drink', drink, STAT_ICONS.energy, drink ? STRINGS.foods[drink] : '', () => (box().drink = null), 'drink'),
       spot('bento-charm', charm ? `charm_${charm}` : null, ITEM_ICONS.charm_clover, charm ? T.charms[charm]?.name ?? charm : '',
-        () => (charm = null), 'charm'),
+        () => (box().charm = null), 'charm'),
     );
     wrap.append(items);
     return wrap;
   }
 
   function lunchbox(s: GameState, o: Offer): HTMLElement[] {
-    const p = s.pet;
+    const p = pet() ?? s.pet;
+    const { charm } = box();
     const head = el('div', 'trip-head');
-    const chip = el('span', 'trip-chip');
-    chip.dataset.rarity = o.rarity;
-    chip.append(icon(placeIcon(o.place), 'trip-cost-icon'), T.tripLine(T.trips[o.rarity], `${tripHours(o.rarity)}h`));
-    head.append(el('b', '', stage === 'closed' ? T.readyTitle : T.lunchTitle), chip);
+    head.append(el('b', '', stage === 'closed' ? T.readyTitle : T.lunchTitle), tripChip(o));
     const result = planTrip(p, o.rarity, lunch());
     const bars = el('div', 'trip-bars');
-    bars.append(el('span', 'trip-bars-head', T.nowBack),
+    // Whose box it is, top left.
+    const barsHead = el('div', 'trip-bars-top');
+    barsHead.append(el('b', 'trip-bars-name', p.name), el('span', 'trip-bars-head', T.nowBack));
+    bars.append(barsHead,
       meter(STAT_ICONS.hunger, STRINGS.stats.hunger, p.stats.hunger, result.to.hunger),
       meter(STAT_ICONS.energy, STRINGS.stats.energy, p.stats.energy, result.to.energy));
     // While packing, the Lunch panel sits just under the bars (a short trip
@@ -437,8 +539,12 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
   }
 
   // What you can pack: a tab each for food, drinks and charms, with what
-  // you have (less what's packed) as tiles.
+  // you have (less what's packed) as tiles in one row you swipe along, the
+  // most filling (or the strongest drink) first. Packing something keeps
+  // the row where it was; a new tab or box starts it at the beginning.
   function lunchTiles(s: GameState): void {
+    const shown = lunchContent.querySelector<HTMLElement>('.lunch-grid');
+    const keepScroll = shown && shown.dataset.for === `${who}:${tab}` ? shown.scrollLeft : 0;
     const tabs = el('div', 'lunch-tabs');
     const tabList = [['food', STAT_ICONS.hunger, T.foodTab], ['drink', STAT_ICONS.energy, T.drinkTab], ['charm', ITEM_ICONS.charm_clover, T.charmTab]] as const;
     for (const [id, svg, text] of tabList) {
@@ -452,6 +558,7 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
       tabs.append(t);
     }
     const grid = el('div', 'lunch-grid');
+    grid.dataset.for = `${who}:${tab}`;
     const tile = (svg: string, name: string, left: number, gives: string, full: boolean, onPick: () => void) => {
       const b = el('button', `lunch-tile${full ? ' is-full' : ''}`);
       b.append(icon(svg, 'lunch-tile-icon'), el('i', 'lunch-count', left === Infinity ? '∞' : `×${left}`), el('small', '', gives));
@@ -466,24 +573,27 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     };
     if (tab === 'charm') {
       for (const c of CHARMS) {
-        const left = charmCount(s, c.id) - (charm === c.id ? 1 : 0);
+        const left = charmCount(s, c.id) - charmsPacked(c.id);
         if (left <= 0) continue;
-        tile(ITEM_ICONS[`charm_${c.id}`] ?? '', T.charms[c.id]?.name ?? c.id, left, T.charms[c.id]?.short ?? '', !!charm, () => (charm = c.id));
+        tile(ITEM_ICONS[`charm_${c.id}`] ?? '', T.charms[c.id]?.name ?? c.id, left, T.charms[c.id]?.short ?? '', !!box().charm, () => (box().charm = c.id));
       }
     } else {
-      for (const f of FOODS) {
+      const gives = (f: Food) => (tab === 'drink' ? f.energy ?? 0 : f.hunger);
+      for (const f of [...FOODS].sort((a, b) => gives(b) - gives(a))) {
         if (f.id === CONFIG.cooking.mess || isDrink(f.id) !== (tab === 'drink') || f.hunger + (f.energy ?? 0) <= 0) continue;
-        const left = foodCount(s, f.id) - lunch().filter((id) => id === f.id).length;
+        const left = foodCount(s, f.id) - packed().filter((id) => id === f.id).length;
         if (left <= 0) continue;
-        const full = tab === 'drink' ? !!drink : food.length >= J.lunch.food;
-        tile(ITEM_ICONS[f.id] ?? '', STRINGS.foods[f.id], left, `+${tab === 'drink' ? f.energy : f.hunger}`, full, () => {
-          if (tab === 'drink') drink = f.id;
-          else food.push(f.id);
+        const b = box();
+        const full = tab === 'drink' ? !!b.drink : b.food.length >= J.lunch.food;
+        tile(ITEM_ICONS[f.id] ?? '', STRINGS.foods[f.id], left, `+${gives(f)}`, full, () => {
+          if (tab === 'drink') b.drink = f.id;
+          else b.food.push(f.id);
         });
       }
     }
     if (!grid.childElementCount) grid.append(el('p', 'trip-note', T.nothingToPack[tab]));
     lunchContent.replaceChildren(tabs, grid);
+    grid.scrollLeft = keepScroll;
   }
 
   // Other pets out on a journey, or home with a backpack, in a line each.
@@ -511,13 +621,28 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
       slot = null;
       if (stage !== 'board') stage = 'board';
     }
-    // Packed food you've run out of comes out of the box.
-    food = food.filter((id, i) => foodCount(s, id) > food.slice(0, i).filter((f) => f === id).length);
-    if (drink && foodCount(s, drink) - food.filter((f) => f === drink).length < 1) drink = null;
-    if (charm && charmCount(s, charm) < 1) charm = null;
-    const key = JSON.stringify([stage, slot, food, drink, charm, percy, tab, s.inventory.supplies, s.journeys, p.id, p.stage, p.asleep, p.condition, p.tripReadyAt,
-      Math.round(p.stats.hunger), Math.round(p.stats.energy), Math.round(p.stats.happiness), Math.round(p.stats.health),
-      s.housemates.map((h) => [h.id, h.trip?.backAt, h.trip?.endsAt]), s.inventory.food, Math.floor(now / 60_000)]);
+    // A pet that's gone off (or passed) leaves the line-up.
+    going = going.filter((id) => homePets(s).some((h) => h.id === id));
+    if (stage !== 'board' && stage !== 'lineup' && !going.length) stage = 'lineup';
+    // Packed things you've run out of come out of the boxes.
+    const used = new Map<string, number>();
+    const keep = (id: string, have: number) => {
+      const n = used.get(id) ?? 0;
+      if (n >= have) return false;
+      used.set(id, n + 1);
+      return true;
+    };
+    for (const id of going) {
+      const b = boxes.get(id);
+      if (!b) continue;
+      b.food = b.food.filter((f) => keep(f, foodCount(s, f)));
+      if (b.drink && !keep(b.drink, foodCount(s, b.drink))) b.drink = null;
+      if (b.charm && !keep(`charm:${b.charm}`, charmCount(s, b.charm))) b.charm = null;
+    }
+    const key = JSON.stringify([stage, slot, going, who, going.map((id) => boxes.get(id) ?? null), percy, tab, s.inventory.supplies, s.journeys,
+      allPets(s).map((h) => [h.id, h.stage, h.asleep, h.condition, h.tripReadyAt, Math.round(h.stats.hunger), Math.round(h.stats.energy),
+        Math.round(h.stats.happiness), Math.round(h.stats.health), h.trip?.backAt, h.trip?.endsAt]),
+      s.inventory.food, Math.floor(now / 60_000)]);
     if (lidMoving || (!force && key === shownKey)) return;
     shownKey = key;
 
@@ -532,7 +657,11 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
       if (card && shown?.dataset.slot !== String(slot)) card.classList.add('is-new');
       if (card) card.dataset.slot = String(slot);
       sheet.replaceChildren(...(card ? [card] : []));
+    } else if (o && stage === 'lineup') {
+      panel.replaceChildren(...others(s), ...lineup(s, o));
+      sheet.replaceChildren();
     } else if (o) {
+      if (!going.includes(who)) who = going[0];
       panel.replaceChildren(...others(s), ...lunchbox(s, o));
       if (stage === 'pack') {
         lunchTiles(s);
@@ -546,12 +675,17 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     sheet.hidden = !sheet.childElementCount;
     // The buttons for this step.
     back.hidden = stage === 'closed';
-    pack.hidden = stage !== 'board';
+    lineUp.hidden = stage !== 'board';
+    pack.hidden = stage !== 'lineup';
     closeLid.hidden = stage !== 'pack';
     openLid.hidden = stage !== 'closed';
-    go.hidden = stage !== 'closed';
-    const ready = !!o && !cantGo(p, now);
-    pack.classList.toggle('is-waiting', !ready);
+    // Two going: each box in turn, then off they go.
+    const last = going.indexOf(who) >= going.length - 1;
+    nextBox.hidden = stage !== 'closed' || last;
+    go.hidden = stage !== 'closed' || !last;
+    const ready = !!o && homePets(s).some((h) => !cantGo(h, now));
+    lineUp.classList.toggle('is-waiting', !ready);
+    pack.classList.toggle('is-waiting', !going.length);
   }
 
   function stop(): void {
@@ -572,9 +706,9 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
       active = true;
       stage = 'board';
       slot = null;
-      food = [];
-      drink = null;
-      charm = null;
+      going = [];
+      boxes = new Map();
+      who = '';
       percy = false;
       tab = 'food';
       sheet.replaceChildren();

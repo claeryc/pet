@@ -86,6 +86,7 @@ export interface Trip {
   // Percy coming along: 'none', 'coming' (flies home halfway) or 'flown'.
   percy: 'none' | 'coming' | 'flown';
   charm?: string | null; // a charm packed for the trip (see CONFIG.journeys.charms)
+  with?: string | null; // the other pet's id, if both went together
   backAt: number | null; // when it got home (null while it's away)
   early: boolean; // called home before the end
 }
