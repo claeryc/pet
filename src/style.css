@@ -4492,3 +4492,82 @@ body {
   width: auto;
   gap: 4px;
 }
+
+/* ---- Journeys (in the menu panel) ---- */
+
+/* Each offer's frame shows its rarity: lavender, sky blue or gold. */
+.journey-offer { --frame: var(--lavender); border-color: var(--frame); }
+.journey-offer[data-rarity='rare'] { --frame: #9ad3f0; }
+.journey-offer[data-rarity='epic'] { --frame: #f2c14e; background: #fffbea; }
+.journey-offer.is-picked { box-shadow: 0 0 0 2px var(--frame); }
+
+.journey-empty { opacity: 0.6; border-style: dashed; }
+.journey-empty .drawer-option-icon svg { width: 20px; height: 20px; }
+
+.journey-backpack { border-color: var(--good); background: #f1fbf5; }
+
+/* The lunchbox: three spots, like the cooking pot's. */
+.journey-lunch {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin: 2px 0;
+}
+
+.journey-lunch-slot {
+  width: 48px;
+  height: 48px;
+  padding: 6px;
+  border: 2px solid var(--lavender);
+  border-radius: 12px;
+  background: white;
+  cursor: pointer;
+}
+
+.journey-lunch-slot.is-empty {
+  border-style: dashed;
+  background: transparent;
+  cursor: default;
+}
+
+.journey-lunch-slot svg {
+  width: 100%;
+  height: 100%;
+}
+
+.journey-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 4px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.journey-check.is-ok { color: var(--good-dark); }
+.journey-check.is-short { color: var(--low-dark); }
+
+.journey-check-icon svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+.journey-percy {
+  padding: 6px 8px;
+  border: 2px solid var(--lavender);
+  border-radius: 14px;
+  background: white;
+}
+
+.journey-dry { border-color: #9ad3f0; }
+
+.journey-go {
+  align-self: stretch;
+  min-height: 40px;
+  font-size: 0.95rem;
+}
+
+.banner > .btn[hidden] {
+  display: none;
+}

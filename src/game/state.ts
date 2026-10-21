@@ -55,6 +55,59 @@ export interface Pet {
   partner: string | null;
   // Brought back with a Revival Star: it keeps a faint star-glow.
   starGlow: boolean;
+  // A journey it's on (or just came home from, until its backpack is
+  // opened), and when it can go on the next one (see src/game/journeys.ts).
+  trip: Trip | null;
+  tripReadyAt: number;
+}
+
+export type Rarity = 'common' | 'rare' | 'epic';
+
+// Something found on a journey: a food, a seed or some gold.
+export interface Find {
+  kind: 'food' | 'seed' | 'gold';
+  id: string; // a food or crop id ('' for gold)
+  count: number;
+  stars: number;
+}
+
+// A journey. Tummy and energy go from `from` to `to` in a straight line
+// over the trip (the lunchbox is eaten on the way), and everything else
+// about the pet waits until it's home.
+export interface Trip {
+  place: string; // a place id from CONFIG.journeys.places
+  rarity: Rarity;
+  startedAt: number;
+  endsAt: number;
+  from: { hunger: number; energy: number };
+  to: { hunger: number; energy: number };
+  joy: number; // joy gained by the time it's home
+  finds: Find[]; // what's in the backpack (rolled when it sets off)
+  // Percy coming along: 'none', 'coming' (flies home halfway) or 'flown'.
+  percy: 'none' | 'coming' | 'flown';
+  backAt: number | null; // when it got home (null while it's away)
+  early: boolean; // called home before the end
+}
+
+// One offer on the journey board.
+export interface Offer {
+  place: string;
+  rarity: Rarity;
+}
+
+// One place's page in the travel journal.
+export interface JournalPage {
+  trips: number; // journeys finished there
+  postcards: { name: string; at: number }[]; // who went, newest first
+  found: string[]; // food ids found there
+}
+
+export interface Journeys {
+  // The board: three spots, each an offer or empty until `refillAt`.
+  offers: (Offer | null)[];
+  refillAt: number[];
+  percyFreeAt: number; // Percy can come along again from this time
+  journal: Record<string, JournalPage>;
 }
 
 // Everything the player owns.
@@ -193,7 +246,9 @@ export type Message =
   | { kind: 'visitor'; at: number; name: string; character: string; variant: string | null; friend?: boolean }
   | { kind: 'littleOne'; at: number; name: string; friend: string }
   | { kind: 'badge'; at: number; id: string; tier: 'bronze' | 'silver' | 'gold' }
-  | { kind: 'level'; at: number; level: number };
+  | { kind: 'level'; at: number; level: number }
+  | { kind: 'tripHome'; at: number; name: string; place: string }
+  | { kind: 'courier'; at: number; name: string; place: string; find: Find };
 
 // Star fragments, the free way to a Revival Star (see src/game/fragments.ts).
 export interface Fragments {
@@ -277,6 +332,11 @@ export interface GameState {
   badges: Record<string, 'bronze' | 'silver' | 'gold'>;
   keeper: Keeper;
   fragments: Fragments;
+  journeys: Journeys;
+}
+
+export function newJourneys(): Journeys {
+  return { offers: [null, null, null], refillAt: [0, 0, 0], percyFreeAt: 0, journal: {} };
 }
 
 export function newKeeper(): Keeper {
@@ -316,6 +376,8 @@ export function newPet(now: number, family: { generation: number; parents: strin
     themes: [...family.themes],
     partner: null,
     starGlow: false,
+    trip: null,
+    tripReadyAt: 0,
   };
 }
 
@@ -352,5 +414,6 @@ export function createNewGame(now: number): GameState {
     badges: {},
     keeper: newKeeper(),
     fragments: { pieces: 0, streak: 0, lastDay: '', from: [] },
+    journeys: newJourneys(),
   };
 }

@@ -10,6 +10,7 @@
 import { CONFIG } from './config';
 import { localDay } from './economy';
 import type { GameState } from './state';
+import { nobodyHome } from './presence';
 
 const F = CONFIG.revival.fragments;
 
@@ -40,7 +41,11 @@ export function stepFragments(state: GameState): { state: GameState; pieces: num
   const today = localDay(state.lastUpdated);
   const pet = state.pet;
   const fine = pet.stage !== 'egg' && pet.condition !== 'sick' && pet.condition !== 'passed';
-  if (fine && lastDay !== today) {
+  // A day when every pet is out on a journey doesn't count, but it doesn't
+  // break the streak either.
+  if (nobodyHome(state)) {
+    if (lastDay === dayBefore(today)) lastDay = today;
+  } else if (fine && lastDay !== today) {
     streak = lastDay === dayBefore(today) ? streak + 1 : 1;
     lastDay = today;
     if (streak % F.careDays === 0) earned += 1;

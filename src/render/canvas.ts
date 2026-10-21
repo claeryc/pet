@@ -37,6 +37,9 @@ export interface Scene {
   meeting?: (OtherPet & { hearts: boolean }) | null; // a friend over to play
   // How the room is decorated: a wallpaper id, and curtains (or none).
   room?: { wallpaper: string; curtains: string | null };
+  // Nobody's home (out on a journey): no pet, just a little note pinned to
+  // the wall.
+  note?: boolean;
 }
 
 export function setupCanvas(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
@@ -49,6 +52,21 @@ export function setupCanvas(canvas: HTMLCanvasElement): CanvasRenderingContext2D
 
 // The window's glass, in room pixels (its frame is one pixel bigger).
 const WINDOW = { x: 6, y: 6, w: 14, h: 12 };
+
+// "Gone exploring!": a little paper note pinned beside the window, with a
+// few scribbled lines.
+function drawNote(ctx: CanvasRenderingContext2D): void {
+  const x = 42;
+  const y = 9;
+  ctx.fillStyle = PALETTE.ink;
+  ctx.fillRect(x - 1, y - 1, 10, 12);
+  ctx.fillStyle = PALETTE.cream;
+  ctx.fillRect(x, y, 8, 10);
+  ctx.fillStyle = PALETTE.lilac;
+  for (const [dy, w] of [[2, 6], [4, 5], [6, 6], [8, 3]]) ctx.fillRect(x + 1, y + dy, w, 1);
+  ctx.fillStyle = PALETTE.rose; // the pin
+  ctx.fillRect(x + 3, y - 2, 2, 2);
+}
 
 function drawWindow(ctx: CanvasRenderingContext2D, night: boolean, timeMs: number): void {
   const { x, y, w, h } = WINDOW;
@@ -281,6 +299,7 @@ export function drawRoom(
     drawWindow(ctx, scene.night, timeMs);
     if (scene.room?.curtains) drawCurtains(ctx, scene.room.curtains, WINDOW.x, WINDOW.y, WINDOW.w, WINDOW.h);
     if (scene.fishing && scene.fishing !== 'off') drawFishing(ctx, scene.fishing, timeMs);
+    if (scene.note) drawNote(ctx);
   }
 
   // The pet, centred and standing on the floor. In the garden it walks over
@@ -310,7 +329,7 @@ export function drawRoom(
       if (meeting.hearts) drawHearts(ctx, timeMs);
     }
   };
-  if (percys) drawPet(0);
+  if (percys && !scene.note) drawPet(0);
   if (outside) {
     // The garden or Percy's meadow, rising up from the bottom (or all of it,
     // once it's in).
@@ -326,7 +345,7 @@ export function drawRoom(
     ctx.restore();
   }
 
-  if (!percys) drawPet(mix);
+  if (!percys && !scene.note) drawPet(mix);
 
   // Lights off: dim the whole room.
   if (scene.lightsOff) {

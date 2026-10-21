@@ -77,6 +77,10 @@ import { STRINGS } from './strings';
 import { FRAGMENT_ICON, ITEM_ICONS } from './ui/icons';
 import { DISH_MS, DONE_MS as COOKED_MS } from './ui/cooking';
 import { music, sound, startAudio } from './audio/audio';
+import { callHome, openBackpack, restPercy, setOff } from './game/journeys';
+import { isAway } from './game/presence';
+import { STAT_ICONS } from './ui/icons';
+import type { Find } from './game/state';
 
 const root = document.getElementById('app')!;
 
@@ -193,6 +197,11 @@ function announceMail(old: Message[]): void {
       home.notice(STRINGS.delivery.pickedUp(m.boxes.filter((b) => b.have >= b.want).length, m.gold));
       if (m.seed) showGot(m.seed, 1, STRINGS.reveal.fromPercy, true);
       if (m.food) showGot(m.food, 1, STRINGS.reveal.fromPercy);
+    } else if (m.kind === 'tripHome') {
+      home.notice(STRINGS.journeys.tripHome(m.name, placeName(m.place)));
+    } else if (m.kind === 'courier') {
+      home.notice(STRINGS.journeys.courier(m.name, placeName(m.place), findLabel(m.find)));
+      showFind(m.find, STRINGS.journeys.fromPercy);
     } else if (m.kind === 'visitor' && m.friend) {
       home.notice(STRINGS.messages.friendVisit(m.name));
     } else if (m.kind === 'visitor') {
@@ -284,6 +293,27 @@ function showGot(id: string, count: number, caption?: string, seed = false): voi
     name: seed ? STRINGS.garden.seedName(name) : name,
     count,
     stars: starCount(id),
+    caption,
+  });
+}
+
+const placeName = (id: string) => STRINGS.journeys.places[id] ?? id;
+
+// What a journey find is called: "Honey", "Pumpkin seed" or "Gold".
+function findLabel(f: Find): string {
+  if (f.kind === 'gold') return STRINGS.journeys.goldFind;
+  const name = STRINGS.foods[f.id as FoodId] ?? f.id;
+  return f.kind === 'seed' ? STRINGS.garden.seedName(name) : name;
+}
+
+// Shows off something a pet found on a journey.
+function showFind(f: Find, caption: string): void {
+  sound('got');
+  home.reveal({
+    icon: f.kind === 'gold' ? STAT_ICONS.gold : ITEM_ICONS[f.kind === 'seed' ? `seed_${f.id}` : f.id] ?? '',
+    name: findLabel(f),
+    count: f.count,
+    stars: f.kind === 'gold' ? 0 : f.stars,
     caption,
   });
 }
@@ -447,7 +477,8 @@ function askWhoRetires(): void {
   choice.open({
     title: STRINGS.friends.fullTitle,
     text: STRINGS.friends.fullAsk,
-    options: allPets(state).filter((p) => p.id !== newest.id).map((p) => ({
+    // (A pet out on a journey isn't in the room to ask.)
+    options: allPets(state).filter((p) => p.id !== newest.id && !isAway(p)).map((p) => ({
       label: STRINGS.friends.retire(p.name),
       picture: portraitOf(p),
       soft: true,
@@ -737,6 +768,43 @@ const home = createHomeScreen(root, {
     STRINGS.shop.bought((kind === 'wallpaper' ? STRINGS.shop.wallpapers : STRINGS.shop.curtains)[id] ?? id)),
   onUseDecor: (kind, id) => runShop(useDecor(state, kind, id)),
   onBuyPack: (id) => void buyPack(id as ProductId),
+  onWakePercy: () => {
+    const result = restPercy(simulate(state, gameNow()), gameNow());
+    setState(result.state);
+    if (result.blocked === 'notEnoughGold') blocked(STRINGS.shop.notEnoughGold);
+    else if (!result.blocked) {
+      sound('purchase');
+      home.toast(STRINGS.journeys.percyWoke);
+    }
+  },
+  onSetOff: (slot, lunch, percy) => {
+    const now = gameNow();
+    const s = simulate(state, now);
+    const pet = s.pet;
+    const offer = s.journeys.offers[slot];
+    const result = setOff(s, now, slot, lunch, percy);
+    setState(result.state);
+    if (result.blocked) {
+      blocked(STRINGS.journeys.blocked[result.blocked](pet.name));
+      return false;
+    }
+    sound('done');
+    home.toast(STRINGS.journeys.leftFor(pet.name, placeName(offer?.place ?? '')));
+    return true;
+  },
+  onCallHome: (id) => {
+    const now = gameNow();
+    const result = callHome(simulate(state, now), now, id);
+    setState(result.state);
+    if (result.blocked) blocked(STRINGS.journeys.blocked[result.blocked](allPets(state).find((p) => p.id === id)?.name ?? ''));
+  },
+  onOpenBackpack: (id) => {
+    const result = openBackpack(simulate(state, gameNow()), id);
+    setState(result.state);
+    if (!result.place) return;
+    for (const f of result.finds) showFind(f, STRINGS.journeys.found(placeName(result.place)));
+    if (state.pet.id === id) react('happy');
+  },
   onBuyHat: (id) => runShop(buyHat(state, id), STRINGS.shop.boughtHat(getHat(id)?.name ?? '', state.pet.name)),
   onWearHat: (id) => runShop(wearHat(state, id)),
   hatImage: (id) => sprites.get(getHat(id)?.sheet ?? '')?.image.src,
@@ -752,6 +820,13 @@ const home = createHomeScreen(root, {
     const off = state.clockOffsetMs;
     const shift = (p: Pet): Pet => ({
       ...p,
+      trip: p.trip && {
+        ...p.trip,
+        startedAt: p.trip.startedAt - off,
+        endsAt: p.trip.endsAt - off,
+        backAt: p.trip.backAt === null ? null : p.trip.backAt - off,
+      },
+      tripReadyAt: p.tripReadyAt && p.tripReadyAt - off,
       stageStartedAt: p.stageStartedAt - off,
       recoveryUntil: p.recoveryUntil === null ? null : p.recoveryUntil - off,
       buffs: p.buffs.map((b) => ({ ...b, until: b.until - off })),
@@ -778,8 +853,13 @@ const home = createHomeScreen(root, {
       nextAt: state.delivery.nextAt - off,
     };
     const craving = { ...state.craving, until: state.craving.until - off, nextAt: state.craving.nextAt - off };
+    const journeys = {
+      ...state.journeys,
+      refillAt: state.journeys.refillAt.map((at) => at && at - off),
+      percyFreeAt: state.journeys.percyFreeAt && state.journeys.percyFreeAt - off,
+    };
     setState({
-      ...state, pet, housemates, visit, friends, garden, delivery, craving, clockOffsetMs: 0, lastUpdated: Date.now(),
+      ...state, pet, housemates, visit, friends, garden, delivery, craving, journeys, clockOffsetMs: 0, lastUpdated: Date.now(),
     });
   },
 });
@@ -804,17 +884,20 @@ loadSprites().then((lib) => (sprites = lib));
 
 function render(timeMs: number): void {
   const pet = state.pet;
+  // A pet out on a journey isn't in the room.
+  const away = isAway(pet);
   let animation: string = getLook(pet);
   if (reaction && timeMs < reaction.until && !pet.asleep) animation = reaction.animation;
   // The other pet in the room, and a friend over to play.
-  const other = state.housemates[0];
+  const other = state.housemates.find((p) => !isAway(p));
   const meeting = home.meetScene();
   drawRoom(
     ctx,
-    sprites.get(sheetFor(pet)),
+    away ? undefined : sprites.get(sheetFor(pet)),
     {
       animation,
-      glow: pet.starGlow && pet.condition !== 'passed',
+      glow: !away && pet.starGlow && pet.condition !== 'passed',
+      note: away,
       night: isNight(gameNow()),
       lightsOff: pet.asleep,
       fishing: home.fishingPhase(),
@@ -835,7 +918,7 @@ function render(timeMs: number): void {
       },
     },
     timeMs,
-    sprites.get(getHat(pet.hat)?.sheet ?? ''),
+    away ? undefined : sprites.get(getHat(pet.hat)?.sheet ?? ''),
   );
   requestAnimationFrame(render);
 }

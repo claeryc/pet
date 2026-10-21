@@ -18,6 +18,7 @@ import { simulate } from './simulate';
 import { canPlayMinigames, clampStat } from './stats';
 import { withPet, type ActionResult } from './actions';
 import type { GameState } from './state';
+import { isAway } from './presence';
 import { addXp, perk, type ReelPerks } from './skills';
 
 export type CatchGrade = 'perfect' | 'good' | 'weak' | 'miss';
@@ -192,6 +193,7 @@ export function biteDelayMs(random: number): number {
 // can't play mini-games right now.
 export function cast(state: GameState, now: number): ActionResult {
   const s = simulate(state, now);
+  if (isAway(s.pet)) return { state: s, blocked: 'away' };
   if (s.pet.stage === 'egg') return { state: s, blocked: 'egg' };
   if (s.pet.condition === 'passed') return { state: s, blocked: 'passed' };
   if (s.pet.asleep) return { state: s, blocked: 'asleep' };

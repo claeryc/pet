@@ -14,7 +14,7 @@ import { getCharacter } from './growth';
 import { stepFragments } from './fragments';
 
 export type UnlockId =
-  | 'shop' | 'cooking' | 'collection' | 'familyTree' | 'garden' | 'messages' | 'delivery' | 'meet' | 'skills';
+  | 'shop' | 'cooking' | 'collection' | 'familyTree' | 'garden' | 'messages' | 'delivery' | 'meet' | 'skills' | 'journeys';
 
 const RULES: Record<UnlockId, (s: GameState) => boolean> = {
   // Once the egg hatches and there's someone to buy things for.
@@ -38,6 +38,8 @@ const RULES: Record<UnlockId, (s: GameState) => boolean> = {
   meet: (s) => !!s.visit?.guest || (s.friends?.length ?? 0) > 0,
   // Skills open with the first skill point (Keeper level 2).
   skills: (s) => !!s.keeper && keeperLevel(s) >= 2,
+  // Journeys (in Play and the Menu) once a pet is old enough to go out.
+  journeys: (s) => [s.pet, ...(s.housemates ?? [])].some((p) => p.stage === 'teen' || p.stage === 'adult'),
 };
 
 export const UNLOCKS = Object.keys(RULES) as UnlockId[];

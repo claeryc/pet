@@ -1,6 +1,7 @@
 // The menu inside the gear button's panel (it opens like Feed and Play). It
-// has a main list (Shop, Messages, Collection, Skills, Family Tree, Settings) and a
-// page for each, plus the Wardrobe, which opens when you hold the pet.
+// has a main list (Shop, Messages, Journeys, Collection, Skills, Family Tree,
+// Settings) and a page for each, plus the Wardrobe, which opens when you
+// hold the pet. Journeys also opens from Play.
 // Shop, Collection and Family Tree only appear once they've opened up (see
 // src/game/unlocks.ts), with a "new" dot until you've looked at them.
 // Items for features we haven't built yet are shown greyed out with
@@ -20,6 +21,8 @@ import { unreadMail } from '../game/messages';
 import { canLearnIn, skillsPage, type SkillsCallbacks, type SkillsView } from './skills';
 import { TREES, pointsToSpend } from '../game/skills';
 import { audioSettings, setAudioSettings } from '../audio/audio';
+import { journeysPage, type JourneysCallbacks, type JourneysView } from './journeys';
+import { hasBackpack } from '../game/presence';
 
 export interface DebugCallbacks {
   onFastForward: (hours: number) => void;
@@ -32,7 +35,7 @@ export interface DebugCallbacks {
   onFriendScore: () => void;
 }
 
-export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks, FamilyCallbacks, SkillsCallbacks {
+export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks, FamilyCallbacks, SkillsCallbacks, JourneysCallbacks {
   onReset: () => void;
   onOwner: (name: string) => void; // the player typed their name in Settings
   onSeen: (id: UnlockId) => void; // the player has looked at something new
@@ -45,6 +48,7 @@ export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks, FamilyCall
 export interface MenuActions {
   onOpenDelivery: () => void; // go out to Percy to fill Percy's order
   onOpenMeet: () => void; // meet whoever is over (Play > Meet)
+  onOpenGarden: () => void; // out to the garden (to water before a journey)
 }
 
 export interface Menu {
@@ -53,6 +57,7 @@ export interface Menu {
   update: (state: GameState) => void;
   showWardrobe: () => void;
   showShop: (category?: string) => void; // open the Shop, unfolded at `category`
+  showJourneys: () => void;
 }
 
 // A row button, or with an `icon`, a square tile for the main grid.
@@ -98,7 +103,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
   // The pages redraw whenever the game changes (after buying something,
   // for example), so we remember which page is showing.
   let state: GameState | null = null;
-  let page: 'main' | 'settings' | 'shop' | 'wardrobe' | 'collection' | 'skills' | 'familyTree' | 'messages' = 'main';
+  let page: 'main' | 'settings' | 'shop' | 'wardrobe' | 'collection' | 'skills' | 'familyTree' | 'messages' | 'journeys' = 'main';
 
   // Live readout for the testing tools, refreshed by update().
   const debugInfo = document.createElement('p');
@@ -148,6 +153,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     grid.append(
       ...unlockable('shop', STRINGS.menu.shop, () => showShop()),
       ...messagesItem(),
+      ...journeysItem(),
       ...unlockable('collection', STRINGS.menu.collection, () => showCollection()),
       ...skillsItem(),
       ...unlockable('familyTree', STRINGS.menu.familyTree, () => showFamilyTree()),
@@ -167,6 +173,45 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
       entry[0].append(dot);
     }
     return entry;
+  }
+
+  // Journeys, with a dot while a backpack is waiting to be opened.
+  function journeysItem(): HTMLButtonElement[] {
+    const entry = unlockable('journeys', STRINGS.menu.journeys, () => showJourneys());
+    if (entry.length && state && [state.pet, ...state.housemates].some(hasBackpack) && !isNew(state, 'journeys')) {
+      const dot = document.createElement('span');
+      dot.className = 'new-dot';
+      dot.setAttribute('aria-label', STRINGS.journeys.backpackNote);
+      entry[0].append(dot);
+    }
+    return entry;
+  }
+
+  // The trip picked, the lunchbox and Percy, on the Journeys page. Each
+  // visit starts with nothing picked.
+  const journeysView: JourneysView = { slot: null, lunch: [], percy: false };
+  function showJourneys(fresh = true): void {
+    if (fresh) {
+      Object.assign(journeysView, { slot: null, lunch: [], percy: false });
+      toTop();
+    }
+    page = 'journeys';
+    const list = document.createElement('div');
+    list.className = 'shop-list journeys';
+    if (state) {
+      list.append(...journeysPage(state, state.lastUpdated, journeysView, {
+        ...cb,
+        onSetOff: (slot, lunch, percy) => {
+          const went = cb.onSetOff(slot, lunch, percy);
+          if (went) close();
+          return went;
+        },
+      }, () => showJourneys(false), () => {
+        close();
+        cb.onOpenGarden();
+      }));
+    }
+    panel.replaceChildren(header(STRINGS.journeys.title, showMain), list);
   }
 
   // Skills, with a dot while there's a point to spend.
@@ -397,6 +442,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     el: panel,
     reset: showMain,
     showWardrobe: () => showWardrobe(),
+    showJourneys: () => showJourneys(),
     showShop: (category) => {
       showShop();
       if (category) {
@@ -414,7 +460,9 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
           s.gold, s.inventory, s.pet.hat, s.pet.stage, s.unlocked, s.seen, s.showAllMenus,
           s.recipesFound, s.caught, s.charactersFound, s.pet.name, s.pet.named, s.owner, s.family,
           s.messages, s.messagesSeenAt, s.keeper, s.delivery, s.friends, s.visit.guest, s.housemates.map((p) => [p.id, p.name, p.stage]),
-          page === 'messages' && Math.floor(s.lastUpdated / 60_000),
+          s.journeys, [s.pet, ...s.housemates].map((p) => [p.id, p.trip?.backAt, p.trip?.percy]),
+          (page === 'messages' || page === 'journeys') && Math.floor(s.lastUpdated / 60_000),
+          page === 'journeys' && [s.pet.id, s.pet.asleep, s.pet.condition, Math.round(s.pet.stats.hunger), Math.round(s.pet.stats.energy)],
           page === 'familyTree' && [Object.values(s.pet.stats).map(Math.round), Math.floor(s.lastUpdated / 3_600_000)],
         ]);
       const changed = key(state) !== key(next);
@@ -427,6 +475,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
         else if (isOpen() && page === 'skills') showSkills(false);
         else if (isOpen() && page === 'familyTree') showFamilyTree(false);
         else if (isOpen() && page === 'messages') showMessages(false);
+        else if (isOpen() && page === 'journeys') showJourneys(false);
       }
       const p = next.pet;
       debugInfo.textContent = `${STRINGS.debug.careScore}: ${p.careScore.toFixed(1)} · ${STRINGS.debug.condition}: ${p.condition} · ${STRINGS.debug.character}: ${p.character ?? '-'}${p.variant ? ` (${p.variant})` : ''}`;

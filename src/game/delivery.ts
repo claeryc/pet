@@ -20,6 +20,7 @@ import { logMessage } from './messages';
 import { addSeed, type CropId } from './garden';
 import { seededRoll } from './growth';
 import type { GameState, Order, OrderBox, OrderTier } from './state';
+import { backHomeAt } from './presence';
 
 const HOUR = 3_600_000;
 const D = CONFIG.delivery;
@@ -88,6 +89,19 @@ export function pickupTime(announcedAt: number): number {
   if (d.getMinutes() > 0 || d.getSeconds() > 0 || d.getMilliseconds() > 0) d.setHours(d.getHours() + 1, 0, 0, 0);
   if (d.getHours() < D.daytime.from) d.setHours(D.daytime.from, 0, 0, 0);
   else if (d.getHours() > D.daytime.to) d.setHours(D.daytime.to, 0, 0, 0);
+  return d.getTime();
+}
+
+// The first time on the hour, at least an hour after `t`, in the daytime
+// (the next morning if it's too late in the day).
+export function pickupAfter(t: number): number {
+  const d = new Date(t + HOUR);
+  if (d.getMinutes() > 0 || d.getSeconds() > 0 || d.getMilliseconds() > 0) d.setHours(d.getHours() + 1, 0, 0, 0);
+  if (d.getHours() < D.daytime.from) d.setHours(D.daytime.from, 0, 0, 0);
+  else if (d.getHours() > D.daytime.to) {
+    d.setDate(d.getDate() + 1);
+    d.setHours(D.daytime.from, 0, 0, 0);
+  }
   return d.getTime();
 }
 
@@ -209,7 +223,15 @@ function pickUp(state: GameState, order: Order): GameState {
 // order is announced once it's time (and there's something to ask for).
 export function stepDelivery(state: GameState, now: number): GameState {
   let s = state;
-  const order = s.delivery.order;
+  let order = s.delivery.order;
+  // With every pet out on a journey, nobody can hand Percy the boxes, so
+  // he comes back once someone's home.
+  while (order) {
+    const back = backHomeAt(s, order.pickupAt);
+    if (back === null) break;
+    order = { ...order, pickupAt: pickupAfter(back) };
+    s = { ...s, delivery: { ...s.delivery, order } };
+  }
   if (order && now >= order.pickupAt) s = pickUp(s, order);
   // (There's nothing to ask for until you've caught, grown or cooked
   // something: that's also when orders open up, see src/game/unlocks.ts.)

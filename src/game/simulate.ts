@@ -5,7 +5,7 @@
 // for ten seconds or ten days, it walks forward one minute at a time (a
 // "tick") and applies everything that would have happened in between: stats
 // dropping, sleeping and waking, warnings, sickness (and passing away if
-// it's left sick too long) and the Care Score. We
+// it's left sick too long), the Care Score and pets out on journeys. We
 // call it when the game loads, when you come back to the tab, and every few
 // seconds while open.
 
@@ -16,6 +16,7 @@ import { growGarden } from './garden';
 import { stepDelivery } from './delivery';
 import { stepCraving } from './craving';
 import { stepVisits } from './friends';
+import { stepJourneys, travelTick } from './journeys';
 import type { GameState, Pet } from './state';
 import { carePerks, gardenPerks, type CarePerks } from './skills';
 
@@ -37,6 +38,7 @@ export function simulate(state: GameState, now: number): GameState {
 
   // Work on copies so the original state is never changed by accident.
   // Every pet in the room lives on, not just the one you're looking after.
+  // (A trip is never changed in place, only replaced, so it can be shared.)
   const copy = (p: Pet): Pet => ({ ...p, stats: { ...p.stats }, buffs: [...p.buffs] });
   const pet = copy(state.pet);
   const housemates = state.housemates.map(copy);
@@ -53,9 +55,10 @@ export function simulate(state: GameState, now: number): GameState {
 
   // The garden grows on its own clock, so it catches up in one go.
   const garden = growGarden(state.garden, state.lastUpdated, t, gardenPerks(state));
-  // So do Percy's orders (a pickup that came due, or a new order), the
-  // pet's cravings, and visitors dropping by.
-  const next = { ...state, pet, housemates, garden, lastUpdated: t };
+  // So do the journey board and Percy flying home from a trip, his orders
+  // (a pickup that came due, or a new order), the pet's cravings, and
+  // visitors dropping by.
+  const next = stepJourneys(state, { ...state, pet, housemates, garden, lastUpdated: t }, t);
   return stepVisits(stepCraving(stepDelivery(next, t), t), t);
 }
 
@@ -66,6 +69,9 @@ function tick(pet: Pet, t: number, wasNight: boolean, perks: CarePerks): void {
 
   // A pet that passed away stays just as it was until it's revived.
   if (pet.condition === 'passed') return;
+  // A pet out on a journey only gets hungrier and more tired (see
+  // journeys.ts); everything else waits until it's home.
+  if (travelTick(pet, t)) return;
 
   // 0. Growing up. An egg just waits to hatch: nothing else happens to it.
   if (t - pet.stageStartedAt >= stageLengthMs(pet.stage)) growUp(pet, t);

@@ -18,13 +18,14 @@ import type { Food } from './actions';
 import { seededRoll } from './growth';
 import { clampStat, isNight } from './stats';
 import type { GameState } from './state';
+import { isAway } from './presence';
 
 const HOUR = 3_600_000;
 const C = CONFIG.craving;
 const FOODS = CONFIG.foods as readonly Food[];
 
 // Shop food that's always in (not the energy drink, which only comes some days).
-const fromShop = (f: Food) => !f.caughtOnly && !f.grownOnly && !f.cookedOnly && !f.limited;
+const fromShop = (f: Food) => !f.caughtOnly && !f.grownOnly && !f.cookedOnly && !f.foundOnly && !f.limited;
 
 // Everything the pet could crave, in groups like Percy's: Shop treats,
 // fish, crops and dishes. Never the free rice ball, a Mushy mess, or the
@@ -62,12 +63,12 @@ export function pickCraving(state: GameState, now: number): string | null {
 export function stepCraving(state: GameState, now: number): GameState {
   let craving = state.craving;
   // A pet that passed away doesn't crave anything.
-  if (craving.food && (now >= craving.until || state.pet.condition === 'passed')) {
+  if (craving.food && (now >= craving.until || state.pet.condition === 'passed' || isAway(state.pet))) {
     craving = { ...craving, food: null, nextAt: craving.until + C.nextAfterHours * HOUR };
   }
   const { pet } = state;
   const settlingIn = !pet.named || (pet.stage === 'baby' && now - pet.stageStartedAt < C.firstAfterHatchHours * HOUR);
-  if (!craving.food && now >= craving.nextAt && pet.stage !== 'egg' && pet.condition !== 'passed' && !settlingIn && !pet.asleep && !isNight(now)) {
+  if (!craving.food && now >= craving.nextAt && pet.stage !== 'egg' && pet.condition !== 'passed' && !settlingIn && !pet.asleep && !isNight(now) && !isAway(pet)) {
     const food = pickCraving({ ...state, craving }, now);
     if (food) craving = { ...craving, food, until: now + C.lastsHours * HOUR, last: food };
   }
