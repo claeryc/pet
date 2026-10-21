@@ -4,7 +4,8 @@ import { CONFIG } from '../src/game/config';
 import { simulate } from '../src/game/simulate';
 import { feed } from '../src/game/actions';
 import {
-  callHome, cantGo, getPlace, openBackpack, planTrip, potsDryingBy, restPercy, rollFinds, setOff, type Place,
+  buyCharm, callHome, cantGo, charmCount, getPlace, openBackpack, planTrip, potsDryingBy, restPercy, rollFinds, setOff,
+  tripPreview, type Place,
 } from '../src/game/journeys';
 import { isAway, hasBackpack, nobodyHome } from '../src/game/presence';
 import { stepFragments } from '../src/game/fragments';
@@ -83,6 +84,48 @@ describe('the trip check', () => {
     const next = setOff(s, START, 2, ['energyDrink'], false).state;
     expect(next.inventory.food.energyDrink).toBe(1);
     expect(setOff(s, START, 2, ['strawberry'], false).blocked).toBe('noFood');
+  });
+
+  it('packs at most two foods and one drink', () => {
+    const s = ready();
+    s.inventory.food = { energyDrink: 2, strawberry: 3 };
+    expect(setOff(s, START, 2, ['energyDrink', 'energyDrink'], false).blocked).toBe('tooMuch');
+    expect(setOff(s, START, 2, ['strawberry', 'strawberry', 'strawberry'], false).blocked).toBe('tooMuch');
+    expect(setOff(s, START, 2, ['strawberry', 'strawberry', 'energyDrink'], false).blocked).toBeUndefined();
+  });
+});
+
+describe('charms', () => {
+  it('are bought in the Shop and kept with the supplies', () => {
+    const s = ready();
+    s.gold = 100;
+    const bought = buyCharm(s, 'clover');
+    expect(bought.blocked).toBeUndefined();
+    expect(charmCount(bought.state, 'clover')).toBe(1);
+    expect(bought.state.gold).toBe(100 - J.charms[0].price);
+    expect(buyCharm(s, 'starCharm').blocked).toBe('notEnoughGold');
+    expect(buyCharm(s, 'nope').blocked).toBe('soldOut');
+  });
+
+  it('one goes in the lunchbox and is used up on the trip', () => {
+    const s = ready();
+    expect(setOff(s, START, 1, [], false, 'clover').blocked).toBe('noCharm');
+    s.inventory.supplies = { 'charm:clover': 1 };
+    const next = setOff(s, START, 1, [], false, 'clover').state;
+    expect(charmCount(next, 'clover')).toBe(0);
+    expect(next.pet.trip?.charm).toBe('clover');
+  });
+
+  it('the clover finds one more thing, and the star charm gives rare trips a 3-star chance', () => {
+    const market = getPlace('market') as Place;
+    const pet = newTeen(START).pet;
+    // Gold finds are put together, so count the other things over many trips.
+    const things = (charm: string | null) => Array.from({ length: 100 }, (_, i) => rollFinds(pet, market, 'rare', START + i * HOUR, charm))
+      .flat().reduce((n, f) => n + (f.kind === 'gold' ? 0 : f.count), 0);
+    expect(things('clover')).toBeGreaterThan(things(null) + 40);
+    expect(tripPreview(market, 'rare', 'clover').finds.min).toBe(tripPreview(market, 'rare').finds.min + 1);
+    expect(tripPreview(market, 'rare').threeStar).toBe(0);
+    expect(tripPreview(market, 'rare', 'starCharm').threeStar).toBeCloseTo(0.15);
   });
 });
 
@@ -182,7 +225,7 @@ describe('finds', () => {
     expect(opened.finds).toEqual(finds);
     expect(opened.state.pet.trip).toBeNull();
     expect(opened.state.inventory.food.honey).toBe(1);
-    expect(opened.state.journeys.journal.market).toMatchObject({ trips: 1 });
+    expect(opened.state.journeys.journal.market).toMatchObject({ trips: 1, best: 'rare' });
     expect(opened.state.journeys.journal.market.found).toContain('honey');
     expect(opened.state.tally.journeys).toBe(1);
   });

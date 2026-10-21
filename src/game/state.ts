@@ -85,6 +85,7 @@ export interface Trip {
   finds: Find[]; // what's in the backpack (rolled when it sets off)
   // Percy coming along: 'none', 'coming' (flies home halfway) or 'flown'.
   percy: 'none' | 'coming' | 'flown';
+  charm?: string | null; // a charm packed for the trip (see CONFIG.journeys.charms)
   backAt: number | null; // when it got home (null while it's away)
   early: boolean; // called home before the end
 }
@@ -100,6 +101,7 @@ export interface JournalPage {
   trips: number; // journeys finished there
   postcards: { name: string; at: number }[]; // who went, newest first
   found: string[]; // food ids found there
+  best?: Rarity; // the longest trip finished there (its stamp in the journal)
 }
 
 export interface Journeys {

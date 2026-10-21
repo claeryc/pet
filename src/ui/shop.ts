@@ -10,7 +10,7 @@ import type { GameState } from '../game/state';
 import type { Food, FoodId } from '../game/actions';
 import { FRAGMENT_ICON, ITEM_ICONS, STAT_ICONS } from './icons';
 import { SEEDS_FOR_SALE, SUPPLIES, priceOf, seedCount, supplyCount, type ShopItem } from '../game/garden';
-import { percyFree } from '../game/journeys';
+import { CHARMS, charmCount, percyFree } from '../game/journeys';
 import { isUnlocked } from '../game/unlocks';
 import { formatDuration } from './time';
 
@@ -20,6 +20,7 @@ export interface ShopCallbacks {
   onBuyGardenItem: (item: ShopItem) => void;
   onWearHat: (hat: string | null) => void;
   onBuyBait: () => void;
+  onBuyCharm: (charm: string) => void; // a charm for the journey lunchbox
   onBuyPot: () => void;
   onBuyDecor: (kind: DecorKind, id: string) => void;
   onUseDecor: (kind: DecorKind, id: string | null) => void;
@@ -253,13 +254,23 @@ export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>)
   }];
   // Percy rests after coming along on a journey: gold wakes him up early.
   const resting = !percyFree(state, now);
+  // Charms for the lunchbox, used up on one trip.
   const journeys: Entry[] = isUnlocked(state, 'journeys') ? [{
     icon: ITEM_ICONS.percy,
     faded: !resting,
     row: row(ITEM_ICONS.percy, STRINGS.journeys.percyRest,
       resting ? STRINGS.journeys.percyRestNote(formatDuration(state.journeys.percyFreeAt - now)) : STRINGS.journeys.percyReady,
       resting ? priceButton(CONFIG.journeys.percy.resetPrice, state.gold, cb.onWakePercy) : label(STRINGS.journeys.ready)),
-  }] : [];
+  }, ...CHARMS.map((c) => {
+    const text = STRINGS.journeys.charms[c.id];
+    const have = charmCount(state, c.id);
+    return {
+      icon: ITEM_ICONS[`charm_${c.id}`] ?? '',
+      count: countBadge(have),
+      row: row(ITEM_ICONS[`charm_${c.id}`] ?? '', text?.name ?? c.id, STRINGS.journeys.charmShopNote(text?.note ?? '', have),
+        priceButton(c.price, state.gold, () => cb.onBuyCharm(c.id))),
+    };
+  })] : [];
   const room: Entry[] = [...WALLPAPERS, ...CURTAINS].map((d) => decorEntry(state, d, cb));
   // Revival Stars: the star fragments collected so far (free, from good
   // care), then stars to keep in your pocket, bought with real money.

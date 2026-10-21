@@ -14,9 +14,7 @@ import type { Food, FoodId } from '../game/actions';
 import { category, label, row, type Entry } from './shop';
 import { ACHIEVEMENTS, badgeCount, badgeOf, nextGoal, tallyOf, type AchievementId } from '../game/achievements';
 import { ACHIEVEMENT_ICONS, ITEM_ICONS, UNKNOWN_ICON } from './icons';
-import { PLACES } from '../game/journeys';
-import { journalNote } from './journeys';
-import { formatWhen } from './time';
+import { journalCategory } from './journeys';
 
 export interface CollectionCallbacks {
   // A character's picture (its first idle frame) as a URL, if loaded.
@@ -97,11 +95,6 @@ export function collectionPage(state: GameState, cb: CollectionCallbacks, open: 
   );
   const title = (name: string, list: Entry[]) =>
     STRINGS.collection.count(name, list.filter((e) => !e.faded).length, list.length);
-  // The travel journal: a page per place, once a pet has been there.
-  const journal: Entry[] = PLACES.map((p) => {
-    const note = journalNote(state, p.id, (at) => formatWhen(at, state.lastUpdated, STRINGS.messages.today, STRINGS.messages.yesterday));
-    return entry(note !== null, ITEM_ICONS[`place_${p.id}`] ?? '', STRINGS.journeys.places[p.id] ?? p.id, note ?? '', 0);
-  });
   const achievements = ACHIEVEMENTS.map((id) => achievement(state, id));
   const badges = badgeCount(state);
   return [
@@ -110,6 +103,7 @@ export function collectionPage(state: GameState, cb: CollectionCallbacks, open: 
     category('characters', title(STRINGS.collection.characters, characters), characters, open),
     category('recipes', title(STRINGS.collection.recipes, recipes), recipes, open),
     category('catches', title(STRINGS.collection.catches, fish), fish, open),
-    ...(isUnlocked(state, 'journeys') ? [category('journal', title(STRINGS.journeys.journal, journal), journal, open)] : []),
+    // The travel journal: a postcard per place.
+    ...(isUnlocked(state, 'journeys') ? [journalCategory(state, open)] : []),
   ];
 }

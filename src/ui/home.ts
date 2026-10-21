@@ -33,6 +33,7 @@ import type { ShopCategory } from './shop';
 import { createFx, type Gains } from './fx';
 import { hasBackpack, isAway } from '../game/presence';
 import { formatClock } from './time';
+import { createJourneys, JOURNEYS_OUT_MS } from './journeys';
 
 export interface HomeCallbacks extends MenuCallbacks {
   onFeed: (food: FoodId) => void;
@@ -383,7 +384,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       effects: [],
       onPick: () => startGarden(),
     },
-    // Journeys open in the menu panel.
+    // Journeys take over the stat bars, like the garden.
     {
       icon: ITEM_ICONS.journey,
       label: STRINGS.minigames.journeys,
@@ -402,7 +403,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   // same way Feed and Play open. It always opens, even for an egg.
   let menuDrawer: ReturnType<typeof createDrawer> | null = null;
   const menu = createMenu(
-    { ...cb, onOpenDelivery: () => startDelivery(), onOpenMeet: () => startMeet(), onOpenGarden: () => startGarden() },
+    { ...cb, onOpenDelivery: () => startDelivery(), onOpenMeet: () => startMeet(), onOpenJourneys: () => openJourneys() },
     () => menuDrawer?.isOpen() ?? false,
     () => menuDrawer?.close(),
   );
@@ -432,13 +433,19 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
 
   actions.append(feedDrawer.el, playDrawer.el, menuDrawer.el, lights);
 
-  // Journeys, in the gear panel.
+  // Journeys: the board of trips, then the lunchbox, over the stat bars.
   function openJourneys(): void {
+    if (petAway) return showToast(STRINGS.blocked.away(petName));
+    if (actions.hidden) return; // already busy with something else
     cb.onSeen('journeys');
     feedDrawer.close();
     playDrawer.close();
-    if (!menuDrawer!.isOpen()) menuDrawer!.open();
-    menu.showJourneys();
+    menuDrawer!.close();
+    hideActions();
+    stats.hidden = true; // the board takes the bars' place, and can be taller
+    if (latest) journeys.update(latest.state, latest.now);
+    journeys.start();
+    fitJourneys();
   }
 
   // Holding the pet opens the Wardrobe, in the gear panel.
@@ -638,6 +645,26 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     if (latest) meet.update(latest.state, latest.now);
     meet.start();
   }
+  const journeys = createJourneys({
+    onSetOff: cb.onSetOff,
+    onCallHome: cb.onCallHome,
+    onOpenBackpack: cb.onOpenBackpack,
+    onExit: () => {
+      stats.hidden = latest?.state.pet.stage === 'egg';
+      showActions(JOURNEYS_OUT_MS);
+    },
+    onWater: () => {
+      stats.hidden = false;
+      showActions(0);
+      startGarden();
+    },
+    toast: (msg) => showToast(msg),
+  });
+  // The Lunch panel reaches up to just under the lunchbox, like Feed does.
+  function fitJourneys(): void {
+    const room = journeys.row.getBoundingClientRect().bottom - statSlot.getBoundingClientRect().bottom - DRAWER_GAP;
+    journeys.row.style.setProperty('--drawer-fit', `${Math.max(180, Math.floor(room - 74))}px`);
+  }
   // Off to another scene: the normal buttons go, and the parcel and the
   // craving bubble with them, straight away rather than on the next tick.
   function hideActions(): void {
@@ -712,7 +739,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   statSlot.className = 'stat-slot';
   // The item reveal plays over all of them.
   const reveal = createReveal();
-  statSlot.append(stats, fishing.pond, cooking.kitchen, garden.beds, delivery.panel, meet.panel, reveal.el);
+  statSlot.append(stats, journeys.panel, fishing.pond, cooking.kitchen, garden.beds, delivery.panel, meet.panel, reveal.el);
 
   // A short message that pops up and fades, e.g. "Mochi is asleep". When
   // you've run out of something the Shop sells, it has a Shop button too.
@@ -782,7 +809,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     else showToast(message);
   }
 
-  root.append(roomWrap, banner, statSlot, garden.pour, actions, fishing.row, cooking.row, garden.row, delivery.row, meet.row, toastEl);
+  root.append(roomWrap, banner, statSlot, garden.pour, actions, fishing.row, cooking.row, garden.row, delivery.row, meet.row, journeys.row, toastEl);
 
   // Which pet the bars were showing, so switching pets can slide them.
   let barsFor: string | null = null;
@@ -861,6 +888,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       garden.update(state, now);
       delivery.update(state, now);
       meet.update(state, now);
+      journeys.update(state, now);
+      if (journeys.active()) fitJourneys();
       refreshParcel();
       parcel.classList.toggle('all-full', !!state.delivery.order?.boxes.every((b) => b.have >= b.want));
       playDrawer.setHidden(GARDEN_ROW, !isUnlocked(state, 'garden'));
@@ -873,7 +902,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       const journeysIsNew = isNew(state, 'journeys');
       playDrawer.setOptionNew(JOURNEYS_ROW, journeysIsNew);
       playDrawer.setNew(gardenIsNew || meetIsNew || journeysIsNew);
-      stats.hidden = isEgg; // an egg has no needs yet
+      stats.hidden = isEgg || journeys.active(); // an egg has no needs yet
       canvas.setAttribute('aria-label', petAway ? STRINGS.blocked.away(pet.name) : isEgg ? STRINGS.mood.egg : STRINGS.mood[getLook(pet)](pet.name));
 
       // Banner: hatching countdown, or passed away beats sick beats

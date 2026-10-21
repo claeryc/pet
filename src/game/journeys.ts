@@ -22,7 +22,7 @@
 
 import { CONFIG } from './config';
 import type { Food, FoodId } from './actions';
-import { useFood } from './economy';
+import { useFood, type ShopResult } from './economy';
 import { getCharacter, seededRoll } from './growth';
 import { addSeed, type CropId } from './garden';
 import { logMessage } from './messages';
@@ -41,6 +41,9 @@ export const PLACES = J.places as readonly Place[];
 export const RARITIES: readonly Rarity[] = ['common', 'rare', 'epic'];
 
 export const getPlace = (id: string): Place | undefined => PLACES.find((p) => p.id === id);
+export type Charm = (typeof J.charms)[number];
+export const CHARMS = J.charms as readonly Charm[];
+export const getCharm = (id: string | null | undefined): Charm | undefined => CHARMS.find((c) => c.id === id);
 export const tripHours = (rarity: Rarity): number => J.hours[rarity];
 
 // ---- The places and the board ----
@@ -81,6 +84,20 @@ function fillBoard(state: GameState, t: number): GameState {
 
 // ---- The lunchbox and the trip check ----
 
+// A drink is anything that gives energy: it goes in the drink spot.
+export const isDrink = (id: string): boolean => (FOODS.find((f) => f.id === id)?.energy ?? 0) > 0;
+
+// Charms are kept with the supplies, as "charm:clover" and so on.
+export const charmCount = (state: GameState, id: string): number => state.inventory.supplies[`charm:${id}`] ?? 0;
+
+export function buyCharm(state: GameState, id: string): ShopResult {
+  const charm = getCharm(id);
+  if (!charm) return { state, blocked: 'soldOut' };
+  if (state.gold < charm.price) return { state, blocked: 'notEnoughGold' };
+  const supplies = { ...state.inventory.supplies, [`charm:${id}`]: charmCount(state, id) + 1 };
+  return { state: { ...state, gold: state.gold - charm.price, inventory: { ...state.inventory, supplies } } };
+}
+
 // What a lunchbox adds up to.
 export function lunchValue(lunch: readonly string[]): { hunger: number; energy: number } {
   return lunch.reduce((sum, id) => {
@@ -115,6 +132,33 @@ export function potsDryingBy(state: GameState, until: number): number {
 
 // ---- Finds ----
 
+// What a trip to `place` of `rarity` might bring home, for the trip's info
+// card: the place's own ingredient (always on rare and epic trips), whether
+// gold and seeds can turn up, how many finds, and the chance of a 3-star
+// find (epic trips only).
+export function tripPreview(place: Place, rarity: Rarity, charmId: string | null = null): {
+  ingredient: string;
+  ingredientSure: boolean;
+  gold: boolean;
+  seeds: boolean;
+  finds: { min: number; max: number };
+  threeStar: number;
+} {
+  const rule = J.finds[rarity];
+  const charm = getCharm(charmId);
+  const extra = charm && 'extraFinds' in charm ? charm.extraFinds : 0;
+  const twoStar = rule.twoStarChance + (charm && 'twoStar' in charm ? charm.twoStar : 0) > 0;
+  const entries = [...place.finds[1], ...(twoStar ? place.finds[2] : []), ...(rarity === 'epic' ? place.finds[3] : [])] as string[];
+  return {
+    ingredient: place.ingredient,
+    ingredientSure: rarity !== 'common',
+    gold: entries.some((e) => e.startsWith('gold:')),
+    seeds: entries.some((e) => e.startsWith('seed:')),
+    finds: { min: rule.min + extra, max: rule.max + extra },
+    threeStar: threeStarChance(rarity, charm),
+  };
+}
+
 // "gold:12", "seed:pumpkin" or a food id, as a find of `stars`.
 function parseFind(entry: string, stars: number): Find {
   const [kind, id] = entry.split(':');
@@ -125,15 +169,25 @@ function parseFind(entry: string, stars: number): Find {
 
 const foodStars = (id: string) => FOODS.find((f) => f.id === id)?.stars ?? 1;
 
+// The chance of a 3-star find: epic trips only, unless a charm helps.
+function threeStarChance(rarity: Rarity, charm: Charm | undefined): number {
+  const base = rarity === 'epic' ? J.threeStarChance : 0;
+  const bonus = charm && 'threeStar' in charm ? (charm.threeStar as Partial<Record<Rarity, number>>)[rarity] ?? 0 : 0;
+  return Math.min(1, base + bonus);
+}
+
 // What a trip brings home, rolled from the pet's id and when it set off.
 // The place's own ingredient comes first, then finds of 1 or 2 stars (and
 // on an epic trip, sometimes one of 3 stars). The same finds of a kind are
 // put together.
-export function rollFinds(pet: Pet, place: Place, rarity: Rarity, startedAt: number): Find[] {
+export function rollFinds(pet: Pet, place: Place, rarity: Rarity, startedAt: number, charmId: string | null = null): Find[] {
   const roll = (label: string) => seededRoll(pet.id, `trip:${startedAt}:${label}`);
   const rule = J.finds[rarity];
+  const charm = getCharm(charmId);
   const home = getCharacter(pet.character)?.theme === place.theme ? 1 : 0;
-  const count = rule.min + Math.floor(roll('count') * (rule.max - rule.min + 1)) + home;
+  const extra = charm && 'extraFinds' in charm ? charm.extraFinds : 0;
+  const twoStar = Math.min(1, rule.twoStarChance + (charm && 'twoStar' in charm ? charm.twoStar : 0));
+  const count = rule.min + Math.floor(roll('count') * (rule.max - rule.min + 1)) + home + extra;
   const finds: Find[] = [];
   const ingredients = rarity === 'epic' ? 2 : rarity === 'rare' ? 1 : roll('ingredient') < J.ingredientChance ? 1 : 0;
   if (ingredients > 0) finds.push({ kind: 'food', id: place.ingredient, count: ingredients, stars: foodStars(place.ingredient) });
@@ -141,8 +195,8 @@ export function rollFinds(pet: Pet, place: Place, rarity: Rarity, startedAt: num
     const list = place.finds[stars] as readonly string[];
     return parseFind(list[Math.floor(roll(`pick:${n}`) * list.length)], stars);
   };
-  for (let i = finds.length; i < count; i++) finds.push(pick(roll(`stars:${i}`) < rule.twoStarChance ? 2 : 1, String(i)));
-  if (rarity === 'epic' && roll('three') < J.threeStarChance) finds[finds.length - 1] = pick(3, 'three');
+  for (let i = finds.length; i < count; i++) finds.push(pick(roll(`stars:${i}`) < twoStar ? 2 : 1, String(i)));
+  if (roll('three') < threeStarChance(rarity, charm)) finds[finds.length - 1] = pick(3, 'three');
   // Put the same things together (gold adds up too).
   const merged: Find[] = [];
   for (const f of finds) {
@@ -192,7 +246,7 @@ function noteFound(state: GameState, place: string, finds: readonly Find[]): Gam
 
 export type JourneyBlock =
   | 'tooYoung' | 'passed' | 'sick' | 'resting' | 'asleep' | 'away' | 'backpack' | 'wait' | 'sad' | 'unwell'
-  | 'noOffer' | 'noFood' | 'tooMuch' | 'notEnoughFood' | 'notEnoughEnergy' | 'percyBusy' | 'home';
+  | 'noOffer' | 'noFood' | 'tooMuch' | 'notEnoughFood' | 'notEnoughEnergy' | 'percyBusy' | 'noCharm' | 'home';
 
 export interface JourneyResult {
   state: GameState;
@@ -218,16 +272,21 @@ export function cantGo(pet: Pet, now: number): JourneyBlock | null {
 export const percyFree = (state: GameState, now: number): boolean => now >= state.journeys.percyFreeAt;
 
 // The pet you're looking after sets off on the offer in spot `slot`, with
-// `lunch` packed (food ids, used up now) and Percy along if `percy`. The
+// `lunch` packed (food ids, used up now: up to two foods and a drink), a
+// charm if `charm` (used up too) and Percy along if `percy`. The
 // state should already be caught up to `now`. If the other pet is at home,
 // you look after it while this one is away.
-export function setOff(state: GameState, now: number, slot: number, lunch: readonly FoodId[], percy: boolean): JourneyResult {
+export function setOff(
+  state: GameState, now: number, slot: number, lunch: readonly FoodId[], percy: boolean, charm: string | null = null,
+): JourneyResult {
   const pet = state.pet;
   const offer = state.journeys.offers[slot];
   const why = cantGo(pet, now);
   if (why) return { state, blocked: why };
   if (!offer) return { state, blocked: 'noOffer' };
-  if (lunch.length > J.lunchSlots) return { state, blocked: 'tooMuch' };
+  const drinks = lunch.filter(isDrink).length;
+  if (drinks > J.lunch.drink || lunch.length - drinks > J.lunch.food) return { state, blocked: 'tooMuch' };
+  if (charm && (!getCharm(charm) || charmCount(state, charm) < 1)) return { state, blocked: 'noCharm' };
   const plan = planTrip(pet, offer.rarity, lunch);
   if (!plan.enoughFood) return { state, blocked: 'notEnoughFood' };
   if (!plan.enoughEnergy) return { state, blocked: 'notEnoughEnergy' };
@@ -237,6 +296,10 @@ export function setOff(state: GameState, now: number, slot: number, lunch: reado
     const used = useFood(s, id);
     if (!used) return { state, blocked: 'noFood' };
     s = used;
+  }
+  if (charm) {
+    const supplies = { ...s.inventory.supplies, [`charm:${charm}`]: charmCount(s, charm) - 1 };
+    s = { ...s, inventory: { ...s.inventory, supplies } };
   }
   const place = getPlace(offer.place)!;
   const endsAt = now + tripHours(offer.rarity) * HOUR;
@@ -248,8 +311,9 @@ export function setOff(state: GameState, now: number, slot: number, lunch: reado
     from: { hunger: pet.stats.hunger, energy: pet.stats.energy },
     to: plan.to,
     joy: J.joy[offer.rarity],
-    finds: rollFinds(pet, place, offer.rarity, now),
+    finds: rollFinds(pet, place, offer.rarity, now, charm),
     percy: percy ? 'coming' : 'none',
+    charm,
     backAt: null,
     early: false,
   };
@@ -392,6 +456,7 @@ export function openBackpack(state: GameState, petId: string): { state: GameStat
     s = withPage(s, trip.place, (page) => ({
       ...page,
       trips: page.trips + 1,
+      best: !page.best || RARITIES.indexOf(trip.rarity) > RARITIES.indexOf(page.best) ? trip.rarity : page.best,
       postcards: trip.percy === 'flown' ? page.postcards : [{ name: pet.name, at: trip.backAt! }, ...page.postcards],
     }));
     s = addTally(s, 'journeys');

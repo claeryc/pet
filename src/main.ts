@@ -77,7 +77,7 @@ import { STRINGS } from './strings';
 import { FRAGMENT_ICON, ITEM_ICONS } from './ui/icons';
 import { DISH_MS, DONE_MS as COOKED_MS } from './ui/cooking';
 import { music, sound, startAudio } from './audio/audio';
-import { callHome, openBackpack, restPercy, setOff } from './game/journeys';
+import { buyCharm, callHome, openBackpack, restPercy, setOff } from './game/journeys';
 import { isAway } from './game/presence';
 import { STAT_ICONS } from './ui/icons';
 import type { Find } from './game/state';
@@ -763,6 +763,7 @@ const home = createHomeScreen(root, {
   onSetCare: (careScore) => setState({ ...state, pet: { ...state.pet, careScore } }),
   onBuyFood: (food) => runShop(buyFood(state, food, gameNow()), STRINGS.shop.bought(STRINGS.foods[food])),
   onBuyBait: () => runShop(buyBait(state), STRINGS.shop.bought(STRINGS.shop.bait)),
+  onBuyCharm: (id) => runShop(buyCharm(state, id), STRINGS.shop.bought(STRINGS.journeys.charms[id]?.name ?? id)),
   onBuyPot: () => runShop(buyPot(state), STRINGS.shop.potBought),
   onBuyDecor: (kind, id) => runShop(buyDecor(state, kind, id),
     STRINGS.shop.bought((kind === 'wallpaper' ? STRINGS.shop.wallpapers : STRINGS.shop.curtains)[id] ?? id)),
@@ -777,12 +778,12 @@ const home = createHomeScreen(root, {
       home.toast(STRINGS.journeys.percyWoke);
     }
   },
-  onSetOff: (slot, lunch, percy) => {
+  onSetOff: (slot, lunch, percy, charm) => {
     const now = gameNow();
     const s = simulate(state, now);
     const pet = s.pet;
     const offer = s.journeys.offers[slot];
-    const result = setOff(s, now, slot, lunch, percy);
+    const result = setOff(s, now, slot, lunch, percy, charm);
     setState(result.state);
     if (result.blocked) {
       blocked(STRINGS.journeys.blocked[result.blocked](pet.name));

@@ -463,7 +463,18 @@ export const CONFIG = {
       rare: { hunger: 25, energy: 30 },
       epic: { hunger: 55, energy: 60 },
     },
-    lunchSlots: 3, // food (or energy drinks) packed for the way
+    // The lunchbox: a bento with two spots for food in the big compartment,
+    // one for a drink (anything that gives energy) and one for a charm.
+    lunch: { food: 2, drink: 1 },
+    // Charms, bought in the Shop and used up on one trip, make it bring
+    // home more: `extraFinds` more finds, `twoStar` added to the chance of
+    // each find having 2 stars, or `threeStar` (by rarity) added to the
+    // chance of a 3-star find.
+    charms: [
+      { id: 'clover', price: 60, extraFinds: 1 },
+      { id: 'compass', price: 90, twoStar: 0.25 },
+      { id: 'starCharm', price: 150, threeStar: { rare: 0.15, epic: 0.15 } },
+    ],
     joy: { common: 4, rare: 8, epic: 12 }, // joy gained on the trip
     // A pet that's home again waits this share of the trip before going
     // out again (it can do everything else straight away).
