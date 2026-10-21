@@ -251,13 +251,13 @@ export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>)
   // Revival Stars: the star fragments collected so far (free, from good
   // care), then stars to keep in your pocket, bought with real money.
   const note = STRINGS.shop.revivalNote(revivalStars(state));
-  const { perStar } = CONFIG.revival.fragments;
+  const { perStar, careDaysPerFragment } = CONFIG.revival.fragments;
   const pieces = state.fragments.pieces;
   const revival: Entry[] = [
     {
       icon: FRAGMENT_ICON,
       count: countBadge(pieces),
-      row: row(FRAGMENT_ICON, STRINGS.shop.fragments, STRINGS.shop.fragmentsNote, label(STRINGS.shop.fragmentsCount(pieces, perStar))),
+      row: row(FRAGMENT_ICON, STRINGS.shop.fragments, STRINGS.shop.fragmentsNote(state.fragments.careDays, careDaysPerFragment), label(STRINGS.shop.fragmentsCount(pieces, perStar))),
     },
     ...CONFIG.store.map((p) => ({
       icon: ITEM_ICONS[p.item],
