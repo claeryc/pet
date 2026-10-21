@@ -77,7 +77,7 @@ import { STRINGS } from './strings';
 import { FRAGMENT_ICON, ITEM_ICONS } from './ui/icons';
 import { DISH_MS, DONE_MS as COOKED_MS } from './ui/cooking';
 import { music, sound, startAudio } from './audio/audio';
-import { buyCharm, callHome, openBackpack, restPercy, setOff } from './game/journeys';
+import { buyCharm, callHome, goTogether, openBackpack, restPercy } from './game/journeys';
 import { isAway } from './game/presence';
 import { STAT_ICONS } from './ui/icons';
 import type { Find } from './game/state';
@@ -778,19 +778,21 @@ const home = createHomeScreen(root, {
       home.toast(STRINGS.journeys.percyWoke);
     }
   },
-  onSetOff: (slot, lunch, percy, charm) => {
+  onSetOff: (slot, party, percy) => {
     const now = gameNow();
     const s = simulate(state, now);
-    const pet = s.pet;
     const offer = s.journeys.offers[slot];
-    const result = setOff(s, now, slot, lunch, percy, charm);
+    const result = goTogether(s, now, slot, party, percy);
     setState(result.state);
+    const nameOf = (id: string | undefined) => allPets(s).find((p) => p.id === id)?.name ?? '';
     if (result.blocked) {
-      blocked(STRINGS.journeys.blocked[result.blocked](pet.name));
+      blocked(STRINGS.journeys.blocked[result.blocked](nameOf(result.pet)));
       return false;
     }
     sound('done');
-    home.toast(STRINGS.journeys.leftFor(pet.name, placeName(offer?.place ?? '')));
+    const [a, b] = party.map((m) => nameOf(m.pet));
+    const place = placeName(offer?.place ?? '');
+    home.toast(b ? STRINGS.journeys.leftTogether(a, b, place) : STRINGS.journeys.leftFor(a, place));
     return true;
   },
   onCallHome: (id) => {

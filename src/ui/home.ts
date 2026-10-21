@@ -658,6 +658,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       startGarden();
     },
     toast: (msg) => showToast(msg),
+    characterImage: cb.characterImage,
   });
   // Off to another scene: the normal buttons go, and the parcel and the
   // craving bubble with them, straight away rather than on the next tick.
@@ -903,7 +904,10 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       const passed = hasPassed(pet);
       let text = '';
       const place = pet.trip ? STRINGS.journeys.places[pet.trip.place] ?? pet.trip.place : '';
-      if (petAway) text = STRINGS.journeys.banner(pet.name, place, formatClock(pet.trip!.endsAt));
+      // Both away together: "Mochi and Bean are at ...".
+      const mate = petAway ? state.housemates.find((h) => h.id === pet.trip!.with && isAway(h)) : undefined;
+      if (petAway && mate) text = STRINGS.journeys.bannerTogether(pet.name, mate.name, place, formatClock(pet.trip!.endsAt));
+      else if (petAway) text = STRINGS.journeys.banner(pet.name, place, formatClock(pet.trip!.endsAt));
       else if (hasBackpack(pet)) text = STRINGS.journeys.bannerHome(pet.name, place);
       else if (isEgg)
         text = STRINGS.status_egg(formatDuration(pet.stageStartedAt + stageLengthMs('egg') - now));
