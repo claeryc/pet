@@ -249,10 +249,9 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   parcel.title = STRINGS.delivery.open;
   parcel.hidden = true;
   parcel.addEventListener('click', () => startDelivery());
-  // A note in the corner, next to the parcel, while a pet is out on a
-  // journey: tapping it shows the current trip. Two pets on different
-  // trips leave a note each. Once you've looked, the note has the pet's
-  // picture on it.
+  // A tile in the corner, next to the parcel, with the pet's picture while
+  // it's out on a journey: tapping it shows the current trip. Two pets on
+  // different trips get a tile each.
   const noteBtns = [0, 1].map((i) => {
     const b = document.createElement('button');
     b.className = 'note-btn';
@@ -260,17 +259,13 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     b.addEventListener('click', () => {
       const pet = latest && tripNotes(latest.state)[i];
       if (!latest || !pet) return;
-      seenTrips.add(tripKey(pet));
-      refreshNotes(latest.state);
       toggleTrip(pet.id);
     });
     return b;
   });
-  const seenTrips = new Set<string>(); // the trips whose note you've tapped
-  const tripKey = (p: Pet) => `${p.id}:${p.trip?.startedAt}`;
   const noteShows = ['', ''];
-  // The notes in the corner: a plain note, or the pet's picture on it
-  // once you've looked.
+  let noteRetry = 0;
+  // The trip tiles in the corner: the pet on each.
   function refreshNotes(state: GameState): void {
     const notes = tripNotes(state);
     noteBtns.forEach((b, i) => {
@@ -279,19 +274,27 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       if (!p) return;
       b.setAttribute('aria-label', STRINGS.journeys.tripOpen(p.name));
       b.title = STRINGS.journeys.tripOpen(p.name);
-      const url = seenTrips.has(tripKey(p)) ? cb.characterImage(sheetFor(p)) : undefined;
-      const shows = url ? `${tripKey(p)}:${url.length}` : 'note';
-      if (shows === noteShows[i]) return;
-      noteShows[i] = shows;
+      // The note until the pet's picture is ready.
+      const url = cb.characterImage(sheetFor(p));
       if (!url) {
-        b.innerHTML = ITEM_ICONS.tripNote;
+        if (noteShows[i] !== 'note') b.innerHTML = ITEM_ICONS.tripNote;
+        noteShows[i] = 'note';
+        // Look again shortly: the sprites may still be loading.
+        if (!noteRetry) {
+          noteRetry = window.setTimeout(() => {
+            noteRetry = 0;
+            if (latest) refreshNotes(latest.state);
+          }, 400);
+        }
         return;
       }
-      b.innerHTML = ITEM_ICONS.tripNoteBlank;
+      const shows = `${p.id}:${sheetFor(p)}`;
+      if (shows === noteShows[i]) return;
+      noteShows[i] = shows;
       const face = document.createElement('span');
       face.className = 'portrait note-face';
       face.style.backgroundImage = `url('${url}')`;
-      b.append(face);
+      b.replaceChildren(face);
     });
   }
   // Percy's parcel and the notes, side by side in the top corner, the
