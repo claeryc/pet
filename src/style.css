@@ -3011,7 +3011,7 @@ body {
   z-index: 5;
   border: none;
   border-radius: 16px;
-  /* Room at the top for the flap when it flips open. */
+  /* Room at the top for the knot as it flies off. */
   padding: 20px 16px 6px;
   display: grid;
   grid-template-columns: auto auto;
@@ -3070,32 +3070,44 @@ body {
   transform-origin: 50% 100%;
 }
 
-.pack-open-body,
-.pack-open-flap {
+.pack-open-tied,
+.pack-open-open,
+.pack-open-knot {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
 }
 
-/* The flap is hinged at the top of the bag (row 2 of 16). */
-.pack-open-flap {
-  transform-origin: 50% 12.5%;
-  transition: transform 0.3s cubic-bezier(0.3, 1.6, 0.6, 1);
+/* Tied until it's tapped; then the knot flies off and it's open. */
+.pack-open-open,
+.pack-open-knot,
+.pack-open.is-open .pack-open-tied {
+  visibility: hidden;
+}
+
+.pack-open.is-open .pack-open-open {
+  visibility: visible;
+}
+
+.pack-open.is-open .pack-open-knot {
+  visibility: visible;
+  animation: pack-knot 0.55s ease-out forwards;
+}
+
+@keyframes pack-knot {
+  from { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  to { transform: translate(34px, -30px) rotate(70deg); opacity: 0; }
 }
 
 .pack-open.is-open .pack-open-bag {
   animation: pack-hop 0.5s ease-out;
 }
 
-.pack-open.is-open .pack-open-flap {
-  transform: scaleY(-0.7);
-}
-
 .pack-open-glow {
   position: absolute;
   left: 50%;
-  top: 22%;
+  top: 36%;
   width: 10px;
   height: 10px;
   margin: -5px 0 0 -5px;
@@ -3112,7 +3124,7 @@ body {
 .pack-open-spark {
   position: absolute;
   left: 50%;
-  top: 20%;
+  top: 30%;
   font-style: normal;
   font-size: 18px;
   line-height: 1;
