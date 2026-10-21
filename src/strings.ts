@@ -373,7 +373,7 @@ export const STRINGS = {
       `A Revival Star brings ${name} back, a little weak and needing rest. You have ${have}.`,
     buyAsk: (name: string, pieces: number, perStar: number) =>
       `A Revival Star brings ${name} back, a little weak and needing rest. You have ${pieces} of ${perStar} star fragments: ` +
-      'they come from caring well, like a week of daily visits, a finished achievement or a pet growing up.',
+      'one comes with every few days your pets stay well.',
     use: 'Use a Revival Star',
     buy: (price: string) => `Buy for ${price}`,
     notNow: 'Not now',
@@ -442,7 +442,9 @@ export const STRINGS = {
     revivalNote: (have: number) => `Keep a star in your pocket, just in case. You have ${have}`,
     fragments: 'Star fragments',
     fragment: 'Star fragment',
-    fragmentsNote: 'Free from caring well: a week of daily visits, a finished achievement, a pet growing up',
+    // `days`: good care days towards the next fragment, as dots.
+    fragmentsNote: (days: number, perFragment: number) =>
+      `Free from good care days, when you visit and no pet gets a warning: ${'●'.repeat(days)}${'○'.repeat(perFragment - days)}`,
     fragmentsCount: (pieces: number, perStar: number) => `${pieces}/${perStar}`,
   },
   // Opened by holding the pet.
