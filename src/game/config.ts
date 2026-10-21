@@ -121,11 +121,11 @@ export const CONFIG = {
   // Bringing a pet back after it passed away. It wakes up a bit weak,
   // with these stats (at least), and rests like it does after medicine.
   // A Revival Star can always be earned: `perStar` star fragments make
-  // one, and fragments come from good care (see src/game/fragments.ts),
-  // e.g. every `careDays` days of care in a row.
+  // one, and every `careDaysPerFragment` good care days (days you visit
+  // and no pet gets a warning, see src/game/fragments.ts) give a fragment.
   revival: {
     stats: { hunger: 60, happiness: 60, health: 60, energy: 60 },
-    fragments: { perStar: 5, careDays: 7 },
+    fragments: { perStar: 5, careDaysPerFragment: 6 },
   },
 
   // Revival Stars bought with real money, sold calmly as "a star in your

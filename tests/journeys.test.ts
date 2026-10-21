@@ -276,16 +276,19 @@ describe('nobody home', () => {
     expect(later.delivery.order?.pickupAt).toBe(START + 5 * HOUR); // 14:00, an hour after it's home
   });
 
-  it("a day away doesn't break the care streak, or count towards it", () => {
+  it("a day when every pet is away doesn't count as a care day", () => {
     let s = ready();
     s = stepFragments({ ...s, lastUpdated: START }).state;
-    expect(s.fragments.streak).toBe(1);
     s = setOff(s, START + 24 * HOUR, 2, [], false).state;
+    // Only checked in on while it's away the next day.
     s = stepFragments({ ...s, lastUpdated: START + 25 * HOUR }).state;
-    expect(s.fragments.streak).toBe(1);
-    s = openBackpack(simulate(s, START + 36 * HOUR), s.pet.id).state; // home the next evening
+    expect(s.fragments.careDays).toBe(1); // the first day
     s = stepFragments({ ...s, lastUpdated: START + 48 * HOUR }).state;
-    expect(s.fragments.streak).toBe(2);
+    expect(s.fragments.careDays).toBe(1); // the day away doesn't count
+    s = { ...s, pet: { ...s.pet, trip: null } }; // home again
+    s = stepFragments({ ...s, lastUpdated: START + 49 * HOUR }).state;
+    s = stepFragments({ ...s, lastUpdated: START + 72 * HOUR }).state;
+    expect(s.fragments.careDays).toBe(2);
   });
 
   it('warns about pots that will dry out on the way', () => {
@@ -298,7 +301,7 @@ describe('nobody home', () => {
 
 describe('saves', () => {
   it('older saves get journeys, with nobody away', () => {
-    const out = migrate({ version: 17, state: { pet: { stage: 'teen' }, housemates: [] } });
+    const out = migrate({ version: 18, state: { pet: { stage: 'teen' }, housemates: [] } });
     expect(out.state.pet.trip).toBeNull();
     expect(out.state.journeys.offers).toEqual([null, null, null]);
   });
