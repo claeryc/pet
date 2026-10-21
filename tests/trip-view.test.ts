@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { tripProgress } from '../src/ui/trip';
+import { shortLeft } from '../src/ui/journeys';
 import { newTeen } from './helpers';
 
 describe('the current trip map', () => {
@@ -25,5 +26,19 @@ describe('the current trip map', () => {
 
   it('is at home with no trip', () => {
     expect(tripProgress(newTeen(now).pet, now)).toBe(0);
+  });
+});
+
+describe('time left in the line-up', () => {
+  const min = 60_000;
+  it('rounds up to half hours', () => {
+    expect(shortLeft(60 * min)).toBe('1h');
+    expect(shortLeft(61 * min)).toBe('1.5h');
+    expect(shortLeft(30 * min)).toBe('0.5h');
+    expect(shortLeft(10 * 60 * min)).toBe('10h');
+  });
+  it('shows minutes under half an hour', () => {
+    expect(shortLeft(29 * min)).toBe('29m');
+    expect(shortLeft(10_000)).toBe('1m');
   });
 });

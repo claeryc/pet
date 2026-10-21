@@ -5229,6 +5229,40 @@ body {
   color: #8b7aa0;
 }
 
+/* A pet out on another trip: a timer in the tick's spot, its dial
+   emptying as the trip goes on. */
+.lineup-timer {
+  flex: none;
+  position: relative;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--lavender);
+  border-radius: 8px;
+  background: white;
+  box-sizing: border-box;
+}
+
+.lineup-timer::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: conic-gradient(var(--lilac) var(--left, 0deg), var(--seg-empty) 0);
+}
+
+/* The hand, pointing straight up. */
+.lineup-timer::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 4px;
+  width: 2px;
+  height: 7px;
+  margin-left: -1px;
+  background: var(--plum);
+  border-radius: 1px;
+}
+
 /* ---- The lunchbox ---- */
 
 .trip-head {

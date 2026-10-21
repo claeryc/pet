@@ -83,6 +83,14 @@ const GEMS: Record<Rarity, number> = { common: 1, rare: 2, epic: 3 };
 const placeName = (id: string) => STRINGS.journeys.places[id] ?? id;
 const placeIcon = (id: string) => ITEM_ICONS[`place_${id}`] ?? ITEM_ICONS.journey;
 
+// How long until a pet is back, short enough for the line-up: whole and
+// half hours ("1h", "1.5h", "0.5h"), and minutes under half an hour.
+export function shortLeft(ms: number): string {
+  const minutes = Math.max(0, Math.ceil(ms / 60_000));
+  if (minutes < 30) return `${Math.max(1, minutes)}m`;
+  return `${Math.ceil(minutes / 30) / 2}h`;
+}
+
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text?: string): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
   e.className = className;
@@ -436,9 +444,20 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
         render(true);
       }));
     }
-    // A pet out on another journey, faded, with when it's back.
+    // A pet out on another journey, faded, with how long until it's back
+    // and a little timer where the tick would be, emptying as it goes.
     for (const p of allPets(s).filter(isAway)) {
-      list.append(lineupRow(portrait(p, 'lineup-pic'), p.name, false, T.backAt(formatClock(p.trip!.endsAt)), () => {}));
+      const trip = p.trip!;
+      const row = el('button', 'lineup-row is-away');
+      row.disabled = true;
+      const left = trip.endsAt - now;
+      row.title = T.backAt(formatClock(trip.endsAt));
+      const timer = el('i', 'lineup-timer');
+      const done = Math.min(1, Math.max(0, (now - trip.startedAt) / (trip.endsAt - trip.startedAt)));
+      timer.style.setProperty('--left', `${Math.round((1 - done) * 360)}deg`);
+      row.append(portrait(p, 'lineup-pic'), el('b', 'lineup-name', p.name), el('small', 'lineup-why', shortLeft(left)), timer);
+      row.setAttribute('aria-label', `${p.name}, ${T.backAt(formatClock(trip.endsAt))}`);
+      list.append(row);
     }
     // Percy, last: along or not, unless he's resting.
     const free = percyFree(s, now);
