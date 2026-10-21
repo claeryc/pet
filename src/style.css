@@ -5943,3 +5943,9 @@ body {
     transition: none;
   }
 }
+
+/* Under the window, while the other pet is home. */
+.note-btn.is-low {
+  left: 7%;
+  top: 41%;
+}
