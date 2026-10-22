@@ -727,9 +727,7 @@ export const STRINGS = {
       `You have: ${pieces}\n${'●'.repeat(days)}${'○'.repeat(perFragment - days)}`,
     fragmentsHelpTitle: 'Star fragments',
     fragmentsHelp: (perFragment: number, perStar: number) =>
-      `A good care day is a day you visit and none of your pets gets a warning. Every ${perFragment} good care days ` +
-      `give a star fragment (the dots show how close the next one is). ${perStar} fragments craft a Revival Star, ` +
-      'and some special items cost fragments too. Fragments are always free: they can never be bought.',
+      `Every ${perFragment} good care days give a fragment. ${perStar} craft a Revival Star.`,
     fragmentsHelpOk: 'Got it',
     fragmentsCount: (pieces: number, perStar: number) => `${pieces}/${perStar}`,
     craft: 'Craft',

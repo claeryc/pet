@@ -6533,3 +6533,44 @@ body {
 .shop-help:active {
   transform: scale(0.95);
 }
+
+/* A small picture on top of a choice box (how star fragments work). */
+.choice-art {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.choice-art[hidden] {
+  display: none;
+}
+
+.choice-art-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.choice-art-row svg {
+  width: 24px;
+  height: 24px;
+}
+
+.choice-art-big svg {
+  width: 48px;
+  height: 48px;
+}
+
+.choice-art-dots {
+  color: var(--lilac);
+  letter-spacing: 2px;
+  font-size: 0.9rem;
+}
+
+.choice-art-arrow {
+  margin: 0 8px;
+  font-weight: 800;
+  color: var(--lilac);
+}

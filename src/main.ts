@@ -888,7 +888,13 @@ const home = createHomeScreen(root, {
   },
   onFragmentsHelp: () => {
     const { perStar, careDaysPerFragment } = CONFIG.revival.fragments;
+    // Good care days -> a fragment, and five fragments -> a Revival Star.
+    const art = `<div class="choice-art-row"><span class="choice-art-dots">${'●'.repeat(careDaysPerFragment)}</span>` +
+      `<span class="choice-art-arrow">→</span>${FRAGMENT_ICON}</div>` +
+      `<div class="choice-art-row">${FRAGMENT_ICON.repeat(perStar)}<span class="choice-art-arrow">→</span>` +
+      `<span class="choice-art-big">${ITEM_ICONS.revivalStar}</span></div>`;
     choice.open({
+      art,
       title: STRINGS.shop.fragmentsHelpTitle,
       text: STRINGS.shop.fragmentsHelp(careDaysPerFragment, perStar),
       options: [{ label: STRINGS.shop.fragmentsHelpOk, onPick: () => {} }],

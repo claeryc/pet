@@ -11,6 +11,7 @@ export interface ChoiceOption {
 }
 
 export interface ChoiceRequest {
+  art?: string; // a small picture on top (markup), e.g. how something works
   title: string;
   text: string;
   options: ChoiceOption[];
@@ -30,13 +31,16 @@ export function createChoiceBox(root: HTMLElement): ChoiceBox {
   box.setAttribute('role', 'dialog');
   box.setAttribute('aria-modal', 'true');
   box.setAttribute('aria-labelledby', 'choice-box-title');
+  const art = document.createElement('div');
+  art.className = 'choice-art';
+  art.setAttribute('aria-hidden', 'true');
   const title = document.createElement('h2');
   title.id = 'choice-box-title';
   const text = document.createElement('p');
   text.className = 'name-ask';
   const buttons = document.createElement('div');
   buttons.className = 'choice-buttons';
-  box.append(title, text, buttons);
+  box.append(art, title, text, buttons);
   backdrop.append(box);
   root.append(backdrop);
 
@@ -44,6 +48,8 @@ export function createChoiceBox(root: HTMLElement): ChoiceBox {
   return {
     open(request) {
       open = true;
+      art.innerHTML = request.art ?? '';
+      art.hidden = !request.art;
       title.textContent = request.title;
       text.textContent = request.text;
       buttons.replaceChildren(
