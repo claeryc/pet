@@ -348,6 +348,7 @@ export const STRINGS = {
           { title: (pet: string) => `Meet ${pet}!`, text: (pet: string) => `${pet} has four needs: Tummy, Joy, Health and Energy. Keep the bars from running low.` },
           { title: 'Feed and play', text: 'Tap Feed for snacks and Play for cuddles, tickles and games. Each one fills a different bar.' },
           { title: 'Lights off for bed', text: (pet: string) => `When Energy runs low, tap the moon so ${pet} can sleep. Time keeps going while the game is closed.` },
+          { title: 'Growing up', text: (pet: string) => `Good care adds up. How you look after ${pet} decides who ${pet} grows into. There are lots to find!` },
         ],
       },
       shop: {
@@ -378,7 +379,8 @@ export const STRINGS = {
         pages: [
           { title: 'Fill the pot', text: 'Tap food in your pantry to put it in the pot, up to three things. Then tap the bowl on the right to cook!' },
           { title: 'Find secret recipes', text: 'Recipes lists every dish. The ??? ones are secret: the hint shows one thing that goes in.' },
-          { title: 'Fresh from the pot', text: (pet: string) => `Feed your dish to ${pet} or pack it for a journey. A mix that makes nothing good is a Mushy mess; try another!` },
+          { title: 'Fresh from the pot', text: (pet: string) => `Feed your dish to ${pet} or pack it for a journey. Each new dish goes in your Recipes list.` },
+          { title: 'Oops, a Mushy mess', text: 'A grey bowl means the mix makes no dish. Cook it anyway for a Mushy mess, then try another mix!' },
         ],
       },
       delivery: {
@@ -410,7 +412,8 @@ export const STRINGS = {
         pages: [
           { title: 'Someone is visiting!', text: 'Other pets drop by now and then. Tap Meet to play together while they are here.' },
           { title: 'Grow a friendship', text: 'Meet every day and give gifts to fill the hearts. Open Gift to hand over a snack.' },
-          { title: 'Add a friend', text: 'Tap Add friend to keep them. Friends come back on their own, and you can invite one a day from Messages.' },
+          { title: 'Add a friend', text: 'Tap Add friend to keep them, so they can come back. Friends drop by again on their own.' },
+          { title: 'Invite a friend', text: "Can't wait? Open Messages › Friends and tap Invite. You can invite one friend a day." },
         ],
       },
       family: {
