@@ -96,20 +96,29 @@ export const UNKNOWN_ICON = pixelIcon([
   '.....kk.....',
 ]);
 
-// The Revival Star.
+// The Revival Star: a chubby, smiling star with lilac and mint edges and a warm peach
+// underside, twinkling. Drawn larger (20 wide) than the other icons so the
+// face fits; `b` is blush.
 const REVIVAL_STAR = [
-  '.....kk.....',
-  '....kyyk....',
-  '....kyyk....',
-  'kkkkyyyykkkk',
-  'kyyyrryrryyk',
-  '.kyyrrrrryk.',
-  '..kyyrrryk..',
-  '..kyyyryyk..',
-  '.kyyykkyyyk.',
-  '.kyyk..kyyk.',
-  'kyyk....kyyk',
-  'kkk......kkk',
+  '........kkkk........',
+  '...y...klyymk.......',
+  '..ywy.klwyyymk...y..',
+  '...y..klwyyymk..ywy.',
+  '.....klyyyyyymk..y..',
+  '..kkkkyyyyyyyykkkk..',
+  '.klllyyyyyyyyyymmmk.',
+  'klyyyyyyyyyyyyyyyymk',
+  'klyyyyykyyyykyyyyymk',
+  '.kyyyyykyyyykyyyyyk.',
+  '..kyybbyykkyybbyyk..',
+  '..kyyyyyyyyyyyyyyk..',
+  '..klyyyyyyyyyyyymk..',
+  '..kloooyyyyyyooomk..',
+  '.kloooooooooooooomk.',
+  '.kloooookkkkooooomk.',
+  '.klrrook....koorrmk.',
+  '.kkrrrk......krrrkk.',
+  '..kkkk........kkkk..',
 ];
 
 // A star fragment: one point of a Revival Star, broken off with a jagged
@@ -919,7 +928,7 @@ export const ITEM_ICONS: Record<string, string> = {
   ]),
   // A glowing star with a little heart inside: brings back a pet that
   // passed away.
-  revivalStar: pixelIcon(REVIVAL_STAR),
+  revivalStar: pixelIcon(REVIVAL_STAR, { b: PALETTE.blush }),
   plantCure: pixelIcon([
     '....kkkk....',
     '....kwwk....',
