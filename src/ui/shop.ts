@@ -224,7 +224,8 @@ export type ShopCategory = 'revival' | 'food' | 'garden' | 'fishing' | 'journeys
 // Food the Shop sells: only plain ingredients (the energy drink only on its days).
 export const soldInShop = (f: Food) => f.price > 0 && !f.caughtOnly && !f.grownOnly && !f.cookedOnly && !f.foundOnly;
 
-export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>): HTMLElement[] {
+// The Shop: tabs for the categories, then the picked category's rows.
+export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, redraw: () => void): HTMLElement[] {
   const now = state.lastUpdated;
   const food: Entry[] = CONFIG.foods
     .filter(soldInShop)
@@ -327,15 +328,68 @@ export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>)
       row: row(ITEM_ICONS[p.item], STRINGS.shop.revivalPack(p.count), note, button(p.price, () => cb.onBuyPack(p.id))),
     })),
   ];
-  return [
-    category('revival', STRINGS.shop.revivalTitle, revival, open),
-    category('food', STRINGS.shop.food, food, open),
-    category('garden', STRINGS.shop.garden, garden, open),
-    category('fishing', STRINGS.shop.fishing, fishing, open),
-    ...(journeys.length > 0 ? [category('journeys', STRINGS.shop.journeys, journeys, open)] : []),
-    category('room', STRINGS.shop.room, room, open),
-    category('hats', STRINGS.shop.hats, hats, open),
+  // One category at a time, picked from the tabs at the top. Journeys only
+  // shows once it has opened up.
+  const tabs: ShopTab[] = [
+    { id: 'revival', title: STRINGS.shop.revivalTab, icon: ITEM_ICONS[CONFIG.store[0].item], entries: revival },
+    { id: 'food', title: STRINGS.shop.food, icon: ITEM_ICONS.strawberry, entries: food },
+    { id: 'garden', title: STRINGS.shop.garden, icon: ITEM_ICONS.gardenPot, entries: garden },
+    { id: 'fishing', title: STRINGS.shop.fishing, icon: ITEM_ICONS.bait, entries: fishing },
+    ...(journeys.length > 0 ? [{ id: 'journeys', title: STRINGS.shop.journeys, icon: ITEM_ICONS.charm_compass, entries: journeys } as ShopTab] : []),
+    { id: 'room', title: STRINGS.shop.room, icon: ITEM_ICONS[`wallpaper_${WALLPAPERS[1]?.id}`] ?? '', entries: room },
+    { id: 'hats', title: STRINGS.shop.hats, icon: hatIcon(cb.hatImage(HATS[1]?.id ?? '')), entries: hats },
   ];
+  const shown = tabs.find((t) => t.id === view.tab) ?? tabs[0];
+  view.tab = shown.id;
+  const rows = document.createElement('div');
+  rows.className = 'shop-cat-rows';
+  rows.append(...shown.entries.map((e) => e.row));
+  return [shopTabs(tabs, view, redraw), rows];
+}
+
+interface ShopTab {
+  id: ShopCategory;
+  title: string;
+  icon: string;
+  entries: Entry[];
+}
+
+// Which category's tab is showing. Kept by the menu, so it stays while the
+// page redraws after buying something.
+export interface ShopView {
+  tab: ShopCategory;
+}
+
+// [ Stars | Food | Garden | ... ]: a strip of chips that scrolls sideways
+// when they don't all fit, and stays at the top while the rows scroll.
+function shopTabs(tabs: ShopTab[], view: ShopView, redraw: () => void): HTMLElement {
+  const strip = document.createElement('div');
+  strip.className = 'shop-tabs';
+  strip.setAttribute('role', 'group');
+  strip.setAttribute('aria-label', STRINGS.shop.title);
+  for (const t of tabs) {
+    const b = document.createElement('button');
+    b.className = 'shop-tab';
+    b.setAttribute('aria-pressed', String(t.id === view.tab));
+    b.innerHTML = `<span class="shop-tab-icon" aria-hidden="true">${t.icon}</span><span></span>`;
+    b.lastElementChild!.textContent = t.title;
+    b.addEventListener('click', () => {
+      if (view.tab === t.id) return;
+      view.tab = t.id;
+      redraw();
+    });
+    strip.append(b);
+  }
+  // Once it's on the page: slide the strip so the picked tab is in view.
+  requestAnimationFrame(() => {
+    const on = strip.querySelector<HTMLElement>('[aria-pressed="true"]');
+    if (!on) return;
+    const left = on.offsetLeft - strip.offsetLeft;
+    if (left < strip.scrollLeft) strip.scrollLeft = left - 8;
+    else if (left + on.offsetWidth > strip.scrollLeft + strip.clientWidth)
+      strip.scrollLeft = left + on.offsetWidth - strip.clientWidth + 8;
+  });
+  return strip;
 }
 
 // The Wardrobe (hold the pet to open it): the hats you own, to put on or

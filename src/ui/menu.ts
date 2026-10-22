@@ -13,7 +13,7 @@ import { CONFIG } from '../game/config';
 import type { GameState } from '../game/state';
 import { isNew, isUnlocked, type UnlockId } from '../game/unlocks';
 import { LOCK_ICON, MENU_ICONS } from './icons';
-import { goldPill, shopPage, wardrobePage, type ShopCallbacks } from './shop';
+import { goldPill, shopPage, wardrobePage, type ShopCallbacks, type ShopCategory, type ShopView } from './shop';
 import { collectionPage } from './collection';
 import { familyTreePage, type FamilyCallbacks, type TreeView } from './family';
 import { OWNER_MAX } from '../game/family';
@@ -61,7 +61,7 @@ export interface Menu {
   reset: () => void; // go back to the main list
   update: (state: GameState) => void;
   showWardrobe: () => void;
-  showShop: (category?: string) => void; // open the Shop, unfolded at `category`
+  showShop: (category?: ShopCategory) => void; // open the Shop, at `category`'s tab
 }
 
 // A row button, or with an `icon`, a square tile for the main grid.
@@ -250,7 +250,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     panel.replaceChildren(header(STRINGS.messages.title, showMain), list);
   }
 
-  // Which categories (Food, Hats...) are unfolded. Everything starts folded
+  // Which Collection categories are unfolded. Everything starts folded
   // each time you go into a page, and stays as you left it while the page
   // redraws.
   const openCategories = new Set<string>();
@@ -260,12 +260,15 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
   // The tree tab and skill picked in Skills. Each visit starts at Fishing
   // (or the first tree with a point to spend) and its next skill.
   const skillsView: SkillsView = { tree: 'fishing', skill: null };
+  // The Shop's tab. Each visit starts at the first one (Stars).
+  const shopView: ShopView = { tab: 'revival' };
 
   // The Shop, Wardrobe and Collection: a header (with gold on the right in
   // the Shop, lined up with the prices), then the list.
   function showList(which: 'shop' | 'wardrobe' | 'collection' | 'skills' | 'familyTree', fresh: boolean): void {
     if (fresh) {
       openCategories.clear();
+      shopView.tab = 'revival';
       treeView.focus = null;
       toTop();
     }
@@ -273,7 +276,10 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     const list = document.createElement('div');
     list.className = 'shop-list';
     if (state) {
-      if (which === 'shop') list.append(...shopPage(state, cb, openCategories));
+      if (which === 'shop') list.append(...shopPage(state, cb, shopView, () => {
+        showShop(false);
+        toTop();
+      }));
       else if (which === 'wardrobe') list.append(...wardrobePage(state, cb));
       else if (which === 'collection') list.append(...collectionPage(state, cb, openCategories));
       else if (which === 'skills') list.append(...skillsPage(state, cb, skillsView, () => showSkills(false)));
@@ -484,7 +490,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     showShop: (category) => {
       showShop();
       if (category) {
-        openCategories.add(category);
+        shopView.tab = category;
         showShop(false);
       }
     },

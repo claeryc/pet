@@ -1126,6 +1126,66 @@ body {
   display: none;
 }
 
+/* The Shop's tabs: a strip of chips, each with a picture of something
+   from that category. It scrolls sideways when they don't all fit, and
+   stays under the header while the rows scroll. */
+.shop-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  /* Up into the gap below the header, so no rows show through it. */
+  margin: -8px -8px 0;
+  padding: 8px 8px 4px;
+  position: sticky;
+  top: 40px; /* right under the sticky header */
+  z-index: 1;
+  background: #fff5f8;
+}
+
+.shop-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.shop-tab {
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.8rem;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px 5px 6px;
+  border: 2px solid var(--lavender);
+  border-radius: 999px;
+  background: white;
+  color: var(--ink);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.shop-tab[aria-pressed='true'] {
+  background: var(--lilac);
+  border-color: var(--lilac);
+  color: white;
+}
+
+.shop-tab:active {
+  transform: scale(0.95);
+}
+
+.shop-tab-icon {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+}
+
+.shop-tab-icon svg,
+.shop-tab-icon .hat-icon {
+  width: 20px;
+  height: 20px;
+}
+
 /* ---- Fishing ---- */
 
 :root {

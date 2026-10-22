@@ -716,7 +716,7 @@ export const STRINGS = {
     use: 'Use',
     inUse: 'In use',
     takeDown: 'Take down',
-    revivalTitle: 'Revival Stars',
+    revivalTab: 'Stars',
     revivalStar: 'Revival Star',
     revivalPack: (count: number) => (count === 1 ? 'Revival Star' : `${count} Revival Stars`),
     revivalNote: (have: number) => `Keep a star in your pocket, just in case. You have ${have}`,
