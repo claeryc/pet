@@ -19,7 +19,7 @@ import { familyTreePage, type FamilyCallbacks, type TreeView } from './family';
 import { OWNER_MAX } from '../game/family';
 import { messagesPage, type MessagesTab } from './messages';
 import { unreadMail } from '../game/messages';
-import { canLearnIn, skillsPage, type SkillsCallbacks, type SkillsView } from './skills';
+import { canLearnIn, showPickedSkill, skillsPage, type SkillsCallbacks, type SkillsView } from './skills';
 import { TREES, pointsToSpend } from '../game/skills';
 import { audioSettings, setAudioSettings } from '../audio/audio';
 import type { JourneysCallbacks } from './journeys';
@@ -304,6 +304,8 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
       skillsView.skill = null;
     }
     showList('skills', fresh);
+    // Open with the picked skill's Learn button in view, not under the bar.
+    if (fresh) showPickedSkill(false, false);
   };
   const showFamilyTree = (fresh = true) => showList('familyTree', fresh);
 
