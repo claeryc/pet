@@ -289,7 +289,7 @@ function drawTrip(ctx: CanvasRenderingContext2D, trip: TripScene, night: boolean
   drawPlace(ctx, trip.place, ROOM_WIDTH, ROOM_HEIGHT, night, timeMs);
   const spots: Spot[] = trip.pets.length > 1 ? ['left', 'right'] : ['middle'];
   trip.pets.slice(0, 2).forEach((p, i) => {
-    drawBag(ctx, trip.bag, SPOTS[spots[i]], spots.length > 1);
+    drawBag(ctx, trip.bag, SPOTS[spots[i]], spots.length > 1 ? (i === 0 ? 'left' : 'right') : undefined);
     drawPetAt(ctx, p.sheet, p.animation, SPOTS[spots[i]], timeMs, p.hat);
     if (p.glow) drawGlow(ctx, SPOTS[spots[i]], timeMs);
   });

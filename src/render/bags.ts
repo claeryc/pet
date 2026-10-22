@@ -49,7 +49,7 @@ export const BAGS: Record<string, string[]> = {
 const KNOT = 3;
 
 // The stick: light on top, dark underneath.
-function drawStick(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number): [number, number][] {
+export function drawStick(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number): [number, number][] {
   const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
   const points = Array.from({ length: n + 1 }, (_, i): [number, number] =>
     [Math.round(x0 + ((x1 - x0) * i) / n), Math.round(y0 + ((y1 - y0) * i) / n)]);
@@ -60,20 +60,28 @@ function drawStick(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: nu
   return points;
 }
 
-// The stick comes out from behind the pet and is held out to the side,
-// with the bundle tied a little short of its end. With two pets on a trip
-// there's no room at the side, so it goes up over the shoulder instead.
-// `x` is the left edge of the pet's 32-pixel frame.
-export function drawBag(ctx: CanvasRenderingContext2D, bag: string, x: number, shoulder = false): void {
+// A bundle hung by its knot at (hx, hy).
+export function drawBundle(ctx: CanvasRenderingContext2D, bag: string, hx: number, hy: number): void {
   const rows = BAGS[bag] ?? BAGS.sack;
-  const points = shoulder ? drawStick(ctx, x + 20, 28, x + 31, 13) : drawStick(ctx, x + 18, 28, x + 40, 21);
-  const [hx, hy] = points[points.length - 3];
   const left = hx - Math.floor(rows[0].length / 2);
   rows.forEach((row, y) => [...row].forEach((ch, dx) => {
     if (!COLORS[ch]) return;
     ctx.fillStyle = COLORS[ch];
     ctx.fillRect(left + dx, hy - KNOT + y, 1, 1);
   }));
+}
+
+// The stick comes out from behind the pet and is held out to the side,
+// with the bundle tied a little short of its end. With two pets on a trip
+// there's no room at the side, so each holds it up over its outer
+// shoulder instead: `outer` is 'left' or 'right'. `x` is the left edge of
+// the pet's 32-pixel frame.
+export function drawBag(ctx: CanvasRenderingContext2D, bag: string, x: number, outer?: 'left' | 'right'): void {
+  const points = outer === 'left' ? drawStick(ctx, x + 16, 26, x + 2, 12)
+    : outer === 'right' ? drawStick(ctx, x + 16, 26, x + 30, 12)
+    : drawStick(ctx, x + 18, 24, x + 42, 15);
+  const [hx, hy] = points[points.length - 3];
+  drawBundle(ctx, bag, hx, hy);
 }
 
 // The same bag as a small SVG, for the rewards card and the reveal.
