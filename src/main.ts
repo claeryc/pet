@@ -890,8 +890,7 @@ const home = createHomeScreen(root, {
     const result = makeStar(state);
     setState(result.state);
     if (result.blocked) return blocked(STRINGS.shop.notEnoughFragments);
-    sound('got');
-    home.reveal({ icon: ITEM_ICONS.revivalStar, name: STRINGS.shop.revivalStar, count: 1, stars: 0, caption: STRINGS.shop.madeStar });
+    home.craft({ fragment: FRAGMENT_ICON, star: ITEM_ICONS.revivalStar, onLock: () => sound('place'), onStar: () => sound('grewUp') });
   },
   onWearHat: (id) => runShop(wearHat(state, id)),
   hatImage: (id) => sprites.get(getHat(id)?.sheet ?? '')?.image.src,

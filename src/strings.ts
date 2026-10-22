@@ -727,7 +727,6 @@ export const STRINGS = {
       `You have ${pieces}, ${perStar} craft a star. Free from good care days: ${'●'.repeat(days)}${'○'.repeat(perFragment - days)}`,
     fragmentsCount: (pieces: number, perStar: number) => `${pieces}/${perStar}`,
     craft: 'Craft',
-    madeStar: 'Your star fragments made a Revival Star!',
     notEnoughFragments: 'Not enough star fragments yet.',
     fragmentsOnly: 'Only for star fragments',
     // Before fragments go on something else: how far that leaves a free star.
