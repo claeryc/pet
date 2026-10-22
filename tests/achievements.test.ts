@@ -101,7 +101,7 @@ describe('save migration to achievements', () => {
       },
     });
     expect(out.version).toBe(SAVE_VERSION);
-    expect(out.state.tally).toEqual({ deliveries: 2, littleOnes: 1 });
+    expect(out.state.tally).toEqual({ deliveries: 2, littleOnes: 1, goldOrders: 1 });
     expect(out.state.badges).toEqual({});
   });
 });

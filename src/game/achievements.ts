@@ -27,6 +27,12 @@ export function addTally(state: GameState, id: AchievementId, n = 1): GameState 
   return addXp(counted, CONFIG.skills.xp[id] * n);
 }
 
+// Counts something that isn't an achievement of its own (a trip with both
+// pets, a gold-frame order...), for the Milestone badges. No Keeper XP.
+export function countUp(state: GameState, key: string, n = 1): GameState {
+  return { ...state, tally: { ...state.tally, [key]: (state.tally[key] ?? 0) + n } };
+}
+
 // The best tier a count reaches, or null below bronze.
 export function tierAt(id: AchievementId, count: number): Tier | null {
   const goals = CONFIG.achievements[id];

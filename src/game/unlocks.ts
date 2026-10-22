@@ -9,6 +9,7 @@ import type { GameState } from './state';
 import { canOrder } from './delivery';
 import { logMessage } from './messages';
 import { updateBadges, type AchievementId, type Tier } from './achievements';
+import { updateMilestones, type MilestoneId } from './milestones';
 import { creditGrownUps, keeperLevel, updateLevel } from './skills';
 import { getCharacter } from './growth';
 import { stepFragments } from './fragments';
@@ -69,13 +70,14 @@ export function characterKey(character: string, variant: string | null): string 
 }
 
 // Writes down anything new: the character a grown-up pet became (and its
-// Keeper XP), badges earned, Keeper levels reached and whatever has just
+// Keeper XP), badges and Milestones earned, Keeper levels reached and whatever has just
 // opened up. Returns the ids that opened, the badges earned and the levels
 // reached, so the game can say so.
 export function updateProgress(state: GameState): {
   state: GameState;
   unlocked: UnlockId[];
   badges: { id: AchievementId; tier: Tier }[];
+  milestones: MilestoneId[];
   levels: number[];
   fragments: number; // star fragments just earned
 } {
@@ -87,14 +89,15 @@ export function updateProgress(state: GameState): {
   }
   s = creditGrownUps(s, [s.pet, ...s.housemates], (pet) => getCharacter(pet.character)?.stars ?? 1);
   const badges = updateBadges(s);
-  const levels = updateLevel(badges.state);
+  const milestones = updateMilestones(badges.state);
+  const levels = updateLevel(milestones.state);
   s = levels.state;
   const opened = unlocksFor(s).filter((id) => !s.unlocked.includes(id));
   if (opened.length > 0) s = { ...s, unlocked: [...s.unlocked, ...opened] };
   for (const id of opened) s = logMessage(s, { kind: 'unlocked', at: s.lastUpdated, id });
   const frag = stepFragments(s);
   return {
-    state: frag.state, unlocked: opened, badges: badges.earned, levels: levels.levels,
+    state: frag.state, unlocked: opened, badges: badges.earned, milestones: milestones.earned, levels: levels.levels,
     fragments: frag.pieces,
   };
 }

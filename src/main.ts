@@ -146,10 +146,11 @@ function setState(next: GameState): void {
   }
   showLevels(progress.levels);
   showFragments(progress.fragments);
-  if (progress.badges.length > 0) sound('badge');
+  if (progress.badges.length > 0 || progress.milestones.length > 0) sound('badge');
   else if (progress.unlocked.length > 0) sound('unlock');
   const notices = [
     ...progress.badges.map((b) => STRINGS.achievements.earned(STRINGS.achievements.names[b.id], STRINGS.achievements.tiers[b.tier])),
+    ...progress.milestones.map((id) => STRINGS.milestones.earned(STRINGS.milestones.names[id])),
     ...progress.unlocked.map((id) => STRINGS.unlocked[id]),
   ];
   if (needsName(state)) {

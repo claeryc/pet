@@ -566,7 +566,9 @@ export const CONFIG = {
     cravings: [5, 25, 100], // cravings treated with just the right food
     gifts: [5, 25, 100], // gifts given to friends
     littleOnes: [1, 3, 10], // little ones from mingling
-    journeys: [5, 25, 100], // journeys finished (not called home early)
+    journeys: [1, 25, 100], // journeys finished (not called home early)
+    epicFinds: [1, 5, 15], // 3-star finds brought home from journeys (Percy's included)
+    adventures: [1, 10, 30], // 10-hour Adventures finished
   },
 
   // Skills (in the menu, see src/game/skills.ts). Doing things earns Keeper
@@ -575,11 +577,12 @@ export const CONFIG = {
   // pet you raise.
   skills: {
     // XP for each thing counted for an achievement (per one).
-    xp: { fish: 3, deliveries: 5, harvests: 4, dishes: 3, cravings: 5, gifts: 2, littleOnes: 50, journeys: 8 },
+    xp: { fish: 3, deliveries: 5, harvests: 4, dishes: 3, cravings: 5, gifts: 2, littleOnes: 50, journeys: 8, epicFinds: 15, adventures: 10 },
     perfectFishXp: 2, // extra for a perfect catch (5 in all)
     deliveryXp: { bronze: 0, silver: 5, gold: 15 }, // extra for a fuller order (5 / 10 / 20 in all)
     grownUpXp: { 1: 20, 2: 40, 3: 80 }, // a pet growing up, by its stars
     badgeXp: { bronze: 25, silver: 50, gold: 100 },
+    milestoneXp: 50, // a Milestone badge (see src/game/milestones.ts)
     // Going from level n to n + 1 takes base + perLevel × n XP.
     level: { base: 60, perLevel: 20 },
     // Points for each rank of a skill: the 1st costs 1, the 2nd 2, the 3rd 3.

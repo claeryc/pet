@@ -249,6 +249,7 @@ export type Message =
   | { kind: 'visitor'; at: number; name: string; character: string; variant: string | null; friend?: boolean }
   | { kind: 'littleOne'; at: number; name: string; friend: string }
   | { kind: 'badge'; at: number; id: string; tier: 'bronze' | 'silver' | 'gold' }
+  | { kind: 'milestone'; at: number; id: string }
   | { kind: 'level'; at: number; level: number }
   | { kind: 'tripHome'; at: number; name: string; place: string }
   | { kind: 'courier'; at: number; name: string; place: string; find: Find };
@@ -332,6 +333,7 @@ export interface GameState {
   // -> "bronze").
   tally: Record<string, number>;
   badges: Record<string, 'bronze' | 'silver' | 'gold'>;
+  milestones: string[]; // Milestone badges earned (see src/game/milestones.ts)
   keeper: Keeper;
   fragments: Fragments;
   journeys: Journeys;
@@ -416,6 +418,7 @@ export function createNewGame(now: number): GameState {
     baitOn: false,
     tally: {},
     badges: {},
+    milestones: [],
     keeper: newKeeper(),
     fragments: { pieces: 0, careDays: 0, day: '', dayGood: false },
     journeys: newJourneys(),

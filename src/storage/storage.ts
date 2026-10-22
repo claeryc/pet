@@ -15,7 +15,7 @@ const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 20;
+export const SAVE_VERSION = 21;
 
 export interface SaveFile {
   version: number;
@@ -216,6 +216,21 @@ export function migrate(save: SaveFile): SaveFile {
     const st = save.state;
     st.guidesRead = guidesAlreadyKnown({ ...st, pet: st.pet ?? {}, unlocked: st.unlocked ?? [] } as GameState);
     save.version = 20;
+  }
+  // Version 20 -> 21: more journey badges, and Milestone badges. Fill in
+  // what the save can tell: an Adventure for each place whose best stamp is
+  // epic, and the gold-frame orders still in Messages. The Milestones
+  // themselves are handed out on the next update.
+  if (save.version === 20) {
+    const st = save.state;
+    st.milestones = [];
+    const pages = Object.values(st.journeys?.journal ?? {}) as { best?: string }[];
+    const adventures = pages.filter((page) => page.best === 'epic').length;
+    const goldOrders = (st.messages ?? []).filter((m: { kind: string; tier?: string }) => m.kind === 'pickup' && m.tier === 'gold').length;
+    st.tally = { ...st.tally };
+    if (adventures > 0) st.tally.adventures = Math.max(st.tally.adventures ?? 0, adventures);
+    if (goldOrders > 0) st.tally.goldOrders = Math.max(st.tally.goldOrders ?? 0, goldOrders);
+    save.version = 21;
   }
   return save;
 }

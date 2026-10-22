@@ -12,7 +12,7 @@
 // the game is closed (simulate() calls stepDelivery()).
 
 import { CONFIG } from './config';
-import { addTally } from './achievements';
+import { addTally, countUp } from './achievements';
 import { addXp } from './skills';
 import type { Food, FoodId } from './actions';
 import { foodCount, useFood } from './economy';
@@ -212,6 +212,7 @@ function pickUp(state: GameState, order: Order): GameState {
   if (drink) s = { ...s, inventory: { ...s.inventory, food: { ...s.inventory.food, energyDrink: (s.inventory.food.energyDrink ?? 0) + 1 } } };
   const tier = orderTier(order.boxes);
   if (tier !== 'none') s = addXp(addTally(s, 'deliveries'), CONFIG.skills.deliveryXp[tier]);
+  if (tier === 'gold') s = countUp(s, 'goldOrders'); // for the Golden Parcel milestone
   return logMessage(s, {
     kind: 'pickup', at: order.pickupAt, boxes: order.boxes, gold, tier: orderTier(order.boxes),
     ...(seed ? { seed } : {}),

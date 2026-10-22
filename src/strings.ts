@@ -440,7 +440,7 @@ export const STRINGS = {
       collection: {
         name: 'Collection',
         pages: [
-          { title: 'Your Collection', text: 'Every character, recipe and badge you find is kept here. Badges go from bronze to silver to gold.' },
+          { title: 'Your Collection', text: 'Every character, recipe and badge you find is kept here. Badges go from bronze to silver to gold, and Milestones mark the big moments.' },
         ],
       },
     } as Record<string, { name: GuideText; pages: { title: GuideText; text: GuideText }[] }>,
@@ -804,6 +804,7 @@ export const STRINGS = {
     recipes: 'Recipes',
     catches: 'Catches',
     achievements: 'Achievements',
+    milestones: 'Milestones',
     count: (title: string, found: number, total: number) => `${title}  ${found}/${total}`,
     unknown: '???',
     notFound: 'Not found yet',
@@ -818,7 +819,9 @@ export const STRINGS = {
       cravings: 'Mind Reader',
       gifts: 'Gift Giver',
       littleOnes: 'Growing Family',
-      journeys: 'Explorer',
+      journeys: 'Traveller',
+      epicFinds: 'Epic Finder',
+      adventures: 'Adventurer',
     },
     // What to do to reach a goal of `n`.
     goals: {
@@ -829,7 +832,9 @@ export const STRINGS = {
       cravings: (n: number) => `Treat ${n} cravings`,
       gifts: (n: number) => `Give ${n} gifts`,
       littleOnes: (n: number) => (n === 1 ? 'Welcome a little one' : `Welcome ${n} little ones`),
-      journeys: (n: number) => `Finish ${n} journeys`,
+      journeys: (n: number) => (n === 1 ? 'Finish your first journey' : `Finish ${n} journeys`),
+      epicFinds: (n: number) => (n === 1 ? 'Bring home a 3-star find' : `Bring home ${n} three-star finds`),
+      adventures: (n: number) => (n === 1 ? 'Finish an Adventure' : `Finish ${n} Adventures`),
     },
     tiers: { bronze: 'Bronze', silver: 'Silver', gold: 'Gold' },
     // "Catch 50 fish · 12/50"
@@ -837,6 +842,32 @@ export const STRINGS = {
     // Once gold: "All done! 214 so far"
     allDone: (have: number) => `All done! ${have} so far`,
     earned: (name: string, tier: string) => `New badge: ${name} (${tier})!`,
+  },
+  // Milestone badges: one each, for a moment that happens once.
+  milestones: {
+    names: {
+      explorer: 'Explorer',
+      travelBuddies: 'Travel Buddies',
+      goldOrder: 'Golden Parcel',
+      threeStar: 'Shining Star',
+      allRecipes: 'Master Chef',
+      allFish: 'Full Net',
+      retired: 'Family Tree',
+      starMaker: 'Star Maker',
+    },
+    // How to earn it.
+    goals: {
+      explorer: 'Finish a journey to every place',
+      travelBuddies: 'Send both pets on a journey together',
+      goldOrder: "Fill every box of one of Percy's orders",
+      threeStar: 'Raise a pet into a 3-star character',
+      allRecipes: 'Find every recipe',
+      allFish: 'Catch every kind of fish',
+      retired: 'Let a grown-up pet retire into the Family Tree',
+      starMaker: 'Make a Revival Star from star fragments',
+    },
+    done: 'Earned!',
+    earned: (name: string) => `New milestone: ${name}!`,
   },
   // The "While you were away" card.
   away: {

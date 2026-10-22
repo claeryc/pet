@@ -10,6 +10,7 @@
 // (nobody was home to look after).
 
 import { CONFIG } from './config';
+import { countUp } from './achievements';
 import { localDay } from './economy';
 import { allPets } from './friends';
 import type { GameState } from './state';
@@ -60,7 +61,7 @@ export function makeStar(state: GameState): { state: GameState; blocked?: 'notEn
   const supplies = { ...state.inventory.supplies, revivalStar: (state.inventory.supplies.revivalStar ?? 0) + 1 };
   return {
     state: {
-      ...state,
+      ...countUp(state, 'starsMade'), // for the Star Maker milestone
       fragments: { ...state.fragments, pieces: state.fragments.pieces - F.perStar },
       inventory: { ...state.inventory, supplies },
     },

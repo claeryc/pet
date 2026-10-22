@@ -21,7 +21,7 @@
 // Friends from other players will use the same shapes once there's a
 // server (see the Hangout and mingle design doc).
 
-import { addTally } from './achievements';
+import { addTally, countUp } from './achievements';
 import { startingCare } from './skills';
 import { CONFIG } from './config';
 import { characterOfStars, getCharacter, rollStarsWith, seededRoll } from './growth';
@@ -417,11 +417,14 @@ export function retire(state: GameState, id: string): GameState {
   const leaving = pets.find((p) => p.id === id);
   if (!leaving || pets.length < 2) return state;
   const rest = pets.filter((p) => p.id !== id);
+  // Retiring counts for the Family Tree milestone; saying goodbye to a pet
+  // that passed away doesn't.
+  const s = leaving.condition === 'passed' ? state : countUp(state, 'retired');
   return {
-    ...state,
+    ...s,
     pet: rest[0],
     housemates: rest.slice(1),
-    family: [...state.family, rememberPet(leaving, state.owner)],
+    family: [...s.family, rememberPet(leaving, s.owner)],
   };
 }
 
