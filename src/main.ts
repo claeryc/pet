@@ -979,6 +979,7 @@ showLevels(startup.levels); // levels reached while away (Percy's pickups)
 showFragments(startup.fragments);
 tryCheckIn();
 if (saved) showAway(saved, saved.lastUpdated);
+home.showTripIfEmpty(); // nobody home: open on the trip, not the empty room
 
 // Draw the pet every animation frame (about 60 times a second). The sprite
 // sheet comes from the pet's stage or character (see src/data/characters.json).
@@ -1051,5 +1052,6 @@ document.addEventListener('visibilitychange', () => {
     tryCheckIn();
     if (leftAs) showAway(leftAs.state, leftAs.at);
     leftAs = null;
+    home.showTripIfEmpty();
   }
 });
