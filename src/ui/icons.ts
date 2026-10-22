@@ -1220,6 +1220,152 @@ export const ACHIEVEMENT_ICONS: Record<string, string> = {
   ]),
   littleOnes: ITEM_ICONS.meet,
   journeys: ITEM_ICONS.journey,
+  // A backpack with a sparkle on its pocket.
+  epicFinds: pixelIcon([
+    '.w..kkkk....',
+    '...k....k.w.',
+    '..kkkkkkkk..',
+    '.kcccccccck.',
+    '.kcckkkkcck.',
+    '.kckyywykck.',
+    '.kckywwwkck.',
+    '.kckyywykck.',
+    '.kcckkkkcck.',
+    '.kcccccccck.',
+    '..kkkkkkkk..',
+    '............',
+  ]),
+  // A snowy mountain with a flag on top.
+  adventures: pixelIcon([
+    '......kkk...',
+    '......krrk..',
+    '......kkk...',
+    '......k.....',
+    '.....kwk....',
+    '....kwwmk...',
+    '...kmmmmmk..',
+    '..kmmgmmmmk.',
+    '.kmmmmmmgmmk',
+    'kmmgmmmmmmmk',
+    'kkkkkkkkkkkk',
+    '............',
+  ]),
+};
+
+// A Milestone badge (16x16): a round medal with a pink ribbon, and an 8x8
+// picture in the middle. Each medal has its own ring colour.
+function medalIcon(symbol: string[], ring: string): string {
+  const rows: string[] = [];
+  for (let y = 0; y < 16; y++) {
+    let row = '';
+    for (let x = 0; x < 16; x++) {
+      const d = Math.hypot(x - 7.5, y - 6.5);
+      const sx = x - 4;
+      const sy = y - 3;
+      const pic = sx >= 0 && sx < 8 && sy >= 0 && sy < 8 ? symbol[sy][sx] : '.';
+      if (d <= 4.7) row += pic !== '.' ? pic : 'e';
+      else if (d <= 5.8) row += pic !== '.' ? pic : 'R';
+      else if (d <= 6.7) row += 'k';
+      // The ribbon's two tails hang down behind the medal.
+      else if (y >= 11 && ((x >= 3 && x <= 6) || (x >= 9 && x <= 12))) {
+        const edge = x === 3 || x === 6 || x === 9 || x === 12 || y === 15;
+        row += edge ? 'k' : 'p';
+      } else row += '.';
+    }
+    rows.push(row);
+  }
+  return pixelIcon(rows, { R: ring });
+}
+
+export const MILESTONE_ICONS: Record<string, string> = {
+  // A map pin.
+  explorer: medalIcon([
+    '..kkkk..',
+    '.krrrrk.',
+    'krrwwrrk',
+    'krrwwrrk',
+    '.krrrrk.',
+    '..krrk..',
+    '...kk...',
+    '..kkkk..',
+  ], PALETTE.leaf),
+  // Two paw prints.
+  travelBuddies: medalIcon([
+    'u..u....',
+    '.uu.....',
+    'uuuu....',
+    '.uu.....',
+    '....u..u',
+    '.....uu.',
+    '....uuuu',
+    '.....uu.',
+  ], PALETTE.sky),
+  // Percy's parcel, all tied up.
+  goldOrder: medalIcon([
+    '........',
+    'kkkkkkkk',
+    'kyyrryyk',
+    'kkkrrkkk',
+    'kyyrryyk',
+    'kyyrryyk',
+    'kyyrryyk',
+    'kkkkkkkk',
+  ], PALETTE.butter),
+  // A big star.
+  threeStar: medalIcon([
+    '...kk...',
+    '..kyyk..',
+    'kkkyykkk',
+    'kyyyyyyk',
+    '.kyyyyk.',
+    '.kyykyyk',
+    '.kyk.kyk',
+    '.kk...kk',
+  ], PALETTE.lilac),
+  // An open recipe book.
+  allRecipes: medalIcon([
+    'kkkkkkkk',
+    'kwwwkwwk',
+    'kwkkkkwk',
+    'kwwwkwwk',
+    'kwkkkkwk',
+    'kwwwkwwk',
+    'kkkkkkkk',
+    '...kk...',
+  ], PALETTE.peach),
+  // A fish.
+  allFish: medalIcon([
+    '........',
+    '..kkkk..',
+    '.ksssskk',
+    'kskssssk',
+    'kssssssk',
+    '.ksssskk',
+    '..kkkk..',
+    '........',
+  ], PALETTE.ocean),
+  // A little tree.
+  retired: medalIcon([
+    '..kkkk..',
+    '.kggggk.',
+    'kggmgggk',
+    'kgggggmk',
+    '.kggggk.',
+    '..kcck..',
+    '...cc...',
+    '..kcck..',
+  ], PALETTE.mint),
+  // A Revival Star with sparkles.
+  starMaker: medalIcon([
+    'y...k...',
+    '...kpk..',
+    '.kkpppkk',
+    '.kpppppk',
+    '..kpppk.',
+    '..kpkpk.',
+    '..kk.kk.',
+    '......y.',
+  ], PALETTE.pink),
 };
 
 // A star: a skill point, and a new Keeper level.

@@ -28,7 +28,7 @@ import { useFood, type ShopResult } from './economy';
 import { getCharacter, seededRoll } from './growth';
 import { addSeed, type CropId } from './garden';
 import { logMessage } from './messages';
-import { addTally } from './achievements';
+import { addTally, countUp } from './achievements';
 import { clampStat, isNight, isRecovering } from './stats';
 import { hasBackpack, isAway } from './presence';
 import { percyPerks } from './regulars';
@@ -404,6 +404,7 @@ function percyFlies(state: GameState, pet: Pet, at: number): GameState {
   let s = replacePet(state, changed);
   if (!find) return s;
   s = noteFound(giveFind(s, find), trip.place, [find]);
+  if (find.stars === 3) s = addTally(s, 'epicFinds');
   s = withPage(s, trip.place, (page) => ({ ...page, postcards: [{ name: pet.name, at }, ...page.postcards] }));
   return logMessage(s, { kind: 'courier', at, name: pet.name, place: trip.place, find });
 }
@@ -480,7 +481,7 @@ function callOneHome(state: GameState, now: number, petId: string): GameState {
 
 // Opens the backpack of a pet that's home: everything in it goes into the
 // inventory, and a finished trip goes into the travel journal and counts
-// for the Explorer badge. Returns what was in it.
+// for the journey badges. Returns what was in it.
 export function openBackpack(state: GameState, petId: string): { state: GameState; finds: Find[]; place: string | null } {
   const pet = allPets(state).find((p) => p.id === petId);
   if (!pet || !hasBackpack(pet)) return { state, finds: [], place: null };
@@ -488,6 +489,9 @@ export function openBackpack(state: GameState, petId: string): { state: GameStat
   let s = replacePet(state, { ...pet, trip: null });
   for (const f of trip.finds) s = giveFind(s, f);
   s = noteFound(s, trip.place, trip.finds);
+  // A 3-star find counts for Epic Finder even on a trip cut short: it's home.
+  const epic = trip.finds.filter((f) => f.stars === 3).length;
+  if (epic > 0) s = addTally(s, 'epicFinds', epic);
   if (!trip.early) {
     s = withPage(s, trip.place, (page) => ({
       ...page,
@@ -496,6 +500,10 @@ export function openBackpack(state: GameState, petId: string): { state: GameStat
       postcards: trip.percy === 'flown' ? page.postcards : [{ name: pet.name, at: trip.backAt! }, ...page.postcards],
     }));
     s = addTally(s, 'journeys');
+    if (trip.rarity === 'epic') s = addTally(s, 'adventures');
+    // Each pet's backpack counts, so a trip together counts twice: the
+    // Travel Buddies milestone only asks for one.
+    if (trip.with) s = countUp(s, 'together');
   }
   return { state: s, finds: trip.finds, place: trip.place };
 }

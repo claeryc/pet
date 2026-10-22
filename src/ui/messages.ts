@@ -21,8 +21,9 @@ import { isFull, orderTier } from '../game/delivery';
 import { isUnlocked, type UnlockId } from '../game/unlocks';
 import type { Find, GameState, Message } from '../game/state';
 import type { FoodId } from '../game/actions';
-import { ACHIEVEMENT_ICONS, ITEM_ICONS, SKILL_POINT_ICON, STAT_ICONS, UNKNOWN_ICON } from './icons';
+import { ACHIEVEMENT_ICONS, ITEM_ICONS, MILESTONE_ICONS, SKILL_POINT_ICON, STAT_ICONS, UNKNOWN_ICON } from './icons';
 import type { AchievementId } from '../game/achievements';
+import type { MilestoneId } from '../game/milestones';
 import { formatDuration, formatWhen } from './time';
 import { REGULARS, rewards, type RegularId } from '../game/regulars';
 import { regularRow, rewardName } from './regulars';
@@ -87,6 +88,8 @@ function text(m: Message): string {
       const A = STRINGS.achievements;
       return A.earned(A.names[m.id as AchievementId] ?? m.id, A.tiers[m.tier]);
     }
+    case 'milestone':
+      return STRINGS.milestones.earned(STRINGS.milestones.names[m.id as MilestoneId] ?? m.id);
     case 'level':
       return STRINGS.skills.levelUp(m.level);
     case 'tripHome':
@@ -147,11 +150,13 @@ function liveOrder(state: GameState, now: number, cb: MessagesActions): HTMLElem
 function messageRow(m: Message, now: number): HTMLElement {
   const row = el('div', `shop-row mail-row kind-${m.kind}`);
   if (m.kind === 'pickup' || m.kind === 'badge') row.dataset.tier = m.tier;
+  if (m.kind === 'milestone') row.dataset.tier = 'milestone';
   const icon = el('span', 'drawer-option-icon');
   icon.innerHTML =
     m.kind === 'order' || m.kind === 'pickup' ? ITEM_ICONS.parcel
     : m.kind === 'visitor' || m.kind === 'littleOne' ? ITEM_ICONS.meet
     : m.kind === 'badge' ? ACHIEVEMENT_ICONS[m.id] ?? ITEM_ICONS.letter
+    : m.kind === 'milestone' ? MILESTONE_ICONS[m.id] ?? ITEM_ICONS.letter
     : m.kind === 'level' ? SKILL_POINT_ICON
     : m.kind === 'tripHome' ? ITEM_ICONS.journey
     : m.kind === 'courier' || m.kind === 'regular' ? ITEM_ICONS.percy

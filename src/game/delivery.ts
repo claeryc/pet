@@ -12,7 +12,7 @@
 // the game is closed (simulate() calls stepDelivery()).
 
 import { CONFIG } from './config';
-import { addTally } from './achievements';
+import { addTally, countUp } from './achievements';
 import { addXp } from './skills';
 import type { Food, FoodId } from './actions';
 import { foodCount, useFood } from './economy';
@@ -218,6 +218,7 @@ function pickUp(state: GameState, order: Order): GameState {
   if (drink) s = { ...s, inventory: { ...s.inventory, food: { ...s.inventory.food, energyDrink: (s.inventory.food.energyDrink ?? 0) + 1 } } };
   const tier = orderTier(order.boxes);
   if (tier !== 'none') s = addXp(addTally(s, 'deliveries'), CONFIG.skills.deliveryXp[tier]);
+  if (tier === 'gold') s = countUp(s, 'goldOrders'); // for the Golden Parcel milestone
   // A new heart's message goes in first, so it reads above the pickup.
   const before = getRegular(s, 'percy').score;
   s = addRegular(s, 'percy', pickupPoints(tier), order.pickupAt);

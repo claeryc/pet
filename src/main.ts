@@ -148,10 +148,11 @@ function setState(next: GameState): void {
   }
   showLevels(progress.levels);
   showFragments(progress.fragments);
-  if (progress.badges.length > 0) sound('badge');
+  if (progress.badges.length > 0 || progress.milestones.length > 0) sound('badge');
   else if (progress.unlocked.length > 0) sound('unlock');
   const notices = [
     ...progress.badges.map((b) => STRINGS.achievements.earned(STRINGS.achievements.names[b.id], STRINGS.achievements.tiers[b.tier])),
+    ...progress.milestones.map((id) => STRINGS.milestones.earned(STRINGS.milestones.names[id])),
     ...progress.unlocked.map((id) => STRINGS.unlocked[id]),
   ];
   if (needsName(state)) {
@@ -1014,6 +1015,7 @@ showLevels(startup.levels); // levels reached while away (Percy's pickups)
 showFragments(startup.fragments);
 tryCheckIn();
 if (saved) showAway(saved, saved.lastUpdated);
+home.showTripIfEmpty(); // nobody home: open on the trip, not the empty room
 
 // Draw the pet every animation frame (about 60 times a second). The sprite
 // sheet comes from the pet's stage or character (see src/data/characters.json).
@@ -1087,5 +1089,6 @@ document.addEventListener('visibilitychange', () => {
     tryCheckIn();
     if (leftAs) showAway(leftAs.state, leftAs.at);
     leftAs = null;
+    home.showTripIfEmpty();
   }
 });

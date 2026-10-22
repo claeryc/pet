@@ -1,7 +1,8 @@
 // The Collection page inside the gear menu: every character, recipe and
 // fish there is to find, and the achievements. Found ones show their
 // picture, name and stars; the rest are a "???" to aim for. Achievements
-// show their badge (bronze, silver or gold) and how far it is to the next.
+// show their badge (bronze, silver or gold) and how far it is to the next;
+// Milestones are one badge each, with a medal of their own.
 // Each category folds up into a grid of pictures, like the Shop.
 
 import { STRINGS } from '../strings';
@@ -13,7 +14,8 @@ import type { GameState } from '../game/state';
 import type { Food, FoodId } from '../game/actions';
 import { category, label, row, type Entry } from './shop';
 import { ACHIEVEMENTS, badgeCount, badgeOf, nextGoal, tallyOf, type AchievementId } from '../game/achievements';
-import { ACHIEVEMENT_ICONS, ITEM_ICONS, UNKNOWN_ICON } from './icons';
+import { ACHIEVEMENT_ICONS, ITEM_ICONS, MILESTONE_ICONS, UNKNOWN_ICON } from './icons';
+import { MILESTONES, hasMilestone, type MilestoneId } from '../game/milestones';
 import { journalCategory } from './journeys';
 
 export interface CollectionCallbacks {
@@ -70,6 +72,17 @@ function achievement(state: GameState, id: AchievementId): Entry {
   return { icon: ACHIEVEMENT_ICONS[id], row: el, faded: !tier, tier: tier ?? undefined };
 }
 
+// One Milestone badge: its medal (dimmed until earned), its name and how to
+// earn it. Earned ones get the milestone colours instead of a tier.
+function milestone(state: GameState, id: MilestoneId): Entry {
+  const M = STRINGS.milestones;
+  const done = hasMilestone(state, id);
+  const el = row(MILESTONE_ICONS[id], M.names[id], done ? `${M.goals[id]} · ${M.done}` : M.goals[id], label(''));
+  el.classList.add('achievement-row', 'milestone-row');
+  el.dataset.tier = done ? 'milestone' : 'none';
+  return { icon: MILESTONE_ICONS[id], row: el, faded: !done, tier: done ? 'milestone' : undefined };
+}
+
 const foodStars = (id: string) => (CONFIG.foods as readonly Food[]).find((f) => f.id === id)?.stars ?? 0;
 
 export function collectionPage(state: GameState, cb: CollectionCallbacks, open: Set<string>): HTMLElement[] {
@@ -97,9 +110,11 @@ export function collectionPage(state: GameState, cb: CollectionCallbacks, open: 
     STRINGS.collection.count(name, list.filter((e) => !e.faded).length, list.length);
   const achievements = ACHIEVEMENTS.map((id) => achievement(state, id));
   const badges = badgeCount(state);
+  const milestones = MILESTONES.map((id) => milestone(state, id));
   return [
     category('achievements', STRINGS.collection.count(STRINGS.collection.achievements, badges.earned, badges.total),
       achievements, open),
+    category('milestones', title(STRINGS.collection.milestones, milestones), milestones, open),
     category('characters', title(STRINGS.collection.characters, characters), characters, open),
     category('recipes', title(STRINGS.collection.recipes, recipes), recipes, open),
     category('catches', title(STRINGS.collection.catches, fish), fish, open),

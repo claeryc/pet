@@ -33,7 +33,7 @@ import { createCraft, type Craft } from './craft';
 import { createBackpack } from './backpack';
 import type { ShopCategory } from './shop';
 import { createFx, type Gains } from './fx';
-import { hasBackpack, isAway } from '../game/presence';
+import { hasBackpack, isAway, nobodyHome } from '../game/presence';
 import { formatClock } from './time';
 import { createJourneys, JOURNEYS_OUT_MS } from './journeys';
 import { createTripView, tripNotes } from './trip';
@@ -85,6 +85,8 @@ export interface HomeScreen {
   deliveryScene: () => DeliveryScene | null; // ...or Percy's meadow, for his order
   meetScene: () => { friend: Friend; hearts: boolean } | null; // a friend over to play
   tripScene: () => { place: string; pets: Pet[] } | null; // looking at the current trip
+  // With every pet out on a journey, shows the trip instead of the empty room.
+  showTripIfEmpty: () => void;
 }
 
 // Pixel icons drawn on a 12x12 grid, so they match the pixel-art style.
@@ -717,6 +719,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     onExit: () => {
       stats.hidden = latest?.state.pet.stage === 'egg';
       showActions(JOURNEYS_OUT_MS);
+      // The last pet just set off: follow it rather than look at an empty room.
+      showTripIfEmpty();
     },
     onWater: () => {
       stats.hidden = false;
@@ -758,6 +762,14 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       return;
     }
     if (latest) tripNotes(latest.state).forEach((p, i) => noteBtns[i].classList.toggle('is-open', p.id === petId));
+  }
+  // With nobody home the room is empty, so the trip shows instead (the
+  // first one, when two pets went to different places). Close still goes
+  // back to the room.
+  function showTripIfEmpty(): void {
+    if (!latest || !nobodyHome(latest.state) || trip.active()) return;
+    const pet = tripNotes(latest.state)[0];
+    if (pet) toggleTrip(pet.id);
   }
   // Off to another scene: the normal buttons go, and the parcel and the
   // craving bubble with them, straight away rather than on the next tick.
@@ -1071,5 +1083,6 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     deliveryScene: () => delivery.scene(),
     meetScene: () => meet.scene(),
     tripScene: () => trip.scene(),
+    showTripIfEmpty,
   };
 }
