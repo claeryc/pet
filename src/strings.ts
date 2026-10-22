@@ -4,6 +4,9 @@
 // A share (0-1) as a whole percent.
 const pct = (share: number) => Math.round(share * 100);
 
+// Words on a guide card, some with the pet's name in them.
+export type GuideText = string | ((pet: string) => string);
+
 export const STRINGS = {
   stats: {
     hunger: 'Tummy',
@@ -314,10 +317,130 @@ export const STRINGS = {
     familyTree: 'Family Tree',
     messages: 'Messages',
     journeys: 'Journeys',
+    guide: 'Guide',
     new: 'New',
     comingSoon: 'Coming soon',
     back: 'Back',
     close: 'Close',
+  },
+  // The "How it works" cards (see src/ui/guide.ts), page for page with
+  // the pictures in src/ui/guidePages.ts.
+  guide: {
+    howItWorks: 'How it works',
+    title: 'Guide',
+    skip: 'Skip',
+    back: '‹ Back',
+    next: 'Next ›',
+    gotIt: 'Got it!',
+    close: 'Close',
+    done: 'Done',
+    hold: 'Hold',
+    readAgain: 'Read it again any time in Menu › Guide',
+    intro: 'How each part of the game works. New ones open up as you play.',
+    locked: 'Opens up as you play',
+    pages: (n: number) => (n === 1 ? '1 page' : `${n} pages`),
+    read: 'Read',
+    unread: 'Not read yet',
+    guides: {
+      basics: {
+        name: (pet: string) => `Looking after ${pet}`,
+        pages: [
+          { title: (pet: string) => `Meet ${pet}!`, text: (pet: string) => `${pet} has four needs: Tummy, Joy, Health and Energy. Keep the bars from running low.` },
+          { title: 'Feed and play', text: 'Tap Feed for snacks and Play for cuddles, tickles and games. Each one fills a different bar.' },
+          { title: 'Lights off for bed', text: (pet: string) => `When Energy runs low, tap the moon so ${pet} can sleep. Time keeps going while the game is closed.` },
+        ],
+      },
+      shop: {
+        name: 'The Shop',
+        pages: [
+          { title: 'Spend your gold', text: 'Food, seeds, hats and more. Tap a price to buy. Gold comes from daily check-ins, cravings and Percy.' },
+          { title: 'Hats on!', text: 'Hold your pet to open the Wardrobe, then tap Wear to try on a hat you bought.' },
+        ],
+      },
+      garden: {
+        name: 'Garden',
+        pages: [
+          { title: 'Plant a seed', text: 'Pick an empty pot, tap Plant and choose a seed. You can buy more seeds in the Shop.' },
+          { title: 'Water it just right', text: 'Hold Water and let go in the green. A perfect pour keeps the soil wet for longer.' },
+          { title: 'Harvest', text: 'Plants keep growing while the game is closed. When a pot is ready, tap Harvest to pick it.' },
+        ],
+      },
+      fishing: {
+        name: 'Fishing',
+        pages: [
+          { title: 'Cast your line', text: 'Tap Cast to throw your line into the pond. Each cast uses a little energy.' },
+          { title: 'Wait for the !', text: 'Watch the line. When a ! pops up, tap Reel in quickly. Tap too soon and nothing is there.' },
+          { title: 'Keep the dot on green', text: 'Hold Pull to move the dot right, let go to drift back. Stay on green to fill the meter and land the fish.' },
+        ],
+      },
+      cooking: {
+        name: 'Cooking',
+        pages: [
+          { title: 'Fill the pot', text: 'Tap food in your pantry to put it in the pot, up to three things. Then tap the bowl on the right to cook!' },
+          { title: 'Find secret recipes', text: 'Recipes lists every dish. The ??? ones are secret: the hint shows one thing that goes in.' },
+          { title: 'Fresh from the pot', text: (pet: string) => `Feed your dish to ${pet} or pack it for a journey. A mix that makes nothing good is a Mushy mess; try another!` },
+        ],
+      },
+      delivery: {
+        name: "Percy's orders",
+        pages: [
+          { title: 'A parcel from Percy', text: 'Percy the pigeon drops off an order now and then. Tap the parcel in the room to see what he needs.' },
+          { title: 'Fill the boxes', text: 'Tap a box to put one in, and − to take it back out. A full box turns green. Fill all fills what it can.' },
+          { title: 'Pickup time', text: 'When the timer runs out Percy picks up every full box and pays gold. All boxes full earns a bonus!' },
+        ],
+      },
+      craving: {
+        name: 'Cravings',
+        pages: [
+          { title: (pet: string) => `${pet} has a craving!`, text: (pet: string) => `Now and then ${pet} would love one thing. The bubble shows what it is.` },
+          { title: 'Feed it in time', text: 'Open Feed: the craved food is at the top. Feed it before the bubble goes for extra joy, Care and gold.' },
+        ],
+      },
+      journeys: {
+        name: 'Journeys',
+        pages: [
+          { title: 'Pick a trip', text: 'New tickets come in through the day. A Stroll is short, an Adventure is long and finds better things.' },
+          { title: "Who's going?", text: 'Teens and grown-ups can go, if they are awake and feeling well. Two pets can go together.' },
+          { title: 'Pack a lunch', text: 'Food keeps the tummy full and a drink keeps energy up. A charm finds better things. Then close the lid!' },
+          { title: 'Open the backpack', text: 'Your pet is away for a few hours, even with the game closed. Back home, open the backpack to see the finds!' },
+        ],
+      },
+      meet: {
+        name: 'Friends',
+        pages: [
+          { title: 'Someone is visiting!', text: 'Other pets drop by now and then. Tap Meet to play together while they are here.' },
+          { title: 'Grow a friendship', text: 'Meet every day and give gifts to fill the hearts. Open Gift to hand over a snack.' },
+          { title: 'Add a friend', text: 'Tap Add friend to keep them. Friends come back on their own, and you can invite one a day from Messages.' },
+        ],
+      },
+      family: {
+        name: 'Little ones',
+        pages: [
+          { title: 'Mingle', text: 'A grown-up with full hearts can Mingle with a friend. With luck, a little one arrives as an egg!' },
+          { title: 'The Family Tree', text: 'The room fits two pets. Pets who retire or pass away rest in Menu › Family Tree with their family.' },
+        ],
+      },
+      skills: {
+        name: 'Skills',
+        pages: [
+          { title: 'Keeper levels', text: 'Fishing, gardening, cooking and raising pets give XP. Each new Keeper level gives a skill point.' },
+          { title: 'Learn a skill', text: 'Tap a skill to read it, then Learn it with a point. Skills stay for every pet, and you can take points back.' },
+        ],
+      },
+      sick: {
+        name: 'Sick pets',
+        pages: [
+          { title: (pet: string) => `${pet} is sick`, text: (pet: string) => `A sick pet needs medicine. Tap Give medicine. Wait too long and ${pet} gets very sick.` },
+          { title: 'Revival Stars', text: 'If a pet passes away, a Revival Star brings them back. Good care days give star fragments, and five make a star.' },
+        ],
+      },
+      collection: {
+        name: 'Collection',
+        pages: [
+          { title: 'Your Collection', text: 'Every character, recipe and badge you find is kept here. Badges go from bronze to silver to gold.' },
+        ],
+      },
+    } as Record<string, { name: GuideText; pages: { title: GuideText; text: GuideText }[] }>,
   },
   debug: {
     title: 'Testing tools',

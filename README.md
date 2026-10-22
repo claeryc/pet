@@ -26,6 +26,7 @@ Want to draw your own pet? See [docs/ART_GUIDE.md](docs/ART_GUIDE.md).
 - `public/sprites/` — the sprite sheets and `manifest.json`, which lists them.
 - `src/render/` — drawing the pet on the canvas, the colour palette and sprites.
 - `src/ui/` — the screens and buttons.
+- `public/guides/` — the pictures on the "How it works" guide cards, cut from screenshots of the game (see `src/ui/guidePages.ts`).
 - `src/storage/` — saving and loading.
 - `src/audio/` — music and sound effects. The files are in `public/audio/`, and `public/audio/CREDITS.md` says where each came from and its licence.
 - `src/strings.ts` — all the text the player sees.

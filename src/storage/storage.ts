@@ -9,12 +9,13 @@ import { newGarden } from '../game/garden';
 import { newJourneys, newKeeper } from '../game/state';
 import { grownUpXp, levelInfo } from '../game/skills';
 import { getCharacter } from '../game/growth';
+import { guidesAlreadyKnown } from '../game/guides';
 
 const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 19;
+export const SAVE_VERSION = 20;
 
 export interface SaveFile {
   version: number;
@@ -208,6 +209,13 @@ export function migrate(save: SaveFile): SaveFile {
     }
     st.journeys = newJourneys();
     save.version = 19;
+  }
+  // Version 19 -> 20: "How it works" guides. Players who already got this
+  // far aren't shown guides for what they know; they're all in Menu > Guide.
+  if (save.version === 19) {
+    const st = save.state;
+    st.guidesRead = guidesAlreadyKnown({ ...st, pet: st.pet ?? {}, unlocked: st.unlocked ?? [] } as GameState);
+    save.version = 20;
   }
   return save;
 }

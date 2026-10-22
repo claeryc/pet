@@ -1,6 +1,6 @@
 // The menu inside the gear button's panel (it opens like Feed and Play). It
 // has a main list (Shop, Messages, Journeys, Collection, Skills, Family Tree,
-// Settings) and a page for each, plus the Wardrobe, which opens when you
+// Guide, Settings) and a page for each, plus the Wardrobe, which opens when you
 // hold the pet. The Journeys tile opens Journeys over the stat bars, as
 // Play > Journeys does.
 // Shop, Collection and Family Tree only appear once they've opened up (see
@@ -12,7 +12,7 @@ import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import type { GameState } from '../game/state';
 import { isNew, isUnlocked, type UnlockId } from '../game/unlocks';
-import { MENU_ICONS } from './icons';
+import { LOCK_ICON, MENU_ICONS } from './icons';
 import { goldPill, shopPage, wardrobePage, type ShopCallbacks } from './shop';
 import { collectionPage } from './collection';
 import { familyTreePage, type FamilyCallbacks, type TreeView } from './family';
@@ -24,6 +24,8 @@ import { TREES, pointsToSpend } from '../game/skills';
 import { audioSettings, setAudioSettings } from '../audio/audio';
 import type { JourneysCallbacks } from './journeys';
 import { hasBackpack } from '../game/presence';
+import { GUIDES, guideOpen, type GuideId } from '../game/guides';
+import { GUIDE_ICONS, guideName, guidePageCount } from './guide';
 
 export interface DebugCallbacks {
   onFastForward: (hours: number) => void;
@@ -43,6 +45,8 @@ export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks, FamilyCall
   onMessagesSeen: () => void; // the player opened Messages
   onRemoveFriend: (friend: string) => void;
   onInvite: (friend: string) => boolean; // true if they're coming over
+  onReadGuide: (id: GuideId) => void; // opened a guide in Menu > Guide
+  onGuide: (id: GuideId) => void; // got to a part of the game with a guide
 }
 
 // Things only the home screen can do, passed in by it.
@@ -103,7 +107,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
   // The pages redraw whenever the game changes (after buying something,
   // for example), so we remember which page is showing.
   let state: GameState | null = null;
-  let page: 'main' | 'settings' | 'shop' | 'wardrobe' | 'collection' | 'skills' | 'familyTree' | 'messages' = 'main';
+  let page: 'main' | 'settings' | 'shop' | 'wardrobe' | 'collection' | 'skills' | 'familyTree' | 'messages' | 'guide' = 'main';
 
   // Live readout for the testing tools, refreshed by update().
   const debugInfo = document.createElement('p');
@@ -151,12 +155,19 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     const grid = document.createElement('div');
     grid.className = 'menu-grid';
     grid.append(
-      ...unlockable('shop', STRINGS.menu.shop, () => showShop()),
+      ...unlockable('shop', STRINGS.menu.shop, () => {
+        showShop();
+        cb.onGuide('shop');
+      }),
       ...messagesItem(),
       ...journeysItem(),
-      ...unlockable('collection', STRINGS.menu.collection, () => showCollection()),
+      ...unlockable('collection', STRINGS.menu.collection, () => {
+        showCollection();
+        cb.onGuide('collection');
+      }),
       ...skillsItem(),
       ...unlockable('familyTree', STRINGS.menu.familyTree, () => showFamilyTree()),
+      ...(state && guideOpen(state, 'basics') ? [item(STRINGS.menu.guide, () => showGuide(), false, MENU_ICONS.guide)] : []),
       item(STRINGS.menu.settings, showSettings, false, MENU_ICONS.settings),
     );
     panel.replaceChildren(grid);
@@ -192,7 +203,10 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
 
   // Skills, with a dot while there's a point to spend.
   function skillsItem(): HTMLButtonElement[] {
-    const entry = unlockable('skills', STRINGS.menu.skills, () => showSkills());
+    const entry = unlockable('skills', STRINGS.menu.skills, () => {
+      showSkills();
+      cb.onGuide('skills');
+    });
     if (entry.length && state && pointsToSpend(state) > 0 && !isNew(state, 'skills')) {
       const dot = document.createElement('span');
       dot.className = 'new-dot';
@@ -292,6 +306,53 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     showList('skills', fresh);
   };
   const showFamilyTree = (fresh = true) => showList('familyTree', fresh);
+
+  // The Guide: every "How it works" card, to read again. Ones not open yet
+  // are locked; ones not read yet have a dot.
+  function showGuide(fresh = true): void {
+    if (fresh) toTop();
+    page = 'guide';
+    const G = STRINGS.guide;
+    const intro = document.createElement('p');
+    intro.className = 'guide-intro';
+    intro.textContent = G.intro;
+    const list = document.createElement('div');
+    list.className = 'guide-list';
+    const pet = state?.pet.name ?? '';
+    for (const id of GUIDES) {
+      const open = !!state && guideOpen(state, id);
+      const read = !!state && state.guidesRead.includes(id);
+      const row = document.createElement('button');
+      row.className = 'guide-row';
+      row.disabled = !open;
+      const icon = document.createElement('span');
+      icon.className = 'guide-row-icon';
+      icon.innerHTML = open ? GUIDE_ICONS[id] : LOCK_ICON;
+      const text = document.createElement('span');
+      text.className = 'guide-row-text';
+      const name = document.createElement('b');
+      name.textContent = open ? guideName(id, pet) : '???';
+      const about = document.createElement('small');
+      about.textContent = open ? `${G.pages(guidePageCount(id))}${read ? ` · ${G.read}` : ''}` : G.locked;
+      text.append(name, about);
+      row.append(icon, text);
+      if (open) {
+        const go = document.createElement('span');
+        go.className = 'guide-row-go';
+        if (!read) {
+          const dot = document.createElement('span');
+          dot.className = 'new-dot';
+          dot.setAttribute('aria-label', G.unread);
+          go.append(dot);
+        }
+        go.append('›');
+        row.append(go);
+        row.addEventListener('click', () => cb.onReadGuide(id));
+      }
+      list.append(row);
+    }
+    panel.replaceChildren(header(G.title, showMain), intro, list);
+  }
 
   function debugSection(): HTMLElement {
     const section = document.createElement('div');
@@ -435,7 +496,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
           s.gold, s.inventory, s.pet.hat, s.pet.stage, s.unlocked, s.seen, s.showAllMenus,
           s.recipesFound, s.caught, s.charactersFound, s.pet.name, s.pet.named, s.owner, s.family,
           s.messages, s.messagesSeenAt, s.keeper, s.delivery, s.friends, s.visit.guest, s.housemates.map((p) => [p.id, p.name, p.stage]),
-          s.journeys, [s.pet, ...s.housemates].map((p) => [p.id, p.trip?.backAt, p.trip?.percy]),
+          s.journeys, [s.pet, ...s.housemates].map((p) => [p.id, p.trip?.backAt, p.trip?.percy]), s.guidesRead,
           page === 'messages' && Math.floor(s.lastUpdated / 60_000),
           page === 'familyTree' && [Object.values(s.pet.stats).map(Math.round), Math.floor(s.lastUpdated / 3_600_000)],
         ]);
@@ -449,6 +510,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
         else if (isOpen() && page === 'skills') showSkills(false);
         else if (isOpen() && page === 'familyTree') showFamilyTree(false);
         else if (isOpen() && page === 'messages') showMessages(false);
+        else if (isOpen() && page === 'guide') showGuide(false);
       }
       const p = next.pet;
       debugInfo.textContent = `${STRINGS.debug.careScore}: ${p.careScore.toFixed(1)} · ${STRINGS.debug.condition}: ${p.condition} · ${STRINGS.debug.character}: ${p.character ?? '-'}${p.variant ? ` (${p.variant})` : ''}`;
