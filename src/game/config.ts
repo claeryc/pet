@@ -66,6 +66,14 @@ export const CONFIG = {
     { minCare: 20, odds: { 1: 60, 2: 35, 3: 5 } },
     { minCare: 0, odds: { 1: 90, 2: 10, 3: 0 } },
   ],
+  // The same, for a little one whose parents both grew into 3-star
+  // characters: never 1 star, and good care makes 3 stars likely.
+  rarityStarParents: [
+    { minCare: 80, odds: { 1: 0, 2: 20, 3: 80 } },
+    { minCare: 50, odds: { 1: 0, 2: 35, 3: 65 } },
+    { minCare: 20, odds: { 1: 0, 2: 50, 3: 50 } },
+    { minCare: 0, odds: { 1: 0, 2: 65, 3: 35 } },
+  ],
 
   // How many points each stat loses per hour while awake, when nothing else
   // is going on. 4/hour means a full tummy empties in about 25 hours.

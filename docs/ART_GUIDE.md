@@ -6,8 +6,8 @@ This explains how the pet's art is organised, how to draw a character in Aseprit
 
 - Every pet looks the same as an **egg**, a **baby** and a **teen**.
 - When the teen grows up, it becomes an adult **character**. Each character has a **theme** (Basic, Nature, Cave, Sparkle) and a **rarity** of 1 to 3 stars.
-- Good care during the baby and teen days raises the chance of a rarer character. The odds are in `src/game/config.ts` under `rarity`.
-- A character can have **colour variants** (for example an Amber Pebblit). A variant is just another sheet with a chance of appearing.
+- Good care during the baby and teen days raises the chance of a rarer character. The odds are in `src/game/config.ts` under `rarity`. A little one whose parents both grew into 3-star characters uses `rarityStarParents` instead, so it's never 1 star.
+- A character can have **colour variants** (for example an Amber Pebblit). A variant is just another sheet with a chance of appearing, either drawn or made by swapping palette colours (see [Adding a colour variant](#adding-a-colour-variant)).
 
 Each theme has a common (★), an uncommon (★★) and a rare (★★★) character:
 
@@ -119,6 +119,25 @@ A new **theme** is one more line under `"themes"` in `characters.json`, then cha
 
 ## Adding a colour variant
 
+There are two ways. A **recolour** is the quickest, and a **drawn variant** gives you full control.
+
+### A recolour (no drawing)
+
+If the variant is the same drawing with some palette colours swapped, list it in `manifest.json` with the sheet it's made `from` and the swaps, using palette names. It has no PNG of its own. The game repaints it when it loads, every animation row included, and it uses the original's shape and idle moves:
+
+```json
+"dumpling-matcha": { "from": "dumpling", "recolour": { "cream": "mint", "peach": "leaf" } }
+```
+
+All the swaps happen at once, and each one changes that colour **everywhere** on the sheet. If the face or a highlight uses a colour you're swapping, draw that bit in a different palette colour on the original. **Check it before you add it.** `npm run export-art` (or `npm run export-art -- --previews`, which doesn't need Aseprite) writes two files per recolour to `art/previews/`:
+
+- `dumpling-matcha-x4.png`: the original and the recolour side by side, 4 times bigger, every animation row.
+- `dumpling-matcha.png`: the recolour at its real size. If it's nearly right, open it in Aseprite, fix it up, and save it as a drawn variant instead (below).
+
+When it looks good, add the variant to `characters.json` as in step 3 below, with `"sheet": "dumpling-matcha"`.
+
+### A drawn variant
+
 1. Save a copy of the character's file, for example `art/characters/cave/geodon-frost.aseprite`, and recolour it (Edit → Replace Color helps).
 2. Export it to `public/sprites/characters/cave/geodon-frost.png` and add it to `manifest.json` with the same `shape` as the character.
 3. In `characters.json`, give the character a `variants` list. `chance` is the percent of these characters that get the variant:
@@ -209,7 +228,9 @@ To change them, draw over the frames, then export with **Sheet type: Horizontal 
 
 ## Exporting a sheet from Aseprite
 
-File → Export Sprite Sheet (Ctrl+E):
+**All at once:** run `npm run export-art`. It exports every file in `art/` to the matching PNG in `public/sprites/` with the settings below (one row per tag, in tag order; hats and badges as one strip; no guides). It finds Aseprite in the usual install folders. If yours is elsewhere, set `ASEPRITE` to its path. Add words to export only some files, e.g. `npm run export-art -- pebblit hats`. It warns when a sheet changes size, which usually means a tag or frame went missing.
+
+**One by hand:** File → Export Sprite Sheet (Ctrl+E):
 
 - **Layout** tab: Sheet type **By Rows**.
 - **Sprite** tab: Layers **Visible layers**, and tick **Split Tags**, so each tag gets its own row.

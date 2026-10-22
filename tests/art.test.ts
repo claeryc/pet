@@ -2,13 +2,24 @@ import { describe, expect, it } from 'vitest';
 import data from '../src/data/characters.json';
 import manifest from '../public/sprites/manifest.json';
 import hatData from '../src/data/hats.json';
-import { pickHatFrame, type IdleSet, type Shape } from '../src/render/sprites';
+import { PALETTE } from '../src/render/palette';
+import { recolourPixels } from '../src/render/recolour';
+import {
+  pickHatFrame,
+  resolveSheet,
+  type IdleSet,
+  type ManifestFile,
+  type Shape,
+} from '../src/render/sprites';
 
 // Every PNG in public/sprites, as paths like "stages/egg.png".
 const pngs = Object.keys(import.meta.glob('../public/sprites/**/*.png')).map((p) =>
   p.replace('../public/sprites/', ''),
 );
-const sheetFiles: Record<string, { file: string; shape?: string; idleSet?: string }> = manifest.sheets;
+// Recoloured sheets are filled in from the sheet they're painted from.
+const sheetFiles = Object.fromEntries(
+  Object.keys(manifest.sheets).map((name) => [name, resolveSheet(manifest as ManifestFile, name)]),
+);
 const shapes: Record<string, Shape> = manifest.shapes as Record<string, Shape>;
 const idleSets: Record<string, IdleSet> = manifest.idleSets;
 
@@ -57,6 +68,19 @@ describe('art files', () => {
     expect(pngs).toContain(sheetFiles[sheet].file);
   });
 
+  it.each(Object.entries(manifest.sheets as ManifestFile['sheets']).filter(([, s]) => s.from || s.recolour))(
+    'recoloured sheet "%s" is made from a sheet with a file, with palette colours',
+    (_, sheet) => {
+      expect(manifest.sheets[sheet.from as keyof typeof manifest.sheets]).toHaveProperty('file');
+      expect(sheet).not.toHaveProperty('file');
+      const names = Object.keys(PALETTE);
+      for (const [from, to] of Object.entries(sheet.recolour ?? {})) {
+        expect(names).toContain(from);
+        expect(names).toContain(to);
+      }
+    },
+  );
+
   it('the achievement tier pictures exist', () => {
     expect(pngs).toContain('badges/tiers.png');
   });
@@ -79,6 +103,35 @@ describe('art files', () => {
   it('character ids are unique', () => {
     const ids = data.characters.map((c) => c.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe('recolouring', () => {
+  const rgba = (name: keyof typeof PALETTE, a = 255) => {
+    const n = parseInt(PALETTE[name].slice(1), 16);
+    return [n >> 16, (n >> 8) & 0xff, n & 0xff, a];
+  };
+
+  it('swaps listed palette colours and leaves the rest alone', () => {
+    const data = new Uint8ClampedArray([...rgba('cream'), ...rgba('peach'), ...rgba('ink')]);
+    expect(recolourPixels(data, { cream: 'mint', peach: 'leaf' }, PALETTE)).toEqual([]);
+    expect([...data]).toEqual([...rgba('mint'), ...rgba('leaf'), ...rgba('ink')]);
+  });
+
+  it('does every swap at once, so two colours can trade places', () => {
+    const data = new Uint8ClampedArray([...rgba('cream'), ...rgba('mint')]);
+    recolourPixels(data, { cream: 'mint', mint: 'cream' }, PALETTE);
+    expect([...data]).toEqual([...rgba('mint'), ...rgba('cream')]);
+  });
+
+  it('names swaps with colours that aren\'t in the palette', () => {
+    expect(recolourPixels(new Uint8ClampedArray(rgba('cream')), { cream: 'teal' }, PALETTE)).toEqual(['cream -> teal']);
+  });
+
+  it('keeps see-through pixels as they are', () => {
+    const data = new Uint8ClampedArray(rgba('cream', 0));
+    recolourPixels(data, { cream: 'mint' }, PALETTE);
+    expect([...data]).toEqual(rgba('cream', 0));
   });
 });
 
