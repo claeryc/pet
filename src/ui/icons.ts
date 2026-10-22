@@ -96,8 +96,8 @@ export const UNKNOWN_ICON = pixelIcon([
   '.....kk.....',
 ]);
 
-// The Revival Star: a chubby, smiling star with lilac and mint edges and a warm peach
-// underside, twinkling. Drawn larger (20 wide) than the other icons so the
+// The Revival Star: a chubby, smiling star with lilac and mint edges and
+// peach tips, twinkling. Drawn larger (20 wide) than the other icons so the
 // face fits; `b` is blush.
 const REVIVAL_STAR = [
   '........kkkk........',
@@ -113,11 +113,11 @@ const REVIVAL_STAR = [
   '..kyybbyykkyybbyyk..',
   '..kyyyyyyyyyyyyyyk..',
   '..klyyyyyyyyyyyymk..',
-  '..kloooyyyyyyooomk..',
-  '.kloooooooooooooomk.',
-  '.kloooookkkkooooomk.',
-  '.klrrook....koorrmk.',
-  '.kkrrrk......krrrkk.',
+  '..klyyyyyyyyyyyymk..',
+  '.klyyyyyyyyyyyyyymk.',
+  '.klyyyyykkkkyyyyymk.',
+  '.klyyyyk....kyyyymk.',
+  '.kkooyk......kyookk.',
   '..kkkk........kkkk..',
 ];
 
