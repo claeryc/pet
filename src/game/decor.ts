@@ -11,6 +11,7 @@ export interface Decor {
   kind: DecorKind;
   id: string;
   price: number;
+  earned?: boolean; // not sold: a regular gives it (see regulars.ts)
 }
 
 export const WALLPAPERS: Decor[] = CONFIG.room.wallpapers.map((w) => ({ kind: 'wallpaper', ...w }));
@@ -23,10 +24,11 @@ export function getDecor(kind: DecorKind, id: string): Decor | undefined {
 // How a decoration is stored in the inventory, e.g. "curtains:rose".
 export const decorKey = (kind: DecorKind, id: string) => `${kind}:${id}`;
 
-// Free decorations (the plain wall) are always yours.
+// Free decorations (the plain wall) are always yours; earned ones once
+// they're given.
 export function ownsDecor(state: GameState, kind: DecorKind, id: string): boolean {
   const d = getDecor(kind, id);
-  return !!d && (d.price === 0 || state.inventory.decor.includes(decorKey(kind, id)));
+  return !!d && ((d.price === 0 && !d.earned) || state.inventory.decor.includes(decorKey(kind, id)));
 }
 
 export function inUse(state: GameState, kind: DecorKind, id: string): boolean {

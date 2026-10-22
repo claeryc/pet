@@ -31,6 +31,7 @@ import { logMessage } from './messages';
 import { addTally } from './achievements';
 import { clampStat, isNight, isRecovering } from './stats';
 import { hasBackpack, isAway } from './presence';
+import { percyPerks } from './regulars';
 import type { Find, GameState, JournalPage, Offer, Pet, Rarity, Trip } from './state';
 
 const HOUR = 3_600_000;
@@ -354,7 +355,7 @@ export function goTogether(
       ...j,
       offers: j.offers.map((o, i) => (i === slot ? null : o)),
       refillAt: j.refillAt.map((at, i) => (i === slot ? now + J.refillHours * HOUR : at)),
-      percyFreeAt: percy ? now + (endsAt - now) / 2 + J.percy.restHours * HOUR : j.percyFreeAt,
+      percyFreeAt: percy ? now + (endsAt - now) / 2 + percyPerks(state).restHours * HOUR : j.percyFreeAt,
     },
   };
   return { state: lookAfterSomeoneHome(s) };
@@ -462,7 +463,7 @@ function callOneHome(state: GameState, now: number, petId: string): GameState {
   const pet = allPets(s).find((p) => p.id === petId)!;
   if (pet.trip!.percy === 'coming') {
     s = percyFlies(s, pet, now);
-    s = { ...s, journeys: { ...s.journeys, percyFreeAt: now + J.percy.restHours * HOUR } };
+    s = { ...s, journeys: { ...s.journeys, percyFreeAt: now + percyPerks(s).restHours * HOUR } };
   }
   const flown = allPets(s).find((p) => p.id === petId)!;
   const trip = flown.trip!;

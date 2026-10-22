@@ -17,6 +17,7 @@ import { goldPill, shopPage, wardrobePage, type ShopCallbacks, type ShopCategory
 import { collectionPage } from './collection';
 import { familyTreePage, type FamilyCallbacks, type TreeView } from './family';
 import { OWNER_MAX } from '../game/family';
+import type { RegularId } from '../game/regulars';
 import { messagesPage, type MessagesTab } from './messages';
 import { unreadMail } from '../game/messages';
 import { canLearnIn, showPickedSkill, skillsPage, type SkillsCallbacks, type SkillsView } from './skills';
@@ -45,6 +46,7 @@ export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks, FamilyCall
   onMessagesSeen: () => void; // the player opened Messages
   onRemoveFriend: (friend: string) => void;
   onInvite: (friend: string) => boolean; // true if they're coming over
+  onRegular: (id: RegularId) => void; // a regular's rewards card (Percy)
   onReadGuide: (id: GuideId) => void; // opened a guide in Menu > Guide
   onGuide: (id: GuideId) => void; // got to a part of the game with a guide
 }
@@ -244,6 +246,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
         },
         onRemoveFriend: cb.onRemoveFriend,
         onInvite: cb.onInvite,
+        onRegular: cb.onRegular,
         characterImage: cb.characterImage,
       }));
     }
