@@ -65,13 +65,14 @@ describe("Percy's hearts", () => {
     expect(s.messages.filter((m) => m.kind === 'regular')).toHaveLength(1);
   });
 
-  it('hand over the Courier Cap at 3 hearts and the Postmark wallpaper at 5', () => {
+  it('hand over the Courier Cap at 3 hearts and the Postmark wallpaper at 4', () => {
     let s = withScore(newTeen(START), 0, 0);
     s = addRegular(s, 'percy', 3 * HEART, START);
     expect(s.inventory.hats).toContain('courierCap');
     expect(ownsDecor(s, 'wallpaper', 'postmark')).toBe(false);
-    s = addRegular(s, 'percy', 2 * HEART, START);
+    s = addRegular(s, 'percy', HEART, START);
     expect(ownsDecor(s, 'wallpaper', 'postmark')).toBe(true);
+    s = addRegular(s, 'percy', HEART, START);
     expect(s.messages.filter((m) => m.kind === 'regular').map((m) => m.kind === 'regular' && m.hearts)).toEqual([1, 2, 3, 4, 5]);
   });
 
@@ -118,7 +119,7 @@ describe('Things only a regular gives', () => {
     expect(buyHat(s, 'courierCap').blocked).toBe('earnedOnly');
     expect(buyDecor(s, 'wallpaper', 'postmark').blocked).toBe('earnedOnly');
     expect(earnedFrom('hat', 'courierCap')).toEqual({ id: 'percy', hearts: 3 });
-    expect(earnedFrom('wallpaper', 'postmark')).toEqual({ id: 'percy', hearts: 5 });
+    expect(earnedFrom('wallpaper', 'postmark')).toEqual({ id: 'percy', hearts: 4 });
   });
 
   it('are all in some regular\'s rewards, and every reward exists', () => {

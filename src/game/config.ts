@@ -393,8 +393,8 @@ export const CONFIG = {
         { seed: 'pumpkin' },
         { payShare: 0.85 },
         { hat: 'courierCap' },
-        { seedChance: 0.65, seedOdds: { pumpkin: 55, dragonFruit: 45 } },
-        { wallpaper: 'postmark', restHours: 40 },
+        { seedChance: 0.65, seedOdds: { pumpkin: 55, dragonFruit: 45 }, wallpaper: 'postmark' },
+        { restHours: 40 },
       ],
       // Saves from before regulars start with this many points for every
       // order already filled, up to `max`.
@@ -571,7 +571,7 @@ export const CONFIG = {
       { id: 'dots', price: 150 },
       { id: 'checks', price: 180 },
       { id: 'stars', price: 240 },
-      // Not sold: Percy gives it at 5 hearts (see `regulars`).
+      // Not sold: Percy gives it at 4 hearts (see `regulars`).
       { id: 'postmark', price: 0, earned: true },
     ],
     curtains: [
