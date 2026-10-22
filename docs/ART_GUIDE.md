@@ -6,8 +6,8 @@ This explains how the pet's art is organised, how to draw a character in Aseprit
 
 - Every pet looks the same as an **egg**, a **baby** and a **teen**.
 - When the teen grows up, it becomes an adult **character**. Each character has a **theme** (Basic, Nature, Cave, Sparkle) and a **rarity** of 1 to 3 stars.
-- Good care during the baby and teen days raises the chance of a rarer character. The odds are in `src/game/config.ts` under `rarity`.
-- A character can have **colour variants** (for example an Amber Pebblit). A variant is just another sheet with a chance of appearing.
+- Good care during the baby and teen days raises the chance of a rarer character. The odds are in `src/game/config.ts` under `rarity`. A little one whose parents both grew into 3-star characters uses `rarityStarParents` instead, so it's never 1 star.
+- A character can have **colour variants** (for example an Amber Pebblit). A variant is just another sheet with a chance of appearing, either drawn or made by swapping palette colours (see [Adding a colour variant](#adding-a-colour-variant)).
 
 Each theme has a common (★), an uncommon (★★) and a rare (★★★) character:
 
@@ -118,6 +118,20 @@ That's it. No other file changes, and existing pets pick up the new look.
 A new **theme** is one more line under `"themes"` in `characters.json`, then characters can use it. Characters of the same rarity share that rarity's chance equally, whatever their theme.
 
 ## Adding a colour variant
+
+There are two ways. A **recolour** is the quickest, and a **drawn variant** gives you full control.
+
+### A recolour (no drawing)
+
+If the variant is the same drawing with some palette colours swapped, list it in `manifest.json` with the sheet it's made `from` and the swaps, using palette names. It has no PNG of its own. The game repaints it when it loads, every animation row included, and it uses the original's shape and idle moves:
+
+```json
+"dumpling-matcha": { "from": "dumpling", "recolour": { "cream": "mint", "peach": "leaf" } }
+```
+
+All the swaps happen at once, and each one changes that colour **everywhere** on the sheet. If the face or a highlight uses a colour you're swapping, draw that bit in a different palette colour on the original. Then add the variant to `characters.json` as in step 3 below, with `"sheet": "dumpling-matcha"`.
+
+### A drawn variant
 
 1. Save a copy of the character's file, for example `art/characters/cave/geodon-frost.aseprite`, and recolour it (Edit → Replace Color helps).
 2. Export it to `public/sprites/characters/cave/geodon-frost.png` and add it to `manifest.json` with the same `shape` as the character.

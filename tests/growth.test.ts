@@ -104,6 +104,31 @@ describe('choosing the adult character', () => {
     expect(amber).toBeCloseTo(0.25, 1);
   });
 
+  describe('little ones of two 3-star parents', () => {
+    const threeStars = CHARACTERS.filter((c) => c.stars === 3).slice(0, 2);
+    const parents = threeStars.map((c) => ({ character: c.id, variant: null }));
+    const shareOf = (care: number, stars: number, looks = parents) =>
+      ids.filter((id) => rollStars(care, id, looks) === stars).length / ids.length;
+
+    it('roll with the 3-star parents odds from the config', () => {
+      for (const band of CONFIG.rarityStarParents)
+        for (const stars of [1, 2, 3] as const)
+          expect(shareOf(band.minCare, stars)).toBeCloseTo(band.odds[stars] / 100, 1);
+    });
+
+    it('never grow into a 1-star character, even with poor care', () => {
+      expect(shareOf(0, 1)).toBe(0);
+      expect(shareOf(0, 3)).toBeGreaterThan(0);
+    });
+
+    it('only get the bonus when both parents are 3 stars', () => {
+      const oneStar = CHARACTERS.find((c) => c.stars === 1)!;
+      const mixed = [parents[0], { character: oneStar.id, variant: null }];
+      expect(shareOf(0, 1, mixed)).toBeCloseTo(CONFIG.rarity[CONFIG.rarity.length - 1].odds[1] / 100, 1);
+      expect(shareOf(0, 1, [parents[0]])).toBeGreaterThan(0);
+    });
+  });
+
   it('a grown-up pet keeps its character and uses its sheet', () => {
     let s = createNewGame(START);
     s = growNow(growNow(growNow(s, START), START), START);

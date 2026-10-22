@@ -15,7 +15,7 @@ const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 20;
+export const SAVE_VERSION = 21;
 
 export interface SaveFile {
   version: number;
@@ -216,6 +216,21 @@ export function migrate(save: SaveFile): SaveFile {
     const st = save.state;
     st.guidesRead = guidesAlreadyKnown({ ...st, pet: st.pet ?? {}, unlocked: st.unlocked ?? [] } as GameState);
     save.version = 20;
+  }
+  // Version 20 -> 21: pets remember what their parents grew into, for the
+  // 3-star parents bonus. Filled in from the family where we can.
+  if (save.version === 20) {
+    const st = save.state;
+    const pets: any[] = [st.pet, ...(st.housemates ?? [])].filter(Boolean);
+    const known = new Map<string, any>();
+    for (const m of [...(st.family ?? []), ...(st.friends ?? []), ...pets]) known.set(m.id, m);
+    for (const p of pets) {
+      p.parentLooks = (p.parents ?? []).map((id: string) => ({
+        character: known.get(id)?.character ?? null,
+        variant: known.get(id)?.variant ?? null,
+      }));
+    }
+    save.version = 21;
   }
   return save;
 }

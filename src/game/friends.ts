@@ -379,6 +379,7 @@ export function mingle(state: GameState, friendId: string, now: number, roll: nu
     generation: Math.max(parent.generation, friend.generation) + 1,
     parents: [parent.id, friend.id],
     themes: [...new Set(themes)],
+    parentLooks: [parent, friend].map((p) => ({ character: p.character, variant: p.variant })),
   });
   egg.careScore = startingCare(s); // the Gentle start skill
   s = withFriend(s, friendId, (f) => (f.partner = parent.id));

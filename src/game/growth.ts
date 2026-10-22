@@ -3,7 +3,8 @@
 // Each stage lasts a set time (CONFIG.growth.stageHours). Every egg, baby
 // and teen looks the same. When the teen grows up, the game picks which
 // *character* it becomes from src/data/characters.json:
-//   1. roll a star rarity, with better odds for a higher Care Score,
+//   1. roll a star rarity, with better odds for a higher Care Score (and
+//      better still for a little one of two 3-star parents),
 //   2. pick a character of that rarity (any theme, though a little one
 //      leans towards its parents' themes),
 //   3. maybe pick one of that character's colour variants.
@@ -11,7 +12,7 @@
 
 import { CONFIG } from './config';
 import data from '../data/characters.json';
-import type { Pet } from './state';
+import type { ParentLook, Pet } from './state';
 
 export type Stage = 'egg' | 'baby' | 'teen' | 'adult';
 export const STAGES: Stage[] = ['egg', 'baby', 'teen', 'adult'];
@@ -98,9 +99,15 @@ export function rollStarsWith(odds: Record<Stars, number>, roll: number): Stars 
   return pickByChance(([1, 2, 3] as Stars[]).map((s): [Stars, number] => [s, odds[s]]), roll) ?? 1;
 }
 
-// Rolls a star rarity for a Care Score.
-export function rollStars(careScore: number, petId: string): Stars {
-  const band = CONFIG.rarity.find((r) => careScore >= r.minCare) ?? CONFIG.rarity[CONFIG.rarity.length - 1];
+// True when both parents grew into 3-star characters.
+export function starParents(parentLooks: readonly ParentLook[]): boolean {
+  return parentLooks.length === 2 && parentLooks.every((l) => getCharacter(l.character)?.stars === 3);
+}
+
+// Rolls a star rarity for a Care Score (and the parents, if any).
+export function rollStars(careScore: number, petId: string, parentLooks: readonly ParentLook[] = []): Stars {
+  const table = starParents(parentLooks) ? CONFIG.rarityStarParents : CONFIG.rarity;
+  const band = table.find((r) => careScore >= r.minCare) ?? table[table.length - 1];
   return rollStarsWith(band.odds, seededRoll(petId, 'stars'));
 }
 
@@ -132,8 +139,9 @@ export function chooseCharacter(
   careScore: number,
   petId: string,
   themes: readonly string[] = [],
+  parentLooks: readonly ParentLook[] = [],
 ): { character: Character; variant: Variant | null } {
-  return characterOfStars(rollStars(careScore, petId), petId, themes);
+  return characterOfStars(rollStars(careScore, petId, parentLooks), petId, themes);
 }
 
 // Moves the pet into its next stage at time `t` (changes `pet` in place).
@@ -147,7 +155,7 @@ export function growUp(pet: Pet, t: number): void {
     pet.stats = { ...CONFIG.startingStats };
   }
   if (next === 'adult') {
-    const { character, variant } = chooseCharacter(pet.careScore, pet.id, pet.themes ?? []);
+    const { character, variant } = chooseCharacter(pet.careScore, pet.id, pet.themes ?? [], pet.parentLooks ?? []);
     pet.character = character.id;
     pet.variant = variant?.id ?? null;
   }

@@ -51,6 +51,9 @@ export interface Pet {
   // The themes of its parents' characters (none for a first pet). When it
   // grows up, characters of these themes are more likely (see growth.ts).
   themes: string[];
+  // What its parents grew into (none for a first pet). Two 3-star parents
+  // give better star odds when it grows up (see growth.ts).
+  parentLooks: ParentLook[];
   // The friend it had a little one with. A pet only ever has one partner.
   partner: string | null;
   // Brought back with a Revival Star: it keeps a faint star-glow.
@@ -59,6 +62,12 @@ export interface Pet {
   // opened), and when it can go on the next one (see src/game/journeys.ts).
   trip: Trip | null;
   tripReadyAt: number;
+}
+
+// Which character a parent grew into, and its colour variant.
+export interface ParentLook {
+  character: string | null;
+  variant: string | null;
 }
 
 export type Rarity = 'common' | 'rare' | 'epic';
@@ -354,8 +363,8 @@ export function makeId(): string {
 
 // A brand new egg. A little one gets its generation, parents and their
 // themes; a first pet has none.
-export function newPet(now: number, family: { generation: number; parents: string[]; themes: string[] } = {
-  generation: 1, parents: [], themes: [],
+export function newPet(now: number, family: { generation: number; parents: string[]; themes: string[]; parentLooks: ParentLook[] } = {
+  generation: 1, parents: [], themes: [], parentLooks: [],
 }): Pet {
   return {
     id: makeId(),
@@ -378,6 +387,7 @@ export function newPet(now: number, family: { generation: number; parents: strin
     buffs: [],
     hat: null,
     themes: [...family.themes],
+    parentLooks: family.parentLooks.map((l) => ({ ...l })),
     partner: null,
     starGlow: false,
     trip: null,
