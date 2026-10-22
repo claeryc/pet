@@ -18,7 +18,7 @@ import { createCooking, KITCHEN_OUT_MS } from './cooking';
 import { createGarden, GARDEN_OUT_MS } from './garden';
 import { createDelivery, DELIVERY_OUT_MS } from './delivery';
 import { unreadMail } from '../game/messages';
-import type { CropId } from '../game/garden';
+import { needsTending, type CropId } from '../game/garden';
 import { isNew, isUnlocked } from '../game/unlocks';
 import { pointsToSpend, reelPerks } from '../game/skills';
 import { petAt, ROOM_HEIGHT, ROOM_WIDTH } from '../render/canvas';
@@ -999,6 +999,9 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       const journeysIsNew = isNew(state, 'journeys');
       playDrawer.setOptionNew(JOURNEYS_ROW, journeysIsNew);
       playDrawer.setNew(gardenIsNew || meetIsNew || journeysIsNew);
+      // A drop on Play when a pot is dry, sick or ready to harvest.
+      const tend = isUnlocked(state, 'garden') && needsTending(state.garden, now);
+      playDrawer.setBadge(tend ? STAT_ICONS.drop : null, STRINGS.garden.needsYou);
       stats.hidden = isEgg || journeys.active() || trip.active(); // an egg has no needs yet
       canvas.setAttribute('aria-label', petAway ? STRINGS.blocked.away(pet.name) : isEgg ? STRINGS.mood.egg : STRINGS.mood[getLook(pet)](pet.name));
 

@@ -266,6 +266,7 @@ export const STRINGS = {
     harvest: 'Harvest',
     clear: 'Clear',
     start: 'Tap a pot in the garden to look after it.',
+    needsYou: 'A plant in the garden needs you',
     pot: (n: number) => `Pot ${n}`,
     empty: 'Empty',
     emptyHint: 'Empty. Tap Plant to sow a seed.',
