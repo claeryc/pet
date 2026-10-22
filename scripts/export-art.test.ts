@@ -19,9 +19,10 @@ describe('export-art', () => {
     expect(exportPlan('badges/tiers.aseprite')?.strip).toBe(true);
   });
 
-  it('skips the template, previews and other files', () => {
+  it('skips the template, previews, shelved art and other files', () => {
     expect(exportPlan('_template.aseprite')).toBeNull();
     expect(exportPlan('previews/dumpling-matcha.png')).toBeNull();
+    expect(exportPlan('shelved/bunbun.aseprite')).toBeNull();
     expect(exportPlan('characters/cave/notes.txt')).toBeNull();
   });
 });

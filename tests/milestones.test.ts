@@ -64,7 +64,7 @@ describe('milestones', () => {
     const s = newTeen(START);
     expect(updateMilestones(s).earned).toEqual([]);
     for (const p of PLACES) s.journeys.journal[p.id] = { trips: 1, postcards: [], found: [] };
-    s.charactersFound = ['dumpling', 'starwisp'];
+    s.charactersFound = ['dumpling', 'starhoot'];
     s.recipesFound = RECIPES.map((r) => r.id);
     s.caught = Object.keys(CONFIG.fishing.catchOdds.other);
     const out = updateMilestones(s);

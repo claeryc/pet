@@ -1,35 +1,49 @@
 {
-  "_help": "Every character a pet can grow into. See docs/ART_GUIDE.md. 'stages' lists the sheet used by every egg, baby and teen. Each adult character has a theme, a star rarity (1 = common, 3 = rare) and a sprite sheet from public/sprites/manifest.json. 'variants' are optional colour versions: each has its own sheet and a chance (in percent) of appearing; otherwise the pet uses the character's normal sheet. Adding a character is one new entry here plus its sheet in the manifest.",
+  "_help": "Every character a pet can grow into. See docs/ART_GUIDE.md. 'stages' lists the sheet used by every egg, baby and teen. Each adult character has a theme, a star rarity (1 = common, 3 = rare) and a sprite sheet from public/sprites/manifest.json. 'variants' are optional colour versions: each has its own sheet and a chance (in percent) of appearing; otherwise the pet uses the character's normal sheet. Adding a character is one new entry here plus its sheet in the manifest. 'laterPacks' lists themes that aren't out yet: pets that already have one of their characters keep it, but no new pet (or wanderer) grows into one.",
   "stages": {
     "egg": "egg",
     "baby": "baby",
     "teen": "teen"
   },
   "themes": {
-    "basic": "Basic",
     "nature": "Nature",
-    "cave": "Cave",
-    "sparkle": "Sparkle"
+    "ocean": "Ocean",
+    "bakery": "Bakery",
+    "starry": "Starry",
+    "cave": "Cave"
   },
   "characters": [
-    { "id": "dumpling", "theme": "basic", "stars": 1, "name": "Dumpling", "sheet": "dumpling" },
-    { "id": "bunbun", "theme": "basic", "stars": 2, "name": "Bunbun", "sheet": "bunbun" },
-    { "id": "cloudlet", "theme": "basic", "stars": 3, "name": "Cloudlet", "sheet": "cloudlet" },
     { "id": "sprig", "theme": "nature", "stars": 1, "name": "Sprig", "sheet": "sprig" },
-    { "id": "mosscap", "theme": "nature", "stars": 2, "name": "Mosscap", "sheet": "mosscap" },
-    { "id": "fernwhisk", "theme": "nature", "stars": 3, "name": "Fernwhisk", "sheet": "fernwhisk" },
+    { "id": "acornet", "theme": "nature", "stars": 2, "name": "Acornet", "sheet": "acornet" },
+    { "id": "stumpy", "theme": "nature", "stars": 3, "name": "Stumpy", "sheet": "stumpy" },
+    { "id": "bubbit", "theme": "ocean", "stars": 1, "name": "Bubbit", "sheet": "bubbit" },
+    { "id": "jellop", "theme": "ocean", "stars": 2, "name": "Jellop", "sheet": "jellop" },
+    { "id": "tidecrest", "theme": "ocean", "stars": 3, "name": "Tidecrest", "sheet": "tidecrest" },
+    { "id": "dumpling", "theme": "bakery", "stars": 1, "name": "Dumpling", "sheet": "dumpling" },
+    { "id": "puddling", "theme": "bakery", "stars": 2, "name": "Puddling", "sheet": "puddling" },
+    { "id": "cuppie", "theme": "bakery", "stars": 3, "name": "Cuppie", "sheet": "cuppie" },
+    { "id": "cloudlet", "theme": "starry", "stars": 1, "name": "Cloudlet", "sheet": "cloudlet" },
+    { "id": "moonpip", "theme": "starry", "stars": 2, "name": "Moonpip", "sheet": "moonpip" },
+    { "id": "starhoot", "theme": "starry", "stars": 3, "name": "Starhoot", "sheet": "starhoot" },
     {
       "id": "pebblit",
       "theme": "cave",
       "stars": 1,
       "name": "Pebblit",
       "sheet": "pebblit",
-      "variants": [{ "id": "amber", "name": "Amber", "sheet": "pebblit-amber", "chance": 25 }]
+      "variants": [
+        {
+          "id": "amber",
+          "name": "Amber",
+          "sheet": "pebblit-amber",
+          "chance": 25
+        }
+      ]
     },
     { "id": "crystalback", "theme": "cave", "stars": 2, "name": "Crystalback", "sheet": "crystalback" },
-    { "id": "geodon", "theme": "cave", "stars": 3, "name": "Geodon", "sheet": "geodon" },
-    { "id": "glimmer", "theme": "sparkle", "stars": 1, "name": "Glimmer", "sheet": "glimmer" },
-    { "id": "moonpip", "theme": "sparkle", "stars": 2, "name": "Moonpip", "sheet": "moonpip" },
-    { "id": "starwisp", "theme": "sparkle", "stars": 3, "name": "Starwisp", "sheet": "starwisp" }
+    { "id": "geodon", "theme": "cave", "stars": 3, "name": "Geodon", "sheet": "geodon" }
+  ],
+  "laterPacks": [
+    "cave"
   ]
 }

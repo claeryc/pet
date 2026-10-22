@@ -3,7 +3,7 @@ import { simulate } from '../src/game/simulate';
 import { createNewGame } from '../src/game/state';
 import { feed, growNow, toggleLights } from '../src/game/actions';
 import { CONFIG } from '../src/game/config';
-import { CHARACTERS, chooseCharacter, getCharacter, rollStars, sheetFor } from '../src/game/growth';
+import { CHARACTERS, IN_GAME, LATER_PACKS, chooseCharacter, getCharacter, rollStars, sheetFor } from '../src/game/growth';
 
 const HOUR = 3_600_000;
 const START = new Date(2026, 0, 1, 10, 0).getTime();
@@ -95,13 +95,20 @@ describe('choosing the adult character', () => {
   it('only picks rarities that exist, and every theme can appear', () => {
     const picked = ids.map((id) => chooseCharacter(90, id).character);
     for (const c of picked) expect(CHARACTERS.filter((x) => x.stars === c.stars).length).toBeGreaterThan(0);
-    expect(new Set(picked.map((c) => c.theme)).size).toBe(new Set(CHARACTERS.map((c) => c.theme)).size);
+    expect(new Set(picked.map((c) => c.theme)).size).toBe(new Set(IN_GAME.map((c) => c.theme)).size);
+    for (const c of picked) expect(LATER_PACKS).not.toContain(c.theme);
   });
 
   it('gives colour variants about as often as their chance', () => {
-    const pebblits = ids.map((id) => chooseCharacter(10, id)).filter((r) => r.character.id === 'pebblit');
-    const amber = pebblits.filter((r) => r.variant?.id === 'amber').length / pebblits.length;
-    expect(amber).toBeCloseTo(0.25, 1);
+    const dumpling = CHARACTERS.find((c) => c.id === 'dumpling')!;
+    dumpling.variants = [{ id: 'matcha', name: 'Matcha', sheet: 'dumpling', chance: 25 }];
+    try {
+      const dumplings = ids.map((id) => chooseCharacter(10, id)).filter((r) => r.character.id === 'dumpling');
+      const matcha = dumplings.filter((r) => r.variant?.id === 'matcha').length / dumplings.length;
+      expect(matcha).toBeCloseTo(0.25, 1);
+    } finally {
+      delete dumpling.variants;
+    }
   });
 
   describe('little ones of two 3-star parents', () => {

@@ -5,7 +5,7 @@ This explains how the pet's art is organised, how to draw a character in Aseprit
 ## How characters work
 
 - Every pet looks the same as an **egg**, a **baby** and a **teen**.
-- When the teen grows up, it becomes an adult **character**. Each character has a **theme** (Basic, Nature, Cave, Sparkle) and a **rarity** of 1 to 3 stars.
+- When the teen grows up, it becomes an adult **character**. Each character has a **theme** (Nature, Ocean, Bakery, Starry, and Cave as a later pack) and a **rarity** of 1 to 3 stars.
 - Good care during the baby and teen days raises the chance of a rarer character. The odds are in `src/game/config.ts` under `rarity`. A little one whose parents both grew into 3-star characters uses `rarityStarParents` instead, so it's never 1 star.
 - A character can have **colour variants** (for example an Amber Pebblit). A variant is just another sheet with a chance of appearing, either drawn or made by swapping palette colours (see [Adding a colour variant](#adding-a-colour-variant)).
 
@@ -13,14 +13,19 @@ Each theme has a common (★), an uncommon (★★) and a rare (★★★) chara
 
 | Theme | ★ | ★★ | ★★★ |
 | --- | --- | --- | --- |
-| Basic | Dumpling | Bunbun | Cloudlet |
-| Nature | Sprig | Mosscap | Fernwhisk |
-| Cave | Pebblit (and Amber variant) | Crystalback | Geodon |
-| Sparkle | Glimmer | Moonpip | Starwisp |
+| Nature | Sprig | Acornet | Stumpy |
+| Ocean | Bubbit | Jellop | Tidecrest |
+| Bakery | Dumpling | Puddling | Cuppie |
+| Starry | Cloudlet | Moonpip | Starhoot |
+| Cave (later pack) | Pebblit (and Amber variant) | Crystalback | Geodon |
 
-![Every character, by theme and rarity](character-lineup.png)
+![The starter characters, by theme and rarity](character-lineup.png)
 
-All of these are placeholders, made to be painted over.
+The starter characters only have their idle pose drawn so far. Every other row of their sheets is a copy of it (idle, happy and cheerful with a small hop), so draw over those rows in their `.aseprite` files.
+
+**Later packs.** A theme listed under `"laterPacks"` in `characters.json` isn't out yet: pets that already have one of its characters keep it, but no new pet or wanderer grows into one, and the Collection only shows the ones already found. Cave is listed there. Remove it from the list when the pack comes out.
+
+**Shelved art.** Retired characters (Bunbun, Mosscap, Fernwhisk, Glimmer, Starwisp and the old Dumpling, Sprig, Cloudlet and Moonpip) are kept in `art/shelved/`. `npm run export-art` skips that folder.
 
 ## Where everything lives
 
@@ -80,7 +85,7 @@ Moves are shared through an **idle set**, so characters that move the same way a
 }
 ```
 
-A sheet uses a set with `"idleSet": "curious"`, and has those moves drawn on those rows, below the usual seven. Bunbun and Mosscap use `curious` (placeholder art: a lean to the left and a stretch up tall).
+A sheet uses a set with `"idleSet": "curious"`, and has those moves drawn on those rows, below the usual seven. Dumpling and Sprig use `curious` (placeholder moves: a lean to the left and a stretch up tall).
 
 - Move names start with `idle-`, and each move gets a row of its own after row 6.
 - Every sheet using a set draws its moves on the set's rows. A sheet that should move differently uses a different set.
@@ -162,22 +167,26 @@ Characters drawn on the same body (same size, same top where a hat rests) share 
 "shapes": {
   "loaf":      { "head": { "x": 16, "y": 15, "width": 14 } },
   "wide-loaf": { "head": { "x": 16, "y": 15, "width": 14 } },
-  "small":     { "head": { "x": 16, "y": 17, "width": 10 } }
+  "owl":       { "head": { "x": 16, "y": 11, "width": 10 } }
 }
 ```
 
 | Shape | Characters |
 | --- | --- |
 | `baby` | baby |
-| `tall` | teen, Sprig |
-| `loaf` | Dumpling, Pebblit (and Amber) |
-| `wide-loaf` | Bunbun, Crystalback |
-| `capped` | Mosscap (hat sits on the mushroom cap) |
-| `flat` | Moonpip |
-| `small` | Glimmer |
-| `big` | Geodon, Starwisp |
-| `cloud` | Cloudlet |
-| `big-tall` | Fernwhisk |
+| `tall` | teen |
+| `blob` | Sprig, Bubbit, Dumpling, Moonpip |
+| `acorn` | Acornet (hat sits on the acorn cap) |
+| `stump` | Stumpy |
+| `dome` | Jellop |
+| `crest` | Tidecrest |
+| `flan` | Puddling |
+| `cupcake` | Cuppie (hat sits on the frosting) |
+| `cloud` | Cloudlet (hat sits on the top puff) |
+| `owl` | Starhoot (between the ears) |
+| `loaf` | Pebblit (and Amber) |
+| `wide-loaf` | Crystalback |
+| `big` | Geodon |
 
 A shape's `head` is the pixel in the first `idle` frame where the bottom middle of a hat should sit, and how wide a hat may be there. To find it, open a sheet of that shape and look at the first idle frame:
 

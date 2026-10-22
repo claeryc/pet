@@ -632,26 +632,16 @@ function badgeArt(): Art {
 // ---------- Which files to make ----------
 
 // Path (without .png / .aseprite) -> look. Paths must match manifest.json.
+// The starter themes (Nature, Ocean, Bakery, Starry) have real art, so
+// only the stages and the Cave pack still have placeholders here.
 const LOOKS: Record<string, Look> = {
   'stages/baby': { body: PALETTE.pink, shade: PALETTE.rose, width: 14, height: 11, topper: 'nubs' },
   'stages/teen': { body: PALETTE.pink, shade: PALETTE.rose, width: 20, height: 16, topper: 'ears' },
-  // Basic: soft and simple.
-  'characters/basic/dumpling': { body: PALETTE.peach, shade: PALETTE.cocoa, width: 20, height: 15, topper: 'nubs' },
-  'characters/basic/bunbun': { body: PALETTE.cream, shade: PALETTE.peach, width: 22, height: 15, topper: 'bunny', idleSet: 'curious' },
-  'characters/basic/cloudlet': { body: PALETTE.lavender, shade: PALETTE.lilac, width: 24, height: 17, topper: 'fluff', extras: ['wings'] },
-  // Nature: leafy and green.
-  'characters/nature/sprig': { body: PALETTE.mint, shade: PALETTE.leaf, width: 20, height: 16, topper: 'sprout' },
-  'characters/nature/mosscap': { body: PALETTE.peach, shade: PALETTE.leaf, width: 22, height: 15, topper: 'mushroom', idleSet: 'curious' },
-  'characters/nature/fernwhisk': { body: PALETTE.leaf, shade: PALETTE.cocoa, width: 24, height: 18, topper: 'leaves' },
   // Cave: spiky and rocky.
   'characters/cave/pebblit': { body: PALETTE.lilac, shade: PALETTE.plum, detail: PALETTE.plum, width: 20, height: 15, topper: 'spikes', extras: ['spots'] },
   'characters/cave/pebblit-amber': { body: PALETTE.butter, shade: PALETTE.cocoa, detail: PALETTE.cocoa, width: 20, height: 15, topper: 'spikes', extras: ['spots'] },
   'characters/cave/crystalback': { body: PALETTE.lavender, shade: PALETTE.plum, detail: PALETTE.lilac, width: 22, height: 15, topper: 'shards', extras: ['spots'] },
   'characters/cave/geodon': { body: PALETTE.ocean, shade: PALETTE.plum, detail: PALETTE.lavender, width: 24, height: 16, topper: 'crystals', extras: ['spots'] },
-  // Sparkle: shiny and magical.
-  'characters/sparkle/glimmer': { body: PALETTE.butter, shade: PALETTE.peach, width: 18, height: 13, topper: 'antenna' },
-  'characters/sparkle/moonpip': { body: PALETTE.pink, shade: PALETTE.rose, width: 22, height: 14, topper: 'moon', extras: ['twinkle'] },
-  'characters/sparkle/starwisp': { body: PALETTE.sky, shade: PALETTE.lilac, width: 24, height: 16, topper: 'halo', extras: ['twinkle'] },
 };
 
 const force = process.argv.includes('--force');

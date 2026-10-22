@@ -37,6 +37,11 @@ export interface Character {
 
 export const CHARACTERS = data.characters as Character[];
 export const THEMES: Record<string, string> = data.themes;
+// Themes from packs that aren't out yet: pets that already have one of
+// their characters keep it, but no new pet grows into one.
+export const LATER_PACKS: readonly string[] = data.laterPacks;
+// The characters a pet (or a wanderer) can grow into now.
+export const IN_GAME = CHARACTERS.filter((c) => !LATER_PACKS.includes(c.theme));
 const STAGE_SHEETS: Record<Exclude<Stage, 'adult'>, string> = data.stages;
 
 export function getCharacter(id: string | null): Character | undefined {
@@ -122,8 +127,8 @@ export function characterOfStars(
   themes: readonly string[] = [],
 ): { character: Character; variant: Variant | null } {
   const order = [rolled, ...([3, 2, 1] as Stars[]).filter((s) => s < rolled), ...([1, 2, 3] as Stars[]).filter((s) => s > rolled)];
-  const stars = order.find((s) => CHARACTERS.some((c) => c.stars === s)) ?? 1;
-  let options = CHARACTERS.filter((c) => c.stars === stars);
+  const stars = order.find((s) => IN_GAME.some((c) => c.stars === s)) ?? 1;
+  let options = IN_GAME.filter((c) => c.stars === stars);
   if (themes.length > 0 && seededRoll(seed, 'parentTheme') * 100 < CONFIG.friends.parentThemeChance) {
     const theme = themes[Math.floor(seededRoll(seed, 'whichParent') * themes.length)];
     const ofTheme = options.filter((c) => c.theme === theme);

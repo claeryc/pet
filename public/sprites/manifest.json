@@ -68,27 +68,6 @@
         "width": 14
       }
     },
-    "capped": {
-      "head": {
-        "x": 16,
-        "y": 12,
-        "width": 14
-      }
-    },
-    "flat": {
-      "head": {
-        "x": 16,
-        "y": 16,
-        "width": 14
-      }
-    },
-    "small": {
-      "head": {
-        "x": 16,
-        "y": 17,
-        "width": 10
-      }
-    },
     "big": {
       "head": {
         "x": 16,
@@ -96,18 +75,67 @@
         "width": 14
       }
     },
-    "cloud": {
+    "blob": {
       "head": {
         "x": 16,
         "y": 13,
         "width": 14
       }
     },
-    "big-tall": {
+    "acorn": {
+      "head": {
+        "x": 16,
+        "y": 5,
+        "width": 14
+      }
+    },
+    "stump": {
       "head": {
         "x": 16,
         "y": 12,
         "width": 14
+      }
+    },
+    "dome": {
+      "head": {
+        "x": 16,
+        "y": 7,
+        "width": 14
+      }
+    },
+    "crest": {
+      "head": {
+        "x": 16,
+        "y": 12,
+        "width": 14
+      }
+    },
+    "flan": {
+      "head": {
+        "x": 16,
+        "y": 12,
+        "width": 14
+      }
+    },
+    "cupcake": {
+      "head": {
+        "x": 16,
+        "y": 8,
+        "width": 14
+      }
+    },
+    "cloud": {
+      "head": {
+        "x": 16,
+        "y": 9,
+        "width": 10
+      }
+    },
+    "owl": {
+      "head": {
+        "x": 16,
+        "y": 11,
+        "width": 10
       }
     }
   },
@@ -146,31 +174,55 @@
       "file": "stages/teen.png",
       "shape": "tall"
     },
-    "dumpling": {
-      "file": "characters/basic/dumpling.png",
-      "shape": "loaf"
-    },
-    "bunbun": {
-      "file": "characters/basic/bunbun.png",
-      "shape": "wide-loaf",
-      "idleSet": "curious"
-    },
-    "cloudlet": {
-      "file": "characters/basic/cloudlet.png",
-      "shape": "cloud"
-    },
     "sprig": {
       "file": "characters/nature/sprig.png",
-      "shape": "tall"
-    },
-    "mosscap": {
-      "file": "characters/nature/mosscap.png",
-      "shape": "capped",
+      "shape": "blob",
       "idleSet": "curious"
     },
-    "fernwhisk": {
-      "file": "characters/nature/fernwhisk.png",
-      "shape": "big-tall"
+    "acornet": {
+      "file": "characters/nature/acornet.png",
+      "shape": "acorn"
+    },
+    "stumpy": {
+      "file": "characters/nature/stumpy.png",
+      "shape": "stump"
+    },
+    "bubbit": {
+      "file": "characters/ocean/bubbit.png",
+      "shape": "blob"
+    },
+    "jellop": {
+      "file": "characters/ocean/jellop.png",
+      "shape": "dome"
+    },
+    "tidecrest": {
+      "file": "characters/ocean/tidecrest.png",
+      "shape": "crest"
+    },
+    "dumpling": {
+      "file": "characters/bakery/dumpling.png",
+      "shape": "blob",
+      "idleSet": "curious"
+    },
+    "puddling": {
+      "file": "characters/bakery/puddling.png",
+      "shape": "flan"
+    },
+    "cuppie": {
+      "file": "characters/bakery/cuppie.png",
+      "shape": "cupcake"
+    },
+    "cloudlet": {
+      "file": "characters/starry/cloudlet.png",
+      "shape": "cloud"
+    },
+    "moonpip": {
+      "file": "characters/starry/moonpip.png",
+      "shape": "blob"
+    },
+    "starhoot": {
+      "file": "characters/starry/starhoot.png",
+      "shape": "owl"
     },
     "pebblit": {
       "file": "characters/cave/pebblit.png",
@@ -186,18 +238,6 @@
     },
     "geodon": {
       "file": "characters/cave/geodon.png",
-      "shape": "big"
-    },
-    "glimmer": {
-      "file": "characters/sparkle/glimmer.png",
-      "shape": "small"
-    },
-    "moonpip": {
-      "file": "characters/sparkle/moonpip.png",
-      "shape": "flat"
-    },
-    "starwisp": {
-      "file": "characters/sparkle/starwisp.png",
       "shape": "big"
     },
     "hat-beanie": {

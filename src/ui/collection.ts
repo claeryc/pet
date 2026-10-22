@@ -7,7 +7,7 @@
 
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
-import { CHARACTERS, THEMES } from '../game/growth';
+import { CHARACTERS, LATER_PACKS, THEMES } from '../game/growth';
 import { RECIPES } from '../game/cooking';
 import { characterKey, isUnlocked } from '../game/unlocks';
 import type { GameState } from '../game/state';
@@ -86,7 +86,8 @@ function milestone(state: GameState, id: MilestoneId): Entry {
 const foodStars = (id: string) => (CONFIG.foods as readonly Food[]).find((f) => f.id === id)?.stars ?? 0;
 
 export function collectionPage(state: GameState, cb: CollectionCallbacks, open: Set<string>): HTMLElement[] {
-  // Every character, then each of its colour variants.
+  // Every character, then each of its colour variants. A pack that isn't
+  // out yet only shows the ones already found.
   const characters: Entry[] = CHARACTERS.flatMap((c) => {
     const forms = [
       { key: characterKey(c.id, null), name: c.name, sheet: c.sheet },
@@ -96,7 +97,7 @@ export function collectionPage(state: GameState, cb: CollectionCallbacks, open: 
         sheet: v.sheet,
       })),
     ];
-    return forms.map((f) =>
+    return forms.filter((f) => !LATER_PACKS.includes(c.theme) || state.charactersFound.includes(f.key)).map((f) =>
       entry(state.charactersFound.includes(f.key), portrait(cb.characterImage(f.sheet)), f.name, THEMES[c.theme] ?? '', c.stars),
     );
   });
