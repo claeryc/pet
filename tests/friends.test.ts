@@ -377,12 +377,12 @@ describe('saves', () => {
     expect(file.state.family[0].fromWild).toBe(false);
   });
 
-  it('upgrades a version 20 save: pets remember what their parents grew into', () => {
+  it('upgrades a version 21 save: pets remember what their parents grew into', () => {
     const s: any = createNewGame(NOON);
     delete s.pet.parentLooks;
     s.pet.parents = ['mum', 'gone'];
     s.family = [{ id: 'mum', name: 'Mum', owner: '', fromFriend: false, fromWild: false, bornAt: 0, character: 'geodon', variant: null, generation: 1, parents: [] }];
-    const file = migrate({ version: 20, state: s });
+    const file = migrate({ version: 21, state: s });
     expect(file.state.pet.parentLooks).toEqual([
       { character: 'geodon', variant: null },
       { character: null, variant: null },

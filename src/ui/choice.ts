@@ -12,6 +12,7 @@ export interface ChoiceOption {
 
 export interface ChoiceRequest {
   art?: string; // a small picture on top (markup), e.g. how something works
+  artReadable?: boolean; // the picture has words a screen reader should read
   title: string;
   text: string;
   options: ChoiceOption[];
@@ -50,6 +51,7 @@ export function createChoiceBox(root: HTMLElement): ChoiceBox {
       open = true;
       art.innerHTML = request.art ?? '';
       art.hidden = !request.art;
+      art.setAttribute('aria-hidden', String(!request.artReadable));
       title.textContent = request.title;
       text.textContent = request.text;
       buttons.replaceChildren(

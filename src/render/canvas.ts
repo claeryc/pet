@@ -1,6 +1,7 @@
 // Draws the pet's little room onto the canvas. The canvas is tiny (64x48
 // "real" pixels) and CSS scales it up with crisp, blocky pixels.
 
+import { drawBag } from './bags';
 import { PALETTE } from './palette';
 import { drawCurtains, drawWall } from './room';
 import { frameFor } from './animations';
@@ -49,6 +50,7 @@ export interface Scene {
 export interface TripScene {
   place: string; // a place id from CONFIG.journeys.places
   pets: OtherPet[];
+  bag: string; // what they carry on a stick (see src/render/bags.ts)
 }
 
 export function setupCanvas(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
@@ -281,12 +283,13 @@ function stepTrip(scene: Scene, timeMs: number): number {
   return tripMix;
 }
 
-// The place the pets went to, with them standing in it: one in the
-// middle, two side by side.
+// The place the pets went to, with them standing in it (one in the
+// middle, two side by side), each with a bag on a stick behind it.
 function drawTrip(ctx: CanvasRenderingContext2D, trip: TripScene, night: boolean, timeMs: number): void {
   drawPlace(ctx, trip.place, ROOM_WIDTH, ROOM_HEIGHT, night, timeMs);
   const spots: Spot[] = trip.pets.length > 1 ? ['left', 'right'] : ['middle'];
   trip.pets.slice(0, 2).forEach((p, i) => {
+    drawBag(ctx, trip.bag, SPOTS[spots[i]], spots.length > 1 ? (i === 0 ? 'left' : 'right') : undefined);
     drawPetAt(ctx, p.sheet, p.animation, SPOTS[spots[i]], timeMs, p.hat);
     if (p.glow) drawGlow(ctx, SPOTS[spots[i]], timeMs);
   });

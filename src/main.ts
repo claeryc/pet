@@ -46,6 +46,8 @@ import { makeStar } from './game/fragments';
 import { learn, nextCost, rankOf, resetTree, skillBefore, type SkillId } from './game/skills';
 import { SKILL_POINT_ICON } from './ui/icons';
 import { fillAll, orderPay, orderTier, putInBox, takeFromBox, type BoxResult } from './game/delivery';
+import { earnedFrom, percyPerks, rewards, type RegularId } from './game/regulars';
+import { regularCard, rewardIcon, rewardName, rewardNote } from './ui/regulars';
 import { logMessage, markMessagesSeen } from './game/messages';
 import type { FoodId } from './game/actions';
 import { namePet, needsName, setOwner, suggestName } from './game/family';
@@ -222,7 +224,8 @@ function announceMail(old: Message[]): void {
       const items = m.boxes.map((b) => STRINGS.delivery.item(b.want, STRINGS.foods[b.food as FoodId]));
       home.notice(STRINGS.delivery.announced(items.join(', ')));
     } else if (m.kind === 'pickup') {
-      home.notice(STRINGS.delivery.pickedUp(m.boxes.filter((b) => b.have >= b.want).length, m.gold));
+      home.notice(STRINGS.delivery.pickedUp(m.boxes.filter((b) => b.have >= b.want).length, m.gold) +
+        (m.regular ? STRINGS.regulars.grew(STRINGS.regulars.names.percy) : ''));
       if (m.seed) showGot(m.seed, 1, STRINGS.reveal.fromPercy, true);
       if (m.food) showGot(m.food, 1, STRINGS.reveal.fromPercy);
     } else if (m.kind === 'tripHome') {
@@ -230,6 +233,8 @@ function announceMail(old: Message[]): void {
     } else if (m.kind === 'courier') {
       home.notice(STRINGS.journeys.courier(m.name, placeName(m.place), findLabel(m.find)));
       showFind(m.find, STRINGS.journeys.fromPercy);
+    } else if (m.kind === 'regular') {
+      showRegularReward(m.id as RegularId, m.hearts);
     } else if (m.kind === 'visitor' && m.friend) {
       home.notice(STRINGS.messages.friendVisit(m.name));
     } else if (m.kind === 'visitor') {
@@ -238,6 +243,26 @@ function announceMail(old: Message[]): void {
     }
   }
 }
+
+// A regular reached a new heart: what they gave, and what it does.
+function showRegularReward(id: RegularId, hearts: number): void {
+  const reward = rewards(id)[hearts - 1];
+  if (!reward) return;
+  const name = STRINGS.regulars.names[id] ?? id;
+  sound('levelUp');
+  home.reveal({ icon: rewardIcon(reward), name: rewardName(reward), count: 1, stars: 0, caption: `${name} ${'♥'.repeat(hearts)}` });
+  home.notice(`${STRINGS.regulars.gave(name, hearts, rewardName(reward))} ${rewardNote(reward)}.`);
+}
+
+// Something only a regular gives, tapped in the Shop: who and when.
+function earnedOnly(kind: 'wallpaper', id: string): void {
+  const from = earnedFrom(kind, id);
+  if (!from) return;
+  const name = STRINGS.regulars.names[from.id] ?? from.id;
+  blocked(STRINGS.regulars.earnedOnly(name, from.hearts));
+}
+
+const hatImage = (id: string) => sprites.get(getHat(id)?.sheet ?? '')?.image.src;
 
 // Asks for the pet's name: once it hatches (it must have one), or to
 // rename it from the Family Tree.
@@ -410,7 +435,7 @@ function runBox(action: (s: GameState) => BoxResult, food?: string): void {
   const order = state.delivery.order;
   if (!result.blocked && order && !wasGold && orderTier(order.boxes) === 'gold') {
     sound('done');
-    home.toast(STRINGS.delivery.allFull(orderPay(order.boxes).bonus));
+    home.toast(STRINGS.delivery.allFull(orderPay(order.boxes, percyPerks(state).payShare).bonus));
     react('happy');
   }
 }
@@ -764,6 +789,13 @@ const home = createHomeScreen(root, {
     home.toast(STRINGS.friends.invited(getFriend(state, id)?.name ?? ''));
     return true;
   },
+  onRegular: (id) => {
+    choice.open({
+      ...regularCard(state, id),
+      artReadable: true,
+      options: [{ label: STRINGS.regulars.ok, onPick: () => {} }],
+    });
+  },
   onSwitchPet: (id) => {
     setState(switchPet(simulate(state, gameNow()), id));
     home.toast(STRINGS.friends.looking(state.pet.name));
@@ -805,8 +837,11 @@ const home = createHomeScreen(root, {
   onBuyBait: () => runShop(buyBait(state), STRINGS.shop.bought(STRINGS.shop.bait)),
   onBuyCharm: (id) => runShop(buyCharm(state, id), STRINGS.shop.bought(STRINGS.journeys.charms[id]?.name ?? id)),
   onBuyPot: () => runShop(buyPot(state), STRINGS.shop.potBought),
-  onBuyDecor: (kind, id) => runShop(buyDecor(state, kind, id),
-    STRINGS.shop.bought((kind === 'wallpaper' ? STRINGS.shop.wallpapers : STRINGS.shop.curtains)[id] ?? id)),
+  onBuyDecor: (kind, id) => {
+    const result = buyDecor(state, kind, id);
+    if (result.blocked === 'earnedOnly' && kind === 'wallpaper') return earnedOnly(kind, id);
+    runShop(result, STRINGS.shop.bought((kind === 'wallpaper' ? STRINGS.shop.wallpapers : STRINGS.shop.curtains)[id] ?? id));
+  },
   onUseDecor: (kind, id) => runShop(useDecor(state, kind, id)),
   onBuyPack: (id) => void buyPack(id as ProductId),
   onWakePercy: () => {
@@ -907,7 +942,7 @@ const home = createHomeScreen(root, {
     home.craft({ fragment: FRAGMENT_ICON, star: ITEM_ICONS.revivalStar, onLock: () => sound('place'), onStar: () => sound('grewUp') });
   },
   onWearHat: (id) => runShop(wearHat(state, id)),
-  hatImage: (id) => sprites.get(getHat(id)?.sheet ?? '')?.image.src,
+  hatImage,
   characterImage,
   onSeen: (id) => setState(markSeen(state, id)),
   onGuide: openedGuide,
@@ -1017,6 +1052,7 @@ function render(timeMs: number): void {
       room: state.room,
       trip: trip && {
         place: trip.place,
+        bag: (state.inventory.bags ?? []).includes('courier') ? 'courier' : 'sack',
         pets: trip.pets.map((p) => ({
           sheet: sprites.get(sheetFor(p)),
           hat: sprites.get(getHat(p.hat)?.sheet ?? ''),

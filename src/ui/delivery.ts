@@ -16,6 +16,7 @@
 
 import { STRINGS } from '../strings';
 import { isFull, orderPay, orderTier } from '../game/delivery';
+import { percyPerks } from '../game/regulars';
 import type { GameState } from '../game/state';
 import type { FoodId } from '../game/actions';
 import type { DeliveryScene } from '../render/delivery';
@@ -125,7 +126,7 @@ export function createDelivery(cb: DeliveryCallbacks): DeliveryPanel {
     }
     // What the whole order pays with every box full, bonus included. It
     // only shows once you've started packing, popping in with the first item.
-    const pay = orderPay(order.boxes.map((b) => ({ ...b, have: b.want })));
+    const pay = orderPay(order.boxes.map((b) => ({ ...b, have: b.want })), percyPerks(state).payShare);
     const total = pay.boxes + pay.bonus;
     if (order.boxes.some((b) => b.have > 0)) {
       if (!reward.hasChildNodes()) {

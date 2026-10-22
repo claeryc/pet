@@ -10,12 +10,13 @@ import { newJourneys, newKeeper } from '../game/state';
 import { grownUpXp, levelInfo } from '../game/skills';
 import { getCharacter } from '../game/growth';
 import { guidesAlreadyKnown } from '../game/guides';
+import { backfillRegulars } from '../game/regulars';
 
 const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 21;
+export const SAVE_VERSION = 22;
 
 export interface SaveFile {
   version: number;
@@ -217,9 +218,18 @@ export function migrate(save: SaveFile): SaveFile {
     st.guidesRead = guidesAlreadyKnown({ ...st, pet: st.pet ?? {}, unlocked: st.unlocked ?? [] } as GameState);
     save.version = 20;
   }
-  // Version 20 -> 21: pets remember what their parents grew into, for the
-  // 3-star parents bonus. Filled in from the family where we can.
+  // Version 20 -> 21: regulars (Percy's hearts) and journey bags. Players who already filled
+  // orders start partway; the rewards for those hearts are handed over on
+  // the next update.
   if (save.version === 20) {
+    const st = save.state;
+    st.regulars = backfillRegulars(st.tally?.deliveries ?? 0);
+    if (st.inventory) st.inventory.bags = [];
+    save.version = 21;
+  }
+  // Version 21 -> 22: pets remember what their parents grew into, for the
+  // 3-star parents bonus. Filled in from the family where we can.
+  if (save.version === 21) {
     const st = save.state;
     const pets: any[] = [st.pet, ...(st.housemates ?? [])].filter(Boolean);
     const known = new Map<string, any>();
@@ -230,7 +240,7 @@ export function migrate(save: SaveFile): SaveFile {
         variant: known.get(id)?.variant ?? null,
       }));
     }
-    save.version = 21;
+    save.version = 22;
   }
   return save;
 }

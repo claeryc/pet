@@ -384,6 +384,31 @@ export const CONFIG = {
     // When there's no seed, he leaves an energy drink this often instead.
     drinkChance: 0.5,
   },
+  // Regulars: characters who aren't pets but keep coming back (see
+  // src/game/regulars.ts). Each has a score from 0 to 100, shown as 5
+  // hearts like a friend's (`friends.heartPoints` each), and every new
+  // heart brings a reward. Hearts never go back below one you've reached.
+  regulars: {
+    percy: {
+      // Points per pickup, by its frame: bronze for one full box, silver
+      // for two, gold for every box. A pickup with no full box loses one.
+      gain: { none: -1, bronze: 1, silver: 2, gold: 3 },
+      // What each heart brings, from the 1st to the 5th: a seed, a journey
+      // bag or a wallpaper to keep, and from then on better numbers for his
+      // orders (`payShare`, `seedChance`, `seedOdds` replace the ones in
+      // `delivery`) and journeys (`restHours` replaces `journeys.percy`).
+      rewards: [
+        { seed: 'pumpkin' },
+        { payShare: 0.85 },
+        { bag: 'courier' },
+        { seedChance: 0.65, seedOdds: { pumpkin: 55, dragonFruit: 45 }, wallpaper: 'postmark' },
+        { restHours: 40 },
+      ],
+      // Saves from before regulars start with this many points for every
+      // order already filled, up to `max`.
+      backfill: { perOrder: 1, max: 40 },
+    },
+  },
 
   // Cravings: now and then the pet would love one particular thing, shown
   // in a thought bubble over its head. It can be anything you've had
@@ -554,6 +579,8 @@ export const CONFIG = {
       { id: 'dots', price: 150 },
       { id: 'checks', price: 180 },
       { id: 'stars', price: 240 },
+      // Not sold: Percy gives it at 4 hearts (see `regulars`).
+      { id: 'postmark', price: 0, earned: true },
     ],
     curtains: [
       { id: 'rose', price: 80 },
