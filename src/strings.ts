@@ -725,9 +725,10 @@ export const STRINGS = {
     // `days`: good care days towards the next fragment, as dots.
     fragmentsNote: (pieces: number, days: number, perFragment: number) =>
       `You have: ${pieces}\n${'●'.repeat(days)}${'○'.repeat(perFragment - days)}`,
-    fragmentsHelpTitle: 'Star fragments',
-    fragmentsHelp: (perFragment: number, perStar: number) =>
-      `Every ${perFragment} good care days give a fragment. ${perStar} craft a Revival Star.`,
+    fragmentsHelpTitle: (pieces: number, perStar: number) =>
+      pieces >= perStar ? `${pieces} fragments: ready to craft!` : `${pieces} of ${perStar} fragments`,
+    // `days`: good care days until the next fragment.
+    fragmentsHelp: (days: number) => (days === 1 ? 'Next one in 1 good care day' : `Next one in ${days} good care days`),
     fragmentsHelpOk: 'Got it',
     fragmentsCount: (pieces: number, perStar: number) => `${pieces}/${perStar}`,
     craft: 'Craft',

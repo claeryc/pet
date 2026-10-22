@@ -103,7 +103,7 @@ function craftButton(ready: boolean, onClick: () => void): HTMLButtonElement {
 // with a "?" for the details and the Craft button.
 function fragmentsRow(pieces: number, perStar: number, days: number, perFragment: number, cb: ShopCallbacks): HTMLElement {
   const help = button('?', cb.onFragmentsHelp, 'shop-help');
-  help.setAttribute('aria-label', STRINGS.shop.fragmentsHelpTitle);
+  help.setAttribute('aria-label', STRINGS.shop.fragments);
   const actions = document.createElement('span');
   actions.className = 'shop-row-actions';
   actions.append(help, craftButton(pieces >= perStar, cb.onMakeStar));

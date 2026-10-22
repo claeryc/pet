@@ -6534,43 +6534,52 @@ body {
   transform: scale(0.95);
 }
 
-/* A small picture on top of a choice box (how star fragments work). */
+/* A small picture on top of a choice box: the star fragments you have,
+   lit up around a faded Revival Star. */
 .choice-art {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
+  justify-content: center;
+  margin-bottom: 4px;
 }
 
 .choice-art[hidden] {
   display: none;
 }
 
-.choice-art-row {
-  display: flex;
-  align-items: center;
-  gap: 2px;
+.choice-art svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
-.choice-art-row svg {
-  width: 24px;
-  height: 24px;
+.frag-ring {
+  position: relative;
+  width: 150px;
+  height: 150px;
 }
 
-.choice-art-big svg {
-  width: 48px;
-  height: 48px;
+.frag-slot {
+  position: absolute;
+  left: 57px;
+  top: 57px;
+  width: 36px;
+  height: 36px;
+  transform: rotate(var(--a)) translateY(-52px);
+  opacity: 0.25;
+  filter: grayscale(1);
 }
 
-.choice-art-dots {
-  color: var(--lilac);
-  letter-spacing: 2px;
-  font-size: 0.9rem;
+.frag-slot.on {
+  opacity: 1;
+  filter: none;
 }
 
-.choice-art-arrow {
-  margin: 0 8px;
-  font-weight: 800;
-  color: var(--lilac);
+.frag-ring-star {
+  position: absolute;
+  left: 47px;
+  top: 47px;
+  width: 56px;
+  height: 56px;
+  opacity: 0.35;
+  filter: grayscale(0.6);
 }
