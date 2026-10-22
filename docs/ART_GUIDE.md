@@ -129,7 +129,12 @@ If the variant is the same drawing with some palette colours swapped, list it in
 "dumpling-matcha": { "from": "dumpling", "recolour": { "cream": "mint", "peach": "leaf" } }
 ```
 
-All the swaps happen at once, and each one changes that colour **everywhere** on the sheet. If the face or a highlight uses a colour you're swapping, draw that bit in a different palette colour on the original. Then add the variant to `characters.json` as in step 3 below, with `"sheet": "dumpling-matcha"`.
+All the swaps happen at once, and each one changes that colour **everywhere** on the sheet. If the face or a highlight uses a colour you're swapping, draw that bit in a different palette colour on the original. **Check it before you add it.** `npm run export-art` (or `npm run export-art -- --previews`, which doesn't need Aseprite) writes two files per recolour to `art/previews/`:
+
+- `dumpling-matcha-x4.png`: the original and the recolour side by side, 4 times bigger, every animation row.
+- `dumpling-matcha.png`: the recolour at its real size. If it's nearly right, open it in Aseprite, fix it up, and save it as a drawn variant instead (below).
+
+When it looks good, add the variant to `characters.json` as in step 3 below, with `"sheet": "dumpling-matcha"`.
 
 ### A drawn variant
 
@@ -223,7 +228,9 @@ To change them, draw over the frames, then export with **Sheet type: Horizontal 
 
 ## Exporting a sheet from Aseprite
 
-File → Export Sprite Sheet (Ctrl+E):
+**All at once:** run `npm run export-art`. It exports every file in `art/` to the matching PNG in `public/sprites/` with the settings below (one row per tag, in tag order; hats and badges as one strip; no guides). It finds Aseprite in the usual install folders. If yours is elsewhere, set `ASEPRITE` to its path. Add words to export only some files, e.g. `npm run export-art -- pebblit hats`. It warns when a sheet changes size, which usually means a tag or frame went missing.
+
+**One by hand:** File → Export Sprite Sheet (Ctrl+E):
 
 - **Layout** tab: Sheet type **By Rows**.
 - **Sprite** tab: Layers **Visible layers**, and tick **Split Tags**, so each tag gets its own row.

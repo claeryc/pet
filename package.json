@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "sprites": "node scripts/make-placeholder-sprites.ts",
-    "music": "node scripts/make-music.ts"
+    "music": "node scripts/make-music.ts",
+    "export-art": "node scripts/export-art.ts"
   },
   "devDependencies": {
     "typescript": "~5.9",

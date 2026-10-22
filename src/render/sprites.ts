@@ -4,6 +4,7 @@
 // See docs/ART_GUIDE.md for how to make a sheet in Aseprite.
 
 import { PALETTE } from './palette';
+import { recolourPixels } from './recolour';
 
 export interface Animation {
   row: number; // which row of the sheet
@@ -176,35 +177,11 @@ export function resolveSheet(manifest: ManifestFile, sheetName: string): Manifes
   return { ...from, ...sheet, file: from.file };
 }
 
-// Swaps palette colours in RGBA pixels, in place. `swaps` uses palette
-// names, e.g. { "cream": "mint" }. All swaps happen at once, so
-// { "cream": "mint", "mint": "cream" } trades the two. Colours that aren't
-// listed, and see-through pixels, stay as they are.
-export function recolourPixels(data: Uint8ClampedArray | Uint8Array, swaps: Record<string, string>): void {
-  const rgb = (hex: string) => parseInt(hex.slice(1), 16);
-  const colours = PALETTE as Record<string, string>;
-  const map = new Map<number, number>();
-  for (const [from, to] of Object.entries(swaps)) {
-    if (!colours[from] || !colours[to]) {
-      console.warn(`Recolour "${from}" -> "${to}" uses a colour that isn't in the palette`);
-      continue;
-    }
-    map.set(rgb(colours[from]), rgb(colours[to]));
-  }
-  for (let i = 0; i < data.length; i += 4) {
-    if (data[i + 3] === 0) continue;
-    const to = map.get((data[i] << 16) | (data[i + 1] << 8) | data[i + 2]);
-    if (to === undefined) continue;
-    data[i] = to >> 16;
-    data[i + 1] = (to >> 8) & 0xff;
-    data[i + 2] = to & 0xff;
-  }
-}
-
 // A copy of a sheet's picture with palette colours swapped.
 function recolourImage(image: HTMLImageElement, swaps: Record<string, string>): Promise<HTMLImageElement> {
   const pixels = pixelsOf(image);
-  recolourPixels(pixels.data, swaps);
+  for (const swap of recolourPixels(pixels.data, swaps, PALETTE))
+    console.warn(`Recolour ${swap} uses a colour that isn't in the palette`);
   const canvas = document.createElement('canvas');
   canvas.width = image.width;
   canvas.height = image.height;

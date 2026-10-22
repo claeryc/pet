@@ -3,9 +3,9 @@ import data from '../src/data/characters.json';
 import manifest from '../public/sprites/manifest.json';
 import hatData from '../src/data/hats.json';
 import { PALETTE } from '../src/render/palette';
+import { recolourPixels } from '../src/render/recolour';
 import {
   pickHatFrame,
-  recolourPixels,
   resolveSheet,
   type IdleSet,
   type ManifestFile,
@@ -114,19 +114,23 @@ describe('recolouring', () => {
 
   it('swaps listed palette colours and leaves the rest alone', () => {
     const data = new Uint8ClampedArray([...rgba('cream'), ...rgba('peach'), ...rgba('ink')]);
-    recolourPixels(data, { cream: 'mint', peach: 'leaf' });
+    expect(recolourPixels(data, { cream: 'mint', peach: 'leaf' }, PALETTE)).toEqual([]);
     expect([...data]).toEqual([...rgba('mint'), ...rgba('leaf'), ...rgba('ink')]);
   });
 
   it('does every swap at once, so two colours can trade places', () => {
     const data = new Uint8ClampedArray([...rgba('cream'), ...rgba('mint')]);
-    recolourPixels(data, { cream: 'mint', mint: 'cream' });
+    recolourPixels(data, { cream: 'mint', mint: 'cream' }, PALETTE);
     expect([...data]).toEqual([...rgba('mint'), ...rgba('cream')]);
+  });
+
+  it('names swaps with colours that aren\'t in the palette', () => {
+    expect(recolourPixels(new Uint8ClampedArray(rgba('cream')), { cream: 'teal' }, PALETTE)).toEqual(['cream -> teal']);
   });
 
   it('keeps see-through pixels as they are', () => {
     const data = new Uint8ClampedArray(rgba('cream', 0));
-    recolourPixels(data, { cream: 'mint' });
+    recolourPixels(data, { cream: 'mint' }, PALETTE);
     expect([...data]).toEqual(rgba('cream', 0));
   });
 });
