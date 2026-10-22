@@ -93,6 +93,7 @@ function tabs(view: SkillsView, redraw: () => void): HTMLElement {
       view.tree = tree;
       view.skill = null;
       redraw();
+      showPickedSkill(false);
     });
     sw.append(b);
   }
@@ -137,25 +138,31 @@ function treePath(state: GameState, view: SkillsView, redraw: () => void): HTMLE
         view.skill = skill;
         redraw();
       }
-      snapToTabs();
+      showPickedSkill(true);
     });
     path.append(node);
   });
   return path;
 }
 
-// Scrolls the menu so the tree tabs (Fishing, Garden, ...) sit at the top,
-// just under the page's header, with the tree and the picked skill's card
-// right below them.
-function snapToTabs(): void {
+// Scrolls the menu so the picked skill's Learn button is fully in view,
+// clear of the menu bar under the panel. With `toTabs` (after tapping a
+// node) it first puts the tree tabs (Fishing, Garden, ...) at the top, just
+// under the page's header, with the tree and the card right below them; on
+// a short phone it goes a little further so the Learn button still shows.
+export function showPickedSkill(toTabs: boolean, smooth = true): void {
   const tabs = document.querySelector<HTMLElement>('.menu-panel .skill-tabs');
+  const head = document.querySelector<HTMLElement>('.menu-panel .skill-card .skill-card-head');
   const box = tabs?.closest('.menu-panel')?.parentElement;
-  if (!tabs || !box) return;
+  if (!tabs || !head || !box) return;
   const header = box.querySelector('.menu-header');
   const top = header ? header.getBoundingClientRect().bottom : box.getBoundingClientRect().top;
-  const by = tabs.getBoundingClientRect().top - top - 4;
-  const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches;
-  box.scrollBy({ top: by, behavior: smooth ? 'smooth' : 'auto' });
+  const bottom = box.getBoundingClientRect().bottom;
+  const by = Math.max(toTabs ? tabs.getBoundingClientRect().top - top - 4 : 0,
+    head.getBoundingClientRect().bottom - bottom + 10);
+  if (by <= 0 && !toTabs) return;
+  const motion = smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  box.scrollBy({ top: by, behavior: motion ? 'smooth' : 'auto' });
 }
 
 // The open node's card: what it does now and next, and how to learn it.
