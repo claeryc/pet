@@ -90,6 +90,14 @@ function fragmentButton(cost: number, have: number, onClick: () => void): HTMLBu
   return b;
 }
 
+// "Craft": turns fragments into a star. Greyed out like a price you can't
+// afford until there are enough, but still tappable so it can say why.
+function craftButton(ready: boolean, onClick: () => void): HTMLButtonElement {
+  const b = button(STRINGS.shop.craft, onClick);
+  b.classList.toggle('too-pricey', !ready);
+  return b;
+}
+
 // A small hourglass left of the price, for items that are only in today.
 function stockIcon(): HTMLElement {
   const el = document.createElement('span');
@@ -298,8 +306,8 @@ export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>)
     {
       icon: FRAGMENT_ICON,
       count: countBadge(pieces),
-      row: row(FRAGMENT_ICON, STRINGS.shop.fragments, STRINGS.shop.fragmentsNote(pieces, state.fragments.careDays, careDaysPerFragment),
-        pieces >= perStar ? button(STRINGS.shop.makeStar(perStar), cb.onMakeStar) : label(STRINGS.shop.fragmentsCount(pieces, perStar))),
+      row: row(FRAGMENT_ICON, STRINGS.shop.fragments, STRINGS.shop.fragmentsNote(pieces, perStar, state.fragments.careDays, careDaysPerFragment),
+        craftButton(pieces >= perStar, cb.onMakeStar)),
     },
     ...CONFIG.store.map((p) => ({
       icon: ITEM_ICONS[p.item],
