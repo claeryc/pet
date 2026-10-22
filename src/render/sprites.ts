@@ -3,6 +3,9 @@
 // changes: drop a PNG into public/sprites/ and add it to the manifest.
 // See docs/ART_GUIDE.md for how to make a sheet in Aseprite.
 
+import { PALETTE } from './palette';
+import { recolourPixels } from './recolour';
+
 export interface Animation {
   row: number; // which row of the sheet
   frames: number; // how many frames, left to right
@@ -45,7 +48,13 @@ export interface IdleSet {
 }
 
 export interface ManifestSheet {
-  file: string;
+  file?: string;
+  // A colour variant made from another sheet instead of its own PNG: the
+  // sheet it's painted from (which has a file), and which palette colours
+  // to swap, e.g. { "cream": "mint", "peach": "leaf" }. It uses that
+  // sheet's shape, idle set and animations unless it lists its own.
+  from?: string;
+  recolour?: Record<string, string>;
   animations?: Record<string, Animation>;
   frameWidth?: number; // only if different from the shared size (hats)
   frameHeight?: number;
@@ -109,13 +118,16 @@ export async function loadSprites(): Promise<SpriteLibrary> {
     return library;
   }
   await Promise.all(
-    Object.entries(manifest.sheets).map(async ([name, sheet]) => {
+    Object.keys(manifest.sheets).map(async (name) => {
       try {
+        const sheet = resolveSheet(manifest, name);
         const shape = shapeOf(manifest, name);
         const idleSet = idleSetOf(manifest, name);
+        let image = await loadImage(base + sheet.file);
+        if (manifest.sheets[name].recolour) image = await recolourImage(image, manifest.sheets[name].recolour!);
         const loaded: SpriteSheet = {
           name,
-          image: await loadImage(base + sheet.file),
+          image,
           frameWidth: sheet.frameWidth ?? manifest.frameWidth,
           frameHeight: sheet.frameHeight ?? manifest.frameHeight,
           // A sheet's own animation list replaces the shared one, and its
@@ -152,10 +164,35 @@ export async function loadSprites(): Promise<SpriteLibrary> {
   return library;
 }
 
+// A sheet's manifest entry, filled in from the sheet it's painted from if
+// it's a recolour. Warns if that sheet isn't there or has no file itself.
+export function resolveSheet(manifest: ManifestFile, sheetName: string): ManifestSheet {
+  const sheet = manifest.sheets[sheetName];
+  if (!sheet?.from) return sheet;
+  const from = manifest.sheets[sheet.from];
+  if (!from?.file) {
+    console.warn(`Sheet "${sheetName}" is made from "${sheet.from}", which isn't a sheet with a file in manifest.json`);
+    return sheet;
+  }
+  return { ...from, ...sheet, file: from.file };
+}
+
+// A copy of a sheet's picture with palette colours swapped.
+function recolourImage(image: HTMLImageElement, swaps: Record<string, string>): Promise<HTMLImageElement> {
+  const pixels = pixelsOf(image);
+  for (const swap of recolourPixels(pixels.data, swaps, PALETTE))
+    console.warn(`Recolour ${swap} uses a colour that isn't in the palette`);
+  const canvas = document.createElement('canvas');
+  canvas.width = image.width;
+  canvas.height = image.height;
+  canvas.getContext('2d')!.putImageData(pixels, 0, 0);
+  return loadImage(canvas.toDataURL());
+}
+
 // The body shape a sheet is drawn on, or undefined for sheets without one
 // (the egg, hats). Warns about a shape name that isn't in the list.
 export function shapeOf(manifest: ManifestFile, sheetName: string): Shape | undefined {
-  const name = manifest.sheets[sheetName]?.shape;
+  const name = resolveSheet(manifest, sheetName)?.shape;
   if (!name) return undefined;
   const shape = manifest.shapes?.[name];
   if (!shape) console.warn(`Sheet "${sheetName}" uses shape "${name}", which isn't in manifest.json's shapes`);
@@ -165,7 +202,7 @@ export function shapeOf(manifest: ManifestFile, sheetName: string): Shape | unde
 // The idle set a sheet uses, or undefined. Warns about a name that isn't in
 // the list.
 export function idleSetOf(manifest: ManifestFile, sheetName: string): IdleSet | undefined {
-  const name = manifest.sheets[sheetName]?.idleSet;
+  const name = resolveSheet(manifest, sheetName)?.idleSet;
   if (!name) return undefined;
   const set = manifest.idleSets?.[name];
   if (!set) console.warn(`Sheet "${sheetName}" uses idle set "${name}", which isn't in manifest.json's idleSets`);

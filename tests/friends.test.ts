@@ -248,6 +248,10 @@ describe('mingling', () => {
     expect(s.pet.parents).toEqual([parent.id, friend.id]);
     expect(s.pet.generation).toBe(2);
     expect(s.pet.themes.sort()).toEqual(['cave', 'nature']);
+    expect(s.pet.parentLooks).toEqual([
+      { character: parent.character, variant: parent.variant },
+      { character: friend.character, variant: friend.variant },
+    ]);
     // The parent stays at home, and the friend joins the Family Tree.
     expect(s.housemates.map((p) => p.id)).toEqual([parent.id]);
     expect(s.housemates[0].partner).toBe(friend.id);
@@ -371,5 +375,17 @@ describe('saves', () => {
     expect(file.state.visit).toEqual(createNewGame(NOON).visit);
     expect(file.state.pet.themes).toEqual([]);
     expect(file.state.family[0].fromWild).toBe(false);
+  });
+
+  it('upgrades a version 21 save: pets remember what their parents grew into', () => {
+    const s: any = createNewGame(NOON);
+    delete s.pet.parentLooks;
+    s.pet.parents = ['mum', 'gone'];
+    s.family = [{ id: 'mum', name: 'Mum', owner: '', fromFriend: false, fromWild: false, bornAt: 0, character: 'geodon', variant: null, generation: 1, parents: [] }];
+    const file = migrate({ version: 21, state: s });
+    expect(file.state.pet.parentLooks).toEqual([
+      { character: 'geodon', variant: null },
+      { character: null, variant: null },
+    ]);
   });
 });

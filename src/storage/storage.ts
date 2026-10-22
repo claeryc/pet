@@ -227,13 +227,26 @@ export function migrate(save: SaveFile): SaveFile {
     if (st.inventory) st.inventory.bags = [];
     save.version = 21;
   }
-  // Version 22 -> 23: more journey badges, and Milestone badges. (21 -> 22
-  // is the character system; until that's in, a version 21 save comes
-  // straight here.) Fill in
+  // Version 21 -> 22: pets remember what their parents grew into, for the
+  // 3-star parents bonus. Filled in from the family where we can.
+  if (save.version === 21) {
+    const st = save.state;
+    const pets: any[] = [st.pet, ...(st.housemates ?? [])].filter(Boolean);
+    const known = new Map<string, any>();
+    for (const m of [...(st.family ?? []), ...(st.friends ?? []), ...pets]) known.set(m.id, m);
+    for (const p of pets) {
+      p.parentLooks = (p.parents ?? []).map((id: string) => ({
+        character: known.get(id)?.character ?? null,
+        variant: known.get(id)?.variant ?? null,
+      }));
+    }
+    save.version = 22;
+  }
+  // Version 22 -> 23: more journey badges, and Milestone badges. Fill in
   // what the save can tell: an Adventure for each place whose best stamp is
   // epic, and the gold-frame orders still in Messages. The Milestones
   // themselves are handed out on the next update.
-  if (save.version === 21 || save.version === 22) {
+  if (save.version === 22) {
     const st = save.state;
     st.milestones = [];
     const pages = Object.values(st.journeys?.journal ?? {}) as { best?: string }[];
