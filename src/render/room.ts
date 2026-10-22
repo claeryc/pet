@@ -10,6 +10,20 @@ export type WallPattern = (x: number, y: number, night: boolean) => string;
 
 const base = (night: boolean) => (night ? PALETTE.lavender : PALETTE.cream);
 
+// A postmark sticker: a round stamp with wavy lines beside it.
+const POSTMARK = [
+  '..ppp.........',
+  '.p...p........',
+  'p.....p.ss..ss',
+  'p..r..p...ss..',
+  'p.....p.ss..ss',
+  '.p...p....ss..',
+  '..ppp.........',
+];
+// Where the stickers go on the wall (top left corners), clear of the
+// window and the pet.
+const STICKERS = [[47, 10], [3, 22]];
+
 export const WALLPAPERS: Record<string, WallPattern> = {
   plain: (_x, _y, night) => base(night),
   stripes: (x, _y, night) => (x % 6 < 2 ? (night ? PALETTE.lilac : PALETTE.mint) : base(night)),
@@ -21,17 +35,23 @@ export const WALLPAPERS: Record<string, WallPattern> = {
     (Math.floor(x / 4) + Math.floor(y / 4)) % 2 ? (night ? PALETTE.lilac : PALETTE.lavender) : base(night),
   // A night sky all the time, with little stars.
   stars: (x, y) => ((x * 7 + y * 13) % 29 === 0 ? PALETTE.butter : PALETTE.plum),
-  // Little envelopes in rows, each row shifted half a step (Percy's gift
-  // at 5 hearts, see src/game/regulars.ts).
+  // A plain wall with an airmail border along the top and a few postmark
+  // stickers (Percy's gift at 4 hearts, see src/game/regulars.ts).
   postmark: (x, y, night) => {
-    const row = Math.floor(y / 8);
-    const lx = (x + (row % 2) * 5) % 10;
-    const ly = y % 8;
-    if (lx < 1 || lx > 6 || ly < 1 || ly > 4) return lx === 8 && ly === 6 ? PALETTE.pink : base(night);
-    const edge = lx === 1 || lx === 6 || ly === 1 || ly === 4;
-    const flap = (ly === 2 && (lx === 2 || lx === 5)) || (ly === 3 && (lx === 3 || lx === 4));
-    if (edge || flap) return night ? PALETTE.lilac : PALETTE.sky;
-    return night ? PALETTE.cream : PALETTE.white;
+    if (y <= 4) {
+      if (y === 0 || y === 4) return base(night);
+      const d = (x + y) % 8;
+      if (d < 3) return night ? PALETTE.lilac : PALETTE.pink;
+      if (d >= 4 && d < 7) return night ? PALETTE.lavender : PALETTE.sky;
+      return night ? PALETTE.cream : PALETTE.white;
+    }
+    for (const [sx, sy] of STICKERS) {
+      const ch = POSTMARK[y - sy]?.[x - sx];
+      if (ch === 'p') return night ? PALETTE.lilac : PALETTE.pink;
+      if (ch === 's') return night ? PALETTE.lilac : PALETTE.sky;
+      if (ch === 'r') return night ? PALETTE.lilac : PALETTE.rose;
+    }
+    return base(night);
   },
 };
 
