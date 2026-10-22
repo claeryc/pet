@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { newTeen } from './helpers';
 import { CONFIG } from '../src/game/config';
-import { revivalStars } from '../src/game/economy';
-import { stepFragments } from '../src/game/fragments';
+import { buyHat, getHat, revivalStars } from '../src/game/economy';
+import { makeStar, stepFragments } from '../src/game/fragments';
 import { migrate } from '../src/storage/storage';
 import type { GameState } from '../src/game/state';
 
@@ -54,13 +54,37 @@ describe('star fragments', () => {
     expect(visit(s, range(PER + 1)).pieces).toBe(0);
   });
 
-  it(`${perStar} fragments make a Revival Star`, () => {
+  it('fragments pile up instead of turning into a star on their own', () => {
     const s = newTeen(START);
     s.fragments = { pieces: perStar - 1, careDays: PER - 1, day: '2026-01-01', dayGood: true };
     const r = stepFragments({ ...s, lastUpdated: START + DAY });
-    expect(r.stars).toBe(1);
-    expect(revivalStars(r.state)).toBe(1);
+    expect(r.pieces).toBe(1);
+    expect(r.state.fragments.pieces).toBe(perStar);
+    expect(revivalStars(r.state)).toBe(0);
+  });
+
+  it(`making a star uses ${perStar} fragments, and needs that many`, () => {
+    const s = newTeen(START);
+    s.fragments.pieces = perStar + 2;
+    const made = makeStar(s);
+    expect(made.blocked).toBeUndefined();
+    expect(revivalStars(made.state)).toBe(1);
+    expect(made.state.fragments.pieces).toBe(2);
+    expect(makeStar(made.state).blocked).toBe('notEnoughFragments');
+  });
+
+  it('the star-only hat costs fragments, never gold', () => {
+    const hat = getHat('starryCap')!;
+    const s = newTeen(START);
+    s.gold = 10_000;
+    s.fragments.pieces = hat.fragments! - 1;
+    expect(buyHat(s, 'starryCap').blocked).toBe('notEnoughFragments');
+    s.fragments.pieces = hat.fragments!;
+    const r = buyHat(s, 'starryCap');
+    expect(r.blocked).toBeUndefined();
+    expect(r.state.inventory.hats).toContain('starryCap');
     expect(r.state.fragments.pieces).toBe(0);
+    expect(r.state.gold).toBe(10_000);
   });
 
   it('older saves keep the fragments they found', () => {

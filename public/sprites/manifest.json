@@ -223,6 +223,12 @@
       "frameWidth": 16,
       "frameHeight": 16,
       "animations": {}
+    },
+    "hat-starry-cap": {
+      "file": "hats/starry-cap.png",
+      "frameWidth": 16,
+      "frameHeight": 16,
+      "animations": {}
     }
   }
 }

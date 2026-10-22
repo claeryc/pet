@@ -1,5 +1,7 @@
-// Star fragments: the free way to a Revival Star. Five fragments make one
-// star. They only come from good care days, never from gold or real money:
+// Star fragments: the free way to a Revival Star. They stay fragments until
+// the player spends them: five make a Revival Star (`makeStar`), and a few
+// things in the Shop cost fragments instead of gold (a star-only hat).
+// They only come from good care days, never from gold or real money:
 // a day you visit and none of your pets gets a warning (or worse). Every
 // `careDaysPerFragment` such days give a fragment. The days don't have to
 // be in a row: a missed day just doesn't count. A day counts once however
@@ -15,10 +17,9 @@ import { nobodyHome } from './presence';
 
 const F = CONFIG.revival.fragments;
 
-// Hands out any fragments earned since last time, and turns every
-// `perStar` of them into a Revival Star. Says how many fragments and stars
-// were just earned.
-export function stepFragments(state: GameState): { state: GameState; pieces: number; stars: number } {
+// Hands out any fragments earned since last time. Says how many were just
+// earned.
+export function stepFragments(state: GameState): { state: GameState; pieces: number } {
   const fr = state.fragments;
   let { careDays, day, dayGood } = fr;
   let home = fr.home ?? true; // someone was home that day
@@ -43,20 +44,25 @@ export function stepFragments(state: GameState): { state: GameState; pieces: num
   if (pets.length === 0 || pets.some((p) => p.condition !== 'healthy')) dayGood = false;
 
   if (earned === 0 && careDays === fr.careDays && day === fr.day && dayGood === fr.dayGood && home === (fr.home ?? true)) {
-    return { state, pieces: 0, stars: 0 };
+    return { state, pieces: 0 };
   }
-  const total = fr.pieces + earned;
-  const stars = Math.floor(total / F.perStar);
-  const supplies = stars > 0
-    ? { ...state.inventory.supplies, revivalStar: (state.inventory.supplies.revivalStar ?? 0) + stars }
-    : state.inventory.supplies;
+  return {
+    state: { ...state, fragments: { pieces: fr.pieces + earned, careDays, day, dayGood, home } },
+    pieces: earned,
+  };
+}
+
+export const fragmentCount = (state: GameState) => state.fragments.pieces;
+
+// Turns `perStar` fragments into a Revival Star.
+export function makeStar(state: GameState): { state: GameState; blocked?: 'notEnoughFragments' } {
+  if (state.fragments.pieces < F.perStar) return { state, blocked: 'notEnoughFragments' };
+  const supplies = { ...state.inventory.supplies, revivalStar: (state.inventory.supplies.revivalStar ?? 0) + 1 };
   return {
     state: {
       ...state,
-      fragments: { pieces: total % F.perStar, careDays, day, dayGood, home },
+      fragments: { ...state.fragments, pieces: state.fragments.pieces - F.perStar },
       inventory: { ...state.inventory, supplies },
     },
-    pieces: earned,
-    stars,
   };
 }

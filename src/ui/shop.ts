@@ -25,6 +25,7 @@ export interface ShopCallbacks {
   onBuyDecor: (kind: DecorKind, id: string) => void;
   onUseDecor: (kind: DecorKind, id: string | null) => void;
   onBuyPack: (productId: string) => void; // Revival Stars, with real money
+  onMakeStar: () => void; // star fragments into a Revival Star
   onWakePercy: () => void; // ends Percy's rest after a journey, for gold
   // The picture of a hat, as a URL (from its sprite sheet), if loaded.
   hatImage: (hat: string) => string | undefined;
@@ -74,6 +75,18 @@ function button(content: string | HTMLElement, onClick: () => void, className = 
 function priceButton(price: number, gold: number, onClick: () => void): HTMLButtonElement {
   const b = button(goldPill(price), onClick);
   b.classList.toggle('too-pricey', gold < price); // still tappable, so it can say why
+  return b;
+}
+
+// "[fragment] 3": a price in star fragments (for things money can't buy).
+function fragmentButton(cost: number, have: number, onClick: () => void): HTMLButtonElement {
+  const pill = document.createElement('span');
+  pill.className = 'gold-pill';
+  pill.title = STRINGS.shop.fragments;
+  pill.innerHTML = FRAGMENT_ICON;
+  pill.append(String(cost));
+  const b = button(pill, onClick);
+  b.classList.toggle('too-pricey', have < cost);
   return b;
 }
 
@@ -209,11 +222,14 @@ export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>)
     });
   const hats: Entry[] = HATS.map((h) => {
     const owned = state.inventory.hats.includes(h.id);
+    const buy = h.fragments
+      ? fragmentButton(h.fragments, state.fragments.pieces, () => cb.onBuyHat(h.id))
+      : priceButton(h.price, state.gold, () => cb.onBuyHat(h.id));
+    const note = owned ? STRINGS.shop.owned : h.fragments ? STRINGS.shop.fragmentsOnly : '';
     return {
       icon: hatIcon(cb.hatImage(h.id)),
       faded: owned,
-      row: row(hatIcon(cb.hatImage(h.id)), h.name, owned ? STRINGS.shop.owned : '',
-        owned ? label(STRINGS.shop.owned) : priceButton(h.price, state.gold, () => cb.onBuyHat(h.id))),
+      row: row(hatIcon(cb.hatImage(h.id)), h.name, note, owned ? label(STRINGS.shop.owned) : buy),
     };
   });
   // Seeds you can buy, then fertilizer and plant cure.
@@ -273,7 +289,8 @@ export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>)
   })] : [];
   const room: Entry[] = [...WALLPAPERS, ...CURTAINS].map((d) => decorEntry(state, d, cb));
   // Revival Stars: the star fragments collected so far (free, from good
-  // care), then stars to keep in your pocket, bought with real money.
+  // care), which make a star once there are enough, then stars to keep in
+  // your pocket, bought with real money.
   const note = STRINGS.shop.revivalNote(revivalStars(state));
   const { perStar, careDaysPerFragment } = CONFIG.revival.fragments;
   const pieces = state.fragments.pieces;
@@ -281,7 +298,8 @@ export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>)
     {
       icon: FRAGMENT_ICON,
       count: countBadge(pieces),
-      row: row(FRAGMENT_ICON, STRINGS.shop.fragments, STRINGS.shop.fragmentsNote(state.fragments.careDays, careDaysPerFragment), label(STRINGS.shop.fragmentsCount(pieces, perStar))),
+      row: row(FRAGMENT_ICON, STRINGS.shop.fragments, STRINGS.shop.fragmentsNote(pieces, state.fragments.careDays, careDaysPerFragment),
+        pieces >= perStar ? button(STRINGS.shop.makeStar(perStar), cb.onMakeStar) : label(STRINGS.shop.fragmentsCount(pieces, perStar))),
     },
     ...CONFIG.store.map((p) => ({
       icon: ITEM_ICONS[p.item],
