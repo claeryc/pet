@@ -886,6 +886,14 @@ const home = createHomeScreen(root, {
       ],
     });
   },
+  onFragmentsHelp: () => {
+    const { perStar, careDaysPerFragment } = CONFIG.revival.fragments;
+    choice.open({
+      title: STRINGS.shop.fragmentsHelpTitle,
+      text: STRINGS.shop.fragmentsHelp(careDaysPerFragment, perStar),
+      options: [{ label: STRINGS.shop.fragmentsHelpOk, onPick: () => {} }],
+    });
+  },
   onMakeStar: () => {
     const result = makeStar(state);
     setState(result.state);

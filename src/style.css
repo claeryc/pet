@@ -6501,3 +6501,35 @@ body {
     animation: reveal-in 0.3s ease-out both;
   }
 }
+
+/* The star fragments row: two short lines (count, then the day dots) and
+   a round "?" next to the Craft button. */
+.shop-row-lines small {
+  white-space: pre-line;
+}
+
+.shop-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.shop-help {
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.95rem;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--lilac);
+  color: white;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.shop-help:active {
+  transform: scale(0.95);
+}

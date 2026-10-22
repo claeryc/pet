@@ -26,6 +26,7 @@ export interface ShopCallbacks {
   onUseDecor: (kind: DecorKind, id: string | null) => void;
   onBuyPack: (productId: string) => void; // Revival Stars, with real money
   onMakeStar: () => void; // star fragments into a Revival Star
+  onFragmentsHelp: () => void; // what star fragments are, in a card
   onWakePercy: () => void; // ends Percy's rest after a journey, for gold
   // The picture of a hat, as a URL (from its sprite sheet), if loaded.
   hatImage: (hat: string) => string | undefined;
@@ -96,6 +97,19 @@ function craftButton(ready: boolean, onClick: () => void): HTMLButtonElement {
   const b = button(STRINGS.shop.craft, onClick);
   b.classList.toggle('too-pricey', !ready);
   return b;
+}
+
+// Star fragments: how many you have and the days towards the next one,
+// with a "?" for the details and the Craft button.
+function fragmentsRow(pieces: number, perStar: number, days: number, perFragment: number, cb: ShopCallbacks): HTMLElement {
+  const help = button('?', cb.onFragmentsHelp, 'shop-help');
+  help.setAttribute('aria-label', STRINGS.shop.fragmentsHelpTitle);
+  const actions = document.createElement('span');
+  actions.className = 'shop-row-actions';
+  actions.append(help, craftButton(pieces >= perStar, cb.onMakeStar));
+  const el = row(FRAGMENT_ICON, STRINGS.shop.fragments, STRINGS.shop.fragmentsNote(pieces, days, perFragment), actions);
+  el.classList.add('shop-row-lines');
+  return el;
 }
 
 // A small hourglass left of the price, for items that are only in today.
@@ -306,8 +320,7 @@ export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>)
     {
       icon: FRAGMENT_ICON,
       count: countBadge(pieces),
-      row: row(FRAGMENT_ICON, STRINGS.shop.fragments, STRINGS.shop.fragmentsNote(pieces, perStar, state.fragments.careDays, careDaysPerFragment),
-        craftButton(pieces >= perStar, cb.onMakeStar)),
+      row: fragmentsRow(pieces, perStar, state.fragments.careDays, careDaysPerFragment, cb),
     },
     ...CONFIG.store.map((p) => ({
       icon: ITEM_ICONS[p.item],
