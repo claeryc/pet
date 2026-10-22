@@ -482,8 +482,6 @@ export const STRINGS = {
     what: { percy: 'Postal pigeon' } as Record<string, string>,
     // How to raise their hearts, on the rewards card.
     how: { percy: "Fill Percy's orders to get to know him. Full orders count most." } as Record<string, string>,
-    next: (reward: string, hearts: number) => `Next: ${reward} at ${'♥'.repeat(hearts)}`,
-    allDone: 'Every reward given. Thanks for being a regular!',
     cardTitle: (name: string, hearts: number) => `${name}  ${'♥'.repeat(hearts)}${'♡'.repeat(5 - hearts)}`,
     ok: 'OK',
     secret: '???',

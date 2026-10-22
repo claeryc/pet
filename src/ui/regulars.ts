@@ -4,7 +4,7 @@
 //
 //   [Percy]  Percy                          (tap for the card)
 //            ♥♥♡♡♡
-//            Postal pigeon · Next: Courier Cap at ♥♥♥
+//            Postal pigeon
 
 import { STRINGS } from '../strings';
 import { getHat } from '../game/economy';
@@ -71,11 +71,10 @@ export function regularRow(state: GameState, id: RegularId, onOpen: () => void):
   const pic = el('span', 'drawer-option-icon friend-pic');
   pic.innerHTML = PORTRAITS[id] ?? UNKNOWN_ICON;
   const body = el('span', 'shop-row-text');
-  const next = rewards(id)[r.hearts];
   body.append(
     el('b', 'friend-name', T.names[id] ?? id),
     heartRow(r.score),
-    el('small', '', `${T.what[id] ?? ''}  ·  ${next ? T.next(rewardName(next), r.hearts + 1) : T.allDone}`),
+    el('small', '', T.what[id] ?? ''),
   );
   row.append(pic, body);
   row.addEventListener('click', onOpen);
