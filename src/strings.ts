@@ -480,6 +480,7 @@ export const STRINGS = {
     title: 'Regulars',
     names: { percy: 'Percy' } as Record<string, string>,
     what: { percy: 'Postal pigeon' } as Record<string, string>,
+    bags: { courier: 'Courier Bag' } as Record<string, string>,
     // How to raise their hearts, on the rewards card.
     how: { percy: "Fill Percy's orders to get to know him. Full orders count most." } as Record<string, string>,
     cardTitle: (name: string, hearts: number) => `${name}  ${'♥'.repeat(hearts)}${'♡'.repeat(5 - hearts)}`,
@@ -488,7 +489,6 @@ export const STRINGS = {
     // One heart's reward: a short name, and what it does.
     reward: {
       seed: (name: string) => `${name} seed`,
-      hat: (name: string) => name,
       wallpaper: (name: string) => `${name} wallpaper`,
       payShare: 'Better pay',
       seedChance: 'Rarer seeds',
@@ -496,7 +496,7 @@ export const STRINGS = {
     },
     rewardNote: {
       seed: 'A thank-you gift',
-      hat: 'A hat money can\'t buy',
+      bag: 'Your pets carry it on journeys',
       wallpaper: 'A wallpaper money can\'t buy',
       payShare: (share: number) => `A full box pays ${pct(share)}% of what's in it`,
       seedChance: (share: number) => `A gold-frame order leaves a seed ${pct(share)}% of the time, rare ones more often`,

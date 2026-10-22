@@ -92,10 +92,10 @@ function fragmentButton(cost: number, have: number, onClick: () => void): HTMLBu
   return b;
 }
 
-// "♥♥♥": something only a regular gives (Percy's Courier Cap), at that
+// "♥♥♥♥": something only a regular gives (Percy's wallpaper), at that
 // many hearts. Greyed out like a price you can't afford, and a tap says
 // who gives it.
-function earnedButton(kind: 'hat' | 'wallpaper', id: string, onClick: () => void): { button: HTMLButtonElement; note: string } {
+function earnedButton(kind: 'wallpaper', id: string, onClick: () => void): { button: HTMLButtonElement; note: string } {
   const from = earnedFrom(kind, id);
   const b = button(from ? '♥'.repeat(from.hearts) : '?', onClick, 'shop-btn too-pricey shop-btn-hearts');
   const note = from ? STRINGS.regulars.earnedNote(STRINGS.regulars.names[from.id] ?? from.id, from.hearts) : '';
@@ -261,11 +261,10 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
     });
   const hats: Entry[] = HATS.map((h) => {
     const owned = state.inventory.hats.includes(h.id);
-    const earned = h.earned ? earnedButton('hat', h.id, () => cb.onBuyHat(h.id)) : null;
-    const buy = earned ? earned.button
-      : h.fragments ? fragmentButton(h.fragments, state.fragments.pieces, () => cb.onBuyHat(h.id))
+    const buy = h.fragments
+      ? fragmentButton(h.fragments, state.fragments.pieces, () => cb.onBuyHat(h.id))
       : priceButton(h.price, state.gold, () => cb.onBuyHat(h.id));
-    const note = owned ? STRINGS.shop.owned : earned ? earned.note : h.fragments ? STRINGS.shop.fragmentsOnly : '';
+    const note = owned ? STRINGS.shop.owned : h.fragments ? STRINGS.shop.fragmentsOnly : '';
     return {
       icon: hatIcon(cb.hatImage(h.id)),
       faded: owned,

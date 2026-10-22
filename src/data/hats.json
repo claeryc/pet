@@ -1,11 +1,10 @@
 {
-  "_help": "Hats the pet can wear. Each hat is bought once in the Shop and then lives in the inventory. 'sheet' is a sheet in public/sprites/manifest.json with two 16x16 pictures side by side: a small version (left) for small heads and a large version (right). See docs/ART_GUIDE.md. A hat with 'fragments' costs that many star fragments instead of gold (a star-only hat money can't buy). A hat with 'earned' isn't sold at all: a regular gives it (see CONFIG.regulars).",
+  "_help": "Hats the pet can wear. Each hat is bought once in the Shop and then lives in the inventory. 'sheet' is a sheet in public/sprites/manifest.json with two 16x16 pictures side by side: a small version (left) for small heads and a large version (right). See docs/ART_GUIDE.md. A hat with 'fragments' costs that many star fragments instead of gold (a star-only hat money can't buy).",
   "hats": [
     { "id": "beanie", "name": "Cozy Beanie", "price": 60, "sheet": "hat-beanie" },
     { "id": "partyHat", "name": "Party Hat", "price": 80, "sheet": "hat-party" },
     { "id": "flowerCrown", "name": "Flower Crown", "price": 120, "sheet": "hat-flower-crown" },
     { "id": "tinyCrown", "name": "Tiny Crown", "price": 250, "sheet": "hat-tiny-crown" },
-    { "id": "starryCap", "name": "Starry Cap", "price": 0, "fragments": 3, "sheet": "hat-starry-cap" },
-    { "id": "courierCap", "name": "Courier Cap", "price": 0, "earned": true, "sheet": "hat-courier-cap" }
+    { "id": "starryCap", "name": "Starry Cap", "price": 0, "fragments": 3, "sheet": "hat-starry-cap" }
   ]
 }

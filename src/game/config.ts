@@ -385,14 +385,14 @@ export const CONFIG = {
       // Points per pickup, by its frame: bronze for one full box, silver
       // for two, gold for every box. A pickup with no full box loses one.
       gain: { none: -1, bronze: 1, silver: 2, gold: 3 },
-      // What each heart brings, from the 1st to the 5th: a seed, a hat or
-      // a wallpaper to keep, and from then on better numbers for his
+      // What each heart brings, from the 1st to the 5th: a seed, a journey
+      // bag or a wallpaper to keep, and from then on better numbers for his
       // orders (`payShare`, `seedChance`, `seedOdds` replace the ones in
       // `delivery`) and journeys (`restHours` replaces `journeys.percy`).
       rewards: [
         { seed: 'pumpkin' },
         { payShare: 0.85 },
-        { hat: 'courierCap' },
+        { bag: 'courier' },
         { seedChance: 0.65, seedOdds: { pumpkin: 55, dragonFruit: 45 }, wallpaper: 'postmark' },
         { restHours: 40 },
       ],

@@ -218,12 +218,13 @@ export function migrate(save: SaveFile): SaveFile {
     st.guidesRead = guidesAlreadyKnown({ ...st, pet: st.pet ?? {}, unlocked: st.unlocked ?? [] } as GameState);
     save.version = 20;
   }
-  // Version 20 -> 21: regulars (Percy's hearts). Players who already filled
+  // Version 20 -> 21: regulars (Percy's hearts) and journey bags. Players who already filled
   // orders start partway; the rewards for those hearts are handed over on
   // the next update.
   if (save.version === 20) {
     const st = save.state;
     st.regulars = backfillRegulars(st.tally?.deliveries ?? 0);
+    if (st.inventory) st.inventory.bags = [];
     save.version = 21;
   }
   return save;

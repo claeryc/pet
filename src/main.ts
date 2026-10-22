@@ -250,12 +250,12 @@ function showRegularReward(id: RegularId, hearts: number): void {
   if (!reward) return;
   const name = STRINGS.regulars.names[id] ?? id;
   sound('levelUp');
-  home.reveal({ icon: rewardIcon(reward, hatImage), name: rewardName(reward), count: 1, stars: 0, caption: `${name} ${'♥'.repeat(hearts)}` });
+  home.reveal({ icon: rewardIcon(reward), name: rewardName(reward), count: 1, stars: 0, caption: `${name} ${'♥'.repeat(hearts)}` });
   home.notice(`${STRINGS.regulars.gave(name, hearts, rewardName(reward))} ${rewardNote(reward)}.`);
 }
 
 // Something only a regular gives, tapped in the Shop: who and when.
-function earnedOnly(kind: 'hat' | 'wallpaper', id: string): void {
+function earnedOnly(kind: 'wallpaper', id: string): void {
   const from = earnedFrom(kind, id);
   if (!from) return;
   const name = STRINGS.regulars.names[from.id] ?? from.id;
@@ -791,7 +791,7 @@ const home = createHomeScreen(root, {
   },
   onRegular: (id) => {
     choice.open({
-      ...regularCard(state, id, hatImage),
+      ...regularCard(state, id),
       artReadable: true,
       options: [{ label: STRINGS.regulars.ok, onPick: () => {} }],
     });
@@ -907,7 +907,6 @@ const home = createHomeScreen(root, {
   },
   onBuyHat: (id) => {
     const hat = getHat(id);
-    if (hat?.earned && !state.inventory.hats.includes(id)) return earnedOnly('hat', id);
     const buy = () => runShop(buyHat(state, id), STRINGS.shop.boughtHat(hat?.name ?? '', state.pet.name));
     const { perStar } = CONFIG.revival.fragments;
     const left = state.fragments.pieces - (hat?.fragments ?? 0);
@@ -1053,6 +1052,7 @@ function render(timeMs: number): void {
       room: state.room,
       trip: trip && {
         place: trip.place,
+        bag: (state.inventory.bags ?? []).includes('courier') ? 'courier' : 'sack',
         pets: trip.pets.map((p) => ({
           sheet: sprites.get(sheetFor(p)),
           hat: sprites.get(getHat(p.hat)?.sheet ?? ''),

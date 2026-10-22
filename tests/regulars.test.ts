@@ -4,7 +4,7 @@ import {
   addRegular, backfillRegulars, catchUpRegulars, earnedFrom, getRegular, percyPerks, rewards,
 } from '../src/game/regulars';
 import { orderPay, pickupSeed, stepDelivery } from '../src/game/delivery';
-import { buyDecor, buyHat, getHat, HATS } from '../src/game/economy';
+import { buyDecor } from '../src/game/economy';
 import { getDecor, ownsDecor, WALLPAPERS } from '../src/game/decor';
 import { migrate } from '../src/storage/storage';
 import type { GameState, Order } from '../src/game/state';
@@ -65,10 +65,10 @@ describe("Percy's hearts", () => {
     expect(s.messages.filter((m) => m.kind === 'regular')).toHaveLength(1);
   });
 
-  it('hand over the Courier Cap at 3 hearts and the Postmark wallpaper at 4', () => {
+  it('hand over the Courier Bag at 3 hearts and the Postmark wallpaper at 4', () => {
     let s = withScore(newTeen(START), 0, 0);
     s = addRegular(s, 'percy', 3 * HEART, START);
-    expect(s.inventory.hats).toContain('courierCap');
+    expect(s.inventory.bags).toContain('courier');
     expect(ownsDecor(s, 'wallpaper', 'postmark')).toBe(false);
     s = addRegular(s, 'percy', HEART, START);
     expect(ownsDecor(s, 'wallpaper', 'postmark')).toBe(true);
@@ -116,17 +116,13 @@ describe("Percy's perks", () => {
 describe('Things only a regular gives', () => {
   it("can't be bought, and say who gives them", () => {
     const s = { ...newTeen(START), gold: 10_000 };
-    expect(buyHat(s, 'courierCap').blocked).toBe('earnedOnly');
     expect(buyDecor(s, 'wallpaper', 'postmark').blocked).toBe('earnedOnly');
-    expect(earnedFrom('hat', 'courierCap')).toEqual({ id: 'percy', hearts: 3 });
     expect(earnedFrom('wallpaper', 'postmark')).toEqual({ id: 'percy', hearts: 4 });
   });
 
   it('are all in some regular\'s rewards, and every reward exists', () => {
-    for (const h of HATS.filter((h) => h.earned)) expect(earnedFrom('hat', h.id)).not.toBeNull();
     for (const w of WALLPAPERS.filter((w) => w.earned)) expect(earnedFrom('wallpaper', w.id)).not.toBeNull();
     for (const r of rewards('percy')) {
-      if (r.hat) expect(getHat(r.hat)?.earned).toBe(true);
       if (r.wallpaper) expect(getDecor('wallpaper', r.wallpaper)?.earned).toBe(true);
     }
     expect(rewards('percy')).toHaveLength(5);

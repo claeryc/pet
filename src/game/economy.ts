@@ -20,8 +20,6 @@ export interface Hat {
   // A star-only hat costs this many star fragments instead of gold, so
   // money can't buy it (see fragments.ts).
   fragments?: number;
-  // Not sold at all: a regular gives it (see regulars.ts).
-  earned?: boolean;
   sheet: string; // sheet name in public/sprites/manifest.json
 }
 
@@ -160,7 +158,6 @@ export function buyHat(state: GameState, id: string): ShopResult {
   const hat = getHat(id);
   if (!hat) return { state };
   if (state.inventory.hats.includes(id)) return { state, blocked: 'alreadyOwned' };
-  if (hat.earned) return { state, blocked: 'earnedOnly' };
   const hats = [...state.inventory.hats, id];
   if (hat.fragments) {
     const pieces = state.fragments.pieces - hat.fragments;

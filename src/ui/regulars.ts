@@ -7,7 +7,7 @@
 //            Postal pigeon
 
 import { STRINGS } from '../strings';
-import { getHat } from '../game/economy';
+import { bagIcon } from '../render/bags';
 import { getRegular, rewards, type RegularId, type Reward } from '../game/regulars';
 import type { GameState } from '../game/state';
 import type { FoodId } from '../game/actions';
@@ -16,12 +16,12 @@ import { ITEM_ICONS, STAT_ICONS, UNKNOWN_ICON } from './icons';
 
 const T = STRINGS.regulars;
 
-// What a reward is called: "Pumpkin seed", "Courier Cap" or, for the
-// last heart, "Postmark wallpaper + Shorter rest".
+// What a reward is called: "Pumpkin seed", "Courier Bag" or "Rarer seeds
+// + Postmark wallpaper".
 export function rewardName(r: Reward): string {
   const parts: string[] = [];
   if (r.seed) parts.push(T.reward.seed(STRINGS.foods[r.seed as FoodId] ?? r.seed));
-  if (r.hat) parts.push(T.reward.hat(getHat(r.hat)?.name ?? r.hat));
+  if (r.bag) parts.push(T.bags[r.bag] ?? r.bag);
   if (r.wallpaper) parts.push(T.reward.wallpaper(STRINGS.shop.wallpapers[r.wallpaper] ?? r.wallpaper));
   if (r.payShare !== undefined) parts.push(T.reward.payShare);
   if (r.seedChance !== undefined) parts.push(T.reward.seedChance);
@@ -33,7 +33,7 @@ export function rewardName(r: Reward): string {
 export function rewardNote(r: Reward): string {
   const parts: string[] = [];
   if (r.seed) parts.push(T.rewardNote.seed);
-  if (r.hat) parts.push(T.rewardNote.hat);
+  if (r.bag) parts.push(T.rewardNote.bag);
   if (r.wallpaper) parts.push(T.rewardNote.wallpaper);
   if (r.payShare !== undefined) parts.push(T.rewardNote.payShare(r.payShare));
   if (r.seedChance !== undefined) parts.push(T.rewardNote.seedChance(r.seedChance));
@@ -41,14 +41,11 @@ export function rewardNote(r: Reward): string {
   return parts.join('. ');
 }
 
-// Its picture: the seed, hat or wallpaper, or a gold coin, a seed or an
+// Its picture: the seed, bag or wallpaper, or a gold coin, a seed or an
 // hourglass for the better numbers.
-export function rewardIcon(r: Reward, hatImage: (hat: string) => string | undefined): string {
+export function rewardIcon(r: Reward): string {
   if (r.seed) return ITEM_ICONS[`seed_${r.seed}`] ?? '';
-  if (r.hat) {
-    const url = hatImage(r.hat);
-    return url ? `<span class="hat-icon" style="background-image:url('${url}')"></span>` : '';
-  }
+  if (r.bag) return bagIcon(r.bag);
   if (r.wallpaper) return ITEM_ICONS[`wallpaper_${r.wallpaper}`] ?? '';
   if (r.payShare !== undefined) return STAT_ICONS.gold;
   if (r.seedChance !== undefined) return ITEM_ICONS.seed_dragonFruit ?? '';
@@ -84,14 +81,14 @@ export function regularRow(state: GameState, id: RegularId, onOpen: () => void):
 // The rewards card: each heart's reward, ticked once given. The next one
 // is shown in full; the ones after it stay a mystery.
 export function regularCard(
-  state: GameState, id: RegularId, hatImage: (hat: string) => string | undefined,
+  state: GameState, id: RegularId,
 ): { art: string; title: string; text: string } {
   const r = getRegular(state, id);
   const rows = rewards(id).map((reward, i) => {
     const got = i < r.hearts;
     const known = i <= r.hearts;
     const hearts = `<span class="regular-reward-hearts">${'♥'.repeat(i + 1)}</span>`;
-    const icon = `<span class="regular-reward-icon">${known ? rewardIcon(reward, hatImage) : UNKNOWN_ICON}</span>`;
+    const icon = `<span class="regular-reward-icon">${known ? rewardIcon(reward) : UNKNOWN_ICON}</span>`;
     const name = known ? rewardName(reward) : T.secret;
     const note = known ? `<small>${rewardNote(reward)}</small>` : '';
     return `<li class="regular-reward${got ? ' got' : ''}${known ? '' : ' secret'}">${icon}` +

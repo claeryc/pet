@@ -1,7 +1,7 @@
 // Regulars: characters who aren't pets but keep coming back. Percy is the
 // first. Filling his orders raises his hearts (a score from 0 to 100, shown
 // as 5 hearts like a friend's), and each new heart brings a reward: a seed,
-// a hat or a wallpaper to keep, or better numbers for his orders and
+// a journey bag or a wallpaper to keep, or better numbers for his orders and
 // journeys from then on. The rewards are in CONFIG.regulars.
 //
 // Hearts are a reputation, not a currency: nothing is spent. A pickup with
@@ -19,11 +19,11 @@ const MAX = HEART * 5;
 export type RegularId = keyof typeof R;
 export const REGULARS = Object.keys(R) as RegularId[];
 
-// One heart's reward. Seeds, hats and wallpapers are given once; the
+// One heart's reward. Seeds, bags and wallpapers are given once; the
 // numbers (`payShare` and so on) apply from that heart onwards.
 export interface Reward {
   seed?: CropId;
-  hat?: string;
+  bag?: string; // a journey bag (only for show, see src/render/bags.ts)
   wallpaper?: string;
   payShare?: number;
   seedChance?: number;
@@ -75,8 +75,8 @@ export function catchUpRegulars(state: GameState, at: number): GameState {
 function give(state: GameState, reward: Reward): GameState {
   let s = state;
   if (reward.seed) s = addSeed(s, reward.seed);
-  if (reward.hat && !s.inventory.hats.includes(reward.hat)) {
-    s = { ...s, inventory: { ...s.inventory, hats: [...s.inventory.hats, reward.hat] } };
+  if (reward.bag && !(s.inventory.bags ?? []).includes(reward.bag)) {
+    s = { ...s, inventory: { ...s.inventory, bags: [...(s.inventory.bags ?? []), reward.bag] } };
   }
   // Stored like a bought one (see decorKey in decor.ts).
   const key = reward.wallpaper && `wallpaper:${reward.wallpaper}`;
@@ -110,8 +110,8 @@ export function percyPerks(state: GameState): PercyPerks {
   return perks;
 }
 
-// Who gives a hat or wallpaper that isn't sold, and at which heart.
-export function earnedFrom(kind: 'hat' | 'wallpaper', item: string): { id: RegularId; hearts: number } | null {
+// Who gives a wallpaper that isn't sold, and at which heart.
+export function earnedFrom(kind: 'wallpaper', item: string): { id: RegularId; hearts: number } | null {
   for (const id of REGULARS) {
     const i = rewards(id).findIndex((r) => r[kind] === item);
     if (i >= 0) return { id, hearts: i + 1 };
