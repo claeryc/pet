@@ -434,7 +434,7 @@ export const STRINGS = {
         name: 'Sick pets',
         pages: [
           { title: (pet: string) => `${pet} is sick`, text: (pet: string) => `A sick pet needs medicine. Tap Give medicine. Wait too long and ${pet} gets very sick.` },
-          { title: 'Revival Stars', text: 'If a pet passes away, a Revival Star brings them back. Good care days give star fragments, and five make a star.' },
+          { title: 'Revival Stars', text: 'If a pet passes away, a Revival Star brings them back. Good care days give star fragments. Five make a star in the Shop, or spend them on a star-only hat.' },
         ],
       },
       collection: {
@@ -651,6 +651,10 @@ export const STRINGS = {
       `A Revival Star brings ${name} back, a little weak and needing rest. You have ${pieces} of ${perStar} star fragments: ` +
       'one comes with every few days your pets stay well.',
     use: 'Use a Revival Star',
+    // No star yet, but enough fragments to make one.
+    fragmentsAsk: (name: string, pieces: number) =>
+      `A Revival Star brings ${name} back, a little weak and needing rest. Your ${pieces} star fragments are enough to make one.`,
+    useFragments: (perStar: number) => `Use ${perStar} ✦`,
     buy: (price: string) => `Buy for ${price}`,
     notNow: 'Not now',
     back: (name: string) => `${name} is back! Let ${name} rest for a while.`,
@@ -667,11 +671,10 @@ export const STRINGS = {
     pay: (price: string) => `Pay ${price}`,
     cancel: 'Cancel',
     bought: (count: number) => (count === 1 ? 'You got a Revival Star!' : `You got ${count} Revival Stars!`),
-    // Star fragments: the free way to a Revival Star.
-    fragmentsDone: 'Star fragments came together!',
     // Under the dying countdown: what you already have, never a price.
     haveStars: (count: number) => (count === 1 ? 'You have 1 Revival Star.' : `You have ${count} Revival Stars.`),
-    haveFragments: (pieces: number, perStar: number) => `Star fragments: ${pieces}/${perStar}.`,
+    haveFragments: (pieces: number, perStar: number) =>
+      pieces >= perStar ? `${pieces} star fragments, enough for a Revival Star.` : `Star fragments: ${pieces}/${perStar}.`,
   },
   shop: {
     title: 'Shop',
@@ -720,9 +723,23 @@ export const STRINGS = {
     fragments: 'Star fragments',
     fragment: 'Star fragment',
     // `days`: good care days towards the next fragment, as dots.
-    fragmentsNote: (days: number, perFragment: number) =>
-      `Free from good care days, when you visit and no pet gets a warning: ${'●'.repeat(days)}${'○'.repeat(perFragment - days)}`,
+    fragmentsNote: (pieces: number, days: number, perFragment: number) =>
+      `You have: ${pieces}\n${'●'.repeat(days)}${'○'.repeat(perFragment - days)}`,
+    fragmentsHelpTitle: (pieces: number, perStar: number) =>
+      pieces >= perStar ? `${pieces} fragments: ready to craft!` : `${pieces} of ${perStar} fragments`,
+    // `days`: good care days until the next fragment.
+    fragmentsHelp: (days: number) => (days === 1 ? 'Next one in 1 good care day' : `Next one in ${days} good care days`),
+    fragmentsHelpOk: 'Got it',
     fragmentsCount: (pieces: number, perStar: number) => `${pieces}/${perStar}`,
+    craft: 'Craft',
+    notEnoughFragments: 'Not enough star fragments yet.',
+    fragmentsOnly: 'Only for star fragments',
+    // Before fragments go on something else: how far that leaves a free star.
+    spendTitle: 'Spend star fragments?',
+    spendAsk: (item: string, cost: number, left: number, perStar: number) =>
+      `${item} costs ${cost} star fragments. You'll have ${left} of ${perStar} toward a Revival Star.`,
+    spendYes: 'Buy it',
+    spendNo: 'Keep them',
   },
   // Opened by holding the pet.
   wardrobe: {

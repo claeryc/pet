@@ -77,7 +77,7 @@ export function updateProgress(state: GameState): {
   unlocked: UnlockId[];
   badges: { id: AchievementId; tier: Tier }[];
   levels: number[];
-  fragments: { pieces: number; stars: number }; // star fragments just earned
+  fragments: number; // star fragments just earned
 } {
   let s = state;
   for (const pet of [s.pet, ...s.housemates]) {
@@ -95,6 +95,6 @@ export function updateProgress(state: GameState): {
   const frag = stepFragments(s);
   return {
     state: frag.state, unlocked: opened, badges: badges.earned, levels: levels.levels,
-    fragments: { pieces: frag.pieces, stars: frag.stars },
+    fragments: frag.pieces,
   };
 }

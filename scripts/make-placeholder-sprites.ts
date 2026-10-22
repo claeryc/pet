@@ -481,7 +481,7 @@ function eggArt(): Art {
 // A hat picture is 16x16. Its bottom middle (x 8, last row) sits on the
 // pet's head point. Each hat comes in a small and a large size.
 
-type HatKind = 'beanie' | 'party-hat' | 'flower-crown' | 'tiny-crown';
+type HatKind = 'beanie' | 'party-hat' | 'flower-crown' | 'tiny-crown' | 'starry-cap';
 const HAT = 16;
 
 function drawHat(kind: HatKind, large: boolean): PixelCanvas {
@@ -508,6 +508,19 @@ function drawHat(kind: HatKind, large: boolean): PixelCanvas {
       px(8 - Math.ceil(rowW / 2), bottom - h + i, rowW, 1, i % 3 === 1 ? PALETTE.butter : PALETTE.sky);
     }
     px(7, bottom - h - 2, 2, 2, PALETTE.pink); // pom-pom on the tip
+  } else if (kind === 'starry-cap') {
+    // A floppy night-sky cap with little stars, bent over at the tip.
+    const h = large ? 8 : 6;
+    for (let i = 0; i < h; i++) {
+      const rowW = Math.max(2, Math.round(((i + 1) / h) * w));
+      px(8 - Math.ceil(rowW / 2), bottom - h + i, rowW, 1, PALETTE.plum);
+    }
+    px(left, bottom, w, 1, PALETTE.butter); // band
+    px(8 + 1, bottom - h - 1, 2, 1, PALETTE.plum); // the tip flops over
+    px(8 + 3, bottom - h, 1, 1, PALETTE.butter); // a star on the tip
+    px(7, bottom - h + 3, 1, 1, PALETTE.butter);
+    px(large ? 5 : 6, bottom - 2, 1, 1, PALETTE.white);
+    px(large ? 10 : 9, bottom - 3, 1, 1, PALETTE.butter);
   } else if (kind === 'flower-crown') {
     px(left, bottom - 1, w, 2, PALETTE.leaf);
     const colors = [PALETTE.pink, PALETTE.butter, PALETTE.white, PALETTE.pink];
@@ -662,7 +675,7 @@ function saveArt(path: string, art: Art, size = FRAME): void {
 const palette = Object.entries(PALETTE).map(([name, hex]) => ({ name, hex }));
 saveArt('stages/egg', eggArt());
 for (const [path, look] of Object.entries(LOOKS)) saveArt(path, creatureArt(look));
-for (const kind of ['beanie', 'party-hat', 'flower-crown', 'tiny-crown'] as HatKind[]) saveArt(`hats/${kind}`, hatArt(kind), HAT);
+for (const kind of ['beanie', 'party-hat', 'flower-crown', 'tiny-crown', 'starry-cap'] as HatKind[]) saveArt(`hats/${kind}`, hatArt(kind), HAT);
 // The badge file also gets the metal colours.
 {
   const art = badgeArt();

@@ -25,6 +25,8 @@ export interface ShopCallbacks {
   onBuyDecor: (kind: DecorKind, id: string) => void;
   onUseDecor: (kind: DecorKind, id: string | null) => void;
   onBuyPack: (productId: string) => void; // Revival Stars, with real money
+  onMakeStar: () => void; // star fragments into a Revival Star
+  onFragmentsHelp: () => void; // what star fragments are, in a card
   onWakePercy: () => void; // ends Percy's rest after a journey, for gold
   // The picture of a hat, as a URL (from its sprite sheet), if loaded.
   hatImage: (hat: string) => string | undefined;
@@ -75,6 +77,39 @@ function priceButton(price: number, gold: number, onClick: () => void): HTMLButt
   const b = button(goldPill(price), onClick);
   b.classList.toggle('too-pricey', gold < price); // still tappable, so it can say why
   return b;
+}
+
+// "[fragment] 3": a price in star fragments (for things money can't buy).
+function fragmentButton(cost: number, have: number, onClick: () => void): HTMLButtonElement {
+  const pill = document.createElement('span');
+  pill.className = 'gold-pill';
+  pill.title = STRINGS.shop.fragments;
+  pill.innerHTML = FRAGMENT_ICON;
+  pill.append(String(cost));
+  const b = button(pill, onClick);
+  b.classList.toggle('too-pricey', have < cost);
+  return b;
+}
+
+// "Craft": turns fragments into a star. Greyed out like a price you can't
+// afford until there are enough, but still tappable so it can say why.
+function craftButton(ready: boolean, onClick: () => void): HTMLButtonElement {
+  const b = button(STRINGS.shop.craft, onClick);
+  b.classList.toggle('too-pricey', !ready);
+  return b;
+}
+
+// Star fragments: how many you have and the days towards the next one,
+// with a "?" for the details and the Craft button.
+function fragmentsRow(pieces: number, perStar: number, days: number, perFragment: number, cb: ShopCallbacks): HTMLElement {
+  const help = button('?', cb.onFragmentsHelp, 'shop-help');
+  help.setAttribute('aria-label', STRINGS.shop.fragments);
+  const actions = document.createElement('span');
+  actions.className = 'shop-row-actions';
+  actions.append(help, craftButton(pieces >= perStar, cb.onMakeStar));
+  const el = row(FRAGMENT_ICON, STRINGS.shop.fragments, STRINGS.shop.fragmentsNote(pieces, days, perFragment), actions);
+  el.classList.add('shop-row-lines');
+  return el;
 }
 
 // A small hourglass left of the price, for items that are only in today.
@@ -209,11 +244,14 @@ export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>)
     });
   const hats: Entry[] = HATS.map((h) => {
     const owned = state.inventory.hats.includes(h.id);
+    const buy = h.fragments
+      ? fragmentButton(h.fragments, state.fragments.pieces, () => cb.onBuyHat(h.id))
+      : priceButton(h.price, state.gold, () => cb.onBuyHat(h.id));
+    const note = owned ? STRINGS.shop.owned : h.fragments ? STRINGS.shop.fragmentsOnly : '';
     return {
       icon: hatIcon(cb.hatImage(h.id)),
       faded: owned,
-      row: row(hatIcon(cb.hatImage(h.id)), h.name, owned ? STRINGS.shop.owned : '',
-        owned ? label(STRINGS.shop.owned) : priceButton(h.price, state.gold, () => cb.onBuyHat(h.id))),
+      row: row(hatIcon(cb.hatImage(h.id)), h.name, note, owned ? label(STRINGS.shop.owned) : buy),
     };
   });
   // Seeds you can buy, then fertilizer and plant cure.
@@ -273,7 +311,8 @@ export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>)
   })] : [];
   const room: Entry[] = [...WALLPAPERS, ...CURTAINS].map((d) => decorEntry(state, d, cb));
   // Revival Stars: the star fragments collected so far (free, from good
-  // care), then stars to keep in your pocket, bought with real money.
+  // care), which make a star once there are enough, then stars to keep in
+  // your pocket, bought with real money.
   const note = STRINGS.shop.revivalNote(revivalStars(state));
   const { perStar, careDaysPerFragment } = CONFIG.revival.fragments;
   const pieces = state.fragments.pieces;
@@ -281,7 +320,7 @@ export function shopPage(state: GameState, cb: ShopCallbacks, open: Set<string>)
     {
       icon: FRAGMENT_ICON,
       count: countBadge(pieces),
-      row: row(FRAGMENT_ICON, STRINGS.shop.fragments, STRINGS.shop.fragmentsNote(state.fragments.careDays, careDaysPerFragment), label(STRINGS.shop.fragmentsCount(pieces, perStar))),
+      row: fragmentsRow(pieces, perStar, state.fragments.careDays, careDaysPerFragment, cb),
     },
     ...CONFIG.store.map((p) => ({
       icon: ITEM_ICONS[p.item],

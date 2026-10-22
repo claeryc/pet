@@ -255,7 +255,7 @@ export type Message =
 
 // Star fragments, the free way to a Revival Star (see src/game/fragments.ts).
 export interface Fragments {
-  pieces: number; // fragments towards the next star (0 to 4)
+  pieces: number; // fragments collected and not spent yet
   careDays: number; // good care days towards the next fragment
   day: string; // the local day being watched now, e.g. "2026-10-21"
   dayGood: boolean; // whether that day is still going well

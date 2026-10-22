@@ -16,7 +16,10 @@ import { decorKey, getDecor, ownsDecor, type DecorKind } from './decor';
 export interface Hat {
   id: string;
   name: string;
-  price: number;
+  price: number; // in gold
+  // A star-only hat costs this many star fragments instead of gold, so
+  // money can't buy it (see fragments.ts).
+  fragments?: number;
   sheet: string; // sheet name in public/sprites/manifest.json
 }
 
@@ -26,7 +29,7 @@ export function getHat(id: string | null): Hat | undefined {
   return HATS.find((h) => h.id === id);
 }
 
-export type ShopBlock = 'notEnoughGold' | 'alreadyOwned' | 'notOwned' | 'egg' | 'soldOut';
+export type ShopBlock = 'notEnoughGold' | 'notEnoughFragments' | 'alreadyOwned' | 'notOwned' | 'egg' | 'soldOut';
 
 export interface ShopResult {
   state: GameState;
@@ -154,8 +157,13 @@ export function buyHat(state: GameState, id: string): ShopResult {
   const hat = getHat(id);
   if (!hat) return { state };
   if (state.inventory.hats.includes(id)) return { state, blocked: 'alreadyOwned' };
-  if (!canAfford(state, hat.price)) return { state, blocked: 'notEnoughGold' };
   const hats = [...state.inventory.hats, id];
+  if (hat.fragments) {
+    const pieces = state.fragments.pieces - hat.fragments;
+    if (pieces < 0) return { state, blocked: 'notEnoughFragments' };
+    return { state: { ...state, fragments: { ...state.fragments, pieces }, inventory: { ...state.inventory, hats } } };
+  }
+  if (!canAfford(state, hat.price)) return { state, blocked: 'notEnoughGold' };
   return { state: { ...state, gold: state.gold - hat.price, inventory: { ...state.inventory, hats } } };
 }
 

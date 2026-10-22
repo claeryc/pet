@@ -29,6 +29,7 @@ import { potAt, type GardenScene } from '../render/garden';
 import type { DeliveryScene } from '../render/delivery';
 import { formatDuration } from './time';
 import { createReveal, type RevealItem } from './reveal';
+import { createCraft, type Craft } from './craft';
 import { createBackpack } from './backpack';
 import type { ShopCategory } from './shop';
 import { createFx, type Gains } from './fx';
@@ -74,6 +75,7 @@ export interface HomeScreen {
   notice: (message: string) => void;
   // Shows off something you just got, over the stat bars.
   reveal: (item: RevealItem) => void;
+  craft: Craft['play']; // fragments coming together into a Revival Star
   // A pet's backpack over the stat bars, waiting to be tapped open.
   backpack: (name: string, onOpen: () => void) => void;
   // Floats the stat changes from something you just did up from the pet.
@@ -831,8 +833,9 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   statSlot.className = 'stat-slot';
   // The item reveal plays over all of them.
   const reveal = createReveal();
+  const craft = createCraft();
   const backpack = createBackpack();
-  statSlot.append(stats, journeys.panel, trip.panel, fishing.pond, cooking.kitchen, garden.beds, delivery.panel, meet.panel, backpack.el, reveal.el);
+  statSlot.append(stats, journeys.panel, trip.panel, fishing.pond, cooking.kitchen, garden.beds, delivery.panel, meet.panel, backpack.el, reveal.el, craft.el);
 
   // A short message that pops up and fades, e.g. "Mochi is asleep". When
   // you've run out of something the Shop sells, it has a Shop button too.
@@ -1057,6 +1060,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     toast: showToast,
     notice: showNotice,
     reveal: reveal.show,
+    craft: craft.play,
     backpack: backpack.show,
     gains: fx.gains,
     fishingPhase: fishing.phase,

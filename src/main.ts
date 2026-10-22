@@ -42,6 +42,7 @@ import {
   type GardenResult,
 } from './game/garden';
 import { markSeen, updateProgress } from './game/unlocks';
+import { makeStar } from './game/fragments';
 import { learn, nextCost, rankOf, resetTree, skillBefore, type SkillId } from './game/skills';
 import { SKILL_POINT_ICON } from './ui/icons';
 import { fillAll, orderPay, orderTier, putInBox, takeFromBox, type BoxResult } from './game/delivery';
@@ -192,19 +193,15 @@ function playMusic(): void {
   music(isNight(gameNow()) || state.pet.asleep ? 'night' : 'day');
 }
 
-// Star fragments just found, and a Revival Star they made.
-function showFragments(got: { pieces: number; stars: number }): void {
-  if (got.pieces === 0) return;
+// Star fragments just found.
+function showFragments(pieces: number): void {
+  if (pieces === 0) return;
   const { perStar } = CONFIG.revival.fragments;
   sound('got');
-  if (got.stars > 0) {
-    home.reveal({ icon: ITEM_ICONS.revivalStar, name: STRINGS.shop.revivalStar, count: got.stars, stars: 0, caption: STRINGS.revival.fragmentsDone });
-  } else {
-    home.reveal({
-      icon: FRAGMENT_ICON, name: STRINGS.shop.fragment, count: got.pieces, stars: 0,
-      caption: STRINGS.shop.fragmentsCount(state.fragments.pieces, perStar),
-    });
-  }
+  home.reveal({
+    icon: FRAGMENT_ICON, name: STRINGS.shop.fragment, count: pieces, stars: 0,
+    caption: STRINGS.shop.fragmentsCount(state.fragments.pieces, perStar),
+  });
 }
 
 // A new Keeper level: a skill point to spend.
@@ -300,6 +297,7 @@ function blocked(message: string): void {
 function runShop(result: ShopResult, success?: string): void {
   setState(result.state);
   if (result.blocked === 'notEnoughGold') blocked(STRINGS.shop.notEnoughGold);
+  else if (result.blocked === 'notEnoughFragments') blocked(STRINGS.shop.notEnoughFragments);
   else if (result.blocked === 'alreadyOwned') blocked(STRINGS.shop.alreadyOwned);
   else if (result.blocked === 'egg') blocked(STRINGS.wardrobe.eggNoHat);
   else if (result.blocked === 'soldOut') blocked(STRINGS.shop.soldOutToday);
@@ -456,12 +454,23 @@ function askRevive(): void {
   };
   const have = revivalStars(state);
   const single = CONFIG.store[0];
+  const { perStar } = CONFIG.revival.fragments;
   const notNow = { label: STRINGS.revival.notNow, soft: true, onPick: () => {} };
   if (have > 0) {
     choice.open({
       title: STRINGS.revival.title(name),
       text: STRINGS.revival.useAsk(name, have),
       options: [{ label: STRINGS.revival.use, onPick: doRevive }, notNow],
+    });
+    return;
+  }
+  // No star, but enough fragments for one: make it on the spot, so a pet
+  // is never lost for not having made a star beforehand.
+  if (state.fragments.pieces >= perStar) {
+    choice.open({
+      title: STRINGS.revival.title(name),
+      text: STRINGS.revival.fragmentsAsk(name, state.fragments.pieces),
+      options: [{ label: STRINGS.revival.useFragments(perStar), onPick: () => { setState(makeStar(state).state); doRevive(); } }, notNow],
     });
     return;
   }
@@ -861,7 +870,42 @@ const home = createHomeScreen(root, {
       if (state.pet.id === id) react('happy');
     });
   },
-  onBuyHat: (id) => runShop(buyHat(state, id), STRINGS.shop.boughtHat(getHat(id)?.name ?? '', state.pet.name)),
+  onBuyHat: (id) => {
+    const hat = getHat(id);
+    const buy = () => runShop(buyHat(state, id), STRINGS.shop.boughtHat(hat?.name ?? '', state.pet.name));
+    const { perStar } = CONFIG.revival.fragments;
+    const left = state.fragments.pieces - (hat?.fragments ?? 0);
+    // Fragments going on a hat: first say how far that leaves a free star.
+    if (!hat?.fragments || left < 0 || left >= perStar || state.inventory.hats.includes(id)) return buy();
+    choice.open({
+      title: STRINGS.shop.spendTitle,
+      text: STRINGS.shop.spendAsk(hat.name, hat.fragments, left, perStar),
+      options: [
+        { label: STRINGS.shop.spendYes, onPick: buy },
+        { label: STRINGS.shop.spendNo, soft: true, onPick: () => {} },
+      ],
+    });
+  },
+  onFragmentsHelp: () => {
+    const { perStar, careDaysPerFragment } = CONFIG.revival.fragments;
+    // The fragments you have, lit up around a faded Revival Star.
+    const pieces = state.fragments.pieces;
+    const slots = Array.from({ length: perStar }, (_, i) =>
+      `<span class="frag-slot${i < pieces ? ' on' : ''}" style="--a:${(360 / perStar) * i}deg">${FRAGMENT_ICON}</span>`).join('');
+    const art = `<div class="frag-ring">${slots}<span class="frag-ring-star">${ITEM_ICONS.revivalStar}</span></div>`;
+    choice.open({
+      art,
+      title: STRINGS.shop.fragmentsHelpTitle(pieces, perStar),
+      text: STRINGS.shop.fragmentsHelp(careDaysPerFragment - state.fragments.careDays),
+      options: [{ label: STRINGS.shop.fragmentsHelpOk, onPick: () => {} }],
+    });
+  },
+  onMakeStar: () => {
+    const result = makeStar(state);
+    setState(result.state);
+    if (result.blocked) return blocked(STRINGS.shop.notEnoughFragments);
+    home.craft({ fragment: FRAGMENT_ICON, star: ITEM_ICONS.revivalStar, onLock: () => sound('place'), onStar: () => sound('grewUp') });
+  },
   onWearHat: (id) => runShop(wearHat(state, id)),
   hatImage: (id) => sprites.get(getHat(id)?.sheet ?? '')?.image.src,
   characterImage,
