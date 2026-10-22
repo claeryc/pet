@@ -5,6 +5,7 @@
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import { HATS, baitCount, revivalStars, canBuyPot, foodCount, limitedInStock, limitedLeft, localDay } from '../game/economy';
+import { earnedFrom } from '../game/regulars';
 import { CURTAINS, WALLPAPERS, inUse, ownsDecor, type Decor, type DecorKind } from '../game/decor';
 import type { GameState } from '../game/state';
 import type { Food, FoodId } from '../game/actions';
@@ -89,6 +90,16 @@ function fragmentButton(cost: number, have: number, onClick: () => void): HTMLBu
   const b = button(pill, onClick);
   b.classList.toggle('too-pricey', have < cost);
   return b;
+}
+
+// "♥♥♥": something only a regular gives (Percy's Courier Cap), at that
+// many hearts. Greyed out like a price you can't afford, and a tap says
+// who gives it.
+function earnedButton(kind: 'hat' | 'wallpaper', id: string, onClick: () => void): { button: HTMLButtonElement; note: string } {
+  const from = earnedFrom(kind, id);
+  const b = button(from ? '♥'.repeat(from.hearts) : '?', onClick, 'shop-btn too-pricey shop-btn-hearts');
+  const note = from ? STRINGS.regulars.earnedNote(STRINGS.regulars.names[from.id] ?? from.id, from.hearts) : '';
+  return { button: b, note };
 }
 
 // "Craft": turns fragments into a star. Greyed out like a price you can't
@@ -211,11 +222,16 @@ function decorEntry(state: GameState, d: Decor, cb: ShopCallbacks): Entry {
   const icon = ITEM_ICONS[`${d.kind}_${d.id}`] ?? '';
   const name = (d.kind === 'wallpaper' ? STRINGS.shop.wallpapers : STRINGS.shop.curtains)[d.id] ?? d.id;
   let action: HTMLElement;
-  if (!owned) action = priceButton(d.price, state.gold, () => cb.onBuyDecor(d.kind, d.id));
+  let note = using ? STRINGS.shop.inUse : owned ? STRINGS.shop.owned : '';
+  if (!owned && d.earned && d.kind === 'wallpaper') {
+    const earned = earnedButton(d.kind, d.id, () => cb.onBuyDecor(d.kind, d.id));
+    action = earned.button;
+    note = earned.note;
+  } else if (!owned) action = priceButton(d.price, state.gold, () => cb.onBuyDecor(d.kind, d.id));
   else if (using && d.kind === 'curtains') action = button(STRINGS.shop.takeDown, () => cb.onUseDecor(d.kind, null), 'shop-btn shop-btn-soft');
   else if (using) action = label(STRINGS.shop.inUse);
   else action = button(STRINGS.shop.use, () => cb.onUseDecor(d.kind, d.id));
-  return { icon, mark: using, row: row(icon, name, using ? STRINGS.shop.inUse : owned ? STRINGS.shop.owned : '', action) };
+  return { icon, mark: using, row: row(icon, name, note, action) };
 }
 
 // The Shop's categories, in order. Other screens can open the Shop at one.
@@ -245,10 +261,11 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
     });
   const hats: Entry[] = HATS.map((h) => {
     const owned = state.inventory.hats.includes(h.id);
-    const buy = h.fragments
-      ? fragmentButton(h.fragments, state.fragments.pieces, () => cb.onBuyHat(h.id))
+    const earned = h.earned ? earnedButton('hat', h.id, () => cb.onBuyHat(h.id)) : null;
+    const buy = earned ? earned.button
+      : h.fragments ? fragmentButton(h.fragments, state.fragments.pieces, () => cb.onBuyHat(h.id))
       : priceButton(h.price, state.gold, () => cb.onBuyHat(h.id));
-    const note = owned ? STRINGS.shop.owned : h.fragments ? STRINGS.shop.fragmentsOnly : '';
+    const note = owned ? STRINGS.shop.owned : earned ? earned.note : h.fragments ? STRINGS.shop.fragmentsOnly : '';
     return {
       icon: hatIcon(cb.hatImage(h.id)),
       faded: owned,

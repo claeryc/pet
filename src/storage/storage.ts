@@ -10,12 +10,13 @@ import { newJourneys, newKeeper } from '../game/state';
 import { grownUpXp, levelInfo } from '../game/skills';
 import { getCharacter } from '../game/growth';
 import { guidesAlreadyKnown } from '../game/guides';
+import { backfillRegulars } from '../game/regulars';
 
 const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 20;
+export const SAVE_VERSION = 21;
 
 export interface SaveFile {
   version: number;
@@ -216,6 +217,14 @@ export function migrate(save: SaveFile): SaveFile {
     const st = save.state;
     st.guidesRead = guidesAlreadyKnown({ ...st, pet: st.pet ?? {}, unlocked: st.unlocked ?? [] } as GameState);
     save.version = 20;
+  }
+  // Version 20 -> 21: regulars (Percy's hearts). Players who already filled
+  // orders start partway; the rewards for those hearts are handed over on
+  // the next update.
+  if (save.version === 20) {
+    const st = save.state;
+    st.regulars = backfillRegulars(st.tally?.deliveries ?? 0);
+    save.version = 21;
   }
   return save;
 }

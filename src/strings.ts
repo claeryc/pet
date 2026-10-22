@@ -474,6 +474,44 @@ export const STRINGS = {
     journeys: 'New in Play: Journeys! Send your pet out to explore.',
   },
   // Meeting other pets, friends and little ones (Play > Meet).
+  // Regulars (Percy for now): characters who aren't pets, with hearts that
+  // fill as you help them, and a reward at each heart.
+  regulars: {
+    title: 'Regulars',
+    names: { percy: 'Percy' } as Record<string, string>,
+    what: { percy: 'Postal pigeon' } as Record<string, string>,
+    // How to raise their hearts, on the rewards card.
+    how: { percy: "Fill Percy's orders to get to know him. Full orders count most." } as Record<string, string>,
+    next: (reward: string, hearts: number) => `Next: ${reward} at ${'♥'.repeat(hearts)}`,
+    allDone: 'Every reward given. Thanks for being a regular!',
+    cardTitle: (name: string, hearts: number) => `${name}  ${'♥'.repeat(hearts)}${'♡'.repeat(5 - hearts)}`,
+    ok: 'OK',
+    secret: '???',
+    // One heart's reward: a short name, and what it does.
+    reward: {
+      seed: (name: string) => `${name} seed`,
+      hat: (name: string) => name,
+      wallpaper: (name: string) => `${name} wallpaper`,
+      payShare: 'Better pay',
+      seedChance: 'Rarer seeds',
+      restHours: 'Shorter rest',
+    },
+    rewardNote: {
+      seed: 'A thank-you gift',
+      hat: 'A hat money can\'t buy',
+      wallpaper: 'A wallpaper money can\'t buy',
+      payShare: (share: number) => `A full box pays ${pct(share)}% of what's in it`,
+      seedChance: (share: number) => `A gold-frame order leaves a seed ${pct(share)}% of the time, rare ones more often`,
+      restHours: (hours: number) => `Rests ${hours} hours after a journey`,
+    },
+    // In Mail and as a toast: "Percy ♥♥♥: Courier Cap!"
+    gave: (name: string, hearts: number, reward: string) => `${name} ${'♥'.repeat(hearts)}: ${reward}!`,
+    // Added to Percy's pickup toast when his hearts went up.
+    grew: (name: string) => `  ·  ${name}'s hearts grew`,
+    // In the Shop, for things only a regular gives.
+    earnedNote: (name: string, hearts: number) => `From ${name} at ${'♥'.repeat(hearts)}`,
+    earnedOnly: (name: string, hearts: number) => `${name} gives you this at ${hearts} hearts. See Messages > Friends.`,
+  },
   friends: {
     close: 'Close',
     meet: 'Meet',
@@ -706,6 +744,7 @@ export const STRINGS = {
       dots: 'Peach dots',
       checks: 'Lilac checks',
       stars: 'Starry night',
+      postmark: 'Postmark',
     } as Record<string, string>,
     curtains: {
       rose: 'Rose curtains',

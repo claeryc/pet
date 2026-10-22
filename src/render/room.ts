@@ -21,6 +21,18 @@ export const WALLPAPERS: Record<string, WallPattern> = {
     (Math.floor(x / 4) + Math.floor(y / 4)) % 2 ? (night ? PALETTE.lilac : PALETTE.lavender) : base(night),
   // A night sky all the time, with little stars.
   stars: (x, y) => ((x * 7 + y * 13) % 29 === 0 ? PALETTE.butter : PALETTE.plum),
+  // Little envelopes in rows, each row shifted half a step (Percy's gift
+  // at 5 hearts, see src/game/regulars.ts).
+  postmark: (x, y, night) => {
+    const row = Math.floor(y / 8);
+    const lx = (x + (row % 2) * 5) % 10;
+    const ly = y % 8;
+    if (lx < 1 || lx > 6 || ly < 1 || ly > 4) return lx === 8 && ly === 6 ? PALETTE.pink : base(night);
+    const edge = lx === 1 || lx === 6 || ly === 1 || ly === 4;
+    const flap = (ly === 2 && (lx === 2 || lx === 5)) || (ly === 3 && (lx === 3 || lx === 4));
+    if (edge || flap) return night ? PALETTE.lilac : PALETTE.sky;
+    return night ? PALETTE.cream : PALETTE.white;
+  },
 };
 
 // Curtains: the main colour and the colour of the folds.

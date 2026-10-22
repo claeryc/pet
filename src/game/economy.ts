@@ -20,6 +20,8 @@ export interface Hat {
   // A star-only hat costs this many star fragments instead of gold, so
   // money can't buy it (see fragments.ts).
   fragments?: number;
+  // Not sold at all: a regular gives it (see regulars.ts).
+  earned?: boolean;
   sheet: string; // sheet name in public/sprites/manifest.json
 }
 
@@ -29,7 +31,7 @@ export function getHat(id: string | null): Hat | undefined {
   return HATS.find((h) => h.id === id);
 }
 
-export type ShopBlock = 'notEnoughGold' | 'notEnoughFragments' | 'alreadyOwned' | 'notOwned' | 'egg' | 'soldOut';
+export type ShopBlock = 'notEnoughGold' | 'notEnoughFragments' | 'alreadyOwned' | 'notOwned' | 'egg' | 'soldOut' | 'earnedOnly';
 
 export interface ShopResult {
   state: GameState;
@@ -137,6 +139,7 @@ export function buyDecor(state: GameState, kind: DecorKind, id: string): ShopRes
   const d = getDecor(kind, id);
   if (!d) return { state };
   if (ownsDecor(state, kind, id)) return { state, blocked: 'alreadyOwned' };
+  if (d.earned) return { state, blocked: 'earnedOnly' };
   if (!canAfford(state, d.price)) return { state, blocked: 'notEnoughGold' };
   const decor = [...state.inventory.decor, decorKey(kind, id)];
   const room = kind === 'wallpaper' ? { ...state.room, wallpaper: id } : { ...state.room, curtains: id };
@@ -157,6 +160,7 @@ export function buyHat(state: GameState, id: string): ShopResult {
   const hat = getHat(id);
   if (!hat) return { state };
   if (state.inventory.hats.includes(id)) return { state, blocked: 'alreadyOwned' };
+  if (hat.earned) return { state, blocked: 'earnedOnly' };
   const hats = [...state.inventory.hats, id];
   if (hat.fragments) {
     const pieces = state.fragments.pieces - hat.fragments;
