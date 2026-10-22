@@ -335,6 +335,8 @@ export interface GameState {
   keeper: Keeper;
   fragments: Fragments;
   journeys: Journeys;
+  // "How it works" guides already shown (see src/game/guides.ts).
+  guidesRead: string[];
 }
 
 export function newJourneys(): Journeys {
@@ -417,5 +419,6 @@ export function createNewGame(now: number): GameState {
     keeper: newKeeper(),
     fragments: { pieces: 0, careDays: 0, day: '', dayGood: false },
     journeys: newJourneys(),
+    guidesRead: [],
   };
 }

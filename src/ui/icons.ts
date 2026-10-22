@@ -1141,6 +1141,21 @@ export const MENU_ICONS: Record<string, string> = {
     '..kkkcckkk..',
     '............',
   ]),
+  // A pink book, for the Guide.
+  guide: pixelIcon([
+    '.kkkkkkkkkk.',
+    '.kpppppppprk',
+    '.kppkkkppprk',
+    '.kpkpppkpprk',
+    '.kppppkppprk',
+    '.kpppkpppprk',
+    '.kpppkpppprk',
+    '.kpppppppprk',
+    '.kpppkpppprk',
+    '.kppppppppwk',
+    '.kkkkkkkkkwk',
+    '..kkkkkkkkk.',
+  ]),
   // A lilac gear.
   settings: pixelIcon([
     '....kkkk....',
@@ -1388,4 +1403,20 @@ export const LOCK_ICON = pixelIcon([
   'kyykkyck',
   'kyyyyyck',
   'kkkkkkkk',
+]);
+
+// A pointing hand, showing where to tap on the guide cards.
+export const TAP_ICON = pixelIcon([
+  '....kk......',
+  '...kwwk.....',
+  '...kwwk.....',
+  '...kwwkkk...',
+  '...kwwkwwkk.',
+  'kk.kwwkwwkwk',
+  'kwkkwwwwwwwk',
+  'kwwkwwwwwwwk',
+  '.kwwwwwwwwwk',
+  '..kwwwwwwwk.',
+  '...kwwwwwk..',
+  '...kkkkkkk..',
 ]);

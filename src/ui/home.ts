@@ -503,6 +503,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     stats.hidden = true; // the board takes the bars' place, and can be taller
     if (latest) journeys.update(latest.state, latest.now);
     journeys.start();
+    cb.onGuide('journeys');
   }
 
   // Holding the pet opens the Wardrobe, in the gear panel.
@@ -617,6 +618,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     hideActions();
     stats.setAttribute('aria-hidden', 'true'); // under water for now
     fishing.start();
+    cb.onGuide('fishing');
   }
   // Cooking works the same way: its own [Close] [Recipes] [Cook] row, and a
   // kitchen counter that slides up over the stat bars.
@@ -631,6 +633,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     stats.setAttribute('aria-hidden', 'true'); // covered by the counter for now
     if (latest) cooking.update(latest.state);
     cooking.start();
+    cb.onGuide('cooking');
   }
   // The garden too: its own buttons, and a bed of pots that slides up over
   // the stat bars.
@@ -655,6 +658,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     stats.setAttribute('aria-hidden', 'true'); // covered by the garden for now
     if (latest) garden.update(latest.state, latest.now);
     garden.start();
+    cb.onGuide('garden');
   }
   // Percy's order: his meadow, its own [Close] [Fill all] row, and a
   // panel of boxes that slides up over the stat bars.
@@ -678,6 +682,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     stats.setAttribute('aria-hidden', 'true'); // covered by the boxes for now
     if (latest) delivery.update(latest.state, latest.now);
     delivery.start();
+    cb.onGuide('delivery');
   }
   // Meeting a friend: they come over to the room, and a panel with their
   // hearts slides up over the stat bars.
@@ -701,6 +706,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     stats.setAttribute('aria-hidden', 'true'); // covered by the panel for now
     if (latest) meet.update(latest.state, latest.now);
     meet.start();
+    cb.onGuide('meet');
   }
   const journeys = createJourneys({
     onSetOff: cb.onSetOff,

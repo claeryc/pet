@@ -81,6 +81,8 @@ import { buyCharm, callHome, goTogether, openBackpack, restPercy } from './game/
 import { isAway } from './game/presence';
 import { STAT_ICONS } from './ui/icons';
 import type { Find } from './game/state';
+import { guideDue, markGuideRead, type GuideId } from './game/guides';
+import { createGuideCard } from './ui/guide';
 
 const root = document.getElementById('app')!;
 
@@ -123,6 +125,10 @@ function setState(next: GameState): void {
   // to it, so it can be named.
   const hatched = state.housemates.find((p) => p.stage !== 'egg' && !p.named);
   if (hatched && !needsName(state)) state = switchPet(state, hatched.id);
+  // Guides that come up by themselves (not by opening something), the
+  // first time. Not while the pet still needs a name.
+  const guides = needsName(state) ? [] : AUTO_GUIDES.filter((g) => guideDue(state, g.id) && g.when(state)).map((g) => g.id);
+  for (const id of guides) state = markGuideRead(state, id);
   saveGame(state);
   home.update(state, gameNow());
   for (const pet of grew) {
@@ -154,6 +160,31 @@ function setState(next: GameState): void {
   announceMail(oldMessages);
   askWhoRetires();
   playMusic();
+  for (const id of guides) showGuide(id);
+}
+
+// When the guides that aren't about opening something come up: Looking
+// after (once the new pet has its name), a craving, a sick pet and a pet
+// all grown up (the Little ones guide).
+const AUTO_GUIDES: { id: GuideId; when: (s: GameState) => boolean }[] = [
+  { id: 'basics', when: (s) => s.pet.named },
+  { id: 'craving', when: (s) => s.craving.food !== null && !isAway(s.pet) },
+  { id: 'sick', when: (s) => s.pet.condition === 'sick' },
+  { id: 'family', when: (s) => s.pet.stage === 'adult' },
+];
+
+// Shows a guide card, after a moment so the screen it's about can slide in
+// behind it first.
+const GUIDE_DELAY_MS = 450;
+function showGuide(id: GuideId): void {
+  window.setTimeout(() => guide.show(id, state.pet.name), GUIDE_DELAY_MS);
+}
+
+// The first time the player opens a part of the game that has a guide.
+function openedGuide(id: GuideId): void {
+  if (!guideDue(state, id)) return;
+  setState(markGuideRead(state, id));
+  showGuide(id);
 }
 
 // Daytime music, or the night song once it's dark or the pet is asleep.
@@ -835,6 +866,8 @@ const home = createHomeScreen(root, {
   hatImage: (id) => sprites.get(getHat(id)?.sheet ?? '')?.image.src,
   characterImage,
   onSeen: (id) => setState(markSeen(state, id)),
+  onGuide: openedGuide,
+  onReadGuide: (id) => guide.replay(id, state.pet.name),
   onRename: askName,
   onOwner: (name) => setState(setOwner(state, name)),
   onShowAllMenus: (showAllMenus) => setState({ ...state, showAllMenus }),
@@ -892,6 +925,7 @@ const home = createHomeScreen(root, {
 const naming = createNamingBox(root);
 const choice = createChoiceBox(root);
 const away = createAwayCard(root);
+const guide = createGuideCard(root);
 home.update(state, gameNow());
 startAudio();
 playMusic();
