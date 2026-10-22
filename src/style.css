@@ -1842,6 +1842,37 @@ body {
   box-shadow: 0 0 0 2px white;
 }
 
+/* A pot needs you: the garden's drop on Play's top corner, bobbing like
+   the one on the garden tabs. It takes the "new" dot's place, and sits
+   half off the button so it stays clear of the label on small screens.
+   The row's buttons clip what's outside them (so they can shrink away),
+   except a button with a badge while no panel is open. */
+.actions:not([data-open]) > .drawer.has-badge {
+  overflow: visible;
+}
+
+.drawer-head-badge {
+  position: absolute;
+  top: -9px;
+  right: -5px;
+  width: 22px;
+  height: 22px;
+  filter: drop-shadow(2px 0 0 white) drop-shadow(-2px 0 0 white) drop-shadow(0 2px 0 white) drop-shadow(0 -2px 0 white);
+  animation: drop-bob 1s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.drawer-head-badge svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.drawer-head.has-badge.has-new::after,
+.drawer.is-open .drawer-head-badge {
+  display: none;
+}
+
 /* On a row inside a panel (the cooking pot), on the right. */
 .drawer-option.has-new .drawer-option-effects::after {
   content: '';
@@ -2803,6 +2834,7 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .garden-tab.dry .garden-tab-drop,
+  .drawer-head-badge,
   .garden-flower[data-mood] {
     animation: none;
   }

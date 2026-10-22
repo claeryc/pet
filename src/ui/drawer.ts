@@ -41,6 +41,10 @@ export interface Drawer {
   // A small "new" dot on the button, or on one option.
   setNew: (isNew: boolean) => void;
   setOptionNew: (index: number, isNew: boolean) => void;
+  // A small picture in the button's top corner (e.g. the drop when a pot
+  // needs you), in place of the "new" dot, or null to take it off.
+  // `label` is what screen readers say for it.
+  setBadge: (badge: string | null, label?: string) => void;
   // A small picture on the corner of an option's icon (e.g. the heart on
   // what the pet is craving), or null to take it off.
   setOptionBadge: (index: number, badge: string | null) => void;
@@ -205,6 +209,18 @@ export function createDrawer(setup: DrawerSetup): Drawer {
     setNew: (isNew) => head.classList.toggle('has-new', isNew),
     setOptionNew(index, isNew) {
       rows[index]?.classList.toggle('has-new', isNew);
+    },
+    setBadge(badge, label = '') {
+      head.querySelector('.drawer-head-badge')?.remove();
+      head.classList.toggle('has-badge', !!badge);
+      el.classList.toggle('has-badge', !!badge);
+      if (!badge) return;
+      const b = document.createElement('span');
+      b.className = 'drawer-head-badge';
+      b.innerHTML = badge;
+      b.setAttribute('role', 'img');
+      b.setAttribute('aria-label', label);
+      head.append(b);
     },
     setOptionBadge(index, badge) {
       const icon = rows[index]?.querySelector('.drawer-option-icon');

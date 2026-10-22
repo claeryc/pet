@@ -14,6 +14,7 @@ import {
   growPlot,
   harvest,
   moisture,
+  needsTending,
   pickSeed,
   plant,
   plotStage,
@@ -247,6 +248,20 @@ describe('harvesting', () => {
     expect(r.crop).toBe('carrot');
     expect(foodCount(r.state, 'carrot')).toBe(3);
     expect(plotStage(r.state.garden[0])).toBe('empty');
+  });
+});
+
+describe('the drop on Play', () => {
+  it('shows for a dry, sick or ready pot, not a wet growing one or an empty garden', () => {
+    expect(needsTending(withSeeds().garden, START)).toBe(false);
+    const s = wateredCarrot();
+    expect(needsTending(s.garden, START)).toBe(false);
+    // Dry once the 8 hours are up.
+    expect(needsTending(s.garden, START + 8 * HOUR)).toBe(true);
+    expect(needsTending([{ ...s.garden[0], sickSince: START }], START)).toBe(true);
+    expect(needsTending([{ ...s.garden[0], growth: 16 * HOUR }], START)).toBe(true);
+    // A dead plant isn't something to tend.
+    expect(needsTending([{ ...s.garden[0], dead: true, moistUntil: 0 }], START)).toBe(false);
   });
 });
 
