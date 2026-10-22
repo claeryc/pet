@@ -29,7 +29,7 @@ export function getHat(id: string | null): Hat | undefined {
   return HATS.find((h) => h.id === id);
 }
 
-export type ShopBlock = 'notEnoughGold' | 'notEnoughFragments' | 'alreadyOwned' | 'notOwned' | 'egg' | 'soldOut';
+export type ShopBlock = 'notEnoughGold' | 'notEnoughFragments' | 'alreadyOwned' | 'notOwned' | 'egg' | 'soldOut' | 'earnedOnly';
 
 export interface ShopResult {
   state: GameState;
@@ -137,6 +137,7 @@ export function buyDecor(state: GameState, kind: DecorKind, id: string): ShopRes
   const d = getDecor(kind, id);
   if (!d) return { state };
   if (ownsDecor(state, kind, id)) return { state, blocked: 'alreadyOwned' };
+  if (d.earned) return { state, blocked: 'earnedOnly' };
   if (!canAfford(state, d.price)) return { state, blocked: 'notEnoughGold' };
   const decor = [...state.inventory.decor, decorKey(kind, id)];
   const room = kind === 'wallpaper' ? { ...state.room, wallpaper: id } : { ...state.room, curtains: id };

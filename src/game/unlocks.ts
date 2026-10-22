@@ -5,6 +5,7 @@
 //
 // The "Show every menu" testing tool in Settings skips the rules.
 
+import { catchUpRegulars } from './regulars';
 import type { GameState } from './state';
 import { canOrder } from './delivery';
 import { logMessage } from './messages';
@@ -95,6 +96,9 @@ export function updateProgress(state: GameState): {
   const opened = unlocksFor(s).filter((id) => !s.unlocked.includes(id));
   if (opened.length > 0) s = { ...s, unlocked: [...s.unlocked, ...opened] };
   for (const id of opened) s = logMessage(s, { kind: 'unlocked', at: s.lastUpdated, id });
+  // Hearts a regular reached without their reward yet (an older save
+  // that started partway, see storage.ts).
+  s = catchUpRegulars(s, s.lastUpdated);
   const frag = stepFragments(s);
   return {
     state: frag.state, unlocked: opened, badges: badges.earned, milestones: milestones.earned, levels: levels.levels,

@@ -14,6 +14,7 @@ import {
   growPlot,
   harvest,
   moisture,
+  needsTending,
   pickSeed,
   plant,
   plotStage,
@@ -250,6 +251,20 @@ describe('harvesting', () => {
   });
 });
 
+describe('the drop on Play', () => {
+  it('shows for a dry, sick or ready pot, not a wet growing one or an empty garden', () => {
+    expect(needsTending(withSeeds().garden, START)).toBe(false);
+    const s = wateredCarrot();
+    expect(needsTending(s.garden, START)).toBe(false);
+    // Dry once the 8 hours are up.
+    expect(needsTending(s.garden, START + 8 * HOUR)).toBe(true);
+    expect(needsTending([{ ...s.garden[0], sickSince: START }], START)).toBe(true);
+    expect(needsTending([{ ...s.garden[0], growth: 16 * HOUR }], START)).toBe(true);
+    // A dead plant isn't something to tend.
+    expect(needsTending([{ ...s.garden[0], dead: true, moistUntil: 0 }], START)).toBe(false);
+  });
+});
+
 describe('seeds', () => {
   it('are found by luck: 3% per fish, 1% per cuddle', () => {
     const s = newTeen(START);
@@ -318,7 +333,7 @@ describe('save version 10', () => {
     const out = migrate({ version: 9, state: { pet: { stage: 'teen' }, inventory: { food: { cookie: 2 }, hats: [] } } });
     expect(out.version).toBe(SAVE_VERSION);
     expect(out.state.garden).toHaveLength(G.plots);
-    expect(out.state.inventory).toEqual({ food: { cookie: 2 }, hats: [], seeds: {}, supplies: {}, decor: [] });
+    expect(out.state.inventory).toEqual({ food: { cookie: 2 }, hats: [], seeds: {}, supplies: {}, decor: [], bags: [] });
   });
 });
 

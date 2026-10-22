@@ -10,12 +10,13 @@ import { newJourneys, newKeeper } from '../game/state';
 import { grownUpXp, levelInfo } from '../game/skills';
 import { getCharacter } from '../game/growth';
 import { guidesAlreadyKnown } from '../game/guides';
+import { backfillRegulars } from '../game/regulars';
 
 const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 21;
+export const SAVE_VERSION = 23;
 
 export interface SaveFile {
   version: number;
@@ -217,11 +218,22 @@ export function migrate(save: SaveFile): SaveFile {
     st.guidesRead = guidesAlreadyKnown({ ...st, pet: st.pet ?? {}, unlocked: st.unlocked ?? [] } as GameState);
     save.version = 20;
   }
-  // Version 20 -> 21: more journey badges, and Milestone badges. Fill in
+  // Version 20 -> 21: regulars (Percy's hearts) and journey bags. Players who already filled
+  // orders start partway; the rewards for those hearts are handed over on
+  // the next update.
+  if (save.version === 20) {
+    const st = save.state;
+    st.regulars = backfillRegulars(st.tally?.deliveries ?? 0);
+    if (st.inventory) st.inventory.bags = [];
+    save.version = 21;
+  }
+  // Version 22 -> 23: more journey badges, and Milestone badges. (21 -> 22
+  // is the character system; until that's in, a version 21 save comes
+  // straight here.) Fill in
   // what the save can tell: an Adventure for each place whose best stamp is
   // epic, and the gold-frame orders still in Messages. The Milestones
   // themselves are handed out on the next update.
-  if (save.version === 20) {
+  if (save.version === 21 || save.version === 22) {
     const st = save.state;
     st.milestones = [];
     const pages = Object.values(st.journeys?.journal ?? {}) as { best?: string }[];
@@ -230,7 +242,7 @@ export function migrate(save: SaveFile): SaveFile {
     st.tally = { ...st.tally };
     if (adventures > 0) st.tally.adventures = Math.max(st.tally.adventures ?? 0, adventures);
     if (goldOrders > 0) st.tally.goldOrders = Math.max(st.tally.goldOrders ?? 0, goldOrders);
-    save.version = 21;
+    save.version = 23;
   }
   return save;
 }

@@ -120,6 +120,7 @@ export interface Inventory {
   seeds: Record<string, number>; // crop id -> how many seeds
   supplies: Record<string, number>; // 'fertilizer' / 'plantCure' / 'bait' / 'revivalStar' -> how many
   decor: string[]; // room decorations bought, e.g. "wallpaper:dots", "curtains:rose"
+  bags: string[]; // journey bags besides the plain sack (see src/render/bags.ts)
 }
 
 // How the room is decorated (see src/game/decor.ts).
@@ -243,7 +244,8 @@ export type OrderTier = 'none' | 'bronze' | 'silver' | 'gold';
 // when it's shown (see src/strings.ts).
 export type Message =
   | { kind: 'order'; at: number; boxes: { food: string; want: number }[]; pickupAt: number }
-  | { kind: 'pickup'; at: number; boxes: OrderBox[]; gold: number; tier: OrderTier; seed?: string; food?: string }
+  // `regular`: points Percy's hearts went up by (see src/game/regulars.ts).
+  | { kind: 'pickup'; at: number; boxes: OrderBox[]; gold: number; tier: OrderTier; seed?: string; food?: string; regular?: number }
   | { kind: 'unlocked'; at: number; id: string }
   | { kind: 'growth'; at: number; stage: string; name: string; character: string | null; variant: string | null }
   | { kind: 'visitor'; at: number; name: string; character: string; variant: string | null; friend?: boolean }
@@ -252,7 +254,9 @@ export type Message =
   | { kind: 'milestone'; at: number; id: string }
   | { kind: 'level'; at: number; level: number }
   | { kind: 'tripHome'; at: number; name: string; place: string }
-  | { kind: 'courier'; at: number; name: string; place: string; find: Find };
+  | { kind: 'courier'; at: number; name: string; place: string; find: Find }
+  // A regular (Percy) reached a new heart and gave its reward.
+  | { kind: 'regular'; at: number; id: string; hearts: number };
 
 // Star fragments, the free way to a Revival Star (see src/game/fragments.ts).
 export interface Fragments {
@@ -261,6 +265,14 @@ export interface Fragments {
   day: string; // the local day being watched now, e.g. "2026-10-21"
   dayGood: boolean; // whether that day is still going well
   home?: boolean; // whether a pet was home that day (not all away on journeys)
+}
+
+// A character who isn't a pet but keeps coming back, like Percy (see
+// src/game/regulars.ts): a score from 0 to 100, shown as hearts, and the
+// highest heart already rewarded, so no reward is given twice.
+export interface Regular {
+  score: number;
+  hearts: number;
 }
 
 // You, the keeper (see src/game/skills.ts): XP and skills stay with you
@@ -339,6 +351,8 @@ export interface GameState {
   journeys: Journeys;
   // "How it works" guides already shown (see src/game/guides.ts).
   guidesRead: string[];
+  // Regulars by id ("percy"), once you've met them.
+  regulars: Record<string, Regular>;
 }
 
 export function newJourneys(): Journeys {
@@ -394,7 +408,7 @@ export function createNewGame(now: number): GameState {
     lastUpdated: now,
     clockOffsetMs: 0,
     gold: CONFIG.economy.startingGold,
-    inventory: { food: { ...CONFIG.economy.startingFood }, hats: [], seeds: {}, supplies: {}, decor: [] },
+    inventory: { food: { ...CONFIG.economy.startingFood }, hats: [], seeds: {}, supplies: {}, decor: [], bags: [] },
     checkIn: { day: '', count: 0, lastAt: 0 },
     recipesFound: [],
     recentFoods: [],
@@ -423,5 +437,6 @@ export function createNewGame(now: number): GameState {
     fragments: { pieces: 0, careDays: 0, day: '', dayGood: false },
     journeys: newJourneys(),
     guidesRead: [],
+    regulars: {},
   };
 }

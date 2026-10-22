@@ -1844,6 +1844,37 @@ body {
   box-shadow: 0 0 0 2px white;
 }
 
+/* A pot needs you: the garden's drop on Play's top corner, bobbing like
+   the one on the garden tabs. It takes the "new" dot's place, and sits
+   half off the button so it stays clear of the label on small screens.
+   The row's buttons clip what's outside them (so they can shrink away),
+   except a button with a badge while no panel is open. */
+.actions:not([data-open]) > .drawer.has-badge {
+  overflow: visible;
+}
+
+.drawer-head-badge {
+  position: absolute;
+  top: -9px;
+  right: -5px;
+  width: 22px;
+  height: 22px;
+  filter: drop-shadow(2px 0 0 white) drop-shadow(-2px 0 0 white) drop-shadow(0 2px 0 white) drop-shadow(0 -2px 0 white);
+  animation: drop-bob 1s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.drawer-head-badge svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.drawer-head.has-badge.has-new::after,
+.drawer.is-open .drawer-head-badge {
+  display: none;
+}
+
 /* On a row inside a panel (the cooking pot), on the right. */
 .drawer-option.has-new .drawer-option-effects::after {
   content: '';
@@ -2805,6 +2836,7 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .garden-tab.dry .garden-tab-drop,
+  .drawer-head-badge,
   .garden-flower[data-mood] {
     animation: none;
   }
@@ -6594,6 +6626,92 @@ body {
 
 .shop-help:active {
   transform: scale(0.95);
+}
+
+/* Regulars (Percy) at the top of Messages > Friends: the whole row is a
+   button that opens the rewards card. */
+.regular-row {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.regular-row:active {
+  transform: scale(0.98);
+}
+
+/* "♥♥♥" in place of a price, for things only a regular gives. */
+.shop-btn-hearts {
+  color: var(--accent-dark);
+  letter-spacing: -1px;
+  white-space: nowrap;
+}
+
+/* The rewards card: one line per heart, ticked once given. */
+.regular-rewards {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.regular-reward {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 10px;
+  background: white;
+}
+
+.regular-reward.got {
+  background: var(--good-light);
+}
+
+.regular-reward.secret {
+  opacity: 0.55;
+}
+
+.choice-art .regular-reward-icon {
+  flex: 0 0 28px;
+  height: 28px;
+  display: flex;
+}
+
+.choice-art .regular-reward-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.regular-reward-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+  line-height: 1.2;
+}
+
+.regular-reward-text small {
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+
+.regular-reward-hearts {
+  color: var(--accent-dark);
+  font-size: 0.7rem;
+  letter-spacing: -1px;
+}
+
+.regular-reward-tick {
+  color: var(--good-dark);
+  font-weight: 800;
 }
 
 /* A small picture on top of a choice box: the star fragments you have,

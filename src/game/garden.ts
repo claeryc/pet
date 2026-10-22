@@ -55,6 +55,15 @@ export function newGarden(): Plot[] {
   return Array.from({ length: G.plots }, emptyPlot);
 }
 
+// Whether a pot wants looking after: dry soil under a growing plant, a sick
+// plant, or one ready to harvest. The Play button shows a drop for it.
+export function needsTending(garden: Plot[], now: number): boolean {
+  return garden.some((p) => {
+    const stage = plotStage(p);
+    return stage === 'sick' || stage === 'ready' || (stage === 'growing' && moisture(p, now) <= 0);
+  });
+}
+
 // How long a crop takes to grow, in milliseconds of growing time.
 export function growMs(crop: string): number {
   return getCrop(crop).hours * HOUR;

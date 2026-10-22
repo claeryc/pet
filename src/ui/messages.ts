@@ -6,7 +6,8 @@
 // earlier message, newest first: orders announced and picked up, the pet
 // hatching and growing up, visitors, little ones and new things to try.
 //
-// Friends shows whoever is over now, with a Hang out button (out to
+// Friends starts with the regulars (Percy and his hearts, see
+// src/ui/regulars.ts), then whoever is over now, with a Hang out button (out to
 // Play > Meet), then your other friends, each with its hearts, an Invite
 // button (once a day, when nobody's over) and a way to say goodbye.
 
@@ -24,6 +25,8 @@ import { ACHIEVEMENT_ICONS, ITEM_ICONS, MILESTONE_ICONS, SKILL_POINT_ICON, STAT_
 import type { AchievementId } from '../game/achievements';
 import type { MilestoneId } from '../game/milestones';
 import { formatDuration, formatWhen } from './time';
+import { REGULARS, rewards, type RegularId } from '../game/regulars';
+import { regularRow, rewardName } from './regulars';
 
 export type MessagesTab = 'mail' | 'friends';
 
@@ -33,6 +36,7 @@ export interface MessagesActions {
   onOpenMeet: () => void;
   onRemoveFriend: (friend: string) => void;
   onInvite: (friend: string) => boolean;
+  onRegular: (id: RegularId) => void; // a regular's rewards card
   characterImage: (sheet: string) => string | undefined;
 }
 
@@ -58,7 +62,12 @@ function text(m: Message): string {
       return STRINGS.delivery.announced(items(m.boxes));
     case 'pickup':
       return STRINGS.delivery.pickedUp(m.boxes.filter(isFull).length, m.gold) +
-        (m.seed ? STRINGS.delivery.leftSeed(foodName(m.seed), '') : '');
+        (m.seed ? STRINGS.delivery.leftSeed(foodName(m.seed), '') : '') +
+        (m.regular ? STRINGS.regulars.grew(STRINGS.regulars.names.percy) : '');
+    case 'regular': {
+      const reward = rewards(m.id as RegularId)[m.hearts - 1];
+      return STRINGS.regulars.gave(STRINGS.regulars.names[m.id] ?? m.id, m.hearts, reward ? rewardName(reward) : '');
+    }
     case 'unlocked':
       return STRINGS.unlocked[m.id as UnlockId] ?? '';
     case 'growth': {
@@ -150,7 +159,7 @@ function messageRow(m: Message, now: number): HTMLElement {
     : m.kind === 'milestone' ? MILESTONE_ICONS[m.id] ?? ITEM_ICONS.letter
     : m.kind === 'level' ? SKILL_POINT_ICON
     : m.kind === 'tripHome' ? ITEM_ICONS.journey
-    : m.kind === 'courier' ? ITEM_ICONS.percy
+    : m.kind === 'courier' || m.kind === 'regular' ? ITEM_ICONS.percy
     : ITEM_ICONS.letter;
   const body = el('span', 'shop-row-text');
   body.append(el('b', '', text(m)), el('small', '', formatWhen(m.at, now, STRINGS.messages.today, STRINGS.messages.yesterday)));
@@ -214,6 +223,12 @@ function friendRow(f: Friend, state: GameState, now: number, cb: MessagesActions
 
 function friendsTab(state: GameState, now: number, cb: MessagesActions): HTMLElement[] {
   const out: HTMLElement[] = [];
+  // Percy, once his orders have started.
+  const regulars = REGULARS.filter(() => isUnlocked(state, 'delivery'));
+  if (regulars.length > 0) {
+    out.push(el('h3', 'shop-section', STRINGS.regulars.title));
+    out.push(...regulars.map((id) => regularRow(state, id, () => cb.onRegular(id))));
+  }
   const over = visitor(state);
   if (over) out.push(el('h3', 'shop-section', STRINGS.messages.visiting), friendRow(over, state, now, cb));
   const wild = state.friends.filter((f) => f.wild).length;

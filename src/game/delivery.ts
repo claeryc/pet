@@ -19,6 +19,7 @@ import { foodCount, useFood } from './economy';
 import { logMessage } from './messages';
 import { addSeed, type CropId } from './garden';
 import { seededRoll } from './growth';
+import { addRegular, getRegular, percyPerks, pickupPoints } from './regulars';
 import type { GameState, Order, OrderBox, OrderTier } from './state';
 import { backHomeAt } from './presence';
 
@@ -107,9 +108,10 @@ export function pickupAfter(t: number): number {
 
 export const isFull = (box: OrderBox) => box.have >= box.want;
 
-// What a box pays once it's full.
-export function boxReward(box: { food: string; want: number }): number {
-  return Math.max(1, Math.round((getFood(box.food)?.price ?? 0) * box.want * D.payShare));
+// What a box pays once it's full. `share` is the part of the items' worth
+// Percy pays, which goes up with his hearts (see percyPerks).
+export function boxReward(box: { food: string; want: number }, share: number = D.payShare): number {
+  return Math.max(1, Math.round((getFood(box.food)?.price ?? 0) * box.want * share));
 }
 
 // Bronze for one full box, silver for two, gold when every box is full.
@@ -121,8 +123,8 @@ export function orderTier(boxes: OrderBox[]): OrderTier {
 
 // What the order pays right now, if Percy came for it: the full boxes, plus
 // the bonus if they all are.
-export function orderPay(boxes: OrderBox[]): { boxes: number; bonus: number } {
-  const paid = boxes.filter(isFull).reduce((n, b) => n + boxReward(b), 0);
+export function orderPay(boxes: OrderBox[], share: number = D.payShare): { boxes: number; bonus: number } {
+  const paid = boxes.filter(isFull).reduce((n, b) => n + boxReward(b, share), 0);
   const bonus = orderTier(boxes) === 'gold' ? Math.round(paid * D.fullBonus) : 0;
   return { boxes: paid, bonus };
 }
@@ -172,11 +174,13 @@ export function fillAll(state: GameState): BoxResult {
 
 // The seed Percy leaves after a gold-frame pickup, or null (no seed this
 // time, or not every box was full). The same order always gives the same
-// answer, so it can be tested.
-export function pickupSeed(order: Order, petId: string): CropId | null {
+// answer, so it can be tested. Percy's hearts can make seeds likelier.
+export function pickupSeed(
+  order: Order, petId: string, perks: { seedChance: number; seedOdds: Partial<Record<CropId, number>> } = D,
+): CropId | null {
   if (orderTier(order.boxes) !== 'gold') return null;
-  if (seededRoll(petId, `percy-seed:${order.pickupAt}`) >= D.seedChance) return null;
-  const odds = Object.entries(D.seedOdds) as [CropId, number][];
+  if (seededRoll(petId, `percy-seed:${order.pickupAt}`) >= perks.seedChance) return null;
+  const odds = Object.entries(perks.seedOdds) as [CropId, number][];
   const total = odds.reduce((n, [, p]) => n + p, 0);
   let roll = seededRoll(petId, `percy-seed-kind:${order.pickupAt}`) * total;
   for (const [id, p] of odds) {
@@ -194,13 +198,15 @@ export function pickupDrink(order: Order, petId: string): boolean {
 }
 
 // Percy comes by: full boxes are paid for, the rest go back home. With
-// every box full, he may leave a seed too, or else an energy drink.
+// every box full, he may leave a seed too, or else an energy drink. How
+// full the order was moves his hearts (see src/game/regulars.ts).
 function pickUp(state: GameState, order: Order): GameState {
-  const pay = orderPay(order.boxes);
+  const perks = percyPerks(state);
+  const pay = orderPay(order.boxes, perks.payShare);
   const gold = pay.boxes + pay.bonus;
   const food = { ...state.inventory.food };
   for (const b of order.boxes) if (!isFull(b) && b.have > 0) food[b.food] = (food[b.food] ?? 0) + b.have;
-  const seed = pickupSeed(order, state.pet.id);
+  const seed = pickupSeed(order, state.pet.id, perks);
   const drink = !seed && pickupDrink(order, state.pet.id);
   let s: GameState = {
     ...state,
@@ -213,10 +219,15 @@ function pickUp(state: GameState, order: Order): GameState {
   const tier = orderTier(order.boxes);
   if (tier !== 'none') s = addXp(addTally(s, 'deliveries'), CONFIG.skills.deliveryXp[tier]);
   if (tier === 'gold') s = countUp(s, 'goldOrders'); // for the Golden Parcel milestone
+  // A new heart's message goes in first, so it reads above the pickup.
+  const before = getRegular(s, 'percy').score;
+  s = addRegular(s, 'percy', pickupPoints(tier), order.pickupAt);
+  const gained = getRegular(s, 'percy').score - before;
   return logMessage(s, {
-    kind: 'pickup', at: order.pickupAt, boxes: order.boxes, gold, tier: orderTier(order.boxes),
+    kind: 'pickup', at: order.pickupAt, boxes: order.boxes, gold, tier,
     ...(seed ? { seed } : {}),
     ...(drink ? { food: 'energyDrink' } : {}),
+    ...(gained > 0 ? { regular: gained } : {}),
   });
 }
 

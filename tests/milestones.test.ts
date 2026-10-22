@@ -92,10 +92,10 @@ describe('milestones', () => {
   });
 });
 
-describe('save upgrade to v21', () => {
+describe('save upgrade to v23', () => {
   it('starts with no milestones and fills in Adventures and gold orders it can tell', () => {
     const out = migrate({
-      version: 20,
+      version: 22,
       state: {
         tally: { journeys: 3 },
         journeys: { journal: { market: { trips: 2, best: 'epic' }, woods: { trips: 1, best: 'rare' } } },
