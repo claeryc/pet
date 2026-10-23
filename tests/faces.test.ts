@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import manifest from '../public/sprites/manifest.json';
 import { CONFIG } from '../src/game/config';
 import { afterEating, chooseExpression, EXPRESSIONS, faceForAnimation, idleEveryMs, reactionMs } from '../src/game/expressions';
-import { allowedTraits, fitTrait, getTrait, inheritTrait, rollTrait, traitOf, TRAITS } from '../src/game/traits';
+import { allowedTraits, fitTrait, getTrait, inheritTrait, rollTrait, traitOf, TRAITS, type Trait } from '../src/game/traits';
 import { countFaceFrames, faceFrame, type FaceSheet } from '../src/render/faces';
 import type { ManifestFile, Shape } from '../src/render/sprites';
 
@@ -89,6 +89,23 @@ describe('traits', () => {
     expect(fitTrait('a', 'shy', grumpo)).toBe('shy'); // allowed: kept
     for (let i = 0; i < 50; i++) expect(['sleepy', 'shy']).toContain(fitTrait(`p${i}`, 'playful', grumpo));
     expect(fitTrait('a', 'playful', undefined)).toBe('playful');
+  });
+
+  it("can pass a parent's special trait on, kept by a character that lists it", () => {
+    // No special trait is in traits.json yet, so this adds one for the test.
+    (TRAITS as Trait[]).push({ id: 'starlit', name: 'Starlit', about: '', special: true });
+    try {
+      const kids = Array.from({ length: 200 }, (_, i) => inheritTrait(`egg-${i}`, ['starlit', 'starlit']));
+      const inherited = kids.filter((t) => t === 'starlit').length;
+      expect(inherited).toBeGreaterThan(200 * 0.3);
+      expect(inherited).toBeLessThan(200 * 0.7);
+      // Never rolled on its own.
+      for (let i = 0; i < 200; i++) expect(rollTrait(`pet-${i}`)).not.toBe('starlit');
+      expect(fitTrait('a', 'starlit', { traits: ['starlit', 'shy'] })).toBe('starlit');
+      expect(fitTrait('a', 'starlit', undefined)).not.toBe('starlit');
+    } finally {
+      (TRAITS as Trait[]).pop();
+    }
   });
 
   it('rolls one for a friend that has none', () => {
