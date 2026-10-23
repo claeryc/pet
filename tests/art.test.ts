@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 import data from '../src/data/characters.json';
 import manifest from '../public/sprites/manifest.json';
 import hatData from '../src/data/hats.json';
+import traitData from '../src/data/traits.json';
 import { PALETTE } from '../src/render/palette';
 import { recolourPixels } from '../src/render/recolour';
 import {
   pickHatFrame,
   resolveSheet,
+  sheetAnimations,
   type IdleSet,
   type ManifestFile,
   type Shape,
@@ -103,6 +105,52 @@ describe('art files', () => {
   it('character ids are unique', () => {
     const ids = data.characters.map((c) => c.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('trait ids are unique', () => {
+    const ids = traitData.traits.map((t) => t.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('every trait a character lists exists', () => {
+    // A misspelt one is skipped, and a character whose list is all misspelt
+    // quietly takes any trait.
+    const ids = traitData.traits.map((t) => t.id);
+    for (const c of data.characters as { id: string; traits?: string[] }[])
+      for (const trait of c.traits ?? []) expect(ids, `${c.id}: ${trait}`).toContain(trait);
+  });
+
+  it('every special trait is listed by a character', () => {
+    // Otherwise no pet can ever have it.
+    const listed = (data.characters as { traits?: string[] }[]).flatMap((c) => c.traits ?? []);
+    for (const t of traitData.traits as { id: string; special?: boolean }[])
+      if (t.special) expect(listed, t.id).toContain(t.id);
+  });
+});
+
+describe('sheet animations', () => {
+  const fake: ManifestFile = {
+    frameWidth: 32,
+    frameHeight: 32,
+    animations: { idle: { row: 0, frames: 4, frameMs: 220 }, sad: { row: 1, frames: 4, frameMs: 400 } },
+    idleSets: { curious: { animations: { 'idle-look': { row: 2, frames: 4, frameMs: 260 } } } },
+    sheets: {
+      slow: { file: 'slow.png', animations: { sad: { row: 1, frames: 6, frameMs: 500 } }, idleSet: 'curious' },
+      slowMint: { from: 'slow', recolour: { cream: 'mint' } },
+    },
+  };
+
+  it('keeps the shared ones, changes the ones a sheet lists, and adds its idle moves', () => {
+    expect(sheetAnimations(fake, 'slow')).toEqual({
+      idle: { row: 0, frames: 4, frameMs: 220 },
+      sad: { row: 1, frames: 6, frameMs: 500 },
+      'idle-look': { row: 2, frames: 4, frameMs: 260 },
+    });
+    expect(sheetAnimations(fake, 'slowMint')).toEqual(sheetAnimations(fake, 'slow'));
+  });
+
+  it('leaves out rows the picture is too short for, so they fall back to idle', () => {
+    expect(Object.keys(sheetAnimations(fake, 'slow', 64))).toEqual(['idle', 'sad']);
   });
 });
 

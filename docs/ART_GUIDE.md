@@ -7,7 +7,7 @@ This explains how the pet's art is organised, how to draw a character in Aseprit
 - Every pet looks the same as an **egg**, a **baby** and a **teen**.
 - When the teen grows up, it becomes an adult **character**. Each character has a **theme** (Nature, Ocean, Bakery, Starry, and Cave as a later pack) and a **rarity** of 1 to 3 stars.
 - Good care during the baby and teen days raises the chance of a rarer character. The odds are in `src/game/config.ts` under `rarity`. A little one whose parents both grew into 3-star characters uses `rarityStarParents` instead, so it's never 1 star.
-- Each pet also gets a **trait** when it's made (Playful, Greedy, Shy, Sleepy or Cheery), and a little one often gets one of its parents'. A trait only changes how often the pet fidgets and which faces it pulls, never its stats. The traits and their numbers are in `src/data/traits.json`. A character can list the only traits its pets can have, e.g. `"traits": ["grumpy", "sleepy"]` in `characters.json`: a pet that grows into it keeps its trait if it's on the list, and otherwise gets one from the list. A trait with `"special": true` in `traits.json` only ever goes to characters that list it. Give such a character its own face set (see below) and its faces look different too.
+- Each pet also gets a **trait** when it's made (Playful, Greedy, Shy, Sleepy or Cheery), and a little one often gets one of its parents'. A trait only changes how often the pet fidgets and which faces it pulls, never its stats. The traits and their numbers are in `src/data/traits.json`. A character can list the only traits its pets can have, e.g. `"traits": ["grumpy", "sleepy"]` in `characters.json`: a pet that grows into it keeps its trait if it's on the list, and otherwise gets one from the list. A trait with `"special": true` in `traits.json` only ever goes to characters that list it, though a little one can inherit it from a parent like any trait (it keeps it as an adult only if its character lists it too). `npm test` checks that every listed trait exists and every special trait is listed by a character. Give such a character its own face set (see below) and its faces look different too.
 - A character can have **colour variants** (for example an Amber Pebblit). A variant is just another sheet with a chance of appearing, either drawn or made by swapping palette colours (see [Adding a colour variant](#adding-a-colour-variant)).
 
 Each theme has a common (★), an uncommon (★★) and a rare (★★★) character:
@@ -70,7 +70,9 @@ Keep `art/` and `public/sprites/` mirrored: `art/characters/cave/pebblit.aseprit
 | 5 | `happy` | right after you play, or when it grows up (a big jump) | 4 |
 | 6 | `cheerful` | very happy and nothing wrong: calm, smiling, no jump | 4 |
 
-So a full sheet is 128 x 224 pixels. The egg only has an `idle` row. If a sheet is missing an animation, the game uses `idle` instead, so you can start with just `idle` and add the rest later.
+So a full sheet is 128 x 224 pixels. The egg only has an `idle` row. If a sheet is missing an animation (its PNG is too short for that row), the game uses `idle` instead, so you can start with just `idle` and add the rest later.
+
+A sheet can change one animation without repeating the others: list only that one in its manifest entry, e.g. a longer, faster happy jump with `"animations": { "happy": { "row": 5, "frames": 6, "frameMs": 120 } }`. Every other row stays as shared.
 
 ## Extra idle moves (idle sets)
 
@@ -102,7 +104,7 @@ A sheet uses a set with `"idleSet": "curious"`, and has those moves drawn on tho
 
 The starter characters have their bodies drawn **without a face**. The face is drawn by the game on top, from a shared **face set**, and moves with the head like a hat. So a new expression is drawn once, not once per character and animation.
 
-**A face set** (`art/faces/blob.aseprite`, exported to `public/sprites/faces/blob.png`) has 32×32 frames, see-through except for the eyes, brows, mouth, cheeks and extras like tears or hearts. Each tag is one expression, in this order, as many frames as you like:
+**A face set** (`art/faces/blob.aseprite`, exported to `public/sprites/faces/blob.png`) has 32×32 frames, see-through except for the eyes, brows, mouth, cheeks and extras like tears or hearts. Each tag is one expression, in this order, as many frames as you like. A new expression always goes at the **end** of the list (and of every face set), since the game finds each one by its row:
 
 | Row | Tag | Shows when |
 | --- | --- | --- |
@@ -129,7 +131,7 @@ There are two face sets: **`blob`** for most characters, and **`owl`** (`art/fac
 
 **A new face set**, for example special faces for 3-star pets:
 
-1. Copy `art/faces/blob.aseprite` to `art/faces/star.aseprite` and redraw the faces. Leave a tag empty to use the blob face for it.
+1. Copy `art/faces/blob.aseprite` to `art/faces/star.aseprite` and redraw the faces. Leave a tag empty to use the blob face for it (only `blob` has to have every expression).
 2. Export it, and list it in the manifest under `"faceSets"`: `"star": { "file": "faces/star.png" }`.
 3. Give the shape a face point and the set: `"star": { "head": {...}, "face": { "x": 16, "y": 17 }, "faces": "star" }`. A single sheet can also use `"faces": "star"` instead of its shape's set.
 4. Take the face off the body in its `.aseprite` file.
@@ -152,7 +154,7 @@ That's it. No other file changes, and existing pets pick up the new look.
 
 ## Making a new character
 
-1. **Copy the template:** duplicate `art/_template.aseprite` into the theme folder and rename it, for example `art/characters/cave/stalagbun.aseprite`. It already has the size, palette, guides, all 24 frames and the six animation tags (`idle`, `sad`, `sleep`, `sick`, `eat`, `happy`), each with the right speed.
+1. **Copy the template:** duplicate `art/_template.aseprite` into the theme folder and rename it, for example `art/characters/cave/stalagbun.aseprite`. It already has the size, palette, guides, all 28 frames and the seven animation tags (`idle`, `sad`, `sleep`, `sick`, `eat`, `happy`, `cheerful`), each with the right speed.
 2. **Draw** each frame on the **pet** layer with the **Pencil** (B) and **Pixel-perfect** ticked. Never use blur or soft brushes. Keep the feet on the pink line and the pet centred.
 3. **Export** the sheet to `public/sprites/characters/cave/stalagbun.png` (see below).
 4. **List the sheet** in `public/sprites/manifest.json` under `"sheets"`, with the body shape it's drawn on (see [Body shapes](#body-shapes)):
@@ -315,7 +317,7 @@ Run `npm run dev` and open `/art.html` (for example `http://localhost:5173/art.h
 - **Lineup:** every character side by side with the same animation, face and hat.
 - **Tweak:** move a shape's hat point, face point or one hat's nudge and see it on every pet of that shape, then copy the JSON into `manifest.json`.
 - **Recolour:** swap any of a pet's colours for other palette colours and see it live, with hints for the matching outline colour. Start from scratch or from an existing variant, then copy the `manifest.json` and `characters.json` lines. Your swaps stay through a reload.
-- **Checks:** palette colours only, no soft edges, sheet size, an empty top row, feet on row 28 and centred, for one sheet or all of them.
+- **Checks:** palette colours only, no soft edges, sheet size, an empty top row, feet on row 28 and centred, for one sheet or all of them. `npm test` runs the same checks on every sheet and face set too.
 - **Traits:** what each trait changes, and a mood to try out which face it pulls.
 - **Try a PNG:** drop an exported sheet on the page. Named like an existing sheet (`sprig.png`, `beanie.png`, `blob.png`), it replaces that one on the page only. Any other name is shown on the selected pet's body.
 

@@ -35,8 +35,20 @@ const hex = (rgb: number) => `#${rgb.toString(16).padStart(6, '0')}`;
 
 // Every check for one sheet. `kind` picks which rules apply: hats and face
 // sets only need the colour rules.
-export function checkSheet(sheet: SpriteSheet, kind: 'pet' | 'hat' | 'face' = 'pet'): Check[] {
-  const { data, width, height } = pixelsOf(sheet.image);
+export function checkSheet(sheet: SpriteSheet, kind: CheckKind = 'pet'): Check[] {
+  return checkPixels(pixelsOf(sheet.image), sheet, kind);
+}
+
+export type CheckKind = 'pet' | 'hat' | 'face';
+
+// The same checks on pixels read some other way, so the tests can run them
+// on the PNG files too (see scripts/art-checks.test.ts).
+export function checkPixels(
+  pixels: { data: Uint8ClampedArray | Uint8Array; width: number; height: number },
+  sheet: Pick<SpriteSheet, 'frameWidth' | 'frameHeight' | 'animations'>,
+  kind: CheckKind = 'pet',
+): Check[] {
+  const { data, width, height } = pixels;
   const checks: Check[] = [];
   const fw = sheet.frameWidth;
   const fh = sheet.frameHeight;
