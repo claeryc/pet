@@ -227,6 +227,14 @@
         "sick": [0, -1, 0, 1]
       }
     },
+    "sprig-autumn": {
+      "from": "sprig",
+      "recolour": {
+        "mint": "peach",
+        "leaf": "cocoa",
+        "moss": "bark"
+      }
+    },
     "acornet": {
       "file": "characters/nature/acornet.png",
       "shape": "acorn",
@@ -272,6 +280,14 @@
         "sick": [0, -1, 0, 1]
       }
     },
+    "dumpling-matcha": {
+      "from": "dumpling",
+      "recolour": {
+        "cream": "mint",
+        "peach": "leaf",
+        "bark": "moss"
+      }
+    },
     "puddling": {
       "file": "characters/bakery/puddling.png",
       "shape": "flan",
@@ -300,6 +316,13 @@
         "sick": [0, -1, 0, 1]
       }
     },
+    "moonpip-dawn": {
+      "from": "moonpip",
+      "recolour": {
+        "lilac": "pink",
+        "plum": "rose"
+      }
+    },
     "starhoot": {
       "file": "characters/starry/starhoot.png",
       "shape": "owl",
@@ -318,6 +341,12 @@
     "crystalback": {
       "file": "characters/cave/crystalback.png",
       "shape": "wide-loaf"
+    },
+    "crystalback-rose": {
+      "from": "crystalback",
+      "recolour": {
+        "ocean": "rose"
+      }
     },
     "geodon": {
       "file": "characters/cave/geodon.png",
