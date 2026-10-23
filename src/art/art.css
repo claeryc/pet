@@ -364,6 +364,10 @@ tr.bad td:last-child {
   color: var(--accent-dark);
 }
 
+.checks li.hint span {
+  color: var(--plum);
+}
+
 .guide {
   margin-top: 16px;
   border-top: 1px solid var(--lavender);

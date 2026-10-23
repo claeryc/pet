@@ -11,8 +11,8 @@ import { EXPRESSIONS, chooseExpression, faceForAnimation, idleEveryMs, reactionM
 import { TRAITS, allowedTraits } from '../game/traits';
 import { frameFor } from '../render/animations';
 import { countFaceFrames, drawFace, type FaceSheet } from '../render/faces';
-import { PALETTE } from '../render/palette';
-import { recolourPixels } from '../render/recolour';
+import { OUTLINE_OF, OUTLINES, PALETTE, type ColourName } from '../render/palette';
+import { outlineSwaps, recolourPixels } from '../render/recolour';
 import {
   loadSprites,
   measureHead,
@@ -830,7 +830,8 @@ function tweak(box: HTMLElement, sheet: SpriteSheet) {
 
 function checkList(results: Check[]) {
   const ul = el('ul', '', 'checks');
-  for (const c of results) ul.append(el('li', `<span>${c.ok ? '✓' : '⚠'}</span> <b>${c.label}</b>${c.detail ? `<br><small>${c.detail}</small>` : ''}`, c.ok ? 'ok' : 'bad'));
+  for (const c of results)
+    ul.append(el('li', `<span>${c.ok ? '✓' : c.warn ? '?' : '⚠'}</span> <b>${c.label}</b>${c.detail ? `<br><small>${c.detail}</small>` : ''}`, c.ok ? 'ok' : c.warn ? 'hint' : 'bad'));
   return ul;
 }
 
@@ -845,7 +846,7 @@ function withAllRows(sheet: SpriteSheet): SpriteSheet {
 function checks(box: HTMLElement, sheet: SpriteSheet) {
   box.append(el('h4', `${sheet.name}`));
   box.append(checkList(checkSheet(withAllRows(sheet), 'pet')));
-  box.append(el('p', "Not checked here: the outline colours (each part's own dark colour, ink inside and on the face) and the same silhouette across frames. Look at those with the pixel grid on.", 'muted'));
+  box.append(el('p', "The outline check is only a hint (marked ?), since a part can bend the rule on purpose. Not checked here: ink for lines inside the pet, and the same silhouette across frames. Look at those with the pixel grid on.", 'muted'));
   box.append(el('h4', 'Every sheet'));
   const table = el('table', '<thead><tr><th>Sheet</th><th>Problems</th></tr></thead>');
   const body = document.createElement('tbody');
@@ -855,7 +856,8 @@ function checks(box: HTMLElement, sheet: SpriteSheet) {
   ];
   for (const [name, s, kind] of all.sort((a, b) => a[0].localeCompare(b[0]))) {
     const bad = checkSheet(kind === 'pet' ? withAllRows(s as SpriteSheet) : ({ animations: {}, ...s } as SpriteSheet), kind).filter((c) => !c.ok);
-    const tr = el('tr', `<td>${name}</td><td>${bad.length ? bad.map((c) => `⚠ ${c.label}`).join('<br>') : '✓'}</td>`, bad.length ? 'bad' : 'ok');
+    const real = bad.filter((c) => !c.warn);
+    const tr = el('tr', `<td>${name}</td><td>${bad.length ? bad.map((c) => `${c.warn ? '?' : '⚠'} ${c.label}`).join('<br>') : '✓'}</td>`, real.length ? 'bad' : 'ok');
     if (kind === 'pet') {
       tr.className += ' pick';
       tr.onclick = () => select(name);
@@ -865,14 +867,6 @@ function checks(box: HTMLElement, sheet: SpriteSheet) {
   table.append(body);
   box.append(table);
 }
-
-// The dark outline colour the art guide's outline rule gives each body
-// colour, to suggest when a recolour changes the body.
-const OUTLINE_FOR: Record<string, string> = {
-  mint: 'moss', leaf: 'moss', sky: 'deep', ocean: 'deep', pink: 'berry', blush: 'berry', rose: 'berry',
-  cream: 'bark', peach: 'bark', butter: 'bark', cocoa: 'bark', white: 'plum', lavender: 'plum', lilac: 'plum',
-};
-const OUTLINES = ['moss', 'deep', 'berry', 'bark', 'plum', 'ink'];
 
 // The sheet a recolour is painted from: the selected sheet, or the sheet a
 // recolour (in the manifest or tried here) is made from.
@@ -958,6 +952,10 @@ function recolour(box: HTMLElement, sheet: SpriteSheet) {
     sel.onchange = () => {
       if (sel.value) rc.swaps[name] = sel.value;
       else delete rc.swaps[name];
+      // A new body colour brings its own outline along (the outline rule),
+      // when every part with the old outline now takes the same new one.
+      if (!OUTLINES.includes(name as ColourName))
+        Object.assign(rc.swaps, outlineSwaps(rc.swaps, used.map(([c]) => c), OUTLINE_OF));
       changed();
     };
     const swatch = el('i', '', 'chip');
@@ -965,8 +963,11 @@ function recolour(box: HTMLElement, sheet: SpriteSheet) {
     row.append(swatch, sel);
     // The outline rule: the outline takes the dark colour of the body it
     // touches, so a new body colour usually needs a new outline too.
-    if (OUTLINES.includes(name)) {
-      const bodies = Object.entries(rc.swaps).filter(([f]) => OUTLINE_FOR[f] === name).map(([, t]) => OUTLINE_FOR[t]).filter(Boolean);
+    if (OUTLINES.includes(name as ColourName)) {
+      const bodies = Object.entries(rc.swaps)
+        .filter(([f]) => OUTLINE_OF[f as ColourName] === name)
+        .map(([, t]) => OUTLINE_OF[t as ColourName])
+        .filter(Boolean);
       const hint = bodies.find((o) => o !== (to || name));
       if (hint)
         row.append(

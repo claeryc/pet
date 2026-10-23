@@ -24,7 +24,9 @@ describe('art checks', () => {
     const animations = sheetAnimations(m, name, sheet.shape ? Infinity : pixels.height);
     const frames = { frameWidth: sheet.frameWidth ?? m.frameWidth, frameHeight: sheet.frameHeight ?? m.frameHeight, animations };
     const bad = checkPixels(pixels, frames, name.startsWith('hat-') ? 'hat' : 'pet').filter((c) => !c.ok);
-    expect(bad.map((c) => `${c.label}: ${c.detail ?? ''}`)).toEqual([]);
+    // Hints (the outline rule) are printed, but art can bend them.
+    for (const c of bad.filter((c) => c.warn)) console.warn(`${name}: ${c.label}. ${c.detail ?? ''}`);
+    expect(bad.filter((c) => !c.warn).map((c) => `${c.label}: ${c.detail ?? ''}`)).toEqual([]);
   });
 
   it.each(Object.entries(m.faceSets ?? {}))('face set "%s" uses palette colours only, with hard edges', (_, set) => {
