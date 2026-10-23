@@ -13,17 +13,20 @@
     "cave": "Cave"
   },
   "characters": [
-    { "id": "sprig", "theme": "nature", "stars": 1, "name": "Sprig", "sheet": "sprig" },
+    { "id": "sprig", "theme": "nature", "stars": 1, "name": "Sprig", "sheet": "sprig",
+      "variants": [{ "id": "autumn", "name": "Autumn", "sheet": "sprig-autumn", "chance": 10 }] },
     { "id": "acornet", "theme": "nature", "stars": 2, "name": "Acornet", "sheet": "acornet" },
     { "id": "stumpy", "theme": "nature", "stars": 3, "name": "Stumpy", "sheet": "stumpy" },
     { "id": "bubbit", "theme": "ocean", "stars": 1, "name": "Bubbit", "sheet": "bubbit" },
     { "id": "jellop", "theme": "ocean", "stars": 2, "name": "Jellop", "sheet": "jellop" },
     { "id": "tidecrest", "theme": "ocean", "stars": 3, "name": "Tidecrest", "sheet": "tidecrest" },
-    { "id": "dumpling", "theme": "bakery", "stars": 1, "name": "Dumpling", "sheet": "dumpling" },
+    { "id": "dumpling", "theme": "bakery", "stars": 1, "name": "Dumpling", "sheet": "dumpling",
+      "variants": [{ "id": "matcha", "name": "Matcha", "sheet": "dumpling-matcha", "chance": 10 }] },
     { "id": "puddling", "theme": "bakery", "stars": 2, "name": "Puddling", "sheet": "puddling" },
     { "id": "cuppie", "theme": "bakery", "stars": 3, "name": "Cuppie", "sheet": "cuppie" },
     { "id": "cloudlet", "theme": "starry", "stars": 1, "name": "Cloudlet", "sheet": "cloudlet" },
-    { "id": "moonpip", "theme": "starry", "stars": 2, "name": "Moonpip", "sheet": "moonpip" },
+    { "id": "moonpip", "theme": "starry", "stars": 2, "name": "Moonpip", "sheet": "moonpip",
+      "variants": [{ "id": "dawn", "name": "Dawn", "sheet": "moonpip-dawn", "chance": 10 }] },
     { "id": "starhoot", "theme": "starry", "stars": 3, "name": "Starhoot", "sheet": "starhoot" },
     {
       "id": "pebblit",
@@ -40,7 +43,8 @@
         }
       ]
     },
-    { "id": "crystalback", "theme": "cave", "stars": 2, "name": "Crystalback", "sheet": "crystalback" },
+    { "id": "crystalback", "theme": "cave", "stars": 2, "name": "Crystalback", "sheet": "crystalback",
+      "variants": [{ "id": "rose", "name": "Rose Quartz", "sheet": "crystalback-rose", "chance": 10 }] },
     { "id": "geodon", "theme": "cave", "stars": 3, "name": "Geodon", "sheet": "geodon" }
   ],
   "laterPacks": [
