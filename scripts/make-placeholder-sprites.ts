@@ -11,12 +11,13 @@
 // See docs/ART_GUIDE.md. Runs with plain Node.js 22.18 or newer, no extra
 // packages.
 
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { deflateSync } from 'node:zlib';
 import { PALETTE } from '../src/render/palette.ts';
 import { writeAseprite, type AseLayer } from './aseprite.ts';
+import { readPng } from './png.ts';
 
 const FRAME = 32;
 
@@ -409,6 +410,15 @@ function guides(): Uint8Array {
   return c.data;
 }
 
+// The first content face of the blob set: its top left frame. A face set's
+// frames line up with a body whose face point is the anchor (16, 18).
+function contentFace(): Uint8Array {
+  const set = readPng(readFileSync(new URL('../public/sprites/faces/blob.png', import.meta.url)));
+  const face = new Uint8Array(FRAME * FRAME * 4);
+  for (let y = 0; y < FRAME; y++) face.set(set.data.subarray(y * set.width * 4, (y * set.width + FRAME) * 4), y * FRAME * 4);
+  return face;
+}
+
 function creatureArt(look: Look | null): Art {
   const rows = [...ROWS, ...(look?.idleSet ? IDLE_SETS[look.idleSet] : [])];
   const png = new PixelCanvas(FRAME * 4, FRAME * rows.length);
@@ -677,8 +687,11 @@ for (const kind of ['beanie', 'party-hat', 'flower-crown', 'tiny-crown', 'starry
     writeAseprite({ width: BADGE, height: BADGE, palette: [...palette, ...metals], frameMs: art.frameMs, layers: art.layers, tags: art.tags }),
   );
 }
-// A blank file with the right size, tags, palette and guides.
+// A blank file with the right size, tags, palette and guides, and like
+// every character file a face layer with the content face from the blob
+// set, to see the whole pet while drawing (the export leaves it out).
 const blank = creatureArt(null);
+blank.layers.push({ name: 'face', cels: [contentFace()], sameEveryFrame: true });
 save('art/_template.aseprite', () =>
   writeAseprite({ width: FRAME, height: FRAME, palette, frameMs: blank.frameMs, layers: blank.layers, tags: blank.tags }),
 );
