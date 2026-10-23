@@ -28,7 +28,7 @@ export interface HowToKit {
 }
 
 export interface ShowMe {
-  tab?: 'animations' | 'faces' | 'hats' | 'tweak' | 'recolour' | 'checks' | 'traits';
+  tab?: 'animations' | 'moves' | 'faces' | 'hats' | 'tweak' | 'recolour' | 'checks' | 'traits';
   sheet?: string;
   anim?: string;
   view?: 'single' | 'lineup';
@@ -578,10 +578,12 @@ export const PARTS: Part[] = [
         visual: idleMovesPicture,
         todo: [
           'Give the sheet a set in <code>manifest.json</code>: <code>"idleSet": "curious"</code>, or a list to mix sets.',
+          'A pet gets whole sets, so keep sets small (even one move each) to give each pet its own mix.',
+          'The <b>Idle moves</b> tab lists every move with its row, its set and the pets that get it, and the next free row for a new one.',
           'In Aseprite, add a tag per move with the move\'s name, like <code>idle-look</code>. The export puts it on its row.',
           'Hats follow the head sideways in a move. If one slips, set <code>headShifts</code> by hand (see the details).',
         ],
-        showMe: { label: 'Show me an idle move', tab: 'animations', sheet: PET, anim: 'idle-look' },
+        showMe: { label: 'Show me every idle move', tab: 'moves', sheet: PET },
         guide: ['Extra idle moves (idle sets)'],
       },
       {
