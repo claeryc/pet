@@ -122,7 +122,7 @@ export async function loadSprites(): Promise<SpriteLibrary> {
         }
         if (name.startsWith('hat-')) loaded.hatWidths = measureHatWidths(loaded);
         if (shape?.face) {
-          const setName = sheet.faces ?? shape.faces ?? 'blob';
+          const setName = shape.faces ?? 'blob';
           if (!faceSets.has(setName)) console.warn(`Sheet "${name}" uses face set "${setName}", which didn't load`);
           loaded.face = shape.face;
           loaded.faceSet = faceSets.get(setName);

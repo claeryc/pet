@@ -9,6 +9,7 @@ import {
   pickHatFrame,
   idleSetOf,
   onlyDrawn,
+  shapeOf,
   resolveSheet,
   sheetAnimations,
   type IdleSet,
@@ -46,6 +47,15 @@ describe('art files', () => {
       if (fit.width !== undefined) expect(fit.width).toBeGreaterThan(0);
     }
   });
+
+  it.each(Object.entries(manifest.sheets as ManifestFile['sheets']).filter(([, s]) => s.head || s.face || s.hats))(
+    'sheet "%s" has a shape to change, and its own points make sense',
+    (name, sheet) => {
+      expect(resolveSheet(manifest as ManifestFile, name).shape).toBeDefined();
+      if (sheet.head) expect(sheet.head.width).toBeGreaterThan(0);
+      for (const hat of Object.keys(sheet.hats ?? {})) expect(hatData.hats.map((h) => h.sheet)).toContain(hat);
+    },
+  );
 
   it('every shape is used by a sheet', () => {
     const used = new Set(Object.values(sheetFiles).map((s) => s.shape));
@@ -185,6 +195,39 @@ describe('sheet animations', () => {
     expect(Object.keys(set.animations)).toEqual(['idle-look', 'idle-hoot']);
     expect(set.headShifts).toEqual({ 'idle-hoot': [0, 1] });
     expect(Object.keys(sheetAnimations(mixed, 'both'))).toEqual(['idle', 'sad', 'idle-look', 'idle-hoot']);
+  });
+});
+
+describe("a sheet's own points", () => {
+  const fake: ManifestFile = {
+    frameWidth: 32,
+    frameHeight: 32,
+    animations: {},
+    shapes: {
+      blob: { head: { x: 16, y: 13, width: 14 }, face: { x: 16, y: 18 }, hats: { 'hat-party': { y: 1 } } },
+    },
+    sheets: {
+      plain: { file: 'plain.png', shape: 'blob' },
+      low: { file: 'low.png', shape: 'blob', face: { x: 16, y: 19 }, hats: { 'hat-beanie': { x: 1 } } },
+      lowMint: { from: 'low', recolour: { cream: 'mint' } },
+    },
+  };
+
+  it('uses the shape as it is without any', () => {
+    expect(shapeOf(fake, 'plain')).toBe(fake.shapes!.blob);
+  });
+
+  it('win over the shape, and the rest comes from the shape', () => {
+    expect(shapeOf(fake, 'low')).toEqual({
+      head: { x: 16, y: 13, width: 14 },
+      face: { x: 16, y: 19 },
+      faces: undefined,
+      hats: { 'hat-party': { y: 1 }, 'hat-beanie': { x: 1 } },
+    });
+  });
+
+  it('carry over to a recolour', () => {
+    expect(shapeOf(fake, 'lowMint')).toEqual(shapeOf(fake, 'low'));
   });
 });
 

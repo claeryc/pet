@@ -256,6 +256,14 @@ The game then uses, for every hat, the widest size that fits `width` (or the sma
 
 **A new body** is a new shape: add it under `"shapes"` and point the sheet at it. A one-off character is simply a shape of one.
 
+**One character sits a little differently** from the rest of its shape (its face a pixel lower, a hat that needs a nudge on it only): give its sheet its own points instead of making a new shape. A sheet's `head`, `face`, `faces` and `hats` win over its shape's, and everything it doesn't list still comes from the shape. Recolours made from it get them too:
+
+```json
+"bubbit": { "file": "characters/ocean/bubbit.png", "shape": "blob", "face": { "x": 16, "y": 19 } }
+```
+
+The **Tweak** tab on the art page does this with **Only bubbit**. Keep shapes for bodies that really match, so a new hat is set up once for all of them.
+
 **If one hat looks wrong on one shape** (a crown slipping between bunny ears, a party hat poking through spikes), nudge just that hat on that shape with `"hats"`, keyed by the hat's sheet name. `x` moves it right, `y` moves it down (negative is up), and `width` picks that hat's size with a different width:
 
 ```json
@@ -321,9 +329,9 @@ Run `npm run dev` and open `/art.html` (for example `http://localhost:5173/art.h
 - **Guide lines** at the top: the feet line, the shadow row, the centre, the top row (red when something is drawn on it), the hat point and the face point, and a pixel grid.
 - **Animations:** play any row or idle move, pause, step frame by frame, and slow it down.
 - **Faces:** every expression on the chosen pet. Click one to keep it on.
-- **Hats:** try each hat, and see which size it picks and why.
+- **Hats:** try each hat, and see which size it picks and why. Pick a hat to see it on one pet of every shape (and every sheet with its own points), which is the quick way to check a new hat.
 - **Lineup:** every character side by side with the same animation, face and hat.
-- **Tweak:** move a shape's hat point, face point or one hat's nudge and see it on every pet of that shape, then copy the JSON into `manifest.json`.
+- **Tweak:** move a shape's hat point, face point or one hat's nudge and see it on every pet of that shape, or switch to **Only <sheet>** to change one sheet's own points, then copy the JSON into `manifest.json`.
 - **Recolour:** swap any of a pet's colours for other palette colours and see it live. When a swap changes which outline a part needs, the outline swaps with it. Start from scratch or from an existing variant, then copy the `manifest.json` and `characters.json` lines. Your swaps stay through a reload.
 - **Checks:** palette colours only, no soft edges, sheet size, an empty top row, feet on row 28 and centred, for one sheet or all of them. `npm test` runs the same checks on every sheet and face set too.
 - **Traits:** what each trait changes, and a mood to try out which face it pulls.
