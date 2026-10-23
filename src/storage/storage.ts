@@ -11,7 +11,7 @@ import { grownUpXp, levelInfo } from '../game/skills';
 import { getCharacter } from '../game/growth';
 import { guidesAlreadyKnown } from '../game/guides';
 import { backfillRegulars } from '../game/regulars';
-import { rollTrait } from '../game/traits';
+import { fitTrait, rollTrait } from '../game/traits';
 
 const SAVE_KEY = 'cozy-pixel-pet-save';
 
@@ -289,10 +289,10 @@ export function migrate(save: SaveFile): SaveFile {
     save.version = 24;
   }
   // Version 24 -> 25: traits. Every pet gets the one its id rolls, and so
-  // do the pets in the Family Tree.
+  // do the pets in the Family Tree (one their character allows).
   if (save.version === 24) {
     const st = save.state;
-    for (const p of [st.pet, ...(st.housemates ?? []), ...(st.family ?? [])]) if (p && !p.trait) p.trait = rollTrait(p.id);
+    for (const p of [st.pet, ...(st.housemates ?? []), ...(st.family ?? [])]) if (p && !p.trait) p.trait = fitTrait(p.id, rollTrait(p.id), getCharacter(p.character ?? null));
     save.version = 25;
   }
   return save;

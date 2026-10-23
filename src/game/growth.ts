@@ -13,6 +13,7 @@
 import { CONFIG } from './config';
 import data from '../data/characters.json';
 import type { ParentLook, Pet } from './state';
+import { fitTrait } from './traits';
 
 export type Stage = 'egg' | 'baby' | 'teen' | 'adult';
 export const STAGES: Stage[] = ['egg', 'baby', 'teen', 'adult'];
@@ -33,6 +34,7 @@ export interface Character {
   name: string;
   sheet: string; // sheet name in public/sprites/manifest.json
   variants?: Variant[];
+  traits?: string[]; // the only traits its pets can have (see traits.ts)
 }
 
 export const CHARACTERS = data.characters as Character[];
@@ -163,5 +165,6 @@ export function growUp(pet: Pet, t: number): void {
     const { character, variant } = chooseCharacter(pet.careScore, pet.id, pet.themes ?? [], pet.parentLooks ?? []);
     pet.character = character.id;
     pet.variant = variant?.id ?? null;
+    pet.trait = fitTrait(pet.id, pet.trait, character);
   }
 }

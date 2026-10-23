@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import manifest from '../public/sprites/manifest.json';
 import { CONFIG } from '../src/game/config';
 import { afterEating, chooseExpression, EXPRESSIONS, faceForAnimation, idleEveryMs, reactionMs } from '../src/game/expressions';
-import { getTrait, inheritTrait, rollTrait, traitOf, TRAITS } from '../src/game/traits';
+import { allowedTraits, fitTrait, getTrait, inheritTrait, rollTrait, traitOf, TRAITS } from '../src/game/traits';
 import { countFaceFrames, faceFrame, type FaceSheet } from '../src/render/faces';
 import type { ManifestFile, Shape } from '../src/render/sprites';
 
@@ -79,6 +79,16 @@ describe('traits', () => {
     expect(fromParent).toBeLessThan(400 * 0.6);
     expect(inheritTrait('x', [])).toBe(rollTrait('x'));
     expect(inheritTrait('x', ['not-a-trait'])).toBe(rollTrait('x'));
+  });
+
+  it('lets a character limit its traits', () => {
+    const grumpo = { traits: ['sleepy', 'shy', 'not-a-trait'] };
+    expect(allowedTraits(grumpo)).toEqual(['sleepy', 'shy']);
+    expect(allowedTraits(undefined)).toEqual(TRAITS.filter((t) => !t.special).map((t) => t.id));
+    expect(allowedTraits({ traits: [] })).toEqual(allowedTraits(undefined));
+    expect(fitTrait('a', 'shy', grumpo)).toBe('shy'); // allowed: kept
+    for (let i = 0; i < 50; i++) expect(['sleepy', 'shy']).toContain(fitTrait(`p${i}`, 'playful', grumpo));
+    expect(fitTrait('a', 'playful', undefined)).toBe('playful');
   });
 
   it('rolls one for a friend that has none', () => {

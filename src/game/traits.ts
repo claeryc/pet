@@ -13,9 +13,16 @@
 //                   CONFIG.expressions), so 20 = that face shows sooner
 //   lovesEverySnack every food makes it fall in love, not only a craving
 //   grumpyWhenWoken pulls a grumpy face when the lights come on
+//   special         only for characters that list it under "traits" in
+//                   src/data/characters.json, never rolled otherwise
+//
+// A character can list "traits" in characters.json: a pet that grows into
+// it keeps its trait if it's on the list, and otherwise gets one from the
+// list instead. Characters without a list take any trait but the special
+// ones.
 
 import data from '../data/traits.json';
-import { seededRoll } from './growth';
+import { getCharacter, seededRoll } from './growth';
 
 export interface Trait {
   id: string;
@@ -30,6 +37,7 @@ export interface Trait {
   sadBelow?: number;
   lovesEverySnack?: boolean;
   grumpyWhenWoken?: boolean;
+  special?: boolean;
 }
 
 export const TRAITS: readonly Trait[] = data.traits;
@@ -38,9 +46,24 @@ export function getTrait(id: string | null | undefined): Trait | undefined {
   return TRAITS.find((t) => t.id === id);
 }
 
+const GENERAL = TRAITS.filter((t) => !t.special).map((t) => t.id);
+
 // The trait a pet with this id gets: always the same one for the same id.
-export function rollTrait(petId: string): string {
-  return TRAITS[Math.floor(seededRoll(petId, 'trait') * TRAITS.length)].id;
+export function rollTrait(petId: string, from: readonly string[] = GENERAL, label = 'trait'): string {
+  return from[Math.floor(seededRoll(petId, label) * from.length)];
+}
+
+// The traits a pet of this character can have.
+export function allowedTraits(character: { traits?: string[] } | null | undefined): string[] {
+  const listed = (character?.traits ?? []).filter((id) => getTrait(id));
+  return listed.length > 0 ? listed : GENERAL;
+}
+
+// The trait a pet keeps once it grows into `character`: its own if the
+// character allows it, otherwise one the character allows.
+export function fitTrait(petId: string, trait: string | null | undefined, character: { traits?: string[] } | null | undefined): string {
+  const allowed = allowedTraits(character);
+  return trait && allowed.includes(trait) ? trait : rollTrait(petId, allowed, 'characterTrait');
 }
 
 // A little one's trait: one of its parents' (data.inheritChance percent of
@@ -53,8 +76,9 @@ export function inheritTrait(petId: string, parentTraits: readonly (string | nul
   return rollTrait(petId);
 }
 
-// The trait of something that has an id and maybe a trait (a friend from
-// before traits came along has none, so it gets the one its id rolls).
-export function traitOf(thing: { id: string; trait?: string | null }): string {
-  return getTrait(thing.trait)?.id ?? rollTrait(thing.id);
+// The trait of something that has an id and maybe a trait and character
+// (a friend from before traits came along has none, so it gets the one its
+// id rolls, that its character allows).
+export function traitOf(thing: { id: string; trait?: string | null; character?: string | null }): string {
+  return getTrait(thing.trait)?.id ?? fitTrait(thing.id, rollTrait(thing.id), getCharacter(thing.character ?? null));
 }
