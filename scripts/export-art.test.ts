@@ -12,6 +12,7 @@ describe('export-art', () => {
   it('exports each Aseprite file to the same path in public/sprites', () => {
     expect(exportPlan('characters/cave/pebblit.aseprite')).toEqual({ png: 'characters/cave/pebblit.png', strip: false });
     expect(exportPlan('stages/egg.aseprite')).toEqual({ png: 'stages/egg.png', strip: false });
+    expect(exportPlan('faces/blob.aseprite')).toEqual({ png: 'faces/blob.png', strip: false });
   });
 
   it('exports hats and badges as one strip', () => {

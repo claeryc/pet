@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createNewGame } from '../src/game/state';
 import { migrate, SAVE_VERSION } from '../src/storage/storage';
+import { rollTrait } from '../src/game/traits';
 
 describe('save migration', () => {
   it('upgrades a version 1 save without losing the pet', () => {
@@ -53,6 +54,17 @@ describe('save migration', () => {
     expect(out.visit.guest.character).toBe('stumpy');
     expect(out.messages[0].character).toBe('cloudlet');
     expect(out.charactersFound).toEqual(['cuppie', 'cloudlet', 'pebblit:amber', 'dumpling', 'starhoot']);
+  });
+
+  it('gives every pet, and the Family Tree, a trait', () => {
+    const s: any = createNewGame(1);
+    delete s.pet.trait;
+    s.housemates = [{ ...s.pet, id: 'h' }];
+    s.family = [{ id: 'f', character: 'sprig' }, { id: 'g', character: 'sprig', trait: 'shy' }];
+    const out = migrate({ version: 24, state: s }).state;
+    expect(out.pet.trait).toBe(rollTrait(s.pet.id));
+    expect(out.housemates[0].trait).toBe(rollTrait('h'));
+    expect(out.family.map((m: any) => m.trait)).toEqual([rollTrait('f'), 'shy']);
   });
 
   it('keeps young pets without a character', () => {

@@ -11,12 +11,13 @@ import { grownUpXp, levelInfo } from '../game/skills';
 import { getCharacter } from '../game/growth';
 import { guidesAlreadyKnown } from '../game/guides';
 import { backfillRegulars } from '../game/regulars';
+import { rollTrait } from '../game/traits';
 
 const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 24;
+export const SAVE_VERSION = 25;
 
 export interface SaveFile {
   version: number;
@@ -286,6 +287,13 @@ export function migrate(save: SaveFile): SaveFile {
       ),
     ];
     save.version = 24;
+  }
+  // Version 24 -> 25: traits. Every pet gets the one its id rolls, and so
+  // do the pets in the Family Tree.
+  if (save.version === 24) {
+    const st = save.state;
+    for (const p of [st.pet, ...(st.housemates ?? []), ...(st.family ?? [])]) if (p && !p.trait) p.trait = rollTrait(p.id);
+    save.version = 25;
   }
   return save;
 }

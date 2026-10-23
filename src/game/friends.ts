@@ -28,6 +28,7 @@ import { characterOfStars, getCharacter, rollStarsWith, seededRoll } from './gro
 import { localDay, useFood } from './economy';
 import { clampStat, canPlayMinigames } from './stats';
 import { rememberPet } from './family';
+import { traitOf } from './traits';
 import { backHomeAt, isAway } from './presence';
 import { logMessage } from './messages';
 import { newPet, type FamilyMember, type Friend, type GameState, type Pet } from './state';
@@ -355,6 +356,7 @@ export function rememberFriend(f: Friend): FamilyMember {
     variant: f.variant,
     generation: f.generation,
     parents: [...f.parents],
+    trait: traitOf(f),
   };
 }
 
@@ -380,6 +382,7 @@ export function mingle(state: GameState, friendId: string, now: number, roll: nu
     parents: [parent.id, friend.id],
     themes: [...new Set(themes)],
     parentLooks: [parent, friend].map((p) => ({ character: p.character, variant: p.variant })),
+    parentTraits: [parent.trait, traitOf(friend)],
   });
   egg.careScore = startingCare(s); // the Gentle start skill
   s = withFriend(s, friendId, (f) => (f.partner = parent.id));

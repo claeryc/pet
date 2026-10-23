@@ -1,5 +1,5 @@
 {
-  "_help": "Lists every sprite sheet the game can use. See docs/ART_GUIDE.md. Each sheet is a PNG (path relative to this folder) where every frame is frameWidth x frameHeight pixels, each ROW is one animation, and frames go left to right. 'animations' says which row holds which animation; a sheet can override it (like the egg below). If a sheet is missing an animation, the game uses 'idle' instead. Sheet names here are what src/data/characters.json points at. 'shape' (on pet sheets) names a body shape from 'shapes'. Characters with the same body share a shape, so hats are set up once per shape. A shape's 'head' is where a hat sits: the pixel in the first idle frame where the bottom middle of the hat goes, and 'width': how many pixels wide a hat may be there (the room between ears or horns, or the whole head). The game uses the widest hat size that fits. A shape's 'hats' can nudge one hat on that shape, e.g. { \"hat-party\": { \"x\": 1, \"y\": 2, \"width\": 10 } }: pixels right and down, and a different width to pick that hat's size. Hat sheets have one frame per size, smallest on the left; the game measures how wide each drawing is. If the automatic hat tracking is off for an animation, a sheet (or a whole shape) can list 'headOffsets', e.g. { \"happy\": [0, -3, -4, -2] }: how many pixels the head is above (negative) or below the first idle frame, per frame. 'idleSets' are extra idle moves (a stretch, a look around...) that a pet plays now and then instead of its plain idle. Each set lists its moves like 'animations' does, on rows after the usual ones; a sheet that has them drawn on those rows uses the set with 'idleSet'. Hats follow these moves too, sideways as well. A set (or a shape, or a sheet) can fix the sideways tracking with 'headShifts', e.g. { \"idle-look\": [-1, -2, -2, -1] }: how many pixels the head is right (positive) or left (negative) of the first idle frame, per frame.",
+  "_help": "Lists every sprite sheet the game can use. See docs/ART_GUIDE.md. Each sheet is a PNG (path relative to this folder) where every frame is frameWidth x frameHeight pixels, each ROW is one animation, and frames go left to right. 'animations' says which row holds which animation; a sheet can override it (like the egg below). If a sheet is missing an animation, the game uses 'idle' instead. Sheet names here are what src/data/characters.json points at. 'shape' (on pet sheets) names a body shape from 'shapes'. Characters with the same body share a shape, so hats are set up once per shape. A shape's 'head' is where a hat sits: the pixel in the first idle frame where the bottom middle of the hat goes, and 'width': how many pixels wide a hat may be there (the room between ears or horns, or the whole head). The game uses the widest hat size that fits. A shape's 'hats' can nudge one hat on that shape, e.g. { \"hat-party\": { \"x\": 1, \"y\": 2, \"width\": 10 } }: pixels right and down, and a different width to pick that hat's size. Hat sheets have one frame per size, smallest on the left; the game measures how wide each drawing is. If the automatic hat tracking is off for an animation, a sheet (or a whole shape) can list 'headOffsets', e.g. { \"happy\": [0, -3, -4, -2] }: how many pixels the head is above (negative) or below the first idle frame, per frame. 'idleSets' are extra idle moves (a stretch, a look around...) that a pet plays now and then instead of its plain idle. Each set lists its moves like 'animations' does, on rows after the usual ones; a sheet that has them drawn on those rows uses the set with 'idleSet'. Hats follow these moves too, sideways as well. A set (or a shape, or a sheet) can fix the sideways tracking with 'headShifts', e.g. { \"idle-look\": [-1, -2, -2, -1] }: how many pixels the head is right (positive) or left (negative) of the first idle frame, per frame. Pets with a face layer have their body drawn without a face, and a shape's 'face' is where the face goes: the pixel in the first idle frame that the face set's anchor (16, 18) lands on, which is the bottom of the eyes. The face comes from a face set in 'faceSets', one row per expression (see src/game/expressions.ts for the order), and moves with the head like a hat. A shape (or a sheet) picks a set with 'faces', and 'blob' is the default, and also fills in any expression a set leaves out. A shape with no 'face' keeps the face drawn on its body.",
   "frameWidth": 32,
   "frameHeight": 32,
   "animations": {
@@ -80,6 +80,10 @@
         "x": 16,
         "y": 13,
         "width": 14
+      },
+      "face": {
+        "x": 16,
+        "y": 18
       }
     },
     "acorn": {
@@ -87,6 +91,10 @@
         "x": 16,
         "y": 5,
         "width": 14
+      },
+      "face": {
+        "x": 16,
+        "y": 17
       }
     },
     "stump": {
@@ -94,6 +102,10 @@
         "x": 16,
         "y": 12,
         "width": 14
+      },
+      "face": {
+        "x": 16,
+        "y": 18
       }
     },
     "dome": {
@@ -101,6 +113,10 @@
         "x": 16,
         "y": 7,
         "width": 14
+      },
+      "face": {
+        "x": 16,
+        "y": 14
       }
     },
     "crest": {
@@ -108,6 +124,10 @@
         "x": 16,
         "y": 12,
         "width": 14
+      },
+      "face": {
+        "x": 16,
+        "y": 17
       }
     },
     "flan": {
@@ -115,6 +135,10 @@
         "x": 16,
         "y": 12,
         "width": 14
+      },
+      "face": {
+        "x": 16,
+        "y": 19
       }
     },
     "cupcake": {
@@ -122,6 +146,10 @@
         "x": 16,
         "y": 8,
         "width": 14
+      },
+      "face": {
+        "x": 16,
+        "y": 15
       }
     },
     "cloud": {
@@ -129,6 +157,10 @@
         "x": 16,
         "y": 9,
         "width": 10
+      },
+      "face": {
+        "x": 16,
+        "y": 20
       }
     },
     "owl": {
@@ -153,6 +185,11 @@
           "frameMs": 260
         }
       }
+    }
+  },
+  "faceSets": {
+    "blob": {
+      "file": "faces/blob.png"
     }
   },
   "sheets": {

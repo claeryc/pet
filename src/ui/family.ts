@@ -7,6 +7,7 @@
 import { STRINGS } from '../strings';
 import { characterSheet, getCharacter, getVariant, sheetFor } from '../game/growth';
 import { ageInDays, familyGenerations, pedigree, type TreeMember } from '../game/family';
+import { getTrait } from '../game/traits';
 import type { GameState, PetStats } from '../game/state';
 import { STAT_ICONS, UNKNOWN_ICON } from './icons';
 import type { CollectionCallbacks } from './collection';
@@ -37,6 +38,17 @@ function whatItIs(m: TreeMember): string {
   if (!character) return STRINGS.family.stages.adult;
   const name = STRINGS.characterName(character.name, getVariant(character, m.variant)?.name);
   return `${name}  ${STRINGS.stars(character.stars)}`;
+}
+
+// Adds its trait ("· Playful") once it has hatched, with what the trait
+// does when you hover or long-press it.
+function traitLine(m: TreeMember, line: HTMLElement): HTMLElement {
+  const trait = getTrait(m.trait);
+  if (trait && m.stage !== 'egg') {
+    line.append(` · ${trait.name}`);
+    line.title = trait.about;
+  }
+  return line;
 }
 
 function sheetOf(m: TreeMember, state: GameState): string {
@@ -86,7 +98,7 @@ function card(m: TreeMember, state: GameState, cb: FamilyCallbacks): HTMLElement
   }
   info.append(
     top,
-    el('small', 'tree-what', whatItIs(m)),
+    traitLine(m, el('small', 'tree-what', whatItIs(m))),
     el('small', '', m.fromWild ? STRINGS.family.raisedInWild : m.owner ? STRINGS.family.raisedBy(m.owner) : STRINGS.family.raisedByYou),
     el('small', '', m.home ? STRINGS.family.age(ageInDays(m.bornAt, state.lastUpdated)) : bornOn(m.bornAt)),
   );

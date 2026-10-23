@@ -4,6 +4,7 @@
 import { CONFIG } from './config';
 import type { Stage } from './growth';
 import { newGarden } from './garden';
+import { inheritTrait } from './traits';
 
 export interface PetStats {
   hunger: number; // 0-100, higher is better (a full tummy)
@@ -62,6 +63,9 @@ export interface Pet {
   // opened), and when it can go on the next one (see src/game/journeys.ts).
   trip: Trip | null;
   tripReadyAt: number;
+  // Its bit of personality (an id from src/data/traits.json): only changes
+  // how it looks and behaves, see src/game/traits.ts.
+  trait: string;
 }
 
 // Which character a parent grew into, and its colour variant.
@@ -173,6 +177,7 @@ export interface FamilyMember {
   variant: string | null;
   generation: number;
   parents: string[]; // ids of other family members
+  trait?: string; // its trait, if it had one (see src/game/traits.ts)
 }
 
 // A pet you can meet (see src/game/friends.ts). For now every friend is a
@@ -196,6 +201,7 @@ export interface Friend {
   giftedToday: number; // friend score from today's gifts
   partner: string | null; // the pet of yours it had a little one with
   mingledAt: number; // when it last mingled (0 = never)
+  trait?: string; // its trait (one rolled from its id if it has none, see traits.ts)
 }
 
 // Who's over right now, one at a time: a new wanderer (`guest`) or one of
@@ -379,11 +385,15 @@ export function makeId(): string {
 
 // A brand new egg. A little one gets its generation, parents and their
 // themes; a first pet has none.
-export function newPet(now: number, family: { generation: number; parents: string[]; themes: string[]; parentLooks: ParentLook[] } = {
-  generation: 1, parents: [], themes: [], parentLooks: [],
-}): Pet {
+export function newPet(
+  now: number,
+  family: { generation: number; parents: string[]; themes: string[]; parentLooks: ParentLook[]; parentTraits?: string[] } = {
+    generation: 1, parents: [], themes: [], parentLooks: [],
+  },
+): Pet {
+  const id = makeId();
   return {
-    id: makeId(),
+    id,
     name: '',
     named: false,
     generation: family.generation,
@@ -408,6 +418,7 @@ export function newPet(now: number, family: { generation: number; parents: strin
     starGlow: false,
     trip: null,
     tripReadyAt: 0,
+    trait: inheritTrait(id, family.parentTraits ?? []),
   };
 }
 

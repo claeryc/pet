@@ -7,6 +7,7 @@ This explains how the pet's art is organised, how to draw a character in Aseprit
 - Every pet looks the same as an **egg**, a **baby** and a **teen**.
 - When the teen grows up, it becomes an adult **character**. Each character has a **theme** (Nature, Ocean, Bakery, Starry, and Cave as a later pack) and a **rarity** of 1 to 3 stars.
 - Good care during the baby and teen days raises the chance of a rarer character. The odds are in `src/game/config.ts` under `rarity`. A little one whose parents both grew into 3-star characters uses `rarityStarParents` instead, so it's never 1 star.
+- Each pet also gets a **trait** when it's made (Playful, Greedy, Shy, Sleepy or Cheery), and a little one often gets one of its parents'. A trait only changes how often the pet fidgets and which faces it pulls, never its stats. The traits and their numbers are in `src/data/traits.json`.
 - A character can have **colour variants** (for example an Amber Pebblit). A variant is just another sheet with a chance of appearing, either drawn or made by swapping palette colours (see [Adding a colour variant](#adding-a-colour-variant)).
 
 Each theme has a common (★), an uncommon (★★) and a rare (★★★) character:
@@ -34,6 +35,7 @@ art/                               your Aseprite files (the game never loads the
   _template.aseprite               blank file for a new character
   stages/egg.aseprite, baby, teen
   characters/<theme>/<id>.aseprite
+  faces/<set>.aseprite             face sets: one row of faces per expression
   hats/<hat>.aseprite
   badges/tiers.aseprite            achievement tiers: bronze, silver, gold
 
@@ -41,11 +43,13 @@ public/sprites/                    exported PNGs the game loads
   manifest.json                    list of every sheet
   stages/egg.png, baby.png, teen.png
   characters/<theme>/<id>.png
+  faces/<set>.png
   hats/<hat>.png
   badges/tiers.png
 
 src/data/characters.json           every character: theme, stars, name, sheet, variants
 src/data/hats.json                 every hat: name, price, sheet
+src/data/traits.json               every trait (Playful, Greedy...) and its numbers
 ```
 
 Keep `art/` and `public/sprites/` mirrored: `art/characters/cave/pebblit.aseprite` exports to `public/sprites/characters/cave/pebblit.png`.
@@ -94,6 +98,42 @@ A sheet uses a set with `"idleSet": "curious"`, and has those moves drawn on tho
 
 **Hats follow the moves**, up and down as usual and sideways too: the game sees how far the head moves left or right in each frame of an idle move. Each sheet is measured on its own, so the same move on different bodies still keeps each hat on its own pet's head. If the sideways tracking is off, set it by hand with `headShifts`, in pixels compared to the first idle frame (negative is left), for example `"headShifts": { "idle-look": [-1, -2, -2, -1] }`. Put it on the idle set to fix every sheet using it, or on one sheet for just that one. For up and down, `headOffsets` works on idle moves too. A sheet's own fix wins over its set's, and a set's over its shape's.
 
+## Faces and expressions
+
+The starter characters (all but Starhoot) have their bodies drawn **without a face**. The face is drawn by the game on top, from a shared **face set**, and moves with the head like a hat. So a new expression is drawn once, not once per character and animation.
+
+**A face set** (`art/faces/blob.aseprite`, exported to `public/sprites/faces/blob.png`) has 32×32 frames, see-through except for the eyes, brows, mouth, cheeks and extras like tears or hearts. Each tag is one expression, in this order, as many frames as you like:
+
+| Row | Tag | Shows when |
+| --- | --- | --- |
+| 0 | `content` | most of the time (the last frame is a blink) |
+| 1 | `happy` | after play, a cuddle or good news |
+| 2 | `pouting` | nobody has done anything with it for a few minutes |
+| 3 | `sad` | low joy, or feeling poorly |
+| 4 | `crying` | very low joy |
+| 5 | `surprised` | a visitor or a parcel arrives |
+| 6 | `inLove` | after a food it was craving, or playing with a friend |
+| 7 | `grumpy` | woken up (Sleepy pets) |
+| 8 | `sleepy` | asleep, or low energy |
+| 9 | `hungry` | low tummy |
+| 10 | `chewing` | while eating |
+| 11 | `sick` | sick |
+
+Draw the faces around the pixel (16, 18), which is the bottom of the eyes. The file's guides layer shows Sprig without a face underneath to draw on. `blob` was made from Sprig's test expressions; `chewing` and `sick` are stand-ins (happy eyes with the mouth opening and closing, and the sad face) until they're drawn. The rules for which face shows are in `src/game/expressions.ts`, and the numbers in `src/game/config.ts` under `expressions`.
+
+**Each character file** has a third layer, **face**, with the content face on it, so you see the whole pet while you draw the body. `npm run export-art` leaves it out. Draw the body on the **pet** layer without eyes, mouth or cheeks.
+
+**In the manifest**, a body shape's `face` is where the face goes: the pixel in the first idle frame where the bottom of the eyes is. For example `"blob": { "head": {...}, "face": { "x": 16, "y": 18 } }`. Characters with the face lower or higher only need a different `y`.
+
+**A new face set**, for example big owl eyes for Starhoot or special faces for 3-star pets:
+
+1. Copy `art/faces/blob.aseprite` to `art/faces/owl.aseprite` and redraw the faces. Leave a tag empty to use the blob face for it.
+2. Export it, and list it in the manifest under `"faceSets"`: `"owl": { "file": "faces/owl.png" }`.
+3. Give the shape a face point and the set: `"owl": { "head": {...}, "face": { "x": 16, "y": 17 }, "faces": "owl" }`. A single sheet can also use `"faces": "owl"` instead of its shape's set.
+4. Take the face off the body in its `.aseprite` file.
+
+A character whose shape has no `face` keeps the face drawn on its body (Starhoot, the stages and Cave for now), and always shows the same expressions as its animations.
+
 ## The palette
 
 All art uses one shared 20-colour palette (`src/render/palette.ts`). `docs/palette.gpl` has it as a separate palette file. The starter characters' files have all 20 loaded. Older files (stages, hats, Cave, badges) have the first 16, so load `palette.gpl` in them before using the new ones.
@@ -103,7 +143,7 @@ The last four are **outline colours**: `moss` (green), `deep` (blue), `berry` (p
 ## Editing an existing character
 
 1. Open its file in `art/`, for example `art/characters/cave/geodon.aseprite`.
-2. Paint on the **pet** layer. The **guides** layer shows the feet line (pink), the shadow row (purple) and the centre (blue). It's a reference layer, so it never shows up in the export.
+2. Paint on the **pet** layer. The **guides** layer shows the feet line (pink), the shadow row (purple) and the centre (blue). It's a reference layer, so it never shows up in the export. The **face** layer is only there to see the face while drawing (see [Faces and expressions](#faces-and-expressions)).
 3. Export (see below) over the matching PNG in `public/sprites/`, same name and folder.
 
 That's it. No other file changes, and existing pets pick up the new look.
@@ -239,12 +279,12 @@ To change them, draw over the frames, then export with **Sheet type: Horizontal 
 
 ## Exporting a sheet from Aseprite
 
-**All at once:** run `npm run export-art`. It exports every file in `art/` to the matching PNG in `public/sprites/` with the settings below (one row per tag, in tag order; hats and badges as one strip; no guides). It finds Aseprite in the usual install folders. If yours is elsewhere, set `ASEPRITE` to its path. Add words to export only some files, e.g. `npm run export-art -- pebblit hats`. It warns when a sheet changes size, which usually means a tag or frame went missing.
+**All at once:** run `npm run export-art`. It exports every file in `art/` to the matching PNG in `public/sprites/` with the settings below (one row per tag, in tag order; hats and badges as one strip; no guides or face layer). It finds Aseprite in the usual install folders. If yours is elsewhere, set `ASEPRITE` to its path. Add words to export only some files, e.g. `npm run export-art -- pebblit hats`. It warns when a sheet changes size, which usually means a tag or frame went missing.
 
 **One by hand:** File → Export Sprite Sheet (Ctrl+E):
 
 - **Layout** tab: Sheet type **By Rows**.
-- **Sprite** tab: Layers **Visible layers**, and tick **Split Tags**, so each tag gets its own row.
+- **Sprite** tab: Layers **Visible layers**, and tick **Split Tags**, so each tag gets its own row. Hide the **face** layer first.
 - **Borders** tab: all padding and spacing at **0**.
 - **Output** tab: tick **Output File** and pick the PNG in `public/sprites/`. Untick JSON Data (the game uses `manifest.json`).
 - Click Export.

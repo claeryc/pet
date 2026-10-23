@@ -26,6 +26,9 @@ import {
 import { purchase, type ProductId } from './payments';
 import { useDecor } from './game/decor';
 import { getLook, isNight } from './game/stats';
+import { afterEating, chooseExpression, idleEveryMs, reactionMs, type Expression, type Reaction } from './game/expressions';
+import { getTrait, traitOf } from './game/traits';
+import { drawFace } from './render/faces';
 import { cast, land, toggleBait } from './game/fishing';
 import { TOSS_MS } from './render/garden';
 import { LEAP_MS } from './ui/fishing';
@@ -224,6 +227,7 @@ function announceMail(old: Message[]): void {
     if (m.kind === 'order') {
       const items = m.boxes.map((b) => STRINGS.delivery.item(b.want, STRINGS.foods[b.food as FoodId]));
       home.notice(STRINGS.delivery.announced(items.join(', ')));
+      pullFace('surprised');
     } else if (m.kind === 'pickup') {
       home.notice(STRINGS.delivery.pickedUp(m.boxes.filter((b) => b.have >= b.want).length, m.gold) +
         (m.regular ? STRINGS.regulars.grew(STRINGS.regulars.names.percy) : ''));
@@ -233,12 +237,15 @@ function announceMail(old: Message[]): void {
       home.notice(STRINGS.journeys.tripHome(m.name, placeName(m.place)));
     } else if (m.kind === 'courier') {
       home.notice(STRINGS.journeys.courier(m.name, placeName(m.place), findLabel(m.find)));
+      pullFace('surprised');
       showFind(m.find, STRINGS.journeys.fromPercy);
     } else if (m.kind === 'regular') {
       showRegularReward(m.id as RegularId, m.hearts);
     } else if (m.kind === 'visitor' && m.friend) {
       home.notice(STRINGS.messages.friendVisit(m.name));
+      pullFace('surprised');
     } else if (m.kind === 'visitor') {
+      pullFace('surprised');
       const c = getCharacter(m.character);
       home.notice(STRINGS.messages.visitor(m.name, STRINGS.characterName(c?.name ?? '?', getVariant(c, m.variant)?.name)));
     }
@@ -294,10 +301,20 @@ function askName(): void {
 }
 
 // A short animation the pet plays in response to something (eating,
-// playing). It's only for show, so it lives here and isn't saved.
+// playing), and the face it pulls. It's only for show, so it lives here
+// and isn't saved. A happy wiggle comes with a happy face unless another
+// is asked for. Anything you do with the pet also stops it pouting.
 let reaction: { animation: string; until: number } | null = null;
-function react(animation: string, ms: number = CONFIG.reactionMs): void {
+let faceReaction: { expression: Expression; until: number } | null = null;
+let lastTouched = performance.now();
+function react(animation: string, ms: number = CONFIG.reactionMs, face?: Reaction): void {
   reaction = { animation, until: performance.now() + ms };
+  lastTouched = performance.now();
+  const expression = face ?? (animation === 'happy' ? 'happy' : null);
+  if (expression) pullFace(expression);
+}
+function pullFace(expression: Reaction): void {
+  faceReaction = { expression, until: performance.now() + reactionMs(expression, getTrait(state.pet.trait)) };
 }
 
 // Runs a player action. If the game refused it, shows a little message why;
@@ -310,6 +327,7 @@ function runAction(
   setState(result.state);
   if (result.blocked) blocked(STRINGS.blocked[result.blocked](state.pet.name));
   else if (animation) react(animation);
+  else lastTouched = performance.now();
   return !result.blocked;
 }
 
@@ -607,7 +625,7 @@ function tryCheckIn(): void {
 let sprites: SpriteLibrary = new Map();
 
 // A character's picture for the Collection: the first idle frame of its
-// sheet, cut out once and kept.
+// sheet with its content face, cut out once and kept.
 const portraits = new Map<string, string>();
 function characterImage(sheetName: string): string | undefined {
   const cached = portraits.get(sheetName);
@@ -618,7 +636,9 @@ function characterImage(sheetName: string): string | undefined {
   const cut = document.createElement('canvas');
   cut.width = w;
   cut.height = h;
-  cut.getContext('2d')!.drawImage(sheet.image, 0, (sheet.animations.idle?.row ?? 0) * h, w, h, 0, 0, w, h);
+  const c = cut.getContext('2d')!;
+  c.drawImage(sheet.image, 0, (sheet.animations.idle?.row ?? 0) * h, w, h, 0, 0, w, h);
+  drawFace(c, sheet, 'content', 0, 0, 0);
   const url = cut.toDataURL();
   portraits.set(sheetName, url);
   return url;
@@ -635,16 +655,20 @@ const home = createHomeScreen(root, {
     // Eating takes a while (the food goes in bites); a craving it loved
     // gets a happy wiggle after.
     react('eat', CONFIG.eating.ms);
-    if (result.craved) {
-      home.toast(STRINGS.craving.loved(state.pet.name, result.craved));
+    if (result.craved) home.toast(STRINGS.craving.loved(state.pet.name, result.craved));
+    // A greedy pet loves every snack.
+    const after = afterEating(!!result.craved, getTrait(state.pet.trait));
+    if (after === 'inLove') {
       const fed = reaction;
-      window.setTimeout(() => reaction === fed && react('happy'), CONFIG.eating.ms);
+      window.setTimeout(() => reaction === fed && react('happy', CONFIG.reactionMs, 'inLove'), CONFIG.eating.ms);
     }
   },
   onPlay: (activity) => playWith(activity),
   onPetTap: () => playWith('cuddle'),
   onLights: () => {
-    if (runAction(toggleLights)) sound(state.pet.asleep ? 'lightsOff' : 'lightsOn');
+    if (!runAction(toggleLights)) return;
+    sound(state.pet.asleep ? 'lightsOff' : 'lightsOn');
+    if (!state.pet.asleep && getTrait(state.pet.trait)?.grumpyWhenWoken) pullFace('grumpy');
   },
   onMedicine: () => {
     const before = simulate(state, gameNow()).pet;
@@ -809,6 +833,7 @@ const home = createHomeScreen(root, {
     const c = getCharacter(guest.character);
     setState(logMessage({ ...state, visit }, { kind: 'visitor', at: now, name: guest.name, character: guest.character, variant: guest.variant }));
     home.toast(STRINGS.messages.visitor(guest.name, STRINGS.characterName(c?.name ?? '?', getVariant(c, guest.variant)?.name)));
+    pullFace('surprised');
   },
   onFriendScore: () => {
     const up = <T extends { score: number }>(f: T): T => ({ ...f, score: Math.min(100, f.score + CONFIG.debug.friendScore) });
@@ -1028,6 +1053,21 @@ function render(timeMs: number): void {
   const away = isAway(pet);
   let animation: string = getLook(pet);
   if (reaction && timeMs < reaction.until && !pet.asleep) animation = reaction.animation;
+  const trait = getTrait(pet.trait);
+  const face = chooseExpression({
+    animation,
+    // Playing with a friend: in love while the hearts float up.
+    reaction: faceReaction && timeMs < faceReaction.until ? faceReaction.expression : home.meetScene()?.hearts ? 'inLove' : null,
+    stats: pet.stats,
+    trait,
+    // Nobody pouts at an empty screen, or about a game left in the background.
+    aloneMs: document.hidden ? 0 : timeMs - lastTouched,
+  });
+  // Another pet: its mood, without reactions.
+  const lookOf = (p: Pet, anim: string) => {
+    const t = getTrait(p.trait);
+    return { animation: anim, face: chooseExpression({ animation: anim, stats: p.stats, trait: t }), idleEveryMs: idleEveryMs(t) };
+  };
   // The other pet in the room, and a friend over to play.
   const other = state.housemates.find((p) => !isAway(p));
   const meeting = home.meetScene();
@@ -1037,6 +1077,8 @@ function render(timeMs: number): void {
     away ? undefined : sprites.get(sheetFor(pet)),
     {
       animation,
+      face,
+      idleEveryMs: idleEveryMs(trait),
       glow: !away && pet.starGlow && pet.condition !== 'passed',
       note: away,
       night: isNight(gameNow()),
@@ -1047,7 +1089,7 @@ function render(timeMs: number): void {
       housemate: other && {
         sheet: sprites.get(sheetFor(other)),
         hat: sprites.get(getHat(other.hat)?.sheet ?? ''),
-        animation: getLook(other),
+        ...lookOf(other, getLook(other)),
         glow: other.starGlow && other.condition !== 'passed',
       },
       petOnLeft: petStandsLeft(state),
@@ -1058,13 +1100,16 @@ function render(timeMs: number): void {
         pets: trip.pets.map((p) => ({
           sheet: sprites.get(sheetFor(p)),
           hat: sprites.get(getHat(p.hat)?.sheet ?? ''),
-          animation: 'cheerful',
+          ...lookOf(p, 'cheerful'),
           glow: p.starGlow,
         })),
       },
       meeting: meeting && {
         sheet: sprites.get(characterSheet(meeting.friend.character, meeting.friend.variant)),
         animation: meeting.hearts ? 'happy' : 'cheerful',
+        // Playing with a friend: in love while the hearts float up.
+        face: meeting.hearts ? 'inLove' : 'content',
+        idleEveryMs: idleEveryMs(getTrait(traitOf(meeting.friend))),
         hearts: meeting.hearts,
       },
     },

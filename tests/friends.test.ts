@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { getTrait, traitOf } from '../src/game/traits';
 import { createNewGame, type Friend, type GameState } from '../src/game/state';
 import { CONFIG } from '../src/game/config';
 import { chooseCharacter, getCharacter } from '../src/game/growth';
@@ -260,6 +261,18 @@ describe('mingling', () => {
     expect(s.messages[0].kind).toBe('littleOne');
     const tree = pedigree(s, null);
     expect(tree.parents.map((p) => p?.name)).toEqual([parent.name, friend.name]);
+  });
+
+  it("a little one has a trait, often one of its parents'", () => {
+    let fromParent = 0;
+    for (let i = 0; i < 60; i++) {
+      const { state, friend } = withFriend(100);
+      const s = mingle({ ...state, pet: { ...state.pet, trait: 'sleepy' } }, friend.id, NOON, 0).state;
+      expect(getTrait(s.pet.trait)).toBeDefined();
+      if ([traitOf(friend), 'sleepy'].includes(s.pet.trait)) fromParent++;
+      expect(s.family.find((m) => m.id === friend.id)?.trait).toBe(traitOf(friend));
+    }
+    expect(fromParent).toBeGreaterThan(20);
   });
 
   it('the chance goes up with hearts, and a miss still counts as a meeting', () => {

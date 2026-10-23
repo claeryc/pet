@@ -75,6 +75,7 @@ export function rememberPet(pet: Pet, owner: string): FamilyMember {
     variant: pet.variant,
     generation: pet.generation,
     parents: [...pet.parents],
+    trait: pet.trait,
   };
 }
 
