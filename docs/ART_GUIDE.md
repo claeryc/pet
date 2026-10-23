@@ -96,7 +96,9 @@ A sheet uses a set with `"idleSet": "curious"`, and has those moves drawn on tho
 
 ## The palette
 
-All art uses one shared 16-colour palette (`src/render/palette.ts`). It's already loaded in every `.aseprite` file in `art/`, and `docs/palette.gpl` has it as a separate palette file.
+All art uses one shared 20-colour palette (`src/render/palette.ts`). `docs/palette.gpl` has it as a separate palette file. The starter characters' files have all 20 loaded. Older files (stages, hats, Cave, badges) have the first 16, so load `palette.gpl` in them before using the new ones.
+
+The last four are **outline colours**: `moss` (green), `deep` (blue), `berry` (pink) and `bark` (cream, peach, butter and brown). See the outline rule below.
 
 ## Editing an existing character
 
@@ -251,7 +253,7 @@ To change them, draw over the frames, then export with **Sheet type: Horizontal 
 
 - **Only palette colours.** Use Sprite → Color Mode → Indexed with the palette loaded to snap stray colours.
 - **No anti-aliasing or blur.** Hard edges, pixel to pixel.
-- **A dark outline** (the `ink` colour) around the pet, so it stands out on any background.
+- **A dark outline in the pet's own colour**, so its face stands out. Each stretch of the outer edge takes the dark colour of the part it touches: `moss` next to mint or leaf, `deep` next to sky or ocean, `berry` next to pink, blush or rose, `bark` next to cream, peach, butter or cocoa, and `plum` next to white, lavender or lilac. Lines **inside** the pet (seams, folds) and the **face** stay `ink`, so the face is the darkest thing on the pet. Moonpip keeps an ink outline for now, because its plum shading would melt into a plum edge. Hats and the stages still use ink.
 - **Same silhouette across frames.** Only small changes between frames (a hop, a blink).
 - **Feet on row 28**, with a 1-pixel shadow on row 29. **Centred** horizontally.
 - **Keep the top row empty** in every frame, even at the top of a jump. If the head (or its spikes, antenna...) runs off the top, hats can't follow it.
