@@ -495,7 +495,7 @@ export const PARTS: Part[] = [
         todo: [
           'Copy <code>art/_template.aseprite</code> into the theme\'s folder and rename it, for example <code>art/characters/cave/stalagbun.aseprite</code>. Use lower case and dashes.',
           'Draw on the <b>pet</b> layer. The <b>guides</b> layer shows the feet line, the shadow row and the centre, and is never exported.',
-          'Each character file also has a <b>face</b> layer with the content face, so you see the whole pet while you draw. It isn\'t exported either, so draw the body without eyes, mouth or cheeks.',
+          'The <b>face</b> layer has the content face from the blob set on every frame, so you see the whole pet while you draw. It isn\'t exported either, so draw the body without eyes, mouth or cheeks. If your face point ends up somewhere else, move the face on this layer to match.',
           'Save often (Ctrl+S / Cmd+S). The <code>.aseprite</code> file is your master copy; the PNG is made from it.',
         ],
         visual: layersPicture,

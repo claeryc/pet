@@ -166,7 +166,7 @@ That's it. No other file changes, and existing pets pick up the new look.
 
 ## Making a new character
 
-1. **Copy the template:** duplicate `art/_template.aseprite` into the theme folder and rename it, for example `art/characters/cave/stalagbun.aseprite`. It already has the size, palette, guides, all 28 frames and the seven animation tags (`idle`, `sad`, `sleep`, `sick`, `eat`, `happy`, `cheerful`), each with the right speed.
+1. **Copy the template:** duplicate `art/_template.aseprite` into the theme folder and rename it, for example `art/characters/cave/stalagbun.aseprite`. It already has the size, palette, guides, all 28 frames and the seven animation tags (`idle`, `sad`, `sleep`, `sick`, `eat`, `happy`, `cheerful`), each with the right speed, and a **face** layer with the blob content face at the usual face point (16, 18) to draw around.
 2. **Draw** each frame on the **pet** layer with the **Pencil** (B) and **Pixel-perfect** ticked. Never use blur or soft brushes. Keep the feet on the pink line and the pet centred.
 3. **Export** the sheet to `public/sprites/characters/cave/stalagbun.png` (see below).
 4. **List the sheet** in `public/sprites/manifest.json` under `"sheets"`, with the body shape it's drawn on (see [Body shapes](#body-shapes)):
