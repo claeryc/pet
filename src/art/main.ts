@@ -755,7 +755,7 @@ function moves(box: HTMLElement, sheet: SpriteSheet) {
   );
 
   box.append(el('h4', 'Every move'));
-  const table = el('table', '<thead><tr><th></th><th>Move</th><th>Row</th><th>Set</th><th>Pets</th></tr></thead>');
+  const table = el('table', '<thead><tr><th>Move</th><th>Row</th><th>Set</th><th>Pets</th></tr></thead>', 'moves');
   const body = document.createElement('tbody');
   for (const [setName, set] of Object.entries(sets))
     for (const [move, a] of Object.entries(set.animations).sort((x, y) => x[1].row - y[1].row)) {
@@ -765,26 +765,33 @@ function moves(box: HTMLElement, sheet: SpriteSheet) {
       const tr = document.createElement('tr');
       const preview = document.createElement('td');
       if (shown) preview.append(tile('', (c) => drawTile(c, shown, move, state.face, library.get(state.hat), time), undefined, false, 1.5));
+      preview.append(el('div', `<code>${move}</code><br><small>${a.frames}×${a.frameMs}ms</small>`));
       tr.append(preview);
       tr.append(
-        el('td', `<code>${move}</code><br><small>${a.frames}×${a.frameMs}ms</small>`),
         el('td', String(a.row)),
         el('td', `<code>${setName}</code>`),
       );
+      // A count, and a list to pick a pet from, which stays short however
+      // many pets share the move.
       const who = document.createElement('td');
-      for (const n of users) {
-        const drawn = !!library.get(n)?.animations[move];
-        const b = button(drawn ? n : `${n} <small>not drawn</small>`, () => {
+      const undrawn = users.filter((n) => !library.get(n)?.animations[move]);
+      who.append(el('small', users.length ? `${users.length} pet${users.length === 1 ? '' : 's'}${undrawn.length ? `, ${undrawn.length} not drawn` : ''}` : 'none yet'));
+      if (users.length) {
+        const pick = document.createElement('select');
+        pick.innerHTML =
+          '<option value="">Play on…</option>' +
+          users.map((n) => `<option value="${n}">${n}${undrawn.includes(n) ? ' (not drawn)' : ''}</option>`).join('');
+        pick.onchange = () => {
+          if (!pick.value) return;
           state.anim = move;
           state.tab = 'animations';
           time = 0;
-          select(n);
+          select(pick.value);
           renderTabs();
           renderTab();
-        }, n === sheet.name, drawn ? `Play ${move} on ${n}` : `${n} uses ${setName}, but its sheet has nothing on row ${a.row} yet`);
-        who.append(b, ' ');
+        };
+        who.append(document.createElement('br'), pick);
       }
-      if (!users.length) who.append(el('small', 'none yet'));
       tr.append(who);
       body.append(tr);
     }
