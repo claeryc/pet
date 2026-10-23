@@ -5,6 +5,7 @@ import { bathe, collectPoop, isStinky, poopNow, smellNow } from '../src/game/hyg
 import { createNewGame, type GameState } from '../src/game/state';
 import { migrate } from '../src/storage/storage';
 import { newTeen } from './helpers';
+import { chooseExpression } from '../src/game/expressions';
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
@@ -144,5 +145,18 @@ describe('saves', () => {
     delete old.pet.hygiene;
     const out = migrate({ version: 25, state: old });
     expect(out.state.pet.hygiene).toEqual({ poops: [], smelly: false, smellyMinutes: 0, germs: false, nextPoopAt: 0, nextSmellAt: 0 });
+  });
+});
+
+describe('faces', () => {
+  const stats = { hunger: 80, happiness: 80, health: 100, energy: 80 };
+  it('never looks happy or content while smelly', () => {
+    expect(chooseExpression({ animation: 'idle', stats })).toBe('content');
+    expect(chooseExpression({ animation: 'idle', stats, smelly: true })).toBe('grumpy');
+    expect(chooseExpression({ animation: 'happy', stats, smelly: true })).toBe('grumpy');
+    expect(chooseExpression({ animation: 'idle', reaction: 'happy', stats, smelly: true })).toBe('grumpy');
+    // Other faces still show.
+    expect(chooseExpression({ animation: 'idle', stats: { ...stats, hunger: 10 }, smelly: true })).toBe('hungry');
+    expect(chooseExpression({ animation: 'sleep', stats, smelly: true })).toBe('sleepy');
   });
 });

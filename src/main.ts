@@ -1069,12 +1069,22 @@ const ctx = setupCanvas(home.canvas);
 const atHome = [state.pet, ...state.housemates];
 loadSprites(sprites, [...atHome.map(sheetFor), ...atHome.map((p) => getHat(p.hat)?.sheet ?? '')]);
 
+// A smelly pet never looks happy or content. Pets with a face layer pull a
+// grumpy face instead (see chooseExpression); babies, teens and other
+// sheets with the face drawn into the body look sad rather than cheerful.
+function smellyBody(animation: string, smelly: boolean, sheet: { face?: unknown } | undefined): string {
+  if (!smelly || sheet?.face) return animation;
+  return animation === 'idle' || animation === 'cheerful' || animation === 'happy' ? 'sad' : animation;
+}
+
 function render(timeMs: number): void {
   const pet = state.pet;
   // A pet out on a journey isn't in the room.
   const away = isAway(pet);
   let animation: string = getLook(pet);
   if (reaction && timeMs < reaction.until && !pet.asleep) animation = reaction.animation;
+  const smelly = !away && pet.hygiene.smelly && !home.hidesSmell();
+  animation = smellyBody(animation, smelly, sprites.get(sheetFor(pet)));
   const trait = getTrait(pet.trait);
   // In the bath: happy while being scrubbed, surprised while dripping wet.
   const bath = home.bathScene(timeMs);
@@ -1088,11 +1098,13 @@ function render(timeMs: number): void {
     trait,
     // Nobody pouts at an empty screen, or about a game left in the background.
     aloneMs: document.hidden ? 0 : timeMs - lastTouched,
+    smelly,
   });
   // Another pet: its mood, without reactions.
-  const lookOf = (p: Pet, anim: string) => {
+  const lookOf = (p: Pet, look: string) => {
     const t = getTrait(p.trait);
-    return { animation: anim, face: chooseExpression({ animation: anim, stats: p.stats, trait: t }), idleEveryMs: idleEveryMs(t) };
+    const anim = smellyBody(look, p.hygiene.smelly, sprites.get(sheetFor(p)));
+    return { animation: anim, face: chooseExpression({ animation: anim, stats: p.stats, trait: t, smelly: p.hygiene.smelly }), idleEveryMs: idleEveryMs(t) };
   };
   // Poops on the floor, and smell lines (not while it's soapy or wet).
   const messOf = (p: Pet, washing = false) => ({ poops: p.hygiene.poops.map((q) => q.slot), smelly: p.hygiene.smelly && !washing });
