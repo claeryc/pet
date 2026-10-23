@@ -66,7 +66,13 @@ export interface ManifestSheet {
   idleSet?: string | string[];
   headOffsets?: Record<string, number[]>; // optional fix for the automatic tracking
   headShifts?: Record<string, number[]>;
-  faces?: string; // a different face set from its shape's
+  // A sheet can change its shape's points for itself only, so a character
+  // drawn a pixel lower doesn't need a shape of its own: its own hat point,
+  // face point, face set and hat nudges win over its shape's.
+  head?: Head;
+  face?: { x: number; y: number };
+  faces?: string;
+  hats?: Record<string, HatFit>;
 }
 
 export interface ManifestFile {
@@ -123,14 +129,27 @@ export function onlyDrawn(
   return Object.fromEntries(Object.entries(animations).filter(([name, a]) => name === 'idle' || drawn(a)));
 }
 
-// The body shape a sheet is drawn on, or undefined for sheets without one
-// (the egg, hats). Warns about a shape name that isn't in the list.
+// The body shape a sheet is drawn on, with the sheet's own hat point, face
+// point, face set and hat nudges in place of the shape's, or undefined for
+// sheets without one (the egg, hats). Warns about a shape name that isn't
+// in the list.
 export function shapeOf(manifest: ManifestFile, sheetName: string): Shape | undefined {
-  const name = resolveSheet(manifest, sheetName)?.shape;
+  const sheet = resolveSheet(manifest, sheetName);
+  const name = sheet?.shape;
   if (!name) return undefined;
   const shape = manifest.shapes?.[name];
-  if (!shape) console.warn(`Sheet "${sheetName}" uses shape "${name}", which isn't in manifest.json's shapes`);
-  return shape;
+  if (!shape) {
+    console.warn(`Sheet "${sheetName}" uses shape "${name}", which isn't in manifest.json's shapes`);
+    return undefined;
+  }
+  if (!sheet.head && !sheet.face && !sheet.faces && !sheet.hats) return shape;
+  return {
+    ...shape,
+    head: sheet.head ?? shape.head,
+    face: sheet.face ?? shape.face,
+    faces: sheet.faces ?? shape.faces,
+    hats: sheet.hats || shape.hats ? { ...shape.hats, ...sheet.hats } : undefined,
+  };
 }
 
 // The idle set a sheet uses (several mixed into one, if it lists more than

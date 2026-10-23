@@ -144,7 +144,13 @@ A character whose shape has no `face` keeps the face drawn on its body (the stag
 
 All art uses one shared 20-colour palette (`src/render/palette.ts`). `docs/palette.gpl` has it as a separate palette file. The starter characters' files have all 20 loaded. Older files (stages, hats, Cave, badges) have the first 16, so load `palette.gpl` in them before using the new ones.
 
-The last four are **outline colours**: `moss` (green), `deep` (blue), `berry` (pink) and `bark` (cream, peach, butter and brown). See the outline rule below.
+The last four are **outline colours**: `moss` (green), `deep` (blue), `berry` (pink) and `bark` (cream, peach, butter and brown). See the outline rule below. Which outline goes with which body colour is listed once, in `OUTLINE_OF` in the same file. The art page's checks and Recolour tab use it.
+
+**Never change a colour's value.** Every PNG stores the colours themselves, and recolours and checks find them by their exact value, so changing one would quietly break every sheet that uses it. To get a new shade, add a new colour at the end instead:
+
+1. Add it to `PALETTE` in `src/render/palette.ts`, and to `docs/palette.gpl` (same name, same order). `npm test` checks the two match and that no existing colour changed.
+2. If it's a body colour, give it an outline in `OUTLINE_OF`: an existing outline colour, or a new dark shade added the same way.
+3. Load `palette.gpl` again in the Aseprite files that will use it.
 
 ## Editing an existing character
 
@@ -184,7 +190,7 @@ If the variant is the same drawing with some palette colours swapped, list it in
 
 To try swaps before writing anything, use the **Recolour** tab on the [art preview page](#the-art-preview-page): pick a replacement for each colour, watch it on every animation, then copy the two JSON lines it makes.
 
-All the swaps happen at once, and each one changes that colour **everywhere** on the sheet. If the face or a highlight uses a colour you're swapping, draw that bit in a different palette colour on the original. **Check it before you add it.** `npm run export-art` (or `npm run export-art -- --previews`, which doesn't need Aseprite) writes two files per recolour to `art/previews/`:
+All the swaps happen at once, and each one changes that colour **everywhere** on the sheet. Remember the outlines: if every part with one outline changes to colours with another (mint and leaf to peach and cocoa), swap the outline too (`moss` to `bark`). The Recolour tab does this for you. If the face or a highlight uses a colour you're swapping, draw that bit in a different palette colour on the original. **Check it before you add it.** `npm run export-art` (or `npm run export-art -- --previews`, which doesn't need Aseprite) writes two files per recolour to `art/previews/`:
 
 - `dumpling-matcha-x4.png`: the original and the recolour side by side, 4 times bigger, every animation row.
 - `dumpling-matcha.png`: the recolour at its real size. If it's nearly right, open it in Aseprite, fix it up, and save it as a drawn variant instead (below).
@@ -250,6 +256,14 @@ The game then uses, for every hat, the widest size that fits `width` (or the sma
 
 **A new body** is a new shape: add it under `"shapes"` and point the sheet at it. A one-off character is simply a shape of one.
 
+**One character sits a little differently** from the rest of its shape (its face a pixel lower, a hat that needs a nudge on it only): give its sheet its own points instead of making a new shape. A sheet's `head`, `face`, `faces` and `hats` win over its shape's, and everything it doesn't list still comes from the shape. Recolours made from it get them too:
+
+```json
+"bubbit": { "file": "characters/ocean/bubbit.png", "shape": "blob", "face": { "x": 16, "y": 19 } }
+```
+
+The **Tweak** tab on the art page does this with **Only bubbit**. Keep shapes for bodies that really match, so a new hat is set up once for all of them.
+
 **If one hat looks wrong on one shape** (a crown slipping between bunny ears, a party hat poking through spikes), nudge just that hat on that shape with `"hats"`, keyed by the hat's sheet name. `x` moves it right, `y` moves it down (negative is up), and `width` picks that hat's size with a different width:
 
 ```json
@@ -301,7 +315,7 @@ To change them, draw over the frames, then export with **Sheet type: Horizontal 
 
 - **Only palette colours.** Use Sprite → Color Mode → Indexed with the palette loaded to snap stray colours.
 - **No anti-aliasing or blur.** Hard edges, pixel to pixel.
-- **A dark outline in the pet's own colour**, so its face stands out. Each stretch of the outer edge takes the dark colour of the part it touches: `moss` next to mint or leaf, `deep` next to sky or ocean, `berry` next to pink, blush or rose, `bark` next to cream, peach, butter or cocoa, and `plum` next to white, lavender or lilac. Lines **inside** the pet (seams, folds) and the **face** stay `ink`, so the face is the darkest thing on the pet. Moonpip keeps an ink outline for now, because its plum shading would melt into a plum edge. Hats and the stages still use ink.
+- **A dark outline in the pet's own colour**, so its face stands out. Each stretch of the outer edge takes the dark colour of the part it touches: `moss` next to mint or leaf, `deep` next to sky or ocean, `berry` next to pink, blush or rose, `bark` next to cream, peach, butter or cocoa, and `plum` next to white, lavender or lilac. Lines **inside** the pet (seams, folds) and the **face** stay `ink`, so the face is the darkest thing on the pet. Moonpip keeps an ink outline for now, because its plum shading would melt into a plum edge. Hats and the stages still use ink. The art page's **Checks** tab looks at this on the first idle frame and marks spots that break it with **?**: a hint, not an error, since a part can bend the rule on purpose.
 - **Same silhouette across frames.** Only small changes between frames (a hop, a blink).
 - **Feet on row 28**, with a 1-pixel shadow on row 29. **Centred** horizontally.
 - **Keep the top row empty** in every frame, even at the top of a jump. If the head (or its spikes, antenna...) runs off the top, hats can't follow it.
@@ -315,10 +329,10 @@ Run `npm run dev` and open `/art.html` (for example `http://localhost:5173/art.h
 - **Guide lines** at the top: the feet line, the shadow row, the centre, the top row (red when something is drawn on it), the hat point and the face point, and a pixel grid.
 - **Animations:** play any row or idle move, pause, step frame by frame, and slow it down.
 - **Faces:** every expression on the chosen pet. Click one to keep it on.
-- **Hats:** try each hat, and see which size it picks and why.
+- **Hats:** try each hat, and see which size it picks and why. Pick a hat to see it on one pet of every shape (and every sheet with its own points), which is the quick way to check a new hat.
 - **Lineup:** every character side by side with the same animation, face and hat.
-- **Tweak:** move a shape's hat point, face point or one hat's nudge and see it on every pet of that shape, then copy the JSON into `manifest.json`.
-- **Recolour:** swap any of a pet's colours for other palette colours and see it live, with hints for the matching outline colour. Start from scratch or from an existing variant, then copy the `manifest.json` and `characters.json` lines. Your swaps stay through a reload.
+- **Tweak:** move a shape's hat point, face point or one hat's nudge and see it on every pet of that shape, or switch to **Only <sheet>** to change one sheet's own points, then copy the JSON into `manifest.json`.
+- **Recolour:** swap any of a pet's colours for other palette colours and see it live. When a swap changes which outline a part needs, the outline swaps with it. Start from scratch or from an existing variant, then copy the `manifest.json` and `characters.json` lines. Your swaps stay through a reload.
 - **Checks:** palette colours only, no soft edges, sheet size, an empty top row, feet on row 28 and centred, for one sheet or all of them. `npm test` runs the same checks on every sheet and face set too.
 - **Traits:** what each trait changes, and a mood to try out which face it pulls.
 - **Try a PNG:** drop an exported sheet on the page. Named like an existing sheet (`sprig.png`, `beanie.png`, `blob.png`), it replaces that one on the page only. Any other name is shown on the selected pet's body.

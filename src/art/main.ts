@@ -11,8 +11,8 @@ import { EXPRESSIONS, chooseExpression, faceForAnimation, idleEveryMs, reactionM
 import { TRAITS, allowedTraits } from '../game/traits';
 import { frameFor } from '../render/animations';
 import { countFaceFrames, drawFace, type FaceSheet } from '../render/faces';
-import { PALETTE } from '../render/palette';
-import { recolourPixels } from '../render/recolour';
+import { OUTLINE_OF, OUTLINES, PALETTE, type ColourName } from '../render/palette';
+import { outlineSwaps, recolourPixels } from '../render/recolour';
 import {
   loadSprites,
   measureHead,
@@ -21,6 +21,7 @@ import {
   resolveSheet,
   sheetAnimations,
   type ManifestFile,
+  type HatFit,
   type Shape,
   type SpriteLibrary,
   type SpriteSheet,
@@ -54,6 +55,7 @@ interface State {
   // The recolour being tried on the Recolour tab: the sheet it's made
   // from, its name, and the palette swaps.
   recolour: { base: string; name: string; swaps: Record<string, string> };
+  tweakOwn: boolean; // the Tweak tab changes this sheet only, not its shape
 }
 
 const SAVED = 'art-preview';
@@ -74,6 +76,7 @@ const state: State = {
   trait: TRAITS[0].id,
   mood: { happiness: 80, hunger: 80, energy: 80, aloneMin: 0, reaction: '' },
   recolour: { base: '', name: '', swaps: {} },
+  tweakOwn: false,
 };
 try {
   Object.assign(state, JSON.parse(localStorage.getItem(SAVED) ?? '{}'));
@@ -93,6 +96,11 @@ let library: SpriteLibrary = new Map();
 // The shapes as edited on the Tweak tab, and as they are in the manifest.
 let shapes: Record<string, Shape> = {};
 let original: Record<string, Shape> = {};
+// A sheet's own points, which win over its shape's (see shapeOf), as
+// edited on the Tweak tab and as they are in the manifest.
+type Fit = Pick<Shape, 'head' | 'face' | 'hats'>;
+let fits: Record<string, Partial<Fit>> = {};
+let originalFits: Record<string, Partial<Fit>> = {};
 // Sheets added by dropping a PNG: which manifest sheet they copy their
 // settings from. And sheets whose picture was swapped for a dropped one.
 const dropped = new Map<string, string>();
@@ -145,6 +153,29 @@ function shapeNameOf(sheet: string): string | undefined {
   return resolveSheet(manifest, dropped.get(sheet) ?? sheet)?.shape;
 }
 
+// The manifest sheet whose own points a sheet uses: itself, or for a
+// recolour without points of its own, the sheet it's painted from.
+function fitNameOf(sheet: string): string {
+  const name = dropped.get(sheet) ?? sheet;
+  const from = manifest.sheets[name]?.from;
+  return from && !fits[name] ? from : name;
+}
+
+// A sheet's shape with its own points in place of the shape's, as the game
+// works it out (shapeOf), but with the edits from the Tweak tab.
+function bodyOf(sheet: string): Shape | undefined {
+  const shapeName = shapeNameOf(sheet);
+  const shape = shapeName ? shapes[shapeName] : undefined;
+  if (!shape) return undefined;
+  const own = fits[fitNameOf(sheet)] ?? {};
+  return {
+    ...shape,
+    head: own.head ?? shape.head,
+    face: own.face ?? shape.face,
+    hats: own.hats || shape.hats ? { ...shape.hats, ...own.hats } : undefined,
+  };
+}
+
 const faceSets = () => {
   const sets = new Map<string, FaceSheet>();
   for (const s of library.values()) {
@@ -158,8 +189,7 @@ const faceSets = () => {
 // point changed or its picture was swapped, the same way the game does
 // when it loads, hand-written fixes included.
 function remeasure(s: SpriteSheet) {
-  const shapeName = shapeNameOf(s.name);
-  const shape = shapeName && shapes[shapeName];
+  const shape = bodyOf(s.name);
   if (!shape) return;
   const entry = resolveSheet(manifest, dropped.get(s.name) ?? s.name);
   const idleSet = idleSetOf(manifest, dropped.get(s.name) ?? s.name);
@@ -168,11 +198,12 @@ function remeasure(s: SpriteSheet) {
   s.headShifts = { ...found.shifts, ...shape.headShifts, ...idleSet?.headShifts, ...entry.headShifts };
 }
 
-// Puts a shape's (edited) settings on every sheet drawn on it.
+// Puts a shape's (edited) settings on every sheet drawn on it, with each
+// sheet's own points on top.
 function applyShape(name: string) {
-  const shape = shapes[name];
   for (const s of library.values()) {
     if (shapeNameOf(s.name) !== name) continue;
+    const shape = bodyOf(s.name)!;
     s.head = { ...shape.head };
     s.face = shape.face && { ...shape.face };
     s.hats = shape.hats && structuredClone(shape.hats);
@@ -185,6 +216,12 @@ async function load() {
   manifest = await (await fetch(`${base}manifest.json`, { cache: 'no-store' })).json();
   original = structuredClone(manifest.shapes ?? {});
   shapes = structuredClone(original);
+  originalFits = Object.fromEntries(
+    Object.entries(manifest.sheets)
+      .map(([name, s]) => [name, Object.fromEntries((['head', 'face', 'hats'] as const).filter((k) => s[k]).map((k) => [k, s[k]]))])
+      .filter(([, fit]) => Object.keys(fit).length),
+  );
+  fits = structuredClone(originalFits);
   library = await loadSprites();
   dropped.clear();
   swapped.clear();
@@ -701,7 +738,8 @@ function hats(box: HTMLElement, sheet: SpriteSheet) {
     box.append(el('p', "This sheet has no body shape, so it can't wear hats.", 'muted'));
     return;
   }
-  box.append(el('p', `Shape <b>${shapeNameOf(sheet.name)}</b>: hat point (${sheet.head.x}, ${sheet.head.y}), ${sheet.head.width} px of room.`, 'muted'));
+  const ownHead = fits[fitNameOf(sheet.name)]?.head ? ` (its own, not the shape's)` : '';
+  box.append(el('p', `Shape <b>${shapeNameOf(sheet.name)}</b>: hat point (${sheet.head.x}, ${sheet.head.y})${ownHead}, ${sheet.head.width} px of room.`, 'muted'));
   const table = el('table', '<thead><tr><th>Hat</th><th>Sizes (px)</th><th>Picked</th><th>Nudge</th></tr></thead>');
   const body = document.createElement('tbody');
   const rows: [string, string][] = [['', 'No hat'], ...HATS.map((h) => [h.sheet, h.name] as [string, string])];
@@ -737,6 +775,22 @@ function hats(box: HTMLElement, sheet: SpriteSheet) {
     }, state.hat === h.sheet, 2));
   }
   box.append(grid);
+  // A new hat has to look right on every body, so here it is on one sheet
+  // of each shape, and on every sheet with points of its own.
+  const hat = library.get(state.hat);
+  if (!hat) return;
+  box.append(el('h4', `The ${hatName(state.hat)} on every shape`));
+  const seen = new Set<string>();
+  const others = el('div', '', 'tiles');
+  for (const s of library.values()) {
+    const shapeName = shapeNameOf(s.name);
+    if (!shapeName || dropped.has(s.name) || manifest.sheets[s.name]?.from) continue;
+    const own = !!fits[s.name];
+    if (!own && seen.has(shapeName)) continue;
+    if (!own) seen.add(shapeName);
+    others.append(tile(own ? `${s.name} <small>own points</small>` : `${shapeName} <small>${s.name}</small>`, (c) => drawTile(c, s, state.anim, state.face, hat, time), () => select(s.name), s.name === sheet.name, 2));
+  }
+  box.append(others);
 }
 
 function numberField(label: string, value: number | undefined, onChange: (v: number | undefined) => void, optional = false) {
@@ -757,60 +811,105 @@ function tweak(box: HTMLElement, sheet: SpriteSheet) {
     box.append(el('p', 'This sheet has no body shape to tweak.', 'muted'));
     return;
   }
+  const own = state.tweakOwn;
+  const fitName = fitNameOf(sheet.name);
   const users = [...library.keys()].filter((n) => shapeNameOf(n) === name);
-  box.append(el('p', `Changes here move the hat and face on every sheet of shape <b>${name}</b> (${users.join(', ')}), on this page only. Copy the result into <code>public/sprites/manifest.json</code> under <code>"shapes"</code> to keep it.`, 'muted'));
+  const modes = el('div', '', 'buttons row');
+  const mode = (on: boolean) => () => {
+    state.tweakOwn = on;
+    save();
+    renderTab();
+  };
+  modes.append(
+    button(`Shape ${name}`, mode(false), !own, `Every sheet of this shape: ${users.join(', ')}`),
+    button(`Only ${fitName}`, mode(true), own, 'Just this sheet (and its recolours): its own points win over its shape\'s'),
+  );
+  box.append(modes);
+  box.append(
+    el(
+      'p',
+      own
+        ? `Changes here move the hat and face on <b>${fitName}</b> only (and recolours made from it), on this page only. Copy the result over its entry under <code>"sheets"</code> in <code>public/sprites/manifest.json</code> to keep it. Use this when one character sits a little differently from the rest of its shape.`
+        : `Changes here move the hat and face on every sheet of shape <b>${name}</b> (${users.join(', ')}), on this page only. Copy the result into <code>public/sprites/manifest.json</code> under <code>"shapes"</code> to keep it.`,
+      'muted',
+    ),
+  );
+  const body = bodyOf(sheet.name)!;
+  const fit = () => (fits[fitName] ??= {});
   const changed = () => {
+    if (fits[fitName] && !Object.keys(fits[fitName]).length) delete fits[fitName];
     applyShape(name);
     showJson();
+  };
+  const setHead = (key: 'x' | 'y' | 'width', v: number | undefined) => {
+    if (own) fit().head = { ...body.head, ...fits[fitName]?.head, [key]: v ?? 0 };
+    else shape.head[key] = v ?? 0;
+    changed();
   };
   box.append(el('h4', 'Hat point'));
   const head = el('div', '', 'fields');
   head.append(
-    numberField('x', shape.head.x, (v) => ((shape.head.x = v ?? 0), changed())),
-    numberField('y', shape.head.y, (v) => ((shape.head.y = v ?? 0), changed())),
-    numberField('width', shape.head.width, (v) => ((shape.head.width = v ?? 0), changed())),
+    numberField('x', body.head.x, (v) => setHead('x', v)),
+    numberField('y', body.head.y, (v) => setHead('y', v)),
+    numberField('width', body.head.width, (v) => setHead('width', v)),
   );
   box.append(head);
   box.append(el('h4', 'Face point'));
   const face = el('div', '', 'fields');
-  if (shape.face) {
-    face.append(
-      numberField('x', shape.face.x, (v) => ((shape.face!.x = v ?? 0), changed())),
-      numberField('y', shape.face.y, (v) => ((shape.face!.y = v ?? 0), changed())),
-    );
-    face.append(button('Remove', () => ((shape.face = undefined), changed(), renderTab()), false, 'Draw the face on the body instead'));
+  const setFacePoint = (key: 'x' | 'y', v: number | undefined) => {
+    if (own) fit().face = { ...body.face!, ...fits[fitName]?.face, [key]: v ?? 0 };
+    else shape.face![key] = v ?? 0;
+    changed();
+  };
+  if (body.face) {
+    face.append(numberField('x', body.face.x, (v) => setFacePoint('x', v)), numberField('y', body.face.y, (v) => setFacePoint('y', v)));
+    if (!own) face.append(button('Remove', () => ((shape.face = undefined), changed(), renderTab()), false, 'Draw the face on the body instead'));
+  } else if (own) {
+    face.append(el('span', 'None: the face is drawn on the body. Add a face point to the shape first.', 'muted'));
   } else {
     face.append(el('span', 'None: the face is drawn on the body. ', 'muted'));
     face.append(button('Add a face point', () => ((shape.face = { x: 16, y: 18 }), changed(), renderTab())));
   }
   box.append(face);
   if (state.hat) {
-    box.append(el('h4', `Nudge only the ${hatName(state.hat)} on this shape`));
-    const fit = shape.hats?.[state.hat] ?? {};
+    box.append(el('h4', `Nudge only the ${hatName(state.hat)} on ${own ? fitName : 'this shape'}`));
+    const target = own ? fits[fitName]?.hats : shape.hats;
+    const now = target?.[state.hat] ?? {};
     const set = (key: 'x' | 'y' | 'width', v: number | undefined) => {
-      shape.hats ??= {};
-      const now = { ...shape.hats[state.hat], [key]: v };
-      for (const k of ['x', 'y', 'width'] as const) if (!now[k]) delete now[k];
-      if (Object.keys(now).length) shape.hats[state.hat] = now;
-      else delete shape.hats[state.hat];
-      if (!Object.keys(shape.hats).length) delete shape.hats;
+      const holder: { hats?: Record<string, HatFit> } = own ? fit() : shape;
+      holder.hats ??= {};
+      const next = { ...holder.hats[state.hat], [key]: v };
+      for (const k of ['x', 'y', 'width'] as const) if (!next[k]) delete next[k];
+      if (Object.keys(next).length) holder.hats[state.hat] = next;
+      else delete holder.hats[state.hat];
+      if (!Object.keys(holder.hats).length) delete holder.hats;
       changed();
     };
     const nudge = el('div', '', 'fields');
     nudge.append(
-      numberField('x', fit.x, (v) => set('x', v), true),
-      numberField('y', fit.y, (v) => set('y', v), true),
-      numberField('width', fit.width, (v) => set('width', v), true),
+      numberField('x', now.x, (v) => set('x', v), true),
+      numberField('y', now.y, (v) => set('y', v), true),
+      numberField('width', now.width, (v) => set('width', v), true),
     );
     box.append(nudge);
-  } else box.append(el('p', 'Pick a hat on the Hats tab to nudge just that hat on this shape.', 'muted'));
+  } else box.append(el('p', `Pick a hat on the Hats tab to nudge just that hat on ${own ? fitName : 'this shape'}.`, 'muted'));
 
   const pre = el('pre', '', 'json');
   const status = el('p', '', 'muted');
   const showJson = () => {
-    const now = JSON.stringify(shape, null, 2);
-    const same = now === JSON.stringify(original[name], null, 2);
-    pre.textContent = `"${name}": ${now}`;
+    let now: string;
+    let same: boolean;
+    if (own) {
+      const entry: Record<string, unknown> = { ...manifest.sheets[fitName] };
+      for (const k of ['head', 'face', 'hats'] as const) delete entry[k];
+      Object.assign(entry, fits[fitName]);
+      now = `"${fitName}": ${JSON.stringify(entry, null, 2)}`;
+      same = JSON.stringify(fits[fitName] ?? {}) === JSON.stringify(originalFits[fitName] ?? {});
+    } else {
+      now = `"${name}": ${JSON.stringify(shape, null, 2)}`;
+      same = JSON.stringify(shape) === JSON.stringify(original[name]);
+    }
+    pre.textContent = now;
     status.textContent = same ? 'Same as the manifest.' : 'Changed from the manifest.';
     status.className = same ? 'muted' : 'changed';
   };
@@ -820,17 +919,29 @@ function tweak(box: HTMLElement, sheet: SpriteSheet) {
   row.append(
     button('Copy', () => navigator.clipboard?.writeText(pre.textContent ?? '')),
     button('Reset', () => {
-      shapes[name] = structuredClone(original[name]);
+      if (own) {
+        if (originalFits[fitName]) fits[fitName] = structuredClone(originalFits[fitName]);
+        else delete fits[fitName];
+      } else shapes[name] = structuredClone(original[name]);
       applyShape(name);
       renderTab();
     }),
   );
+  if (own && fits[fitName])
+    row.append(
+      button("Use the shape's points", () => {
+        delete fits[fitName];
+        applyShape(name);
+        renderTab();
+      }, false, 'Take away this sheet\'s own points'),
+    );
   box.append(row);
 }
 
 function checkList(results: Check[]) {
   const ul = el('ul', '', 'checks');
-  for (const c of results) ul.append(el('li', `<span>${c.ok ? '✓' : '⚠'}</span> <b>${c.label}</b>${c.detail ? `<br><small>${c.detail}</small>` : ''}`, c.ok ? 'ok' : 'bad'));
+  for (const c of results)
+    ul.append(el('li', `<span>${c.ok ? '✓' : c.warn ? '?' : '⚠'}</span> <b>${c.label}</b>${c.detail ? `<br><small>${c.detail}</small>` : ''}`, c.ok ? 'ok' : c.warn ? 'hint' : 'bad'));
   return ul;
 }
 
@@ -845,7 +956,7 @@ function withAllRows(sheet: SpriteSheet): SpriteSheet {
 function checks(box: HTMLElement, sheet: SpriteSheet) {
   box.append(el('h4', `${sheet.name}`));
   box.append(checkList(checkSheet(withAllRows(sheet), 'pet')));
-  box.append(el('p', "Not checked here: the outline colours (each part's own dark colour, ink inside and on the face) and the same silhouette across frames. Look at those with the pixel grid on.", 'muted'));
+  box.append(el('p', "The outline check is only a hint (marked ?), since a part can bend the rule on purpose. Not checked here: ink for lines inside the pet, and the same silhouette across frames. Look at those with the pixel grid on.", 'muted'));
   box.append(el('h4', 'Every sheet'));
   const table = el('table', '<thead><tr><th>Sheet</th><th>Problems</th></tr></thead>');
   const body = document.createElement('tbody');
@@ -855,7 +966,8 @@ function checks(box: HTMLElement, sheet: SpriteSheet) {
   ];
   for (const [name, s, kind] of all.sort((a, b) => a[0].localeCompare(b[0]))) {
     const bad = checkSheet(kind === 'pet' ? withAllRows(s as SpriteSheet) : ({ animations: {}, ...s } as SpriteSheet), kind).filter((c) => !c.ok);
-    const tr = el('tr', `<td>${name}</td><td>${bad.length ? bad.map((c) => `⚠ ${c.label}`).join('<br>') : '✓'}</td>`, bad.length ? 'bad' : 'ok');
+    const real = bad.filter((c) => !c.warn);
+    const tr = el('tr', `<td>${name}</td><td>${bad.length ? bad.map((c) => `${c.warn ? '?' : '⚠'} ${c.label}`).join('<br>') : '✓'}</td>`, real.length ? 'bad' : 'ok');
     if (kind === 'pet') {
       tr.className += ' pick';
       tr.onclick = () => select(name);
@@ -865,14 +977,6 @@ function checks(box: HTMLElement, sheet: SpriteSheet) {
   table.append(body);
   box.append(table);
 }
-
-// The dark outline colour the art guide's outline rule gives each body
-// colour, to suggest when a recolour changes the body.
-const OUTLINE_FOR: Record<string, string> = {
-  mint: 'moss', leaf: 'moss', sky: 'deep', ocean: 'deep', pink: 'berry', blush: 'berry', rose: 'berry',
-  cream: 'bark', peach: 'bark', butter: 'bark', cocoa: 'bark', white: 'plum', lavender: 'plum', lilac: 'plum',
-};
-const OUTLINES = ['moss', 'deep', 'berry', 'bark', 'plum', 'ink'];
 
 // The sheet a recolour is painted from: the selected sheet, or the sheet a
 // recolour (in the manifest or tried here) is made from.
@@ -958,6 +1062,10 @@ function recolour(box: HTMLElement, sheet: SpriteSheet) {
     sel.onchange = () => {
       if (sel.value) rc.swaps[name] = sel.value;
       else delete rc.swaps[name];
+      // A new body colour brings its own outline along (the outline rule),
+      // when every part with the old outline now takes the same new one.
+      if (!OUTLINES.includes(name as ColourName))
+        Object.assign(rc.swaps, outlineSwaps(rc.swaps, used.map(([c]) => c), OUTLINE_OF));
       changed();
     };
     const swatch = el('i', '', 'chip');
@@ -965,8 +1073,11 @@ function recolour(box: HTMLElement, sheet: SpriteSheet) {
     row.append(swatch, sel);
     // The outline rule: the outline takes the dark colour of the body it
     // touches, so a new body colour usually needs a new outline too.
-    if (OUTLINES.includes(name)) {
-      const bodies = Object.entries(rc.swaps).filter(([f]) => OUTLINE_FOR[f] === name).map(([, t]) => OUTLINE_FOR[t]).filter(Boolean);
+    if (OUTLINES.includes(name as ColourName)) {
+      const bodies = Object.entries(rc.swaps)
+        .filter(([f]) => OUTLINE_OF[f as ColourName] === name)
+        .map(([, t]) => OUTLINE_OF[t as ColourName])
+        .filter(Boolean);
       const hint = bodies.find((o) => o !== (to || name));
       if (hint)
         row.append(

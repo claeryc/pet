@@ -25,3 +25,30 @@ export const PALETTE = {
   berry: '#a8405f', // pink parts
   bark: '#5c3a2e', // cream, peach, butter and brown pets
 } as const;
+
+export type ColourName = keyof typeof PALETTE;
+
+// The outline rule (see docs/ART_GUIDE.md): the dark colour that outlines
+// each body colour where it meets the outer edge. Colours not listed here
+// are outlines themselves. A new body colour needs an entry here, and
+// usually a new outline colour too. Ink is never wrong: inside lines, the
+// face and some older art use it everywhere.
+export const OUTLINE_OF: Partial<Record<ColourName, ColourName>> = {
+  mint: 'moss',
+  leaf: 'moss',
+  sky: 'deep',
+  ocean: 'deep',
+  pink: 'berry',
+  blush: 'berry',
+  rose: 'berry',
+  cream: 'bark',
+  peach: 'bark',
+  butter: 'bark',
+  cocoa: 'bark',
+  white: 'plum',
+  lavender: 'plum',
+  lilac: 'plum',
+};
+
+// Every outline colour, ink included.
+export const OUTLINES: readonly ColourName[] = ['ink', ...new Set(Object.values(OUTLINE_OF))];

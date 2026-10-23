@@ -1,13 +1,17 @@
 // The art guide's consistency rules that a computer can check on an
 // exported sheet: palette colours only, no soft edges, the right size, an
-// empty top row, feet on the feet line and the pet centred.
+// empty top row, feet on the feet line and the pet centred, and (as a hint,
+// since art can bend it) the outline rule.
 
-import { PALETTE } from '../render/palette';
+import { OUTLINE_OF, OUTLINES, PALETTE, type ColourName } from '../render/palette';
 import type { SpriteSheet } from '../render/sprites';
 
 export interface Check {
   ok: boolean;
   label: string;
+  // Only a hint: worth a look, but fine if it's on purpose. npm test
+  // doesn't fail on it.
+  warn?: boolean;
   detail?: string;
 }
 
@@ -135,7 +139,46 @@ export function checkPixels(
         label: 'Centred',
         detail: `Columns ${left} to ${right}, so the middle is at ${middle}${Math.abs(middle - (fw - 1) / 2) > 1 ? `, not ${(fw - 1) / 2}` : ''}.`,
       });
+      checks.push(outlineCheck((x, y) => (solid(idle.row, 0, x, y) ? colourAt(data, ((idle.row * fh + y) * width + x) * 4) : null), fw, fh));
     }
   }
   return checks;
+}
+
+function colourAt(data: Uint8ClampedArray | Uint8Array, i: number): ColourName | undefined {
+  return PALETTE_RGB.get((data[i] << 16) | (data[i + 1] << 8) | data[i + 2]) as ColourName | undefined;
+}
+
+// The outline rule, on the first idle frame: every pixel on the outer edge
+// (next to see-through) should be an outline colour, and the outline of a
+// part it touches. Ink always passes. The shadow rows are left out.
+function outlineCheck(at: (x: number, y: number) => ColourName | undefined | null, fw: number, fh: number): Check {
+  const bare: string[] = [];
+  const wrong: string[] = [];
+  const outlines = new Set<string>(OUTLINES);
+  for (let y = 0; y < Math.min(fh, 29); y++)
+    for (let x = 0; x < fw; x++) {
+      const c = at(x, y);
+      if (!c) continue;
+      const around = [at(x + 1, y), at(x - 1, y), at(x, y + 1), at(x, y - 1)];
+      if (!around.includes(null)) continue; // not on the outer edge
+      if (!outlines.has(c)) {
+        bare.push(`${c} at (${x}, ${y})`);
+        continue;
+      }
+      if (c === 'ink') continue;
+      const wanted = around.map((n) => (n ? OUTLINE_OF[n] : undefined)).filter((o): o is ColourName => !!o);
+      if (wanted.length && !wanted.includes(c)) wrong.push(`${c} at (${x}, ${y}), next to a part that takes ${[...new Set(wanted)].join(' or ')}`);
+    }
+  const list = (items: string[]) => items.slice(0, 4).join('; ') + (items.length > 4 ? ` and ${items.length - 4} more` : '');
+  const detail = [
+    bare.length ? `No outline: ${list(bare)}.` : '',
+    wrong.length ? `Another part's outline: ${list(wrong)}.` : '',
+  ].filter(Boolean).join(' ');
+  return {
+    ok: !bare.length && !wrong.length,
+    warn: true,
+    label: 'Outline in each part’s own dark colour (first idle frame)',
+    detail: detail ? `${detail} Fine if it's on purpose.` : undefined,
+  };
 }
