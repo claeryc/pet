@@ -45,6 +45,7 @@ interface State {
   scale: number;
   bg: string;
   overlays: Record<string, boolean>;
+  closed: string[]; // picker groups folded up
   trait: string;
   mood: { happiness: number; hunger: number; energy: number; aloneMin: number; reaction: '' | Reaction };
 }
@@ -63,6 +64,7 @@ const state: State = {
   scale: 10,
   bg: 'check',
   overlays: { grid: false, feet: true, centre: true, top: true, head: true, face: true },
+  closed: [],
   trait: TRAITS[0].id,
   mood: { happiness: 80, hunger: 80, energy: 80, aloneMin: 0, reaction: '' },
 };
@@ -494,16 +496,25 @@ function renderPicker() {
   const el = $('picker');
   el.innerHTML = '';
   for (const g of groups()) {
-    const h = document.createElement('h3');
-    h.textContent = g.title;
-    el.append(h);
+    // Each group folds up; the one holding the selected pet stays open.
+    const group = document.createElement('details');
+    group.open = !state.closed.includes(g.title) || g.entries.some((e) => e.sheet === state.sheet);
+    group.ontoggle = () => {
+      state.closed = state.closed.filter((t) => t !== g.title);
+      if (!group.open) state.closed.push(g.title);
+      save();
+    };
+    const h = document.createElement('summary');
+    h.innerHTML = `${g.title} <small>${g.entries.length}</small>`;
+    group.append(h);
+    el.append(group);
     for (const e of g.entries) {
       const b = document.createElement('button');
       b.className = 'pet' + (e.sheet === state.sheet ? ' on' : '');
       const note = swapped.has(e.sheet) ? 'dropped PNG' : e.note;
       b.innerHTML = `${e.label} ${stars(e.stars)}${note ? ` <small>${note}</small>` : ''}`;
       b.onclick = () => select(e.sheet);
-      el.append(b);
+      group.append(b);
     }
   }
 }

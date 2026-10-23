@@ -22,7 +22,7 @@ Each theme has a common (★), an uncommon (★★) and a rare (★★★) chara
 
 ![The starter characters, by theme and rarity](character-lineup.png)
 
-The starter characters only have their idle pose drawn so far. Every other row of their sheets is a copy of it (idle, happy and cheerful with a small hop), so draw over those rows in their `.aseprite` files.
+The starter characters only have their idle pose properly drawn so far. The other rows are simple placeholder motion made from it: a breathing idle, a small hop for happy and cheerful, a droop for sad, a slow sink for sleep, a sway for sick and a bob for eat (Acornet sways in its idle too). Draw over those rows in their `.aseprite` files. When you redraw a swaying row, take its `headShifts` out of `manifest.json` (or fix the numbers), since they tell the face and hat how far it leans.
 
 **Later packs.** A theme listed under `"laterPacks"` in `characters.json` isn't out yet: pets that already have one of its characters keep it, but no new pet or wanderer grows into one, and the Collection only shows the ones already found. Cave is listed there. Remove it from the list when the pack comes out.
 
