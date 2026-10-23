@@ -28,6 +28,7 @@ import {
 } from '../render/sprites';
 import { checkSheet, pixelsOf, type Check } from './checks';
 import { markdownToHtml, section } from './guide';
+import { setupHowTo, type ShowMe } from './howto';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -1323,5 +1324,39 @@ function setupDrop() {
   };
 }
 
+// ------------------------------------------------------------ the how-to
+
+function showMe(to: ShowMe) {
+  if (to.sheet && library.has(to.sheet)) state.sheet = to.sheet;
+  if (to.tab) state.tab = to.tab;
+  const sheet = library.get(state.sheet);
+  state.anim = to.anim && sheet?.animations[to.anim] ? to.anim : sheet?.animations[state.anim] ? state.anim : 'idle';
+  state.view = to.view ?? 'single';
+  save();
+  renderAll();
+}
+
 setupDrop();
-load().then(() => requestAnimationFrame(tick));
+load().then(() => {
+  requestAnimationFrame(tick);
+  setupHowTo(
+    {
+      library: () => library,
+      manifest: () => manifest,
+      tile: (label, draw, scale = 2) =>
+        tile(label, (c) => {
+          const ctx = c.getContext('2d')!;
+          ctx.imageSmoothingEnabled = false;
+          paintBackground(ctx, c.width, c.height, 8);
+          smallCtx.clearRect(0, 0, BOX, BOX);
+          draw(smallCtx, time);
+          ctx.drawImage(small, 0, 0, c.width, c.height);
+        }, undefined, false, scale),
+      drawPet: (ctx, sheet, anim, t, face, hat) => void drawPet(ctx, sheet, anim, t, face, hat),
+      checks: (sheet) => checkSheet(withAllRows(sheet), 'pet'),
+      overlays: OVERLAYS,
+      showMe,
+    },
+    $('help'),
+  );
+});

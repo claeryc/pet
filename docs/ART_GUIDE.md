@@ -329,6 +329,8 @@ To change them, draw over the frames, then export with **Sheet type: Horizontal 
 
 Run `npm run dev` and open `/art.html` (for example `http://localhost:5173/art.html`). It's a page for drawing, not part of the game, and `npm run build` leaves it out. It draws every sheet the way the game does, and shows the matching part of this guide next to each tool.
 
+**New here?** Click the **?** at the top right (or press `?`) for a step-by-step how-to, from setting up to merging, with pictures drawn from the real sheets and the technical parts folded away. `/art.html#how-to` opens it straight away.
+
 - **Pick a pet** on the left: the stages, every character by theme and rarity, and their variants.
 - **Guide lines** at the top: the feet line, the shadow row, the centre, the top row (red when something is drawn on it), the hat point and the face point, and a pixel grid.
 - **Animations:** play any row or idle move, pause, step frame by frame, and slow it down.
