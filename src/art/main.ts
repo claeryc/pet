@@ -18,6 +18,7 @@ import {
   measureHead,
   pickHatFrame,
   resolveSheet,
+  sheetAnimations,
   type ManifestFile,
   type Shape,
   type SpriteLibrary,
@@ -832,9 +833,17 @@ function checkList(results: Check[]) {
   return ul;
 }
 
+// A pet body is checked against every shared row, so a missing tag shows
+// up as the wrong sheet size. The game itself only keeps the rows a
+// picture has (see sheetAnimations), and the egg only has idle.
+function withAllRows(sheet: SpriteSheet): SpriteSheet {
+  if (!manifest.sheets[sheet.name] || !resolveSheet(manifest, sheet.name).shape) return sheet;
+  return { ...sheet, animations: sheetAnimations(manifest, sheet.name) };
+}
+
 function checks(box: HTMLElement, sheet: SpriteSheet) {
   box.append(el('h4', `${sheet.name}`));
-  box.append(checkList(checkSheet(sheet, 'pet')));
+  box.append(checkList(checkSheet(withAllRows(sheet), 'pet')));
   box.append(el('p', "Not checked here: the outline colours (each part's own dark colour, ink inside and on the face) and the same silhouette across frames. Look at those with the pixel grid on.", 'muted'));
   box.append(el('h4', 'Every sheet'));
   const table = el('table', '<thead><tr><th>Sheet</th><th>Problems</th></tr></thead>');
@@ -844,7 +853,7 @@ function checks(box: HTMLElement, sheet: SpriteSheet) {
     ...[...faceSets().values()].map((f) => [`face set ${f.name}`, f, 'face'] as [string, FaceSheet, 'face']),
   ];
   for (const [name, s, kind] of all.sort((a, b) => a[0].localeCompare(b[0]))) {
-    const bad = checkSheet({ animations: {}, ...s } as SpriteSheet, kind).filter((c) => !c.ok);
+    const bad = checkSheet(kind === 'pet' ? withAllRows(s as SpriteSheet) : ({ animations: {}, ...s } as SpriteSheet), kind).filter((c) => !c.ok);
     const tr = el('tr', `<td>${name}</td><td>${bad.length ? bad.map((c) => `⚠ ${c.label}`).join('<br>') : '✓'}</td>`, bad.length ? 'bad' : 'ok');
     if (kind === 'pet') {
       tr.className += ' pick';

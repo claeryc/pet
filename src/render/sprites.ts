@@ -158,9 +158,7 @@ export async function loadSprites(): Promise<SpriteLibrary> {
           image,
           frameWidth: sheet.frameWidth ?? manifest.frameWidth,
           frameHeight: sheet.frameHeight ?? manifest.frameHeight,
-          // A sheet's own animation list replaces the shared one, and its
-          // idle set's moves are added on.
-          animations: { ...(sheet.animations ?? manifest.animations), ...idleSet?.animations },
+          animations: sheetAnimations(manifest, name, image.height),
           head: shape?.head,
           hats: shape?.hats,
         };
@@ -222,6 +220,17 @@ function recolourImage(image: HTMLImageElement, swaps: Record<string, string>): 
   canvas.height = image.height;
   canvas.getContext('2d')!.putImageData(pixels, 0, 0);
   return loadImage(canvas.toDataURL());
+}
+
+// A sheet's animations: the shared ones, with any the sheet lists itself
+// changed or added, and its idle set's moves. Only rows the picture is tall
+// enough for are kept (`height` in pixels), so a sheet with only some rows
+// drawn falls back to idle for the rest.
+export function sheetAnimations(manifest: ManifestFile, sheetName: string, height = Infinity): Record<string, Animation> {
+  const sheet = resolveSheet(manifest, sheetName);
+  const frameHeight = sheet.frameHeight ?? manifest.frameHeight;
+  const all = { ...manifest.animations, ...sheet.animations, ...idleSetOf(manifest, sheetName)?.animations };
+  return Object.fromEntries(Object.entries(all).filter(([, a]) => (a.row + 1) * frameHeight <= height));
 }
 
 // The body shape a sheet is drawn on, or undefined for sheets without one
