@@ -5,6 +5,7 @@
 
 import { PALETTE } from './palette';
 import { recolourPixels } from './recolour';
+import { countFaceFrames, type FaceSheet } from './faces';
 
 export interface Animation {
   row: number; // which row of the sheet
@@ -33,6 +34,11 @@ export interface HatFit {
 // hats sit is set up once per shape instead of once per character.
 export interface Shape {
   head: Head;
+  // Where the face goes (the pixel in the first idle frame that a face
+  // set's FACE_ANCHOR lands on), and which face set to use. A shape
+  // without a face point has its face drawn on the body.
+  face?: { x: number; y: number };
+  faces?: string;
   headOffsets?: Record<string, number[]>; // optional fix for every sheet of this shape
   headShifts?: Record<string, number[]>; // the same, for moving sideways
   hats?: Record<string, HatFit>; // by hat sheet name
@@ -62,6 +68,7 @@ export interface ManifestSheet {
   idleSet?: string; // a name from the manifest's 'idleSets'
   headOffsets?: Record<string, number[]>; // optional fix for the automatic tracking
   headShifts?: Record<string, number[]>;
+  faces?: string; // a different face set from its shape's
 }
 
 export interface ManifestFile {
@@ -70,6 +77,9 @@ export interface ManifestFile {
   animations: Record<string, Animation>;
   shapes?: Record<string, Shape>;
   idleSets?: Record<string, IdleSet>;
+  // Face sets: sheets of faces, one row per expression (see faces.ts).
+  // 'blob' is also the fallback for expressions another set leaves out.
+  faceSets?: Record<string, { file: string }>;
   sheets: Record<string, ManifestSheet>;
 }
 
@@ -91,6 +101,11 @@ export interface SpriteSheet {
   hats?: Record<string, HatFit>; // fixes for single hats, from the shape
   // Hat sheets: how wide the drawing in each frame is, left to right.
   hatWidths?: number[];
+  // Pets with a face layer: where the face goes, its face set, and the
+  // set used for expressions that one leaves out.
+  face?: { x: number; y: number };
+  faceSet?: FaceSheet;
+  faceFallback?: FaceSheet;
 }
 
 export type SpriteLibrary = Map<string, SpriteSheet>;
@@ -117,6 +132,19 @@ export async function loadSprites(): Promise<SpriteLibrary> {
     console.warn('Could not read sprites/manifest.json:', err);
     return library;
   }
+  const faceSets = new Map<string, FaceSheet>();
+  await Promise.all(
+    Object.entries(manifest.faceSets ?? {}).map(async ([name, set]) => {
+      try {
+        const image = await loadImage(base + set.file);
+        const fw = manifest.frameWidth;
+        const fh = manifest.frameHeight;
+        faceSets.set(name, { name, image, frameWidth: fw, frameHeight: fh, frames: countFaceFrames(pixelsOf(image), fw, fh) });
+      } catch (err) {
+        console.warn(err);
+      }
+    }),
+  );
   await Promise.all(
     Object.keys(manifest.sheets).map(async (name) => {
       try {
@@ -155,6 +183,13 @@ export async function loadSprites(): Promise<SpriteLibrary> {
           };
         }
         if (name.startsWith('hat-')) loaded.hatWidths = measureHatWidths(loaded);
+        if (shape?.face) {
+          const setName = sheet.faces ?? shape.faces ?? 'blob';
+          if (!faceSets.has(setName)) console.warn(`Sheet "${name}" uses face set "${setName}", which didn't load`);
+          loaded.face = shape.face;
+          loaded.faceSet = faceSets.get(setName);
+          loaded.faceFallback = faceSets.get('blob');
+        }
         library.set(name, loaded);
       } catch (err) {
         console.warn(err);

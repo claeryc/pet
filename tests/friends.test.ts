@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { getTrait, traitOf } from '../src/game/traits';
 import { createNewGame, type Friend, type GameState } from '../src/game/state';
 import { CONFIG } from '../src/game/config';
 import { chooseCharacter, getCharacter } from '../src/game/growth';
@@ -262,6 +263,18 @@ describe('mingling', () => {
     expect(tree.parents.map((p) => p?.name)).toEqual([parent.name, friend.name]);
   });
 
+  it("a little one has a trait, often one of its parents'", () => {
+    let fromParent = 0;
+    for (let i = 0; i < 60; i++) {
+      const { state, friend } = withFriend(100);
+      const s = mingle({ ...state, pet: { ...state.pet, trait: 'sleepy' } }, friend.id, NOON, 0).state;
+      expect(getTrait(s.pet.trait)).toBeDefined();
+      if ([traitOf(friend), 'sleepy'].includes(s.pet.trait)) fromParent++;
+      expect(s.family.find((m) => m.id === friend.id)?.trait).toBe(traitOf(friend));
+    }
+    expect(fromParent).toBeGreaterThan(20);
+  });
+
   it('the chance goes up with hearts, and a miss still counts as a meeting', () => {
     const { state, friend } = withFriend(70);
     const missed = mingle(state, friend.id, NOON, 0.5); // 50% at 70
@@ -345,12 +358,16 @@ describe('growing up as a little one', () => {
     let fromParents = 0;
     const runs = 400;
     for (let i = 0; i < runs; i++) {
-      const { character } = chooseCharacter(90, `pet-${i}`, ['cave']);
-      if (character.theme === 'cave') fromParents++;
+      const { character } = chooseCharacter(90, `pet-${i}`, ['ocean']);
+      if (character.theme === 'ocean') fromParents++;
     }
     // About 60% from the parent's theme plus a quarter of the rest.
     expect(fromParents / runs).toBeGreaterThan(0.55);
     expect(fromParents / runs).toBeLessThan(0.85);
+  });
+
+  it('never grows into a pack that isn\'t out yet, even with Cave parents', () => {
+    for (let i = 0; i < 400; i++) expect(chooseCharacter(90, `pet-${i}`, ['cave']).character.theme).not.toBe('cave');
   });
 
   it('a first pet rolls exactly as before', () => {

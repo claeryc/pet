@@ -5,22 +5,28 @@ This explains how the pet's art is organised, how to draw a character in Aseprit
 ## How characters work
 
 - Every pet looks the same as an **egg**, a **baby** and a **teen**.
-- When the teen grows up, it becomes an adult **character**. Each character has a **theme** (Basic, Nature, Cave, Sparkle) and a **rarity** of 1 to 3 stars.
+- When the teen grows up, it becomes an adult **character**. Each character has a **theme** (Nature, Ocean, Bakery, Starry, and Cave as a later pack) and a **rarity** of 1 to 3 stars.
 - Good care during the baby and teen days raises the chance of a rarer character. The odds are in `src/game/config.ts` under `rarity`. A little one whose parents both grew into 3-star characters uses `rarityStarParents` instead, so it's never 1 star.
+- Each pet also gets a **trait** when it's made (Playful, Greedy, Shy, Sleepy or Cheery), and a little one often gets one of its parents'. A trait only changes how often the pet fidgets and which faces it pulls, never its stats. The traits and their numbers are in `src/data/traits.json`. A character can list the only traits its pets can have, e.g. `"traits": ["grumpy", "sleepy"]` in `characters.json`: a pet that grows into it keeps its trait if it's on the list, and otherwise gets one from the list. A trait with `"special": true` in `traits.json` only ever goes to characters that list it. Give such a character its own face set (see below) and its faces look different too.
 - A character can have **colour variants** (for example an Amber Pebblit). A variant is just another sheet with a chance of appearing, either drawn or made by swapping palette colours (see [Adding a colour variant](#adding-a-colour-variant)).
 
 Each theme has a common (★), an uncommon (★★) and a rare (★★★) character:
 
 | Theme | ★ | ★★ | ★★★ |
 | --- | --- | --- | --- |
-| Basic | Dumpling | Bunbun | Cloudlet |
-| Nature | Sprig | Mosscap | Fernwhisk |
-| Cave | Pebblit (and Amber variant) | Crystalback | Geodon |
-| Sparkle | Glimmer | Moonpip | Starwisp |
+| Nature | Sprig | Acornet | Stumpy |
+| Ocean | Bubbit | Jellop | Tidecrest |
+| Bakery | Dumpling | Puddling | Cuppie |
+| Starry | Cloudlet | Moonpip | Starhoot |
+| Cave (later pack) | Pebblit (and Amber variant) | Crystalback | Geodon |
 
-![Every character, by theme and rarity](character-lineup.png)
+![The starter characters, by theme and rarity](character-lineup.png)
 
-All of these are placeholders, made to be painted over.
+The starter characters only have their idle pose drawn so far. Every other row of their sheets is a copy of it (idle, happy and cheerful with a small hop), so draw over those rows in their `.aseprite` files.
+
+**Later packs.** A theme listed under `"laterPacks"` in `characters.json` isn't out yet: pets that already have one of its characters keep it, but no new pet or wanderer grows into one, and the Collection only shows the ones already found. Cave is listed there. Remove it from the list when the pack comes out.
+
+**Shelved art.** Retired characters (Bunbun, Mosscap, Fernwhisk, Glimmer, Starwisp and the old Dumpling, Sprig, Cloudlet and Moonpip) are kept in `art/shelved/`. `npm run export-art` skips that folder.
 
 ## Where everything lives
 
@@ -29,6 +35,7 @@ art/                               your Aseprite files (the game never loads the
   _template.aseprite               blank file for a new character
   stages/egg.aseprite, baby, teen
   characters/<theme>/<id>.aseprite
+  faces/<set>.aseprite             face sets: one row of faces per expression
   hats/<hat>.aseprite
   badges/tiers.aseprite            achievement tiers: bronze, silver, gold
 
@@ -36,11 +43,13 @@ public/sprites/                    exported PNGs the game loads
   manifest.json                    list of every sheet
   stages/egg.png, baby.png, teen.png
   characters/<theme>/<id>.png
+  faces/<set>.png
   hats/<hat>.png
   badges/tiers.png
 
 src/data/characters.json           every character: theme, stars, name, sheet, variants
 src/data/hats.json                 every hat: name, price, sheet
+src/data/traits.json               every trait (Playful, Greedy...) and its numbers
 ```
 
 Keep `art/` and `public/sprites/` mirrored: `art/characters/cave/pebblit.aseprite` exports to `public/sprites/characters/cave/pebblit.png`.
@@ -80,7 +89,7 @@ Moves are shared through an **idle set**, so characters that move the same way a
 }
 ```
 
-A sheet uses a set with `"idleSet": "curious"`, and has those moves drawn on those rows, below the usual seven. Bunbun and Mosscap use `curious` (placeholder art: a lean to the left and a stretch up tall).
+A sheet uses a set with `"idleSet": "curious"`, and has those moves drawn on those rows, below the usual seven. Dumpling and Sprig use `curious` (placeholder moves: a lean to the left and a stretch up tall).
 
 - Move names start with `idle-`, and each move gets a row of its own after row 6.
 - Every sheet using a set draws its moves on the set's rows. A sheet that should move differently uses a different set.
@@ -89,14 +98,52 @@ A sheet uses a set with `"idleSet": "curious"`, and has those moves drawn on tho
 
 **Hats follow the moves**, up and down as usual and sideways too: the game sees how far the head moves left or right in each frame of an idle move. Each sheet is measured on its own, so the same move on different bodies still keeps each hat on its own pet's head. If the sideways tracking is off, set it by hand with `headShifts`, in pixels compared to the first idle frame (negative is left), for example `"headShifts": { "idle-look": [-1, -2, -2, -1] }`. Put it on the idle set to fix every sheet using it, or on one sheet for just that one. For up and down, `headOffsets` works on idle moves too. A sheet's own fix wins over its set's, and a set's over its shape's.
 
+## Faces and expressions
+
+The starter characters (all but Starhoot) have their bodies drawn **without a face**. The face is drawn by the game on top, from a shared **face set**, and moves with the head like a hat. So a new expression is drawn once, not once per character and animation.
+
+**A face set** (`art/faces/blob.aseprite`, exported to `public/sprites/faces/blob.png`) has 32×32 frames, see-through except for the eyes, brows, mouth, cheeks and extras like tears or hearts. Each tag is one expression, in this order, as many frames as you like:
+
+| Row | Tag | Shows when |
+| --- | --- | --- |
+| 0 | `content` | most of the time (the last frame is a blink) |
+| 1 | `happy` | after play, a cuddle or good news |
+| 2 | `pouting` | nobody has done anything with it for a few minutes |
+| 3 | `sad` | low joy, or feeling poorly |
+| 4 | `crying` | very low joy |
+| 5 | `surprised` | a visitor or a parcel arrives |
+| 6 | `inLove` | after a food it was craving, or playing with a friend |
+| 7 | `grumpy` | woken up (Sleepy pets) |
+| 8 | `sleepy` | asleep, or low energy |
+| 9 | `hungry` | low tummy |
+| 10 | `chewing` | while eating |
+| 11 | `sick` | sick |
+
+Draw the faces around the pixel (16, 18), which is the bottom of the eyes. The file's guides layer shows Sprig without a face underneath to draw on. `blob` was made from Sprig's test expressions, plus a chewing face (happy eyes, mouth opening and closing) and a sick face (droopy eyes, wobbly mouth, a sweat drop). The rules for which face shows are in `src/game/expressions.ts`, and the numbers in `src/game/config.ts` under `expressions`.
+
+**Each character file** has a third layer, **face**, with the content face on it, so you see the whole pet while you draw the body. `npm run export-art` leaves it out. Draw the body on the **pet** layer without eyes, mouth or cheeks.
+
+**In the manifest**, a body shape's `face` is where the face goes: the pixel in the first idle frame where the bottom of the eyes is. For example `"blob": { "head": {...}, "face": { "x": 16, "y": 18 } }`. Characters with the face lower or higher only need a different `y`.
+
+**A new face set**, for example big owl eyes for Starhoot or special faces for 3-star pets:
+
+1. Copy `art/faces/blob.aseprite` to `art/faces/owl.aseprite` and redraw the faces. Leave a tag empty to use the blob face for it.
+2. Export it, and list it in the manifest under `"faceSets"`: `"owl": { "file": "faces/owl.png" }`.
+3. Give the shape a face point and the set: `"owl": { "head": {...}, "face": { "x": 16, "y": 17 }, "faces": "owl" }`. A single sheet can also use `"faces": "owl"` instead of its shape's set.
+4. Take the face off the body in its `.aseprite` file.
+
+A character whose shape has no `face` keeps the face drawn on its body (Starhoot, the stages and Cave for now), and always shows the same expressions as its animations.
+
 ## The palette
 
-All art uses one shared 16-colour palette (`src/render/palette.ts`). It's already loaded in every `.aseprite` file in `art/`, and `docs/palette.gpl` has it as a separate palette file.
+All art uses one shared 20-colour palette (`src/render/palette.ts`). `docs/palette.gpl` has it as a separate palette file. The starter characters' files have all 20 loaded. Older files (stages, hats, Cave, badges) have the first 16, so load `palette.gpl` in them before using the new ones.
+
+The last four are **outline colours**: `moss` (green), `deep` (blue), `berry` (pink) and `bark` (cream, peach, butter and brown). See the outline rule below.
 
 ## Editing an existing character
 
 1. Open its file in `art/`, for example `art/characters/cave/geodon.aseprite`.
-2. Paint on the **pet** layer. The **guides** layer shows the feet line (pink), the shadow row (purple) and the centre (blue). It's a reference layer, so it never shows up in the export.
+2. Paint on the **pet** layer. The **guides** layer shows the feet line (pink), the shadow row (purple) and the centre (blue). It's a reference layer, so it never shows up in the export. The **face** layer is only there to see the face while drawing (see [Faces and expressions](#faces-and-expressions)).
 3. Export (see below) over the matching PNG in `public/sprites/`, same name and folder.
 
 That's it. No other file changes, and existing pets pick up the new look.
@@ -162,22 +209,26 @@ Characters drawn on the same body (same size, same top where a hat rests) share 
 "shapes": {
   "loaf":      { "head": { "x": 16, "y": 15, "width": 14 } },
   "wide-loaf": { "head": { "x": 16, "y": 15, "width": 14 } },
-  "small":     { "head": { "x": 16, "y": 17, "width": 10 } }
+  "owl":       { "head": { "x": 16, "y": 11, "width": 10 } }
 }
 ```
 
 | Shape | Characters |
 | --- | --- |
 | `baby` | baby |
-| `tall` | teen, Sprig |
-| `loaf` | Dumpling, Pebblit (and Amber) |
-| `wide-loaf` | Bunbun, Crystalback |
-| `capped` | Mosscap (hat sits on the mushroom cap) |
-| `flat` | Moonpip |
-| `small` | Glimmer |
-| `big` | Geodon, Starwisp |
-| `cloud` | Cloudlet |
-| `big-tall` | Fernwhisk |
+| `tall` | teen |
+| `blob` | Sprig, Bubbit, Dumpling, Moonpip |
+| `acorn` | Acornet (hat sits on the acorn cap) |
+| `stump` | Stumpy |
+| `dome` | Jellop |
+| `crest` | Tidecrest |
+| `flan` | Puddling |
+| `cupcake` | Cuppie (hat sits on the frosting) |
+| `cloud` | Cloudlet (hat sits on the top puff) |
+| `owl` | Starhoot (between the ears) |
+| `loaf` | Pebblit (and Amber) |
+| `wide-loaf` | Crystalback |
+| `big` | Geodon |
 
 A shape's `head` is the pixel in the first `idle` frame where the bottom middle of a hat should sit, and how wide a hat may be there. To find it, open a sheet of that shape and look at the first idle frame:
 
@@ -228,12 +279,12 @@ To change them, draw over the frames, then export with **Sheet type: Horizontal 
 
 ## Exporting a sheet from Aseprite
 
-**All at once:** run `npm run export-art`. It exports every file in `art/` to the matching PNG in `public/sprites/` with the settings below (one row per tag, in tag order; hats and badges as one strip; no guides). It finds Aseprite in the usual install folders. If yours is elsewhere, set `ASEPRITE` to its path. Add words to export only some files, e.g. `npm run export-art -- pebblit hats`. It warns when a sheet changes size, which usually means a tag or frame went missing.
+**All at once:** run `npm run export-art`. It exports every file in `art/` to the matching PNG in `public/sprites/` with the settings below (one row per tag, in tag order; hats and badges as one strip; no guides or face layer). It finds Aseprite in the usual install folders. If yours is elsewhere, set `ASEPRITE` to its path. Add words to export only some files, e.g. `npm run export-art -- pebblit hats`. It warns when a sheet changes size, which usually means a tag or frame went missing.
 
 **One by hand:** File → Export Sprite Sheet (Ctrl+E):
 
 - **Layout** tab: Sheet type **By Rows**.
-- **Sprite** tab: Layers **Visible layers**, and tick **Split Tags**, so each tag gets its own row.
+- **Sprite** tab: Layers **Visible layers**, and tick **Split Tags**, so each tag gets its own row. Hide the **face** layer first.
 - **Borders** tab: all padding and spacing at **0**.
 - **Output** tab: tick **Output File** and pick the PNG in `public/sprites/`. Untick JSON Data (the game uses `manifest.json`).
 - Click Export.
@@ -242,7 +293,7 @@ To change them, draw over the frames, then export with **Sheet type: Horizontal 
 
 - **Only palette colours.** Use Sprite → Color Mode → Indexed with the palette loaded to snap stray colours.
 - **No anti-aliasing or blur.** Hard edges, pixel to pixel.
-- **A dark outline** (the `ink` colour) around the pet, so it stands out on any background.
+- **A dark outline in the pet's own colour**, so its face stands out. Each stretch of the outer edge takes the dark colour of the part it touches: `moss` next to mint or leaf, `deep` next to sky or ocean, `berry` next to pink, blush or rose, `bark` next to cream, peach, butter or cocoa, and `plum` next to white, lavender or lilac. Lines **inside** the pet (seams, folds) and the **face** stay `ink`, so the face is the darkest thing on the pet. Moonpip keeps an ink outline for now, because its plum shading would melt into a plum edge. Hats and the stages still use ink.
 - **Same silhouette across frames.** Only small changes between frames (a hop, a blink).
 - **Feet on row 28**, with a 1-pixel shadow on row 29. **Centred** horizontally.
 - **Keep the top row empty** in every frame, even at the top of a jump. If the head (or its spikes, antenna...) runs off the top, hats can't follow it.

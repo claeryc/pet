@@ -11,12 +11,13 @@ import { grownUpXp, levelInfo } from '../game/skills';
 import { getCharacter } from '../game/growth';
 import { guidesAlreadyKnown } from '../game/guides';
 import { backfillRegulars } from '../game/regulars';
+import { fitTrait, rollTrait } from '../game/traits';
 
 const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 23;
+export const SAVE_VERSION = 25;
 
 export interface SaveFile {
   version: number;
@@ -256,6 +257,43 @@ export function migrate(save: SaveFile): SaveFile {
     if (adventures > 0) st.tally.adventures = Math.max(st.tally.adventures ?? 0, adventures);
     if (goldOrders > 0) st.tally.goldOrders = Math.max(st.tally.goldOrders ?? 0, goldOrders);
     save.version = 23;
+  }
+  // Version 23 -> 24: the starter themes. Basic became Bakery and Sparkle
+  // became Starry, and retired characters turn into the new one of the same
+  // theme and stars. (Old "cloudlet" was the 3-star Basic pet; the new
+  // Cloudlet is Starry's 1-star.) Cave pets stay as they are.
+  if (save.version === 23) {
+    const st = save.state;
+    const characters: Record<string, string> = {
+      bunbun: 'puddling', cloudlet: 'cuppie', glimmer: 'cloudlet', starwisp: 'starhoot', mosscap: 'acornet', fernwhisk: 'stumpy',
+    };
+    const themes: Record<string, string> = { basic: 'bakery', sparkle: 'starry' };
+    const fix = (thing: any) => {
+      if (thing && typeof thing.character === 'string') thing.character = characters[thing.character] ?? thing.character;
+    };
+    const pets: any[] = [st.pet, ...(st.housemates ?? [])].filter(Boolean);
+    for (const p of pets) {
+      fix(p);
+      p.themes = [...new Set((p.themes ?? []).map((t: string) => themes[t] ?? t))];
+      for (const look of p.parentLooks ?? []) fix(look);
+    }
+    for (const m of [...(st.family ?? []), ...(st.friends ?? []), st.visit?.guest, ...(st.messages ?? [])]) fix(m);
+    st.charactersFound = [
+      ...new Set(
+        (st.charactersFound ?? []).map((key: string) => {
+          const [id, variant] = key.split(':');
+          return [characters[id] ?? id, variant].filter(Boolean).join(':');
+        }),
+      ),
+    ];
+    save.version = 24;
+  }
+  // Version 24 -> 25: traits. Every pet gets the one its id rolls, and so
+  // do the pets in the Family Tree (one their character allows).
+  if (save.version === 24) {
+    const st = save.state;
+    for (const p of [st.pet, ...(st.housemates ?? []), ...(st.family ?? [])]) if (p && !p.trait) p.trait = fitTrait(p.id, rollTrait(p.id), getCharacter(p.character ?? null));
+    save.version = 25;
   }
   return save;
 }

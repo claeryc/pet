@@ -27,6 +27,21 @@ export const CONFIG = {
   // later than this, at random.
   idleMoveEveryMs: 9000,
 
+  // Pets with a face layer pull faces (see src/game/expressions.ts). A
+  // reaction face shows for `ms` of its kind, in milliseconds. A mood face
+  // shows while a stat is below its number: crying and sad for joy, hungry
+  // for tummy, sleepy for energy. Pouting shows once nobody has done
+  // anything with the pet for `poutAfterMs` while the game is open. A
+  // pet's trait can move these (src/data/traits.json).
+  expressions: {
+    ms: { happy: 1400, inLove: 2400, surprised: 1600, grumpy: 2400 },
+    cryingBelow: 15,
+    sadBelow: 30,
+    hungryBelow: 30,
+    sleepyBelow: 20,
+    poutAfterMs: 240_000,
+  },
+
   // Starting values for a brand new pet.
   startingStats: {
     hunger: 80, // 100 = completely full, 0 = starving
@@ -533,7 +548,7 @@ export const CONFIG = {
     // ("gold:12").
     places: [
       {
-        id: 'market', theme: 'basic', ingredient: 'honey', opens: 'start',
+        id: 'market', theme: 'bakery', ingredient: 'honey', opens: 'start',
         finds: {
           1: ['strawberry', 'warmMilk', 'cookie', 'gold:10', 'seed:carrot'],
           2: ['gold:25', 'salmon', 'berryShortcake', 'seed:pumpkin'],
@@ -549,7 +564,7 @@ export const CONFIG = {
         },
       },
       {
-        id: 'caves', theme: 'cave', ingredient: 'glowSalt', opens: 'fish',
+        id: 'caves', theme: 'ocean', ingredient: 'glowSalt', opens: 'fish',
         finds: {
           1: ['shrimp', 'warmMilk', 'gold:12'],
           2: ['salmon', 'gold:30'],
@@ -557,7 +572,7 @@ export const CONFIG = {
         },
       },
       {
-        id: 'hill', theme: 'sparkle', ingredient: 'stardustSugar', opens: 'grownUp',
+        id: 'hill', theme: 'starry', ingredient: 'stardustSugar', opens: 'grownUp',
         finds: {
           1: ['cookie', 'strawberry', 'gold:12'],
           2: ['berryShortcake', 'gold:30', 'seed:pumpkin'],

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { createNewGame } from '../src/game/state';
 import { migrate, SAVE_VERSION } from '../src/storage/storage';
+import { rollTrait } from '../src/game/traits';
 
 describe('save migration', () => {
   it('upgrades a version 1 save without losing the pet', () => {
@@ -28,9 +30,41 @@ describe('save migration', () => {
     };
     const out = migrate(v4);
     expect(out.version).toBe(SAVE_VERSION);
-    expect(out.state.pet.character).toBe('starwisp');
+    expect(out.state.pet.character).toBe('starhoot'); // sunny -> starwisp -> starhoot
     expect(out.state.pet.variant).toBeNull();
     expect(out.state.pet.formId).toBeUndefined();
+  });
+
+  it('moves retired characters and themes to the starter themes', () => {
+    const s: any = createNewGame(1);
+    s.pet = { ...s.pet, stage: 'adult', character: 'cloudlet', themes: ['basic', 'sparkle'], parentLooks: [{ character: 'glimmer', variant: null }] };
+    s.housemates = [{ ...s.pet, id: 'h', character: 'bunbun', themes: [], parentLooks: [] }];
+    s.family = [{ id: 'f', character: 'starwisp' }, { id: 'g', character: 'pebblit', variant: 'amber' }];
+    s.friends = [{ id: 'w', character: 'mosscap' }];
+    s.visit = { ...s.visit, guest: { id: 'v', character: 'fernwhisk' } };
+    s.messages = [{ kind: 'visitor', character: 'glimmer' }];
+    s.charactersFound = ['cloudlet', 'glimmer', 'pebblit:amber', 'dumpling', 'starwisp'];
+    const out = migrate({ version: 23, state: s }).state;
+    expect(out.pet.character).toBe('cuppie'); // the old 3-star Basic Cloudlet
+    expect(out.pet.themes).toEqual(['bakery', 'starry']);
+    expect(out.pet.parentLooks[0].character).toBe('cloudlet'); // the old Glimmer
+    expect(out.housemates[0].character).toBe('puddling');
+    expect(out.family.map((m: any) => m.character)).toEqual(['starhoot', 'pebblit']);
+    expect(out.friends[0].character).toBe('acornet');
+    expect(out.visit.guest.character).toBe('stumpy');
+    expect(out.messages[0].character).toBe('cloudlet');
+    expect(out.charactersFound).toEqual(['cuppie', 'cloudlet', 'pebblit:amber', 'dumpling', 'starhoot']);
+  });
+
+  it('gives every pet, and the Family Tree, a trait', () => {
+    const s: any = createNewGame(1);
+    delete s.pet.trait;
+    s.housemates = [{ ...s.pet, id: 'h' }];
+    s.family = [{ id: 'f', character: 'sprig' }, { id: 'g', character: 'sprig', trait: 'shy' }];
+    const out = migrate({ version: 24, state: s }).state;
+    expect(out.pet.trait).toBe(rollTrait(s.pet.id));
+    expect(out.housemates[0].trait).toBe(rollTrait('h'));
+    expect(out.family.map((m: any) => m.trait)).toEqual([rollTrait('f'), 'shy']);
   });
 
   it('keeps young pets without a character', () => {

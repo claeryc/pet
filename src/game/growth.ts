@@ -13,6 +13,7 @@
 import { CONFIG } from './config';
 import data from '../data/characters.json';
 import type { ParentLook, Pet } from './state';
+import { fitTrait } from './traits';
 
 export type Stage = 'egg' | 'baby' | 'teen' | 'adult';
 export const STAGES: Stage[] = ['egg', 'baby', 'teen', 'adult'];
@@ -33,10 +34,16 @@ export interface Character {
   name: string;
   sheet: string; // sheet name in public/sprites/manifest.json
   variants?: Variant[];
+  traits?: string[]; // the only traits its pets can have (see traits.ts)
 }
 
 export const CHARACTERS = data.characters as Character[];
 export const THEMES: Record<string, string> = data.themes;
+// Themes from packs that aren't out yet: pets that already have one of
+// their characters keep it, but no new pet grows into one.
+export const LATER_PACKS: readonly string[] = data.laterPacks;
+// The characters a pet (or a wanderer) can grow into now.
+export const IN_GAME = CHARACTERS.filter((c) => !LATER_PACKS.includes(c.theme));
 const STAGE_SHEETS: Record<Exclude<Stage, 'adult'>, string> = data.stages;
 
 export function getCharacter(id: string | null): Character | undefined {
@@ -122,8 +129,8 @@ export function characterOfStars(
   themes: readonly string[] = [],
 ): { character: Character; variant: Variant | null } {
   const order = [rolled, ...([3, 2, 1] as Stars[]).filter((s) => s < rolled), ...([1, 2, 3] as Stars[]).filter((s) => s > rolled)];
-  const stars = order.find((s) => CHARACTERS.some((c) => c.stars === s)) ?? 1;
-  let options = CHARACTERS.filter((c) => c.stars === stars);
+  const stars = order.find((s) => IN_GAME.some((c) => c.stars === s)) ?? 1;
+  let options = IN_GAME.filter((c) => c.stars === stars);
   if (themes.length > 0 && seededRoll(seed, 'parentTheme') * 100 < CONFIG.friends.parentThemeChance) {
     const theme = themes[Math.floor(seededRoll(seed, 'whichParent') * themes.length)];
     const ofTheme = options.filter((c) => c.theme === theme);
@@ -158,5 +165,6 @@ export function growUp(pet: Pet, t: number): void {
     const { character, variant } = chooseCharacter(pet.careScore, pet.id, pet.themes ?? [], pet.parentLooks ?? []);
     pet.character = character.id;
     pet.variant = variant?.id ?? null;
+    pet.trait = fitTrait(pet.id, pet.trait, character);
   }
 }

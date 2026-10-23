@@ -5,6 +5,8 @@ import { drawBag } from './bags';
 import { PALETTE } from './palette';
 import { drawCurtains, drawWall } from './room';
 import { frameFor } from './animations';
+import { drawFace } from './faces';
+import { faceForAnimation, type Expression } from '../game/expressions';
 import { pickHatFrame, type SpriteSheet } from './sprites';
 import type { FishingPhase } from '../ui/fishing';
 import { drawGardenBackground, drawGardenPots, type GardenScene } from './garden';
@@ -21,12 +23,16 @@ export interface OtherPet {
   hat?: SpriteSheet;
   animation: string;
   glow?: boolean; // brought back with a Revival Star
+  face?: Expression; // its face (otherwise the one its animation pulls)
+  idleEveryMs?: number; // how often it plays idle moves (its trait)
 }
 
 // What the room should look like right now.
 export interface Scene {
   animation: string; // which pet animation to play
   glow?: boolean; // the pet was brought back with a Revival Star
+  face?: Expression; // the pet's face (see src/game/expressions.ts)
+  idleEveryMs?: number; // how often it plays idle moves (its trait)
   night: boolean; // night-time outside the window
   lightsOff: boolean; // the room is dark (pet is sleeping)
   fishing?: FishingPhase; // draws a little pond, rod and bobber while fishing
@@ -134,8 +140,9 @@ export function isOnPet(x: number, y: number): boolean {
   return petAt(x, y, false, true) === 'pet';
 }
 
-// Draws one pet standing on the floor with its left edge at `x`, and its
-// hat. The hat's bottom middle sits on the shape's head point, moved along
+// Draws one pet standing on the floor with its left edge at `x`, its face
+// (for pets with a face layer) and its hat. The face and the hat move with
+// the head. The hat's bottom middle sits on the shape's head point, moved along
 // with the head. The hat sheet's sizes go left to right, and the
 // widest one that fits the head's width is used.
 function drawPetAt(
@@ -145,6 +152,7 @@ function drawPetAt(
   x: number,
   timeMs: number,
   hat?: SpriteSheet,
+  look: { face?: Expression; idleEveryMs?: number } = {},
 ): void {
   if (!sheet) {
     // The sprite is missing (or still loading): draw a little "?" box so
@@ -169,9 +177,12 @@ function drawPetAt(
     ctx.globalAlpha = 0.6;
   }
   // Where it stands keeps two pets' idle moves from happening together.
-  const { sx, sy, headOffset, headShift } = frameFor(sheet, passed ? 'sleep' : animation, passed ? 0 : timeMs, x);
+  const { sx, sy, headOffset, headShift } = frameFor(sheet, passed ? 'sleep' : animation, passed ? 0 : timeMs, x, look.idleEveryMs);
   const dy = 40 - h;
   ctx.drawImage(sheet.image, sx, sy, w, h, x, dy, w, h);
+  // Where it stands also keeps two pets from blinking together.
+  const face = passed ? 'sleepy' : look.face ?? faceForAnimation(animation);
+  drawFace(ctx, sheet, face, x, dy, passed ? 0 : timeMs + x * 137, headOffset, headShift);
   if (passed) {
     ctx.restore();
     const head = sheet.head ?? { x: w / 2, y: 6 };
@@ -290,7 +301,7 @@ function drawTrip(ctx: CanvasRenderingContext2D, trip: TripScene, night: boolean
   const spots: Spot[] = trip.pets.length > 1 ? ['left', 'right'] : ['middle'];
   trip.pets.slice(0, 2).forEach((p, i) => {
     drawBag(ctx, trip.bag, SPOTS[spots[i]], spots.length > 1 ? (i === 0 ? 'left' : 'right') : undefined);
-    drawPetAt(ctx, p.sheet, p.animation, SPOTS[spots[i]], timeMs, p.hat);
+    drawPetAt(ctx, p.sheet, p.animation, SPOTS[spots[i]], timeMs, p.hat, p);
     if (p.glow) drawGlow(ctx, SPOTS[spots[i]], timeMs);
   });
 }
@@ -343,13 +354,13 @@ export function drawRoom(
     if (housemate) {
       drawRug(ctx, x);
       const hx = SPOTS[spot === 'left' ? 'right' : 'left'];
-      drawPetAt(ctx, housemate.sheet, housemate.animation, hx, timeMs, housemate.hat);
+      drawPetAt(ctx, housemate.sheet, housemate.animation, hx, timeMs, housemate.hat, housemate);
       if (housemate.glow) drawGlow(ctx, hx, timeMs);
     }
-    drawPetAt(ctx, sheet, scene.animation, x, timeMs, hat);
+    drawPetAt(ctx, sheet, scene.animation, x, timeMs, hat, scene);
     if (scene.glow) drawGlow(ctx, x, timeMs);
     if (meeting) {
-      drawPetAt(ctx, meeting.sheet, meeting.animation, SPOTS.right, timeMs, meeting.hat);
+      drawPetAt(ctx, meeting.sheet, meeting.animation, SPOTS.right, timeMs, meeting.hat, meeting);
       if (meeting.hearts) drawHearts(ctx, timeMs);
     }
   };

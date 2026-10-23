@@ -1,0 +1,42 @@
+{
+  "_help": "Every trait a pet can have. See src/game/traits.ts for what each number does. A trait with \"special\": true is only for characters that list it under \"traits\" in src/data/characters.json. inheritChance is the percent chance a little one gets one of its parents' traits.",
+  "inheritChance": 50,
+  "traits": [
+    {
+      "id": "playful",
+      "name": "Playful",
+      "about": "Fidgets a lot, stays happy longer after play, and gets bored sooner.",
+      "idleEvery": 0.5,
+      "happyMs": 2,
+      "poutAfter": 0.5
+    },
+    {
+      "id": "greedy",
+      "name": "Greedy",
+      "about": "Loves every snack, not only its favourite, and looks hungry sooner.",
+      "lovesEverySnack": true,
+      "hungryBelow": 20
+    },
+    {
+      "id": "shy",
+      "name": "Shy",
+      "about": "Fidgets less, and is startled for a while when someone visits.",
+      "idleEvery": 1.5,
+      "surprisedMs": 2.5
+    },
+    {
+      "id": "sleepy",
+      "name": "Sleepy",
+      "about": "Moves slowly, is grumpy when woken, and looks tired sooner.",
+      "idleEvery": 1.4,
+      "grumpyWhenWoken": true,
+      "sleepyBelow": 20
+    },
+    {
+      "id": "cheery",
+      "name": "Cheery",
+      "about": "Keeps smiling, and only gets sad when things are really bad.",
+      "sadBelow": -15
+    }
+  ]
+}

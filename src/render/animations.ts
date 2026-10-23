@@ -11,9 +11,8 @@ import type { SpriteSheet } from './sprites';
 // one move, picked at random, starting at a random point in its first 3
 // seconds. It works it out from the time alone, so nothing has to be
 // remembered between frames. `seed` keeps two pets from moving in step.
-export function idleMoveAt(moves: { name: string; ms: number }[], timeMs: number, seed = 0) {
+export function idleMoveAt(moves: { name: string; ms: number }[], timeMs: number, seed = 0, every: number = CONFIG.idleMoveEveryMs) {
   if (moves.length === 0) return null;
-  const every = CONFIG.idleMoveEveryMs;
   const slot = Math.floor(timeMs / every);
   const roll = hash(slot * 7919 + seed);
   const move = moves[roll % moves.length];
@@ -22,7 +21,8 @@ export function idleMoveAt(moves: { name: string; ms: number }[], timeMs: number
   return into >= 0 && into < move.ms ? { name: move.name, into } : null;
 }
 
-export function frameFor(sheet: SpriteSheet, animation: string, timeMs: number, seed = 0) {
+// `idleEveryMs` is how often idle moves play (a pet's trait can change it).
+export function frameFor(sheet: SpriteSheet, animation: string, timeMs: number, seed = 0, idleEveryMs?: number) {
   let name = sheet.animations[animation] ? animation : 'idle';
   let t = timeMs;
   if ((name === 'idle' || name === 'cheerful') && sheet.idleMoves) {
@@ -30,7 +30,7 @@ export function frameFor(sheet: SpriteSheet, animation: string, timeMs: number, 
       const anim = sheet.animations[m];
       return { name: m, ms: anim.frames * anim.frameMs };
     });
-    const move = idleMoveAt(moves, timeMs, seed);
+    const move = idleMoveAt(moves, timeMs, seed, idleEveryMs);
     // Start the move from its first frame, and play it once.
     if (move) [name, t] = [move.name, move.into];
   }

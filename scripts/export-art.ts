@@ -10,7 +10,9 @@
 // art/characters/cave/pebblit.aseprite goes to
 // public/sprites/characters/cave/pebblit.png, the same as exporting by hand
 // (see docs/ART_GUIDE.md): each tag is one row, in the order of the tags.
-// Hats and badges are one horizontal strip. The guides layer is left out.
+// Hats and badges are one horizontal strip. The guides layer is left out,
+// and so is a character's face layer (its face comes from a face set, see
+// art/faces/ and docs/ART_GUIDE.md).
 //
 // It finds Aseprite in the usual places. If yours is somewhere else, set
 // ASEPRITE to its path, e.g. ASEPRITE="D:\Tools\Aseprite.exe" npm run export-art
@@ -34,7 +36,8 @@ export const PREVIEWS = join(root, 'art', 'previews');
 // and badges) or one row per tag. `file` is relative to art/, with / between
 // folders. Returns null for files that aren't exported.
 export function exportPlan(file: string): { png: string; strip: boolean } | null {
-  if (!file.endsWith('.aseprite') || file.split('/').pop()!.startsWith('_') || file.startsWith('previews/')) return null;
+  if (!file.endsWith('.aseprite') || file.split('/').pop()!.startsWith('_')) return null;
+  if (file.startsWith('previews/') || file.startsWith('shelved/')) return null; // shelved: retired characters
   return { png: file.replace(/\.aseprite$/, '.png'), strip: /^(hats|badges)\//.test(file) };
 }
 
@@ -69,7 +72,7 @@ function run(aseprite: string, args: string[]): string {
 function exportFile(aseprite: string, file: string, plan: { png: string; strip: boolean }, temp: string): Pixels {
   const source = join(ART, file);
   const strip = (out: string, tag?: string) => {
-    run(aseprite, ['-b', '--ignore-layer', 'guides', ...(tag ? ['--tag', tag] : []), source,
+    run(aseprite, ['-b', '--ignore-layer', 'guides', '--ignore-layer', 'face', ...(tag ? ['--tag', tag] : []), source,
       '--sheet', out, '--sheet-type', 'horizontal', '--border-padding', '0', '--shape-padding', '0', '--inner-padding', '0']);
     return readPng(readFileSync(out));
   };
