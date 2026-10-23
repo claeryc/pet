@@ -451,7 +451,7 @@ export const PARTS: Part[] = [
         visual: pagePicture,
         todo: [
           'Pick a pet on the left. Groups fold up; the one with your pet stays open.',
-          'Turn guide lines on and off at the top. Switch to <b>Lineup</b> to see every character side by side.',
+          'Turn guide lines on and off at the top. Switch to <b>Lineup</b> to see every character side by side, filtered by theme, rarity, and with or without colour variants.',
           'Drop an exported PNG anywhere on the page to try it without changing anything (<b>Try a PNG</b>).',
           'Click <b>Reload art</b> after exporting.',
         ],
@@ -648,6 +648,7 @@ export const PARTS: Part[] = [
           'In <code>public/sprites/manifest.json</code>, under <code>"sheets"</code>, add a line for the sheet with its file and shape.',
           'In <code>src/data/characters.json</code>, add the character with its theme, stars and name.',
           'Mind the commas: each line but the last in a list ends with one.',
+          'Edit them in an editor like VS Code: it suggests keys, explains them when you hover, and underlines a misspelt key, using the schemas in <code>schemas/</code>. <code>npm test</code> checks them against the schemas too.',
         ],
         visual: () =>
           el(
@@ -839,6 +840,7 @@ export const PARTS: Part[] = [
                 ['<code>src/data/hats.json</code>', 'hats, names and prices'],
                 ['<code>src/data/traits.json</code>', 'traits and their numbers'],
                 ['<code>src/render/palette.ts</code>, <code>docs/palette.gpl</code>', 'the palette'],
+                ['<code>schemas/</code>', 'what each JSON file may hold (editor hints, checked by npm test)'],
               ]
                 .map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`)
                 .join('') +
