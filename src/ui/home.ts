@@ -4,7 +4,7 @@
 
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
-import { canPlayMinigames, getLook, hasPassed, isCritical, isRecovering, timeLeftToTreat } from '../game/stats';
+import { canPlayMinigames, getLook, hasPassed, isCritical, isNeglected, isRecovering, timeLeftToTreat } from '../game/stats';
 import { sheetFor, stageLengthMs } from '../game/growth';
 import type { GameState, PetStats } from '../game/state';
 import { createMenu, type MenuCallbacks } from './menu';
@@ -38,6 +38,10 @@ import { formatClock } from './time';
 import { createJourneys, JOURNEYS_OUT_MS } from './journeys';
 import { createTripView, tripNotes } from './trip';
 import type { Pet } from '../game/state';
+import { createBath, BATH_OUT_MS } from './bath';
+import { bodyBox, poopAt, type BathScene } from '../render/hygiene';
+import { SPOTS } from '../render/canvas';
+import type { SpriteSheet } from '../render/sprites';
 
 export interface HomeCallbacks extends MenuCallbacks {
   onFeed: (food: FoodId) => void;
@@ -65,6 +69,9 @@ export interface HomeCallbacks extends MenuCallbacks {
   onMingle: (friend: string) => void;
   onAddFriend: () => void;
   onSwitchPet: (id: string) => void; // tapped the other pet in the room
+  onCollectPoop: (petId: string, slot: number) => void;
+  onBathe: () => boolean; // the bath is done and it's dry; false if refused
+  petSheet: () => SpriteSheet | undefined; // the pet's sprite, for where its body is
 }
 
 export interface HomeScreen {
@@ -85,6 +92,8 @@ export interface HomeScreen {
   deliveryScene: () => DeliveryScene | null; // ...or Percy's meadow, for his order
   meetScene: () => { friend: Friend; hearts: boolean } | null; // a friend over to play
   tripScene: () => { place: string; pets: Pet[] } | null; // looking at the current trip
+  bathScene: (timeMs: number) => BathScene | null; // the suds, drips and sponge or dryer
+  hidesSmell: () => boolean; // soapy, wet or just washed: no smell lines
   // With every pet out on a journey, shows the trip instead of the empty room.
   showTripIfEmpty: () => void;
 }
@@ -554,7 +563,16 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       if (pot >= 0) garden.select(pot);
       return;
     }
+    // In the bath, holding and rubbing works the sponge or the dryer.
+    if (bath.active()) {
+      const { x, y } = roomPoint(e);
+      canvas.setPointerCapture?.(e.pointerId);
+      bath.down(x, y, petBody());
+      return;
+    }
     if (actions.hidden) return;
+    // A poop on the floor: pick it up.
+    if (tapPoop(e)) return;
     const which = tappedPet(e);
     if (!which) return;
     // Tapping the other pet looks after it instead.
@@ -570,6 +588,11 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     }, CONFIG.petting.holdMs);
   });
   canvas.addEventListener('pointermove', (e) => {
+    if (bath.active()) {
+      const { x, y } = roomPoint(e);
+      bath.move(x, y, petBody());
+      return;
+    }
     // Moving a finger away (to scroll, say) cancels the tap or hold.
     if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 10) {
       clearTimeout(holdTimer);
@@ -577,17 +600,24 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     }
   });
   canvas.addEventListener('pointerup', () => {
+    bath.up();
     clearTimeout(holdTimer);
     if (press && !press.held) {
-      if (!petIsEgg && !petAsleep) fx.hearts(press.x, press.y); // every tap, even the ones that don't count as a cuddle
-      cuddle();
+      // A smelly pet gets a bath instead of a cuddle.
+      if (smelly()) startBath();
+      else {
+        if (!petIsEgg && !petAsleep) fx.hearts(press.x, press.y); // every tap, even the ones that don't count as a cuddle
+        cuddle();
+      }
     }
     press = null;
   });
   canvas.addEventListener('pointercancel', () => {
+    bath.up();
     clearTimeout(holdTimer);
     press = null;
   });
+  canvas.addEventListener('pointerleave', () => bath.up());
   // A right-click, or the keyboard's menu key, opens the Wardrobe too, and
   // Enter or Space cuddles.
   canvas.addEventListener('contextmenu', (e) => {
@@ -601,8 +631,74 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   canvas.addEventListener('keydown', (e) => {
     if (actions.hidden || (e.key !== 'Enter' && e.key !== ' ')) return;
     e.preventDefault();
+    // Poop first, then a bath, then a cuddle.
+    const s = latest?.state;
+    const poop = s && !petAway ? s.pet.hygiene.poops[0] : undefined;
+    if (s && poop) return cb.onCollectPoop(s.pet.id, poop.slot);
+    if (smelly()) return startBath();
     cuddle();
   });
+
+  // Where each pet at home stands (the left edge of its frame), for
+  // finding poops and the pet's body.
+  function petLefts(s: GameState): { pet: number; other: number | null } {
+    if (!twoHome(s)) return { pet: SPOTS.middle, other: null };
+    const left = petStandsLeft(s);
+    return { pet: left ? SPOTS.left : SPOTS.right, other: left ? SPOTS.right : SPOTS.left };
+  }
+  function petBody() {
+    const s = latest?.state;
+    return bodyBox(cb.petSheet(), s ? petLefts(s).pet : SPOTS.middle);
+  }
+  // Picks up a poop under the tap, yours or the other pet's. True if it did.
+  function tapPoop(e: PointerEvent): boolean {
+    const s = latest?.state;
+    if (!s || petAway) return false;
+    const { x, y } = roomPoint(e);
+    const lefts = petLefts(s);
+    const other = s.housemates[0];
+    const candidates: [Pet, number][] = [[s.pet, lefts.pet]];
+    if (other && lefts.other !== null) candidates.push([other, lefts.other]);
+    for (const [p, left] of candidates) {
+      const slot = poopAt(x, y, left, p.hygiene.poops.map((q) => q.slot));
+      if (slot >= 0) {
+        cb.onCollectPoop(p.id, slot);
+        return true;
+      }
+    }
+    return false;
+  }
+  // Smelly, and up for a bath right now.
+  const smelly = () => {
+    const p = latest?.state.pet;
+    return !!p && p.hygiene.smelly && !petAway && !petIsEgg && !petAsleep && p.condition !== 'passed';
+  };
+
+  // Bath time: the sponge and dryer panel over the stat bars, and [Close].
+  const bath = createBath({
+    onClean: cb.onBathe,
+    onExit: () => {
+      roomWrap.classList.remove('is-bathing');
+      showActions(BATH_OUT_MS);
+    },
+    toast: (msg) => showToast(msg),
+  });
+  function startBath(): void {
+    if (actions.hidden) return; // already busy with something else
+    feedDrawer.close();
+    playDrawer.close();
+    menuDrawer!.close();
+    hideActions();
+    stats.setAttribute('aria-hidden', 'true'); // covered by the panel for now
+    roomWrap.classList.add('is-bathing');
+    bath.start(petName);
+  }
+  function stopBath(): void {
+    if (!bath.active()) return;
+    bath.stop();
+    roomWrap.classList.remove('is-bathing');
+    showActions(BATH_OUT_MS);
+  }
 
   // Fishing swaps the button row for its own [Cancel] [Cast] row, and the
   // stat bars for a pond of the same size.
@@ -847,7 +943,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const reveal = createReveal();
   const craft = createCraft();
   const backpack = createBackpack();
-  statSlot.append(stats, journeys.panel, trip.panel, fishing.pond, cooking.kitchen, garden.beds, delivery.panel, meet.panel, backpack.el, reveal.el, craft.el);
+  statSlot.append(stats, bath.panel, journeys.panel, trip.panel, fishing.pond, cooking.kitchen, garden.beds, delivery.panel, meet.panel, backpack.el, reveal.el, craft.el);
 
   // A short message that pops up and fades, e.g. "Mochi is asleep". When
   // you've run out of something the Shop sells, it has a Shop button too.
@@ -917,7 +1013,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     else showToast(message);
   }
 
-  root.append(roomWrap, banner, statSlot, garden.pour, actions, trip.row, fishing.row, cooking.row, garden.row, delivery.row, meet.row, journeys.sheet, journeys.row, toastEl);
+  root.append(roomWrap, banner, statSlot, garden.pour, actions, bath.row, trip.row, fishing.row, cooking.row, garden.row, delivery.row, meet.row, journeys.sheet, journeys.row, toastEl);
 
   // Which pet the bars were showing, so switching pets can slide them.
   let barsFor: string | null = null;
@@ -1015,7 +1111,12 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       const tend = isUnlocked(state, 'garden') && needsTending(state.garden, now);
       playDrawer.setBadge(tend ? STAT_ICONS.drop : null, STRINGS.garden.needsYou);
       stats.hidden = isEgg || journeys.active() || trip.active(); // an egg has no needs yet
-      canvas.setAttribute('aria-label', petAway ? STRINGS.blocked.away(pet.name) : isEgg ? STRINGS.mood.egg : STRINGS.mood[getLook(pet)](pet.name));
+      const mood = petAway ? STRINGS.blocked.away(pet.name) : isEgg ? STRINGS.mood.egg : STRINGS.mood[getLook(pet)](pet.name);
+      const mess = [
+        ...(!petAway && pet.hygiene.smelly ? [STRINGS.bath.smelly(pet.name)] : []),
+        ...(!petAway ? pet.hygiene.poops.map(() => STRINGS.bath.poop(pet.name)) : []),
+      ];
+      canvas.setAttribute('aria-label', [mood, ...mess].join('. '));
 
       // Banner: hatching countdown, or passed away beats sick beats
       // recovering beats warning. In a sick pet's last hours it counts down.
@@ -1038,7 +1139,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       else if (pet.condition === 'sick') text = STRINGS.status.sick(pet.name);
       else if (isRecovering(pet, now))
         text = STRINGS.status.recovering(pet.name, formatDuration(pet.recoveryUntil! - now));
-      else if (pet.condition === 'warning') text = STRINGS.status.warning(pet.name);
+      else if (pet.condition === 'warning')
+        text = pet.hygiene.germs && !isNeglected(pet.stats) ? STRINGS.status.germs(pet.name) : STRINGS.status.warning(pet.name);
       banner.hidden = text === '';
       banner.dataset.kind = pet.trip ? 'info' : passed ? 'passed' : isCritical(pet) ? 'critical' : pet.condition === 'sick' ? 'sick' : 'info';
       bannerText.textContent = text;
@@ -1061,6 +1163,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
         feedDrawer.close();
         playDrawer.close();
       }
+      // The bath stops if the pet falls asleep, sets off, or you switch pets.
+      if (bath.active() && (pet.asleep || petAway || isEgg || passed || switched || !pet.hygiene.smelly)) stopBath();
       // Fishing stops if the pet falls asleep or gets sick.
       if (!canPlayMinigames(pet, now) || isEgg) stopFishing();
       // A little one arrived (you're looking after the egg now): the friend
@@ -1083,6 +1187,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     deliveryScene: () => delivery.scene(),
     meetScene: () => meet.scene(),
     tripScene: () => trip.scene(),
+    bathScene: (timeMs) => bath.scene(timeMs),
+    hidesSmell: () => bath.hidesSmell(),
     showTripIfEmpty,
   };
 }

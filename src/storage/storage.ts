@@ -12,12 +12,13 @@ import { getCharacter } from '../game/growth';
 import { guidesAlreadyKnown } from '../game/guides';
 import { backfillRegulars } from '../game/regulars';
 import { fitTrait, rollTrait } from '../game/traits';
+import { newHygiene } from '../game/hygiene';
 
 const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 25;
+export const SAVE_VERSION = 26;
 
 export interface SaveFile {
   version: number;
@@ -294,6 +295,12 @@ export function migrate(save: SaveFile): SaveFile {
     const st = save.state;
     for (const p of [st.pet, ...(st.housemates ?? []), ...(st.family ?? [])]) if (p && !p.trait) p.trait = fitTrait(p.id, rollTrait(p.id), getCharacter(p.character ?? null));
     save.version = 25;
+  }
+  // Version 25 -> 26: poop and bath time. Every pet starts out clean.
+  if (save.version === 25) {
+    const st = save.state;
+    for (const p of [st.pet, ...(st.housemates ?? [])]) if (p && !p.hygiene) p.hygiene = newHygiene();
+    save.version = 26;
   }
   return save;
 }
