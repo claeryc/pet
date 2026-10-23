@@ -119,7 +119,7 @@ The starter characters (all but Starhoot) have their bodies drawn **without a fa
 | 10 | `chewing` | while eating |
 | 11 | `sick` | sick |
 
-Draw the faces around the pixel (16, 18), which is the bottom of the eyes. The file's guides layer shows Sprig without a face underneath to draw on. `blob` was made from Sprig's test expressions; `chewing` and `sick` are stand-ins (happy eyes with the mouth opening and closing, and the sad face) until they're drawn. The rules for which face shows are in `src/game/expressions.ts`, and the numbers in `src/game/config.ts` under `expressions`.
+Draw the faces around the pixel (16, 18), which is the bottom of the eyes. The file's guides layer shows Sprig without a face underneath to draw on. `blob` was made from Sprig's test expressions, plus a chewing face (happy eyes, mouth opening and closing) and a sick face (droopy eyes, wobbly mouth, a sweat drop). The rules for which face shows are in `src/game/expressions.ts`, and the numbers in `src/game/config.ts` under `expressions`.
 
 **Each character file** has a third layer, **face**, with the content face on it, so you see the whole pet while you draw the body. `npm run export-art` leaves it out. Draw the body on the **pet** layer without eyes, mouth or cheeks.
 
