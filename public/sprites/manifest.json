@@ -214,52 +214,90 @@
     "sprig": {
       "file": "characters/nature/sprig.png",
       "shape": "blob",
-      "idleSet": "curious"
+      "idleSet": "curious",
+      "headShifts": {
+        "sick": [0, -1, 0, 1]
+      }
     },
     "acornet": {
       "file": "characters/nature/acornet.png",
-      "shape": "acorn"
+      "shape": "acorn",
+      "headShifts": {
+        "sick": [0, -1, 0, 1],
+        "idle": [0, -1, 0, 1],
+        "cheerful": [0, -1, 0, 1]
+      }
     },
     "stumpy": {
       "file": "characters/nature/stumpy.png",
-      "shape": "stump"
+      "shape": "stump",
+      "headShifts": {
+        "sick": [0, -1, 0, 1]
+      }
     },
     "bubbit": {
       "file": "characters/ocean/bubbit.png",
-      "shape": "blob"
+      "shape": "blob",
+      "headShifts": {
+        "sick": [0, -1, 0, 1]
+      }
     },
     "jellop": {
       "file": "characters/ocean/jellop.png",
-      "shape": "dome"
+      "shape": "dome",
+      "headShifts": {
+        "sick": [0, -1, 0, 1]
+      }
     },
     "tidecrest": {
       "file": "characters/ocean/tidecrest.png",
-      "shape": "crest"
+      "shape": "crest",
+      "headShifts": {
+        "sick": [0, -1, 0, 1]
+      }
     },
     "dumpling": {
       "file": "characters/bakery/dumpling.png",
       "shape": "blob",
-      "idleSet": "curious"
+      "idleSet": "curious",
+      "headShifts": {
+        "sick": [0, -1, 0, 1]
+      }
     },
     "puddling": {
       "file": "characters/bakery/puddling.png",
-      "shape": "flan"
+      "shape": "flan",
+      "headShifts": {
+        "sick": [0, -1, 0, 1]
+      }
     },
     "cuppie": {
       "file": "characters/bakery/cuppie.png",
-      "shape": "cupcake"
+      "shape": "cupcake",
+      "headShifts": {
+        "sick": [0, -1, 0, 1]
+      }
     },
     "cloudlet": {
       "file": "characters/starry/cloudlet.png",
-      "shape": "cloud"
+      "shape": "cloud",
+      "headShifts": {
+        "sick": [0, -1, 0, 1]
+      }
     },
     "moonpip": {
       "file": "characters/starry/moonpip.png",
-      "shape": "blob"
+      "shape": "blob",
+      "headShifts": {
+        "sick": [0, -1, 0, 1]
+      }
     },
     "starhoot": {
       "file": "characters/starry/starhoot.png",
-      "shape": "owl"
+      "shape": "owl",
+      "headShifts": {
+        "sick": [0, -1, 0, 1]
+      }
     },
     "pebblit": {
       "file": "characters/cave/pebblit.png",

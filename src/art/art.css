@@ -120,7 +120,7 @@ main {
   min-width: 0;
 }
 
-.picker h3,
+.picker summary,
 .lineup h3 {
   font-size: 12px;
   text-transform: uppercase;
@@ -129,8 +129,27 @@ main {
   margin: 12px 0 4px;
 }
 
-.picker h3:first-child {
+.picker summary {
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.picker summary small {
+  text-transform: none;
+}
+
+.picker details:first-child summary {
   margin-top: 0;
+}
+
+/* The pet list scrolls on its own, so the preview stays in view. */
+@media (min-width: 1001px) {
+  .picker {
+    position: sticky;
+    top: 70px;
+    max-height: calc(100vh - 86px);
+    overflow-y: auto;
+  }
 }
 
 .pet {
