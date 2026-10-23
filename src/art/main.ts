@@ -12,6 +12,7 @@ import { TRAITS, allowedTraits } from '../game/traits';
 import { frameFor } from '../render/animations';
 import { countFaceFrames, drawFace, type FaceSheet } from '../render/faces';
 import { PALETTE } from '../render/palette';
+import { recolourPixels } from '../render/recolour';
 import {
   loadSprites,
   measureHead,
@@ -29,7 +30,7 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getEleme
 
 // ---------------------------------------------------------------- state
 
-type Tab = 'animations' | 'faces' | 'hats' | 'tweak' | 'checks' | 'traits';
+type Tab = 'animations' | 'faces' | 'hats' | 'tweak' | 'recolour' | 'checks' | 'traits';
 type Face = 'auto' | 'mood' | Expression;
 
 interface State {
@@ -48,6 +49,9 @@ interface State {
   closed: string[]; // picker groups folded up
   trait: string;
   mood: { happiness: number; hunger: number; energy: number; aloneMin: number; reaction: '' | Reaction };
+  // The recolour being tried on the Recolour tab: the sheet it's made
+  // from, its name, and the palette swaps.
+  recolour: { base: string; name: string; swaps: Record<string, string> };
 }
 
 const SAVED = 'art-preview';
@@ -67,6 +71,7 @@ const state: State = {
   closed: [],
   trait: TRAITS[0].id,
   mood: { happiness: 80, hunger: 80, energy: 80, aloneMin: 0, reaction: '' },
+  recolour: { base: '', name: '', swaps: {} },
 };
 try {
   Object.assign(state, JSON.parse(localStorage.getItem(SAVED) ?? '{}'));
@@ -130,7 +135,7 @@ function groups(): { title: string; entries: Entry[] }[] {
       .filter((n) => !n.startsWith('hat-') && !used.has(n) && !dropped.has(n) && !n.startsWith('badge'))
       .map((sheet) => ({ sheet, label: sheet })),
   );
-  add('Dropped files', [...dropped.keys()].map((sheet) => ({ sheet, label: sheet, note: 'here only' })));
+  add('Tried here', [...dropped.keys()].map((sheet) => ({ sheet, label: sheet, note: 'here only' })));
   return out;
 }
 
@@ -181,6 +186,8 @@ async function load() {
   library = await loadSprites();
   dropped.clear();
   swapped.clear();
+  // Bring back the recolour being tried, so a reload doesn't lose it.
+  if (library.has(state.recolour.base)) tryRecolour();
   if (!library.has(state.sheet)) state.sheet = library.has('sprig') ? 'sprig' : [...library.keys()][0];
   if (state.hat && !library.has(state.hat)) state.hat = '';
   renderAll();
@@ -559,6 +566,7 @@ const TABS: Record<Tab, { label: string; guide: string[] }> = {
   faces: { label: 'Faces', guide: ['Faces and expressions'] },
   hats: { label: 'Hats', guide: ['Hats'] },
   tweak: { label: 'Tweak', guide: ['Body shapes'] },
+  recolour: { label: 'Recolour', guide: ['Adding a colour variant'] },
   checks: { label: 'Checks', guide: ['Consistency rules (especially for AI-generated art)', 'The palette'] },
   traits: { label: 'Traits', guide: ['How characters work'] },
 };
@@ -602,7 +610,7 @@ function renderTab() {
   box.innerHTML = '';
   const sheet = library.get(state.sheet);
   if (!sheet) return;
-  ({ animations, faces, hats, tweak, checks, traits })[state.tab](box, sheet);
+  ({ animations, faces, hats, tweak, recolour, checks, traits })[state.tab](box, sheet);
 }
 
 function animations(box: HTMLElement, sheet: SpriteSheet) {
@@ -846,6 +854,164 @@ function checks(box: HTMLElement, sheet: SpriteSheet) {
   }
   table.append(body);
   box.append(table);
+}
+
+// The dark outline colour the art guide's outline rule gives each body
+// colour, to suggest when a recolour changes the body.
+const OUTLINE_FOR: Record<string, string> = {
+  mint: 'moss', leaf: 'moss', sky: 'deep', ocean: 'deep', pink: 'berry', blush: 'berry', rose: 'berry',
+  cream: 'bark', peach: 'bark', butter: 'bark', cocoa: 'bark', white: 'plum', lavender: 'plum', lilac: 'plum',
+};
+const OUTLINES = ['moss', 'deep', 'berry', 'bark', 'plum', 'ink'];
+
+// The sheet a recolour is painted from: the selected sheet, or the sheet a
+// recolour (in the manifest or tried here) is made from.
+function recolourBase(name: string): string {
+  const tried = dropped.get(name);
+  if (tried && name.endsWith(' (try)')) return tried;
+  return manifest.sheets[name]?.from ?? name;
+}
+
+// How many pixels of each palette colour a sheet uses, most first.
+function coloursOf(sheet: SpriteSheet): [string, number][] {
+  const { data } = pixelsOf(sheet.image);
+  const byRgb = new Map(Object.entries(PALETTE).map(([n, hex]) => [parseInt(hex.slice(1), 16), n] as const));
+  const counts = new Map<string, number>();
+  for (let i = 0; i < data.length; i += 4) {
+    if (!data[i + 3]) continue;
+    const n = byRgb.get((data[i] << 16) | (data[i + 1] << 8) | data[i + 2]) ?? 'other';
+    counts.set(n, (counts.get(n) ?? 0) + 1);
+  }
+  return [...counts].sort((a, b) => b[1] - a[1]);
+}
+
+// Puts the recolour being tried into the library as "<base> (try)", so it
+// shows on the stage, in the lineup and on every other tab.
+function tryRecolour(): string {
+  const { base, swaps } = state.recolour;
+  const from = library.get(base)!;
+  const pixels = pixelsOf(from.image);
+  const data = new Uint8ClampedArray(pixels.data);
+  recolourPixels(data, swaps, PALETTE);
+  const canvas = document.createElement('canvas');
+  canvas.width = from.image.width;
+  canvas.height = from.image.height;
+  canvas.getContext('2d')!.putImageData(new ImageData(data, canvas.width, canvas.height), 0, 0);
+  const name = `${base} (try)`;
+  library.set(name, { ...from, name, image: canvas as unknown as HTMLImageElement });
+  dropped.set(name, base);
+  return name;
+}
+
+function recolour(box: HTMLElement, sheet: SpriteSheet) {
+  const base = recolourBase(sheet.name);
+  if (!library.has(base) || base.startsWith('hat-')) {
+    box.append(el('p', 'Pick a pet to recolour.', 'muted'));
+    return;
+  }
+  // Starting on a new base: take its manifest swaps if it's a recolour.
+  if (state.recolour.base !== base) {
+    const known = manifest.sheets[sheet.name]?.from ? manifest.sheets[sheet.name] : undefined;
+    state.recolour = { base, name: known ? sheet.name : `${base}-new`, swaps: { ...known?.recolour } };
+  }
+  const rc = state.recolour;
+  const tried = tryRecolour();
+  if (state.sheet !== tried) {
+    state.sheet = tried;
+    renderPicker();
+    if (state.view === 'lineup') renderView();
+  }
+  save();
+  box.append(el('p', `Swap any colour of <b>${base}</b> for another palette colour. The preview and every other tab show the result, on this page only. Each swap changes that colour <b>everywhere</b> on the sheet.`, 'muted'));
+
+  const grid = el('div', '', 'recolours');
+  const used = coloursOf(library.get(base)!);
+  const changed = () => {
+    tryRecolour();
+    showJson();
+    renderTab();
+  };
+  for (const [name, count] of used) {
+    const row = el('div', '', 'swap');
+    const to = rc.swaps[name] ?? '';
+    row.append(el('span', `<i style="background:${PALETTE[name as keyof typeof PALETTE] ?? '#000'}"></i>${name} <small>${count} px</small>`));
+    row.append(el('span', '→'));
+    const sel = document.createElement('select');
+    sel.disabled = name === 'other';
+    sel.innerHTML =
+      `<option value="">keep</option>` +
+      Object.keys(PALETTE)
+        .filter((n) => n !== name)
+        .map((n) => `<option value="${n}">${n}</option>`)
+        .join('');
+    sel.value = to;
+    sel.onchange = () => {
+      if (sel.value) rc.swaps[name] = sel.value;
+      else delete rc.swaps[name];
+      changed();
+    };
+    const swatch = el('i', '', 'chip');
+    swatch.style.background = PALETTE[(to || name) as keyof typeof PALETTE] ?? '#000';
+    row.append(swatch, sel);
+    // The outline rule: the outline takes the dark colour of the body it
+    // touches, so a new body colour usually needs a new outline too.
+    if (OUTLINES.includes(name)) {
+      const bodies = Object.entries(rc.swaps).filter(([f]) => OUTLINE_FOR[f] === name).map(([, t]) => OUTLINE_FOR[t]).filter(Boolean);
+      const hint = bodies.find((o) => o !== (to || name));
+      if (hint)
+        row.append(
+          button(`use ${hint}`, () => {
+            rc.swaps[name] = hint;
+            changed();
+          }, false, `The outline rule gives ${hint} for the new body colour`),
+        );
+    }
+    grid.append(row);
+  }
+  box.append(grid);
+  if (sheet.face || library.get(base)?.face)
+    box.append(el('p', "The face is drawn by the game from its face set, so a recolour never changes it. Only the body's colours swap.", 'muted'));
+
+  box.append(el('h4', 'Compare'));
+  const tiles = el('div', '', 'tiles');
+  tiles.append(
+    tile(base, (c) => drawTile(c, library.get(base)!, state.anim, state.face, library.get(state.hat), time), undefined, false, 2),
+    tile('recolour', (c) => drawTile(c, library.get(tried)!, state.anim, state.face, library.get(state.hat), time), undefined, true, 2),
+  );
+  box.append(tiles);
+
+  box.append(el('h4', 'Keep it'));
+  const nameField = el('label', 'Sheet name ', 'field wide');
+  const input = document.createElement('input');
+  input.value = rc.name;
+  input.oninput = () => {
+    rc.name = input.value.trim() || `${base}-new`;
+    save();
+    showJson();
+  };
+  nameField.append(input);
+  box.append(nameField);
+  const pre = el('pre', '', 'json');
+  const pre2 = el('pre', '', 'json');
+  const showJson = () => {
+    const variant = rc.name.startsWith(`${base}-`) ? rc.name.slice(base.length + 1) : rc.name;
+    const label = variant.replace(/(^|-)(\w)/g, (_, d, c: string) => (d ? ' ' : '') + c.toUpperCase());
+    pre.textContent = `"${rc.name}": ${JSON.stringify({ from: base, recolour: rc.swaps })}`;
+    pre2.textContent = JSON.stringify({ id: variant, name: label, sheet: rc.name, chance: 10 });
+  };
+  showJson();
+  box.append(el('p', 'In <code>public/sprites/manifest.json</code>, under <code>"sheets"</code>:', 'muted'), pre);
+  box.append(el('p', `In <code>src/data/characters.json</code>, in ${base}'s <code>"variants"</code> list:`, 'muted'), pre2);
+  const row = el('div', '', 'buttons row');
+  row.append(
+    button('Copy manifest line', () => navigator.clipboard?.writeText(pre.textContent ?? '')),
+    button('Copy variant line', () => navigator.clipboard?.writeText(pre2.textContent ?? '')),
+    button('Clear swaps', () => {
+      rc.swaps = {};
+      changed();
+    }),
+  );
+  box.append(row);
 }
 
 function traits(box: HTMLElement, sheet: SpriteSheet) {
