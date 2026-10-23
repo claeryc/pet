@@ -168,7 +168,12 @@
         "x": 16,
         "y": 11,
         "width": 10
-      }
+      },
+      "face": {
+        "x": 16,
+        "y": 17
+      },
+      "faces": "owl"
     }
   },
   "idleSets": {
@@ -190,6 +195,9 @@
   "faceSets": {
     "blob": {
       "file": "faces/blob.png"
+    },
+    "owl": {
+      "file": "faces/owl.png"
     }
   },
   "sheets": {

@@ -100,7 +100,7 @@ A sheet uses a set with `"idleSet": "curious"`, and has those moves drawn on tho
 
 ## Faces and expressions
 
-The starter characters (all but Starhoot) have their bodies drawn **without a face**. The face is drawn by the game on top, from a shared **face set**, and moves with the head like a hat. So a new expression is drawn once, not once per character and animation.
+The starter characters have their bodies drawn **without a face**. The face is drawn by the game on top, from a shared **face set**, and moves with the head like a hat. So a new expression is drawn once, not once per character and animation.
 
 **A face set** (`art/faces/blob.aseprite`, exported to `public/sprites/faces/blob.png`) has 32×32 frames, see-through except for the eyes, brows, mouth, cheeks and extras like tears or hearts. Each tag is one expression, in this order, as many frames as you like:
 
@@ -125,14 +125,16 @@ Draw the faces around the pixel (16, 18), which is the bottom of the eyes. The f
 
 **In the manifest**, a body shape's `face` is where the face goes: the pixel in the first idle frame where the bottom of the eyes is. For example `"blob": { "head": {...}, "face": { "x": 16, "y": 18 } }`. Characters with the face lower or higher only need a different `y`.
 
-**A new face set**, for example big owl eyes for Starhoot or special faces for 3-star pets:
+There are two face sets: **`blob`** for most characters, and **`owl`** (`art/faces/owl.aseprite`) for Starhoot, with big round eyes, a beak and owl versions of every expression.
 
-1. Copy `art/faces/blob.aseprite` to `art/faces/owl.aseprite` and redraw the faces. Leave a tag empty to use the blob face for it.
-2. Export it, and list it in the manifest under `"faceSets"`: `"owl": { "file": "faces/owl.png" }`.
-3. Give the shape a face point and the set: `"owl": { "head": {...}, "face": { "x": 16, "y": 17 }, "faces": "owl" }`. A single sheet can also use `"faces": "owl"` instead of its shape's set.
+**A new face set**, for example special faces for 3-star pets:
+
+1. Copy `art/faces/blob.aseprite` to `art/faces/star.aseprite` and redraw the faces. Leave a tag empty to use the blob face for it.
+2. Export it, and list it in the manifest under `"faceSets"`: `"star": { "file": "faces/star.png" }`.
+3. Give the shape a face point and the set: `"star": { "head": {...}, "face": { "x": 16, "y": 17 }, "faces": "star" }`. A single sheet can also use `"faces": "star"` instead of its shape's set.
 4. Take the face off the body in its `.aseprite` file.
 
-A character whose shape has no `face` keeps the face drawn on its body (Starhoot, the stages and Cave for now), and always shows the same expressions as its animations.
+A character whose shape has no `face` keeps the face drawn on its body (the stages and Cave for now), and always shows the same expressions as its animations.
 
 ## The palette
 
