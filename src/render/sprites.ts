@@ -59,9 +59,12 @@ function loadImage(url: string): Promise<HTMLImageElement> {
 // Reads the manifest and loads every sheet it lists. A sheet that fails to
 // load is skipped with a warning (the game then draws a "?" in its place)
 // instead of breaking the whole game.
-export async function loadSprites(): Promise<SpriteLibrary> {
+//
+// Sheets go into `library` as soon as each one is ready: the ones named in
+// `first` (the pets in the room), then the rest a few at a time, so the
+// game can start drawing before every character has loaded.
+export async function loadSprites(library: SpriteLibrary = new Map(), first: readonly string[] = []): Promise<SpriteLibrary> {
   const base = `${import.meta.env.BASE_URL}sprites/`;
-  const library: SpriteLibrary = new Map();
   let manifest: ManifestFile;
   try {
     manifest = await (await fetch(`${base}manifest.json`)).json();
@@ -82,60 +85,69 @@ export async function loadSprites(): Promise<SpriteLibrary> {
       }
     }),
   );
-  await Promise.all(
-    Object.keys(manifest.sheets).map(async (name) => {
-      try {
-        const sheet = resolveSheet(manifest, name);
-        const shape = shapeOf(manifest, name);
-        const idleSet = idleSetOf(manifest, name);
-        let image = await loadImage(base + sheet.file);
-        if (manifest.sheets[name].recolour) image = await recolourImage(image, manifest.sheets[name].recolour!);
-        const pixels = pixelsOf(image);
-        const frameWidth = sheet.frameWidth ?? manifest.frameWidth;
-        const frameHeight = sheet.frameHeight ?? manifest.frameHeight;
-        const loaded: SpriteSheet = {
-          name,
-          image,
-          frameWidth,
-          frameHeight,
-          animations: onlyDrawn(sheetAnimations(manifest, name, image.height), pixels, frameWidth, frameHeight),
-          head: shape?.head,
-          hats: shape?.hats,
+  const loadSheet = async (name: string) => {
+    try {
+      const sheet = resolveSheet(manifest, name);
+      const shape = shapeOf(manifest, name);
+      const idleSet = idleSetOf(manifest, name);
+      let image = await loadImage(base + sheet.file);
+      if (manifest.sheets[name].recolour) image = await recolourImage(image, manifest.sheets[name].recolour!);
+      const pixels = pixelsOf(image);
+      const frameWidth = sheet.frameWidth ?? manifest.frameWidth;
+      const frameHeight = sheet.frameHeight ?? manifest.frameHeight;
+      const loaded: SpriteSheet = {
+        name,
+        image,
+        frameWidth,
+        frameHeight,
+        animations: onlyDrawn(sheetAnimations(manifest, name, image.height), pixels, frameWidth, frameHeight),
+        head: shape?.head,
+        hats: shape?.hats,
+      };
+      if (idleSet) loaded.idleMoves = Object.keys(idleSet.animations).filter((move) => loaded.animations[move]);
+      // Hand-written offsets in the manifest win over the automatic ones:
+      // the sheet's own over its idle set's, and those over its shape's.
+      if (shape) {
+        const found = measureHead(pixels, loaded, shape.head, loaded.idleMoves);
+        loaded.headOffsets = {
+          ...found.offsets,
+          ...shape.headOffsets,
+          ...idleSet?.headOffsets,
+          ...sheet.headOffsets,
         };
-        if (idleSet) loaded.idleMoves = Object.keys(idleSet.animations).filter((move) => loaded.animations[move]);
-        // Hand-written offsets in the manifest win over the automatic ones:
-        // the sheet's own over its idle set's, and those over its shape's.
-        if (shape) {
-          const found = measureHead(pixels, loaded, shape.head, loaded.idleMoves);
-          loaded.headOffsets = {
-            ...found.offsets,
-            ...shape.headOffsets,
-            ...idleSet?.headOffsets,
-            ...sheet.headOffsets,
-          };
-          loaded.headShifts = {
-            ...found.shifts,
-            ...shape.headShifts,
-            ...idleSet?.headShifts,
-            ...sheet.headShifts,
-          };
-        }
-        if (name.startsWith('hat-')) loaded.hatWidths = measureHatWidths(loaded);
-        if (shape?.face) {
-          const setName = shape.faces ?? 'blob';
-          if (!faceSets.has(setName)) console.warn(`Sheet "${name}" uses face set "${setName}", which didn't load`);
-          loaded.face = shape.face;
-          loaded.faceSet = faceSets.get(setName);
-          loaded.faceFallback = faceSets.get('blob');
-        }
-        library.set(name, loaded);
-      } catch (err) {
-        console.warn(err);
+        loaded.headShifts = {
+          ...found.shifts,
+          ...shape.headShifts,
+          ...idleSet?.headShifts,
+          ...sheet.headShifts,
+        };
       }
-    }),
-  );
+      if (name.startsWith('hat-')) loaded.hatWidths = measureHatWidths(loaded);
+      if (shape?.face) {
+        const setName = shape.faces ?? 'blob';
+        if (!faceSets.has(setName)) console.warn(`Sheet "${name}" uses face set "${setName}", which didn't load`);
+        loaded.face = shape.face;
+        loaded.faceSet = faceSets.get(setName);
+        loaded.faceFallback = faceSets.get('blob');
+      }
+      library.set(name, loaded);
+    } catch (err) {
+      console.warn(err);
+    }
+  };
+  const names = Object.keys(manifest.sheets);
+  const now = names.filter((n) => first.includes(n));
+  const later = names.filter((n) => !first.includes(n));
+  await Promise.all(now.map(loadSheet));
+  for (let i = 0; i < later.length; i += LOAD_AT_ONCE) {
+    await Promise.all(later.slice(i, i + LOAD_AT_ONCE).map(loadSheet));
+    await new Promise((resolve) => setTimeout(resolve)); // let a frame draw
+  }
   return library;
 }
+
+// How many of the later sheets load together.
+const LOAD_AT_ONCE = 8;
 
 // A copy of a sheet's picture with palette colours swapped.
 function recolourImage(image: HTMLImageElement, swaps: Record<string, string>): Promise<HTMLImageElement> {

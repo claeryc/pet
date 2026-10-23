@@ -129,6 +129,10 @@ main {
   margin: 12px 0 4px;
 }
 
+.lineup .filters {
+  margin-bottom: 6px;
+}
+
 .picker summary {
   cursor: pointer;
   padding: 2px 0;

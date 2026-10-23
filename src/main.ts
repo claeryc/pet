@@ -621,8 +621,8 @@ function tryCheckIn(): void {
   if (reward > 0) home.toast(firstEver ? STRINGS.gold.firstCheckIn(reward) : STRINGS.gold.checkIn(reward));
 }
 
-// The sprite sheets, filled in once they've loaded.
-let sprites: SpriteLibrary = new Map();
+// The sprite sheets, filled in as they load: the pets at home first.
+const sprites: SpriteLibrary = new Map();
 
 // A character's picture for the Collection: the first idle frame of its
 // sheet with its content face, cut out once and kept.
@@ -1045,7 +1045,8 @@ home.showTripIfEmpty(); // nobody home: open on the trip, not the empty room
 // Draw the pet every animation frame (about 60 times a second). The sprite
 // sheet comes from the pet's stage or character (see src/data/characters.json).
 const ctx = setupCanvas(home.canvas);
-loadSprites().then((lib) => (sprites = lib));
+const atHome = [state.pet, ...state.housemates];
+loadSprites(sprites, [...atHome.map(sheetFor), ...atHome.map((p) => getHat(p.hat)?.sheet ?? '')]);
 
 function render(timeMs: number): void {
   const pet = state.pet;

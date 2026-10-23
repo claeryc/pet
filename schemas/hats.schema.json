@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Hats",
+  "description": "Hats the pet can wear (src/data/hats.json). See docs/ART_GUIDE.md.",
+  "type": "object",
+  "required": ["hats"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "_help": { "type": "string" },
+    "hats": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "price", "sheet"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "price": { "type": "integer", "minimum": 0, "description": "Gold." },
+          "fragments": { "type": "integer", "minimum": 1, "description": "Costs this many star fragments instead of gold." },
+          "sheet": { "type": "string", "description": "A hat sheet from public/sprites/manifest.json." }
+        }
+      }
+    }
+  }
+}

@@ -1,4 +1,5 @@
 {
+  "$schema": "../../schemas/hats.schema.json",
   "_help": "Hats the pet can wear. Each hat is bought once in the Shop and then lives in the inventory. 'sheet' is a sheet in public/sprites/manifest.json with two 16x16 pictures side by side: a small version (left) for small heads and a large version (right). See docs/ART_GUIDE.md. A hat with 'fragments' costs that many star fragments instead of gold (a star-only hat money can't buy).",
   "hats": [
     { "id": "beanie", "name": "Cozy Beanie", "price": 60, "sheet": "hat-beanie" },

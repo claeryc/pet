@@ -50,7 +50,11 @@ public/sprites/                    exported PNGs the game loads
 src/data/characters.json           every character: theme, stars, name, sheet, variants
 src/data/hats.json                 every hat: name, price, sheet
 src/data/traits.json               every trait (Playful, Greedy...) and its numbers
+
+schemas/                           what each of those JSON files may hold
 ```
+
+**Editing the JSON files:** each one points at its schema in `schemas/` (the `"$schema"` line at the top). Editors like VS Code use it to suggest keys, explain them when you hover, and underline a misspelt key or a wrong kind of value. `npm test` checks every file against its schema too, so a typo like `"shpae"` is caught instead of being quietly ignored.
 
 Keep `art/` and `public/sprites/` mirrored: `art/characters/cave/pebblit.aseprite` exports to `public/sprites/characters/cave/pebblit.png`.
 
@@ -330,7 +334,7 @@ Run `npm run dev` and open `/art.html` (for example `http://localhost:5173/art.h
 - **Animations:** play any row or idle move, pause, step frame by frame, and slow it down.
 - **Faces:** every expression on the chosen pet. Click one to keep it on.
 - **Hats:** try each hat, and see which size it picks and why. Pick a hat to see it on one pet of every shape (and every sheet with its own points), which is the quick way to check a new hat.
-- **Lineup:** every character side by side with the same animation, face and hat.
+- **Lineup:** every character side by side with the same animation, face and hat. Filter it by theme, by rarity, and with or without colour variants.
 - **Tweak:** move a shape's hat point, face point or one hat's nudge and see it on every pet of that shape, or switch to **Only <sheet>** to change one sheet's own points, then copy the JSON into `manifest.json`.
 - **Recolour:** swap any of a pet's colours for other palette colours and see it live. When a swap changes which outline a part needs, the outline swaps with it. Start from scratch or from an existing variant, then copy the `manifest.json` and `characters.json` lines. Your swaps stay through a reload.
 - **Checks:** palette colours only, no soft edges, sheet size, an empty top row, feet on row 28 and centred, for one sheet or all of them. `npm test` runs the same checks on every sheet and face set too.

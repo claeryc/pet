@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Traits",
+  "description": "Every trait a pet can have (src/data/traits.json). See src/game/traits.ts for what each number does.",
+  "type": "object",
+  "required": ["inheritChance", "traits"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "_help": { "type": "string" },
+    "inheritChance": { "type": "number", "minimum": 0, "maximum": 100, "description": "Percent chance a little one gets one of its parents' traits." },
+    "traits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "about"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "about": { "type": "string", "description": "Shown to the player." },
+          "idleEvery": { "type": "number", "exclusiveMinimum": 0, "description": "How often it plays idle moves, times the usual gap (0.5 = twice as often)." },
+          "happyMs": { "type": "number", "exclusiveMinimum": 0, "description": "How long it stays happy after play, times the usual." },
+          "surprisedMs": { "type": "number", "exclusiveMinimum": 0, "description": "How long a visitor startles it, times the usual." },
+          "poutAfter": { "type": "number", "exclusiveMinimum": 0, "description": "How soon it pouts when left alone, times the usual." },
+          "hungryBelow": { "type": "number", "description": "Added to the stat the hungry face shows below." },
+          "sleepyBelow": { "type": "number", "description": "Added to the stat the sleepy face shows below." },
+          "sadBelow": { "type": "number", "description": "Added to the stat the sad faces show below." },
+          "lovesEverySnack": { "type": "boolean", "description": "Every food makes it fall in love, not only a craving." },
+          "grumpyWhenWoken": { "type": "boolean", "description": "Pulls a grumpy face when the lights come on." },
+          "special": { "type": "boolean", "description": "Only for characters that list it under 'traits'." }
+        }
+      }
+    }
+  }
+}

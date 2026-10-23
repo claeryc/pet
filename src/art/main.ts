@@ -56,6 +56,9 @@ interface State {
   // from, its name, and the palette swaps.
   recolour: { base: string; name: string; swaps: Record<string, string> };
   tweakOwn: boolean; // the Tweak tab changes this sheet only, not its shape
+  // What the Lineup shows: one group (a theme) or '' for all, one rarity
+  // or 0 for all, and whether colour variants are in it.
+  lineup: { group: string; stars: number; variants: boolean };
 }
 
 const SAVED = 'art-preview';
@@ -77,6 +80,7 @@ const state: State = {
   mood: { happiness: 80, hunger: 80, energy: 80, aloneMin: 0, reaction: '' },
   recolour: { base: '', name: '', swaps: {} },
   tweakOwn: false,
+  lineup: { group: '', stars: 0, variants: true },
 };
 try {
   Object.assign(state, JSON.parse(localStorage.getItem(SAVED) ?? '{}'));
@@ -117,6 +121,7 @@ interface Entry {
   label: string;
   stars?: number;
   note?: string;
+  variant?: boolean;
 }
 
 // Every pet sheet, grouped like the guide: stages, then each theme by
@@ -135,7 +140,7 @@ function groups(): { title: string; entries: Entry[] }[] {
     for (const c of characters.characters.filter((c) => c.theme === theme).sort((a, b) => a.stars - b.stars)) {
       entries.push({ sheet: c.sheet, label: c.name, stars: c.stars });
       for (const v of (c as { variants?: { name: string; sheet: string; chance: number }[] }).variants ?? [])
-        entries.push({ sheet: v.sheet, label: `${c.name} · ${v.name}`, stars: c.stars, note: `${v.chance}%` });
+        entries.push({ sheet: v.sheet, label: `${c.name} · ${v.name}`, stars: c.stars, note: `${v.chance}%`, variant: true });
     }
     add(characters.laterPacks.includes(theme) ? `${name} (later pack)` : name, entries);
   }
@@ -584,13 +589,32 @@ function renderView() {
   lineup.hidden = state.view !== 'lineup';
   lineup.innerHTML = '';
   if (state.view !== 'lineup') return;
-  for (const g of groups()) {
+  // With many characters, show only some: a theme, a rarity, no variants.
+  const all = groups();
+  const f = state.lineup;
+  const pick = (change: Partial<State['lineup']>) => () => {
+    Object.assign(f, change);
+    save();
+    renderView();
+  };
+  const filters = el('div', '', 'buttons row filters');
+  filters.append(button('All', pick({ group: '' }), !f.group));
+  for (const g of all) filters.append(button(g.title, pick({ group: g.title }), f.group === g.title));
+  const rarity = el('div', '', 'buttons row filters');
+  rarity.append(button('Any rarity', pick({ stars: 0 }), !f.stars));
+  for (const n of [1, 2, 3]) rarity.append(button(stars(n), pick({ stars: n }), f.stars === n));
+  rarity.append(button('Variants', pick({ variants: !f.variants }), f.variants, 'Show colour variants too'));
+  lineup.append(filters, rarity);
+  for (const g of all) {
+    if (f.group && g.title !== f.group) continue;
+    const entries = g.entries.filter((e) => (!f.stars || e.stars === f.stars) && (f.variants || !e.variant));
+    if (!entries.length) continue;
     const h = document.createElement('h3');
     h.textContent = g.title;
     lineup.append(h);
     const row = document.createElement('div');
     row.className = 'tiles';
-    for (const e of g.entries) {
+    for (const e of entries) {
       const sheet = library.get(e.sheet)!;
       row.append(
         tile(`${e.label} ${stars(e.stars)}`, (c) => drawTile(c, sheet, state.anim, state.face, library.get(state.hat), time), () => select(e.sheet), e.sheet === state.sheet),

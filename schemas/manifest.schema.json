@@ -1,0 +1,134 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Sprite manifest",
+  "description": "Every sprite sheet the game can use (public/sprites/manifest.json). See docs/ART_GUIDE.md.",
+  "type": "object",
+  "required": ["frameWidth", "frameHeight", "animations", "sheets"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "_help": { "type": "string" },
+    "frameWidth": { "type": "integer", "minimum": 1, "description": "Width of every frame, in pixels (32)." },
+    "frameHeight": { "type": "integer", "minimum": 1, "description": "Height of every frame, in pixels (32)." },
+    "animations": { "$ref": "#/definitions/animations", "description": "The shared animations: which row of a pet sheet holds which one." },
+    "shapes": {
+      "type": "object",
+      "description": "Body shapes: where hats and faces sit, shared by every sheet drawn on that body.",
+      "additionalProperties": { "$ref": "#/definitions/shape" }
+    },
+    "idleSets": {
+      "type": "object",
+      "description": "Extra idle moves (a stretch, a look around...) that sheets can use with 'idleSet'.",
+      "additionalProperties": { "$ref": "#/definitions/idleSet" }
+    },
+    "faceSets": {
+      "type": "object",
+      "description": "Face sets: one row of faces per expression. 'blob' is the default and fills in for the others.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["file"],
+        "additionalProperties": false,
+        "properties": { "file": { "type": "string", "description": "PNG path, relative to public/sprites/." } }
+      }
+    },
+    "sheets": {
+      "type": "object",
+      "description": "Every sheet, by name. characters.json and hats.json point at these names.",
+      "additionalProperties": { "$ref": "#/definitions/sheet" }
+    }
+  },
+  "definitions": {
+    "animation": {
+      "type": "object",
+      "required": ["row", "frames", "frameMs"],
+      "additionalProperties": false,
+      "properties": {
+        "row": { "type": "integer", "minimum": 0, "description": "Which row of the sheet, from 0 at the top." },
+        "frames": { "type": "integer", "minimum": 1, "description": "How many frames, left to right." },
+        "frameMs": { "type": "integer", "minimum": 1, "description": "How long each frame shows, in milliseconds." }
+      }
+    },
+    "animations": { "type": "object", "additionalProperties": { "$ref": "#/definitions/animation" } },
+    "perFrame": {
+      "type": "object",
+      "description": "Per animation, one number of pixels per frame.",
+      "additionalProperties": { "type": "array", "items": { "type": "integer" } }
+    },
+    "head": {
+      "type": "object",
+      "required": ["x", "y", "width"],
+      "additionalProperties": false,
+      "description": "Where a hat sits: the pixel in the first idle frame where the bottom middle of the hat goes, and how wide a hat may be there.",
+      "properties": {
+        "x": { "type": "integer" },
+        "y": { "type": "integer" },
+        "width": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "point": {
+      "type": "object",
+      "required": ["x", "y"],
+      "additionalProperties": false,
+      "properties": { "x": { "type": "integer" }, "y": { "type": "integer" } }
+    },
+    "hatFits": {
+      "type": "object",
+      "description": "Nudges for single hats, by hat sheet name: pixels right (x) and down (y), and a different width to pick the hat's size.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": { "x": { "type": "integer" }, "y": { "type": "integer" }, "width": { "type": "integer", "minimum": 1 } }
+      }
+    },
+    "shape": {
+      "type": "object",
+      "required": ["head"],
+      "additionalProperties": false,
+      "properties": {
+        "head": { "$ref": "#/definitions/head" },
+        "face": { "$ref": "#/definitions/point", "description": "Where the face goes: the pixel the face set's anchor (16, 18), the bottom of the eyes, lands on. Leave out to keep the face drawn on the body." },
+        "faces": { "type": "string", "description": "The face set to use (default 'blob')." },
+        "headOffsets": { "$ref": "#/definitions/perFrame", "description": "Fixes for how far the head moves up (negative) or down per frame." },
+        "headShifts": { "$ref": "#/definitions/perFrame", "description": "Fixes for how far the head moves left (negative) or right per frame." },
+        "hats": { "$ref": "#/definitions/hatFits" }
+      }
+    },
+    "idleSet": {
+      "type": "object",
+      "required": ["animations"],
+      "additionalProperties": false,
+      "properties": {
+        "animations": { "$ref": "#/definitions/animations", "description": "The moves, named idle-..., each on a row of its own after the shared rows." },
+        "headOffsets": { "$ref": "#/definitions/perFrame" },
+        "headShifts": { "$ref": "#/definitions/perFrame" }
+      }
+    },
+    "sheet": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "file": { "type": "string", "description": "PNG path, relative to public/sprites/. Leave out for a recolour." },
+        "from": { "type": "string", "description": "A recolour: the sheet it's painted from." },
+        "recolour": {
+          "type": "object",
+          "description": "A recolour: palette colours to swap, by name, e.g. { \"cream\": \"mint\" }.",
+          "additionalProperties": { "type": "string" }
+        },
+        "animations": { "$ref": "#/definitions/animations", "description": "Only the animations this sheet changes or adds." },
+        "frameWidth": { "type": "integer", "minimum": 1 },
+        "frameHeight": { "type": "integer", "minimum": 1 },
+        "shape": { "type": "string", "description": "The body shape it's drawn on, from 'shapes'." },
+        "idleSet": {
+          "description": "An idle set from 'idleSets', or a list of them to mix their moves.",
+          "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" } }]
+        },
+        "headOffsets": { "$ref": "#/definitions/perFrame" },
+        "headShifts": { "$ref": "#/definitions/perFrame" },
+        "head": { "$ref": "#/definitions/head", "description": "This sheet's own hat point, instead of its shape's." },
+        "face": { "$ref": "#/definitions/point", "description": "This sheet's own face point, instead of its shape's." },
+        "faces": { "type": "string", "description": "This sheet's own face set, instead of its shape's." },
+        "hats": { "$ref": "#/definitions/hatFits", "description": "This sheet's own hat nudges, on top of its shape's." }
+      }
+    }
+  }
+}

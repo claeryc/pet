@@ -1,4 +1,5 @@
 {
+  "$schema": "../../schemas/traits.schema.json",
   "_help": "Every trait a pet can have. See src/game/traits.ts for what each number does. A trait with \"special\": true is only for characters that list it under \"traits\" in src/data/characters.json. inheritChance is the percent chance a little one gets one of its parents' traits.",
   "inheritChance": 50,
   "traits": [

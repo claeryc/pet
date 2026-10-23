@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Characters",
+  "description": "Every character a pet can grow into (src/data/characters.json). See docs/ART_GUIDE.md.",
+  "type": "object",
+  "required": ["stages", "themes", "characters"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "_help": { "type": "string" },
+    "stages": {
+      "type": "object",
+      "description": "The sheet every egg, baby and teen uses.",
+      "required": ["egg", "baby", "teen"],
+      "additionalProperties": false,
+      "properties": { "egg": { "type": "string" }, "baby": { "type": "string" }, "teen": { "type": "string" } }
+    },
+    "themes": { "type": "object", "description": "Theme ids and the names players see.", "additionalProperties": { "type": "string" } },
+    "characters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "theme", "stars", "name", "sheet"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "theme": { "type": "string", "description": "A theme id from 'themes'." },
+          "stars": { "type": "integer", "enum": [1, 2, 3], "description": "Rarity: 1 common, 2 uncommon, 3 rare." },
+          "name": { "type": "string" },
+          "sheet": { "type": "string", "description": "A sheet name from public/sprites/manifest.json." },
+          "traits": { "type": "array", "items": { "type": "string" }, "description": "The only traits its pets can have (ids from traits.json)." },
+          "variants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "name", "sheet", "chance"],
+              "additionalProperties": false,
+              "properties": {
+                "id": { "type": "string" },
+                "name": { "type": "string" },
+                "sheet": { "type": "string" },
+                "chance": { "type": "number", "minimum": 0, "maximum": 100, "description": "Percent of these characters that get this variant." }
+              }
+            }
+          }
+        }
+      }
+    },
+    "laterPacks": { "type": "array", "items": { "type": "string" }, "description": "Themes that aren't out yet." }
+  }
+}
