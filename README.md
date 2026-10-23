@@ -15,7 +15,7 @@ npm run sprites  # makes any missing placeholder art (needs Node 22.18+)
 npm run music    # remakes the background music (needs Node 22.18+ and ffmpeg)
 ```
 
-Want to draw your own pet? See [docs/ART_GUIDE.md](docs/ART_GUIDE.md).
+Want to draw your own pet? See [docs/ART_GUIDE.md](docs/ART_GUIDE.md), and open `/art.html` while `npm run dev` runs to preview the art.
 
 ## Where things live
 
