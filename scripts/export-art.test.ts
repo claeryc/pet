@@ -1,6 +1,19 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { exportPlan } from './export-art';
+import manifest from '../public/sprites/manifest.json';
+import { sheetAnimations, type ManifestFile } from '../src/render/manifest';
+import { readTags } from './aseprite';
+import { exportPlan, rowsFor } from './export-art';
 import { readPng, sideBySide, stack, writePng, type Pixels } from './png';
+
+const m = manifest as ManifestFile;
+const ART = fileURLToPath(new URL('../art/', import.meta.url));
+const allArt = (dir = ART): string[] =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? allArt(join(dir, e.name)) : [relative(ART, join(dir, e.name)).split(sep).join('/')],
+  );
 
 const picture = (width: number, height: number, fill: number): Pixels => ({
   width,
@@ -25,6 +38,57 @@ describe('export-art', () => {
     expect(exportPlan('previews/dumpling-matcha.png')).toBeNull();
     expect(exportPlan('shelved/bunbun.aseprite')).toBeNull();
     expect(exportPlan('characters/cave/notes.txt')).toBeNull();
+  });
+});
+
+describe('rows by tag name', () => {
+  const all = ['idle', 'sad', 'sleep', 'sick', 'eat', 'happy', 'cheerful'];
+
+  it('puts each tag on its row from the manifest, whatever the tag order', () => {
+    const { rows, notes } = rowsFor('characters/nature/sprig.png', ['idle-stretch', 'happy', ...all.filter((t) => t !== 'happy'), 'idle-look'], m);
+    expect(rows).toEqual([...all, 'idle-look', 'idle-stretch']);
+    expect(notes).toEqual([]);
+  });
+
+  it('leaves untagged rows empty, and says which', () => {
+    const { rows, notes } = rowsFor('characters/ocean/bubbit.png', ['idle', 'happy'], m);
+    expect(rows).toEqual(['idle', null, null, null, null, 'happy']);
+    expect(notes[0]).toContain('sad, sleep, sick, eat, cheerful');
+  });
+
+  it('stops on a tag that is not an animation, or is there twice', () => {
+    expect(() => rowsFor('characters/ocean/bubbit.png', ['idle', 'hapy'], m)).toThrow(/"hapy" isn't an animation/);
+    expect(() => rowsFor('characters/ocean/bubbit.png', ['idle', 'idle'], m)).toThrow(/twice/);
+    // Bubbit has no idle set, so its moves aren't its animations.
+    expect(() => rowsFor('characters/ocean/bubbit.png', ['idle', 'idle-look'], m)).toThrow(/idle-look/);
+  });
+
+  it('orders a face set by expression', () => {
+    const { rows, notes } = rowsFor('faces/owl.png', ['sad', 'content'], m);
+    expect(rows).toEqual(['content', null, null, 'sad']);
+    expect(notes[0]).toContain("blob's face");
+  });
+
+  it('keeps the tag order for a file not in the manifest yet', () => {
+    expect(rowsFor('characters/cave/stalagbun.png', ['idle', 'sad'], m).rows).toEqual(['idle', 'sad']);
+  });
+
+  it('the egg only needs idle', () => {
+    expect(rowsFor('stages/egg.png', ['idle'], m)).toEqual({ rows: ['idle'], notes: [] });
+  });
+});
+
+describe('art files', () => {
+  const files = allArt().filter((f) => exportPlan(f) && !exportPlan(f)!.strip);
+
+  it.each(files)('%s has tags the manifest knows, one frame per animation frame', (file) => {
+    const png = exportPlan(file)!.png;
+    const tags = readTags(readFileSync(join(ART, file)));
+    expect(() => rowsFor(png, tags.map((t) => t.name), m)).not.toThrow();
+    const sheet = Object.entries(m.sheets).find(([, s]) => s.file === png);
+    if (!sheet) return;
+    const animations = sheetAnimations(m, sheet[0]);
+    for (const t of tags) expect(t.to - t.from + 1, `${t.name} frames`).toBe(animations[t.name].frames);
   });
 });
 

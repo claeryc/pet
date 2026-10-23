@@ -70,7 +70,9 @@ Keep `art/` and `public/sprites/` mirrored: `art/characters/cave/pebblit.aseprit
 | 5 | `happy` | right after you play, or when it grows up (a big jump) | 4 |
 | 6 | `cheerful` | very happy and nothing wrong: calm, smiling, no jump | 4 |
 
-So a full sheet is 128 x 224 pixels. The egg only has an `idle` row. If a sheet is missing an animation (its PNG is too short for that row), the game uses `idle` instead, so you can start with just `idle` and add the rest later.
+So a full sheet is 128 x 224 pixels. The egg only has an `idle` row. If a sheet is missing an animation (no tag for it, so its row is empty, or the PNG is too short for that row), the game uses `idle` instead, so you can start with just `idle` and add the rest later.
+
+In Aseprite, **the tag's name decides the row**, not the order of the tags: `npm run export-art` puts the `happy` tag on row 5 wherever it is in the timeline. A tag name that isn't an animation (a typo like `hapy`) stops the export with a message, and it lists the animations a sheet has no tag for yet. `npm test` reads the tags in every `.aseprite` file too, and checks each tag has as many frames as its animation.
 
 A sheet can change one animation without repeating the others: list only that one in its manifest entry, e.g. a longer, faster happy jump with `"animations": { "happy": { "row": 5, "frames": 6, "frameMs": 120 } }`. Every other row stays as shared.
 
@@ -91,11 +93,11 @@ Moves are shared through an **idle set**, so characters that move the same way a
 }
 ```
 
-A sheet uses a set with `"idleSet": "curious"`, and has those moves drawn on those rows, below the usual seven. Dumpling and Sprig use `curious` (placeholder moves: a lean to the left and a stretch up tall).
+A sheet uses a set with `"idleSet": "curious"`, and has those moves drawn on those rows, below the usual seven. A sheet can mix sets with a list, e.g. `"idleSet": ["curious", "owl"]`, to get the shared moves and some of its own. Dumpling and Sprig use `curious` (placeholder moves: a lean to the left and a stretch up tall).
 
 - Move names start with `idle-`, and each move gets a row of its own after row 6.
-- Every sheet using a set draws its moves on the set's rows. A sheet that should move differently uses a different set.
-- In Aseprite, add a tag for each move with the move's name (the same as in the set), so **Split Tags** exports it as its own row.
+- Every move has a row of its own, across all the sets (so sets can be mixed), and every sheet using a set draws its moves on those rows. A sheet that should move differently uses a different set, or adds one.
+- In Aseprite, add a tag for each move with the move's name (the same as in the set). `npm run export-art` puts it on the move's row; rows of moves a sheet doesn't use stay empty.
 - How often moves play is `idleMoveEveryMs` in `src/game/config.ts`.
 
 **Hats follow the moves**, up and down as usual and sideways too: the game sees how far the head moves left or right in each frame of an idle move. Each sheet is measured on its own, so the same move on different bodies still keeps each hat on its own pet's head. If the sideways tracking is off, set it by hand with `headShifts`, in pixels compared to the first idle frame (negative is left), for example `"headShifts": { "idle-look": [-1, -2, -2, -1] }`. Put it on the idle set to fix every sheet using it, or on one sheet for just that one. For up and down, `headOffsets` works on idle moves too. A sheet's own fix wins over its set's, and a set's over its shape's.
@@ -104,7 +106,7 @@ A sheet uses a set with `"idleSet": "curious"`, and has those moves drawn on tho
 
 The starter characters have their bodies drawn **without a face**. The face is drawn by the game on top, from a shared **face set**, and moves with the head like a hat. So a new expression is drawn once, not once per character and animation.
 
-**A face set** (`art/faces/blob.aseprite`, exported to `public/sprites/faces/blob.png`) has 32×32 frames, see-through except for the eyes, brows, mouth, cheeks and extras like tears or hearts. Each tag is one expression, in this order, as many frames as you like. A new expression always goes at the **end** of the list (and of every face set), since the game finds each one by its row:
+**A face set** (`art/faces/blob.aseprite`, exported to `public/sprites/faces/blob.png`) has 32×32 frames, see-through except for the eyes, brows, mouth, cheeks and extras like tears or hearts. Each tag is one expression, named as below, with as many frames as you like. `npm run export-art` puts each one on its row by name. A new expression always goes at the **end** of the list (in `src/game/expression-order.ts`), since the game finds each one by its row:
 
 | Row | Tag | Shows when |
 | --- | --- | --- |
@@ -285,12 +287,12 @@ To change them, draw over the frames, then export with **Sheet type: Horizontal 
 
 ## Exporting a sheet from Aseprite
 
-**All at once:** run `npm run export-art`. It exports every file in `art/` to the matching PNG in `public/sprites/` with the settings below (one row per tag, in tag order; hats and badges as one strip; no guides or face layer). It finds Aseprite in the usual install folders. If yours is elsewhere, set `ASEPRITE` to its path. Add words to export only some files, e.g. `npm run export-art -- pebblit hats`. It warns when a sheet changes size, which usually means a tag or frame went missing.
+**All at once:** run `npm run export-art`. It exports every file in `art/` to the matching PNG in `public/sprites/` with the settings below (each tag on its animation's row, found by name; hats and badges as one strip; no guides or face layer). It finds Aseprite in the usual install folders. If yours is elsewhere, set `ASEPRITE` to its path. Add words to export only some files, e.g. `npm run export-art -- pebblit hats`. It warns when a sheet changes size, which usually means a tag or frame went missing.
 
 **One by hand:** File → Export Sprite Sheet (Ctrl+E):
 
 - **Layout** tab: Sheet type **By Rows**.
-- **Sprite** tab: Layers **Visible layers**, and tick **Split Tags**, so each tag gets its own row. Hide the **face** layer first.
+- **Sprite** tab: Layers **Visible layers**, and tick **Split Tags**, so each tag gets its own row. Hide the **face** layer first. By hand, the rows follow the order of the tags, so keep them in the order of the table above (`npm run export-art` doesn't mind).
 - **Borders** tab: all padding and spacing at **0**.
 - **Output** tab: tick **Output File** and pick the PNG in `public/sprites/`. Untick JSON Data (the game uses `manifest.json`).
 - Click Export.

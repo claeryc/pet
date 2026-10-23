@@ -17,6 +17,7 @@ import {
   loadSprites,
   measureHead,
   pickHatFrame,
+  idleSetOf,
   resolveSheet,
   sheetAnimations,
   type ManifestFile,
@@ -161,7 +162,7 @@ function remeasure(s: SpriteSheet) {
   const shape = shapeName && shapes[shapeName];
   if (!shape) return;
   const entry = resolveSheet(manifest, dropped.get(s.name) ?? s.name);
-  const idleSet = entry.idleSet ? manifest.idleSets?.[entry.idleSet] : undefined;
+  const idleSet = idleSetOf(manifest, dropped.get(s.name) ?? s.name);
   const found = measureHead(pixelsOf(s.image), s, shape.head, s.idleMoves);
   s.headOffsets = { ...found.offsets, ...shape.headOffsets, ...idleSet?.headOffsets, ...entry.headOffsets };
   s.headShifts = { ...found.shifts, ...shape.headShifts, ...idleSet?.headShifts, ...entry.headShifts };

@@ -7,6 +7,8 @@ import { PALETTE } from '../src/render/palette';
 import { recolourPixels } from '../src/render/recolour';
 import {
   pickHatFrame,
+  idleSetOf,
+  onlyDrawn,
   resolveSheet,
   sheetAnimations,
   type IdleSet,
@@ -50,19 +52,28 @@ describe('art files', () => {
     for (const name of Object.keys(shapes)) expect(used).toContain(name);
   });
 
-  it.each(Object.entries(idleSets))('idle set "%s" has moves on rows of their own, and is used', (name, set) => {
+  it('idle set moves have rows of their own, across every set', () => {
+    // So a sheet can mix several sets without two moves landing on one row.
     const taken = Object.values(manifest.animations).map((a) => a.row);
-    for (const [move, anim] of Object.entries(set.animations)) {
-      expect(move.startsWith('idle-'), move).toBe(true);
-      expect(taken).not.toContain(anim.row);
-      taken.push(anim.row);
-    }
-    expect(Object.values(sheetFiles).some((s) => s.idleSet === name)).toBe(true);
+    for (const [name, set] of Object.entries(idleSets))
+      for (const [move, anim] of Object.entries(set.animations)) {
+        expect(move.startsWith('idle-'), move).toBe(true);
+        expect(taken, `${name}: ${move}`).not.toContain(anim.row);
+        taken.push(anim.row);
+      }
+  });
+
+  const setsOf = (sheet: { idleSet?: string | string[] }) => [sheet.idleSet ?? []].flat();
+
+  it.each(Object.keys(idleSets))('idle set "%s" is used', (name) => {
+    expect(Object.values(sheetFiles).some((s) => setsOf(s).includes(name))).toBe(true);
   });
 
   it.each(Object.entries(sheetFiles).filter(([, s]) => s.idleSet))(
-    'sheet "%s" uses a known idle set',
-    (_, sheet) => expect(idleSets[sheet.idleSet!]).toBeDefined(),
+    'sheet "%s" uses known idle sets',
+    (_, sheet) => {
+      for (const name of setsOf(sheet)) expect(idleSets[name], name).toBeDefined();
+    },
   );
 
   it.each(sheets)('sheet "%s" is in the manifest and its PNG exists', (sheet) => {
@@ -151,6 +162,29 @@ describe('sheet animations', () => {
 
   it('leaves out rows the picture is too short for, so they fall back to idle', () => {
     expect(Object.keys(sheetAnimations(fake, 'slow', 64))).toEqual(['idle', 'sad']);
+  });
+
+  it('leaves out rows with nothing drawn, but always keeps idle', () => {
+    // 1 frame wide, 3 rows: idle empty, sad drawn, idle-look empty.
+    const data = new Uint8Array(32 * 96 * 4);
+    data[(40 * 32 + 5) * 4 + 3] = 255;
+    const drawn = onlyDrawn(sheetAnimations(fake, 'slow'), { data, width: 32 }, 32, 32);
+    expect(Object.keys(drawn)).toEqual(['idle', 'sad']);
+  });
+
+  it('mixes the moves of several idle sets', () => {
+    const mixed: ManifestFile = {
+      ...fake,
+      idleSets: {
+        ...fake.idleSets,
+        owl: { animations: { 'idle-hoot': { row: 3, frames: 2, frameMs: 300 } }, headShifts: { 'idle-hoot': [0, 1] } },
+      },
+      sheets: { both: { file: 'both.png', idleSet: ['curious', 'owl'] } },
+    };
+    const set = idleSetOf(mixed, 'both')!;
+    expect(Object.keys(set.animations)).toEqual(['idle-look', 'idle-hoot']);
+    expect(set.headShifts).toEqual({ 'idle-hoot': [0, 1] });
+    expect(Object.keys(sheetAnimations(mixed, 'both'))).toEqual(['idle', 'sad', 'idle-look', 'idle-hoot']);
   });
 });
 
