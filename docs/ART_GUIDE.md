@@ -178,6 +178,8 @@ If the variant is the same drawing with some palette colours swapped, list it in
 "dumpling-matcha": { "from": "dumpling", "recolour": { "cream": "mint", "peach": "leaf" } }
 ```
 
+To try swaps before writing anything, use the **Recolour** tab on the [art preview page](#the-art-preview-page): pick a replacement for each colour, watch it on every animation, then copy the two JSON lines it makes.
+
 All the swaps happen at once, and each one changes that colour **everywhere** on the sheet. If the face or a highlight uses a colour you're swapping, draw that bit in a different palette colour on the original. **Check it before you add it.** `npm run export-art` (or `npm run export-art -- --previews`, which doesn't need Aseprite) writes two files per recolour to `art/previews/`:
 
 - `dumpling-matcha-x4.png`: the original and the recolour side by side, 4 times bigger, every animation row.
@@ -312,6 +314,7 @@ Run `npm run dev` and open `/art.html` (for example `http://localhost:5173/art.h
 - **Hats:** try each hat, and see which size it picks and why.
 - **Lineup:** every character side by side with the same animation, face and hat.
 - **Tweak:** move a shape's hat point, face point or one hat's nudge and see it on every pet of that shape, then copy the JSON into `manifest.json`.
+- **Recolour:** swap any of a pet's colours for other palette colours and see it live, with hints for the matching outline colour. Start from scratch or from an existing variant, then copy the `manifest.json` and `characters.json` lines. Your swaps stay through a reload.
 - **Checks:** palette colours only, no soft edges, sheet size, an empty top row, feet on row 28 and centred, for one sheet or all of them.
 - **Traits:** what each trait changes, and a mood to try out which face it pulls.
 - **Try a PNG:** drop an exported sheet on the page. Named like an existing sheet (`sprig.png`, `beanie.png`, `blob.png`), it replaces that one on the page only. Any other name is shown on the selected pet's body.
