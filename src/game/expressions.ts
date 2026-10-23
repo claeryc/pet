@@ -11,14 +11,12 @@
 // A pet's trait moves the numbers (see src/game/traits.ts).
 
 import { CONFIG } from './config';
+import { EXPRESSIONS, type Expression } from './expression-order';
 import type { PetStats } from './state';
 import type { Trait } from './traits';
 
-// The faces, in the order of the rows of every face set (top to bottom).
-export const EXPRESSIONS = [
-  'content', 'happy', 'pouting', 'sad', 'crying', 'surprised', 'inLove', 'grumpy', 'sleepy', 'hungry', 'chewing', 'sick',
-] as const;
-export type Expression = (typeof EXPRESSIONS)[number];
+// The faces, in the order of the rows of every face set.
+export { EXPRESSIONS, type Expression };
 
 const E = CONFIG.expressions;
 

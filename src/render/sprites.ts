@@ -6,82 +6,19 @@
 import { PALETTE } from './palette';
 import { recolourPixels } from './recolour';
 import { countFaceFrames, type FaceSheet } from './faces';
+import {
+  idleSetOf,
+  onlyDrawn,
+  resolveSheet,
+  shapeOf,
+  sheetAnimations,
+  type Animation,
+  type HatFit,
+  type Head,
+  type ManifestFile,
+} from './manifest';
 
-export interface Animation {
-  row: number; // which row of the sheet
-  frames: number; // how many frames, left to right
-  frameMs: number; // how long each frame shows, in milliseconds
-}
-
-// Where a hat sits on a character: the pixel (in the first idle frame)
-// where the bottom middle of the hat goes, and how many pixels wide a hat
-// may be there (the room between ears or horns, or the whole head).
-export interface Head {
-  x: number;
-  y: number;
-  width: number;
-}
-
-// A small fix for one hat on one shape: pixels right (x) and down (y), and
-// a different width to pick that hat's size with.
-export interface HatFit {
-  x?: number;
-  y?: number;
-  width?: number;
-}
-
-// A body shape shared by every character drawn on the same body, so where
-// hats sit is set up once per shape instead of once per character.
-export interface Shape {
-  head: Head;
-  // Where the face goes (the pixel in the first idle frame that a face
-  // set's FACE_ANCHOR lands on), and which face set to use. A shape
-  // without a face point has its face drawn on the body.
-  face?: { x: number; y: number };
-  faces?: string;
-  headOffsets?: Record<string, number[]>; // optional fix for every sheet of this shape
-  headShifts?: Record<string, number[]>; // the same, for moving sideways
-  hats?: Record<string, HatFit>; // by hat sheet name
-}
-
-// Extra idle moves (a stretch, a look around...) shared by every sheet that
-// has them drawn on the same rows. The pet plays one now and then instead
-// of its plain idle. See src/render/animations.ts.
-export interface IdleSet {
-  animations: Record<string, Animation>;
-  headOffsets?: Record<string, number[]>; // optional fix for every sheet using this set
-  headShifts?: Record<string, number[]>;
-}
-
-export interface ManifestSheet {
-  file?: string;
-  // A colour variant made from another sheet instead of its own PNG: the
-  // sheet it's painted from (which has a file), and which palette colours
-  // to swap, e.g. { "cream": "mint", "peach": "leaf" }. It uses that
-  // sheet's shape, idle set and animations unless it lists its own.
-  from?: string;
-  recolour?: Record<string, string>;
-  animations?: Record<string, Animation>;
-  frameWidth?: number; // only if different from the shared size (hats)
-  frameHeight?: number;
-  shape?: string; // pet sheets: a name from the manifest's 'shapes'
-  idleSet?: string; // a name from the manifest's 'idleSets'
-  headOffsets?: Record<string, number[]>; // optional fix for the automatic tracking
-  headShifts?: Record<string, number[]>;
-  faces?: string; // a different face set from its shape's
-}
-
-export interface ManifestFile {
-  frameWidth: number;
-  frameHeight: number;
-  animations: Record<string, Animation>;
-  shapes?: Record<string, Shape>;
-  idleSets?: Record<string, IdleSet>;
-  // Face sets: sheets of faces, one row per expression (see faces.ts).
-  // 'blob' is also the fallback for expressions another set leaves out.
-  faceSets?: Record<string, { file: string }>;
-  sheets: Record<string, ManifestSheet>;
-}
+export * from './manifest';
 
 export interface SpriteSheet {
   name: string; // its name in the manifest
@@ -153,20 +90,23 @@ export async function loadSprites(): Promise<SpriteLibrary> {
         const idleSet = idleSetOf(manifest, name);
         let image = await loadImage(base + sheet.file);
         if (manifest.sheets[name].recolour) image = await recolourImage(image, manifest.sheets[name].recolour!);
+        const pixels = pixelsOf(image);
+        const frameWidth = sheet.frameWidth ?? manifest.frameWidth;
+        const frameHeight = sheet.frameHeight ?? manifest.frameHeight;
         const loaded: SpriteSheet = {
           name,
           image,
-          frameWidth: sheet.frameWidth ?? manifest.frameWidth,
-          frameHeight: sheet.frameHeight ?? manifest.frameHeight,
-          animations: sheetAnimations(manifest, name, image.height),
+          frameWidth,
+          frameHeight,
+          animations: onlyDrawn(sheetAnimations(manifest, name, image.height), pixels, frameWidth, frameHeight),
           head: shape?.head,
           hats: shape?.hats,
         };
-        if (idleSet) loaded.idleMoves = Object.keys(idleSet.animations);
+        if (idleSet) loaded.idleMoves = Object.keys(idleSet.animations).filter((move) => loaded.animations[move]);
         // Hand-written offsets in the manifest win over the automatic ones:
         // the sheet's own over its idle set's, and those over its shape's.
         if (shape) {
-          const found = measureHead(pixelsOf(loaded.image), loaded, shape.head, loaded.idleMoves);
+          const found = measureHead(pixels, loaded, shape.head, loaded.idleMoves);
           loaded.headOffsets = {
             ...found.offsets,
             ...shape.headOffsets,
@@ -197,19 +137,6 @@ export async function loadSprites(): Promise<SpriteLibrary> {
   return library;
 }
 
-// A sheet's manifest entry, filled in from the sheet it's painted from if
-// it's a recolour. Warns if that sheet isn't there or has no file itself.
-export function resolveSheet(manifest: ManifestFile, sheetName: string): ManifestSheet {
-  const sheet = manifest.sheets[sheetName];
-  if (!sheet?.from) return sheet;
-  const from = manifest.sheets[sheet.from];
-  if (!from?.file) {
-    console.warn(`Sheet "${sheetName}" is made from "${sheet.from}", which isn't a sheet with a file in manifest.json`);
-    return sheet;
-  }
-  return { ...from, ...sheet, file: from.file };
-}
-
 // A copy of a sheet's picture with palette colours swapped.
 function recolourImage(image: HTMLImageElement, swaps: Record<string, string>): Promise<HTMLImageElement> {
   const pixels = pixelsOf(image);
@@ -220,37 +147,6 @@ function recolourImage(image: HTMLImageElement, swaps: Record<string, string>): 
   canvas.height = image.height;
   canvas.getContext('2d')!.putImageData(pixels, 0, 0);
   return loadImage(canvas.toDataURL());
-}
-
-// A sheet's animations: the shared ones, with any the sheet lists itself
-// changed or added, and its idle set's moves. Only rows the picture is tall
-// enough for are kept (`height` in pixels), so a sheet with only some rows
-// drawn falls back to idle for the rest.
-export function sheetAnimations(manifest: ManifestFile, sheetName: string, height = Infinity): Record<string, Animation> {
-  const sheet = resolveSheet(manifest, sheetName);
-  const frameHeight = sheet.frameHeight ?? manifest.frameHeight;
-  const all = { ...manifest.animations, ...sheet.animations, ...idleSetOf(manifest, sheetName)?.animations };
-  return Object.fromEntries(Object.entries(all).filter(([, a]) => (a.row + 1) * frameHeight <= height));
-}
-
-// The body shape a sheet is drawn on, or undefined for sheets without one
-// (the egg, hats). Warns about a shape name that isn't in the list.
-export function shapeOf(manifest: ManifestFile, sheetName: string): Shape | undefined {
-  const name = resolveSheet(manifest, sheetName)?.shape;
-  if (!name) return undefined;
-  const shape = manifest.shapes?.[name];
-  if (!shape) console.warn(`Sheet "${sheetName}" uses shape "${name}", which isn't in manifest.json's shapes`);
-  return shape;
-}
-
-// The idle set a sheet uses, or undefined. Warns about a name that isn't in
-// the list.
-export function idleSetOf(manifest: ManifestFile, sheetName: string): IdleSet | undefined {
-  const name = resolveSheet(manifest, sheetName)?.idleSet;
-  if (!name) return undefined;
-  const set = manifest.idleSets?.[name];
-  if (!set) console.warn(`Sheet "${sheetName}" uses idle set "${name}", which isn't in manifest.json's idleSets`);
-  return set;
 }
 
 // Which frame of a hat sheet to draw on a head with `room` pixels: the

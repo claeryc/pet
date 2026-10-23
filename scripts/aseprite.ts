@@ -111,3 +111,37 @@ export function writeAseprite(file: AseFile): Buffer {
     .done();
   return Buffer.concat([header, body]);
 }
+
+// The animation tags in an .aseprite file, in the order Aseprite lists
+// them, with their first and last frame (counted from 0).
+export function readTags(file: Buffer): { name: string; from: number; to: number }[] {
+  if (file.readUInt16LE(4) !== 0xa5e0) throw new Error('Not an Aseprite file');
+  const frames = file.readUInt16LE(6);
+  const tags: { name: string; from: number; to: number }[] = [];
+  let at = 128;
+  for (let f = 0; f < frames; f++) {
+    const frameEnd = at + file.readUInt32LE(at);
+    const old = file.readUInt16LE(at + 6);
+    const count = file.readUInt32LE(at + 12) || old;
+    let c = at + 16;
+    for (let i = 0; i < count && c < frameEnd; i++) {
+      const size = file.readUInt32LE(c);
+      if (file.readUInt16LE(c + 4) === 0x2018) {
+        let p = c + 6;
+        const n = file.readUInt16LE(p);
+        p += 10;
+        for (let t = 0; t < n; t++) {
+          const from = file.readUInt16LE(p);
+          const to = file.readUInt16LE(p + 2);
+          p += 17;
+          const length = file.readUInt16LE(p);
+          tags.push({ name: file.toString('utf8', p + 2, p + 2 + length), from, to });
+          p += 2 + length;
+        }
+      }
+      c += size;
+    }
+    at = frameEnd;
+  }
+  return tags;
+}

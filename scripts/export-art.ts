@@ -9,7 +9,9 @@
 //
 // art/characters/cave/pebblit.aseprite goes to
 // public/sprites/characters/cave/pebblit.png, the same as exporting by hand
-// (see docs/ART_GUIDE.md): each tag is one row, in the order of the tags.
+// (see docs/ART_GUIDE.md): each tag is one row. Which row is found by the
+// tag's name, from manifest.json (or the expression order, for a face set),
+// so the order of the tags in Aseprite doesn't matter.
 // Hats and badges are one horizontal strip. The guides layer is left out,
 // and so is a character's face layer (its face comes from a face set, see
 // art/faces/ and docs/ART_GUIDE.md).
@@ -23,8 +25,11 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { homedir, tmpdir } from 'node:os';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { EXPRESSIONS } from '../src/game/expression-order.ts';
 import { PALETTE } from '../src/render/palette.ts';
 import { recolourPixels } from '../src/render/recolour.ts';
+import { sheetAnimations, type ManifestFile } from '../src/render/manifest.ts';
+import { readTags } from './aseprite.ts';
 import { readPng, scaleUp, sideBySide, stack, writePng, type Pixels } from './png.ts';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -39,6 +44,46 @@ export function exportPlan(file: string): { png: string; strip: boolean } | null
   if (!file.endsWith('.aseprite') || file.split('/').pop()!.startsWith('_')) return null;
   if (file.startsWith('previews/') || file.startsWith('shelved/')) return null; // shelved: retired characters
   return { png: file.replace(/\.aseprite$/, '.png'), strip: /^(hats|badges)\//.test(file) };
+}
+
+// Which tag goes on each row of the PNG `png` (a path in public/sprites),
+// worked out from the tags' names: a pet sheet's rows come from its
+// animations in the manifest (its idle set's moves included), and a face
+// set's from the order of the expressions. Rows without a tag stay empty,
+// and the game plays idle (or the blob face) there. A file that isn't in
+// the manifest yet keeps its tags in order. Throws on a tag name that
+// isn't one of the sheet's animations.
+export function rowsFor(png: string, tags: string[], manifest: ManifestFile): { rows: (string | null)[]; notes: string[] } {
+  const notes: string[] = [];
+  const faceSet = Object.entries(manifest.faceSets ?? {}).find(([, set]) => set.file === png);
+  const sheet = Object.entries(manifest.sheets).find(([, s]) => s.file === png);
+  let rowOf: Record<string, number>;
+  let kind: string;
+  if (faceSet) {
+    rowOf = Object.fromEntries(EXPRESSIONS.map((e, i) => [e, i]));
+    kind = 'expression';
+  } else if (sheet) {
+    rowOf = Object.fromEntries(Object.entries(sheetAnimations(manifest, sheet[0])).map(([name, a]) => [name, a.row]));
+    kind = `animation of "${sheet[0]}" in manifest.json`;
+  } else {
+    notes.push(`isn't in manifest.json yet, so its rows follow the order of its tags`);
+    return { rows: tags, notes };
+  }
+  const unknown = tags.filter((t) => rowOf[t] === undefined);
+  if (unknown.length)
+    throw new Error(`${png}: tag ${unknown.map((t) => `"${t}"`).join(', ')} isn't an ${kind}. Use one of: ${Object.keys(rowOf).join(', ')}`);
+  const twice = tags.filter((t, i) => tags.indexOf(t) !== i);
+  if (twice.length) throw new Error(`${png}: tag "${twice[0]}" is there twice`);
+  const rows: (string | null)[] = Array(Math.max(...tags.map((t) => rowOf[t]), -1) + 1).fill(null);
+  for (const t of tags) rows[rowOf[t]] = t;
+  // Pet bodies and face sets: say which aren't drawn yet. The egg (no shape)
+  // only ever has idle.
+  if (faceSet || sheet?.[1].shape) {
+    const missing = Object.keys(rowOf).filter((name) => !tags.includes(name));
+    const instead = faceSet ? (faceSet[0] === 'blob' ? 'shows the content face' : "uses blob's face") : 'plays idle';
+    if (missing.length) notes.push(`no tag for ${missing.join(', ')}, so it ${instead} there until drawn`);
+  }
+  return { rows, notes };
 }
 
 function findAseprite(): string {
@@ -69,7 +114,7 @@ function run(aseprite: string, args: string[]): string {
   return out.stdout;
 }
 
-function exportFile(aseprite: string, file: string, plan: { png: string; strip: boolean }, temp: string): Pixels {
+function exportFile(aseprite: string, file: string, plan: { png: string; strip: boolean }, temp: string, manifest: ManifestFile): Pixels {
   const source = join(ART, file);
   const strip = (out: string, tag?: string) => {
     run(aseprite, ['-b', '--ignore-layer', 'guides', '--ignore-layer', 'face', ...(tag ? ['--tag', tag] : []), source,
@@ -77,9 +122,14 @@ function exportFile(aseprite: string, file: string, plan: { png: string; strip: 
     return readPng(readFileSync(out));
   };
   if (plan.strip) return strip(join(temp, 'strip.png'));
-  const tags = run(aseprite, ['-b', '--list-tags', source]).split(/\r?\n/).map((t) => t.trim()).filter(Boolean);
+  const tags = readTags(readFileSync(source)).map((t) => t.name);
   if (tags.length === 0) return strip(join(temp, 'strip.png'));
-  return stack(tags.map((tag, i) => strip(join(temp, `row-${i}.png`), tag)));
+  const { rows, notes } = rowsFor(plan.png, tags, manifest);
+  for (const note of notes) console.warn(`! ${file} ${note}`);
+  const pictures = rows.map((tag, i) => (tag ? strip(join(temp, `row-${i}.png`), tag) : null));
+  // A row without a tag is one frame high and see-through.
+  const height = pictures.find((p) => p)!.height;
+  return stack(pictures.map((p) => p ?? { width: 1, height, data: new Uint8Array(height * 4) }));
 }
 
 function allArt(dir = ART): string[] {
@@ -91,6 +141,7 @@ function allArt(dir = ART): string[] {
 
 function exportAll(only: string[]): void {
   const aseprite = findAseprite();
+  const manifest: ManifestFile = JSON.parse(readFileSync(join(SPRITES, 'manifest.json'), 'utf8'));
   const temp = mkdtempSync(join(tmpdir(), 'export-art-'));
   let done = 0;
   try {
@@ -98,7 +149,7 @@ function exportAll(only: string[]): void {
       const plan = exportPlan(file);
       if (!plan || (only.length && !only.some((word) => file.includes(word)))) continue;
       const target = join(SPRITES, plan.png);
-      const picture = exportFile(aseprite, file, plan, temp);
+      const picture = exportFile(aseprite, file, plan, temp, manifest);
       // A sheet that changes size usually means a missing or extra tag or
       // frame, so it's worth a look.
       if (existsSync(target)) {
