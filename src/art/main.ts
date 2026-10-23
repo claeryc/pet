@@ -34,7 +34,7 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getEleme
 
 // ---------------------------------------------------------------- state
 
-type Tab = 'animations' | 'faces' | 'hats' | 'tweak' | 'recolour' | 'checks' | 'traits';
+type Tab = 'animations' | 'moves' | 'faces' | 'hats' | 'tweak' | 'recolour' | 'checks' | 'traits';
 type Face = 'auto' | 'mood' | Expression;
 
 interface State {
@@ -627,6 +627,7 @@ function renderView() {
 
 const TABS: Record<Tab, { label: string; guide: string[] }> = {
   animations: { label: 'Animations', guide: ['What a sprite sheet looks like', 'Extra idle moves (idle sets)'] },
+  moves: { label: 'Idle moves', guide: ['Extra idle moves (idle sets)'] },
   faces: { label: 'Faces', guide: ['Faces and expressions'] },
   hats: { label: 'Hats', guide: ['Hats'] },
   tweak: { label: 'Tweak', guide: ['Body shapes'] },
@@ -674,7 +675,7 @@ function renderTab() {
   box.innerHTML = '';
   const sheet = library.get(state.sheet);
   if (!sheet) return;
-  ({ animations, faces, hats, tweak, recolour, checks, traits })[state.tab](box, sheet);
+  ({ animations, moves, faces, hats, tweak, recolour, checks, traits })[state.tab](box, sheet);
 }
 
 function animations(box: HTMLElement, sheet: SpriteSheet) {
@@ -726,6 +727,86 @@ function animations(box: HTMLElement, sheet: SpriteSheet) {
   if (!sheet.idleMoves) box.append(el('p', 'This sheet has no idle set, so it has no extra idle moves.', 'muted'));
   const missing = Object.keys(manifest.animations).filter((a) => !sheet.animations[a]);
   if (missing.length) box.append(el('p', `Not on this sheet, so the game plays idle instead: ${missing.join(', ')}.`, 'muted'));
+}
+
+// Every idle move across every set: its row, which sets have it, which
+// pets get it, and the next free row for a new one.
+function moves(box: HTMLElement, sheet: SpriteSheet) {
+  const sets = manifest.idleSets ?? {};
+  const setsOf = (name: string) => [resolveSheet(manifest, name)?.idleSet ?? []].flat();
+  const pets = Object.keys(manifest.sheets).filter((n) => !n.startsWith('hat-') && library.has(n));
+  const usedRows = [
+    ...Object.values(manifest.animations),
+    ...Object.values(sets).flatMap((set) => Object.values(set.animations)),
+    ...Object.values(manifest.sheets).flatMap((s) => Object.values(s.animations ?? {})),
+  ].map((a) => a.row);
+  const nextRow = Math.max(...usedRows) + 1;
+
+  const mine = setsOf(sheet.name);
+  box.append(el('h4', `${sheet.name}`));
+  box.append(
+    el(
+      'p',
+      mine.length
+        ? `Uses ${mine.map((n) => `<code>${n}</code>`).join(' + ')}: ${(sheet.idleMoves ?? []).map((m) => `<code>${m}</code>`).join(', ') || 'no moves drawn yet'}.`
+        : 'Uses no idle set, so it only plays its idle loop.',
+      'muted',
+    ),
+  );
+
+  box.append(el('h4', 'Every move'));
+  const table = el('table', '<thead><tr><th>Move</th><th>Row</th><th>Set</th><th>Pets</th></tr></thead>', 'moves');
+  const body = document.createElement('tbody');
+  for (const [setName, set] of Object.entries(sets))
+    for (const [move, a] of Object.entries(set.animations).sort((x, y) => x[1].row - y[1].row)) {
+      const users = pets.filter((n) => setsOf(n).includes(setName));
+      // Shown on the selected pet if it has the move, else the first pet that does.
+      const shown = [sheet.name, ...users].map((n) => library.get(n)).find((s) => s?.animations[move]);
+      const tr = document.createElement('tr');
+      const preview = document.createElement('td');
+      if (shown) preview.append(tile('', (c) => drawTile(c, shown, move, state.face, library.get(state.hat), time), undefined, false, 1.5));
+      preview.append(el('div', `<code>${move}</code><br><small>${a.frames}×${a.frameMs}ms</small>`));
+      tr.append(preview);
+      tr.append(
+        el('td', String(a.row)),
+        el('td', `<code>${setName}</code>`),
+      );
+      // A count, and a list to pick a pet from, which stays short however
+      // many pets share the move.
+      const who = document.createElement('td');
+      const undrawn = users.filter((n) => !library.get(n)?.animations[move]);
+      who.append(el('small', users.length ? `${users.length} pet${users.length === 1 ? '' : 's'}${undrawn.length ? `, ${undrawn.length} not drawn` : ''}` : 'none yet'));
+      if (users.length) {
+        const pick = document.createElement('select');
+        pick.innerHTML =
+          '<option value="">Play on…</option>' +
+          users.map((n) => `<option value="${n}">${n}${undrawn.includes(n) ? ' (not drawn)' : ''}</option>`).join('');
+        pick.onchange = () => {
+          if (!pick.value) return;
+          state.anim = move;
+          state.tab = 'animations';
+          time = 0;
+          select(pick.value);
+          renderTabs();
+          renderTab();
+        };
+        who.append(document.createElement('br'), pick);
+      }
+      tr.append(who);
+      body.append(tr);
+    }
+  table.append(body);
+  box.append(Object.keys(sets).length ? table : el('p', 'No idle sets yet.', 'muted'));
+
+  box.append(el('h4', 'Add a move'));
+  box.append(
+    el(
+      'p',
+      `The next free row is <b>${nextRow}</b>. Every move has a row of its own, across all the sets, so sets can be mixed. For one move per set, add this under <code>"idleSets"</code> in <code>manifest.json</code>, draw a tag with the same name, and give a pet <code>"idleSet": ["${Object.keys(sets)[0] ?? 'curious'}", "hop"]</code>:`,
+      'muted',
+    ),
+  );
+  box.append(el('pre', `<code>"hop": { "animations": { "idle-hop": { "row": ${nextRow}, "frames": 4, "frameMs": 260 } } }</code>`));
 }
 
 function faces(box: HTMLElement, sheet: SpriteSheet) {

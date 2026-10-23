@@ -103,6 +103,8 @@ A sheet uses a set with `"idleSet": "curious"`, and has those moves drawn on tho
 - Every move has a row of its own, across all the sets (so sets can be mixed), and every sheet using a set draws its moves on those rows. A sheet that should move differently uses a different set, or adds one.
 - In Aseprite, add a tag for each move with the move's name (the same as in the set). `npm run export-art` puts it on the move's row; rows of moves a sheet doesn't use stay empty.
 - How often moves play is `idleMoveEveryMs` in `src/game/config.ts`.
+- A pet gets whole sets, not single moves from a set. To give pets different mixes, keep sets small (one move each is fine) and list the ones each pet gets.
+- The art page's **Idle moves** tab lists every move with its row, its set and the pets that get it (and whether each has drawn it yet), and says the next free row.
 
 **Hats follow the moves**, up and down as usual and sideways too: the game sees how far the head moves left or right in each frame of an idle move. Each sheet is measured on its own, so the same move on different bodies still keeps each hat on its own pet's head. If the sideways tracking is off, set it by hand with `headShifts`, in pixels compared to the first idle frame (negative is left), for example `"headShifts": { "idle-look": [-1, -2, -2, -1] }`. Put it on the idle set to fix every sheet using it, or on one sheet for just that one. For up and down, `headOffsets` works on idle moves too. A sheet's own fix wins over its set's, and a set's over its shape's.
 
@@ -334,6 +336,7 @@ Run `npm run dev` and open `/art.html` (for example `http://localhost:5173/art.h
 - **Pick a pet** on the left: the stages, every character by theme and rarity, and their variants.
 - **Guide lines** at the top: the feet line, the shadow row, the centre, the top row (red when something is drawn on it), the hat point and the face point, and a pixel grid.
 - **Animations:** play any row or idle move, pause, step frame by frame, and slow it down.
+- **Idle moves:** every idle move across all the sets, with its row, its set, the pets that get it and a preview, plus the next free row for a new move.
 - **Faces:** every expression on the chosen pet. Click one to keep it on.
 - **Hats:** try each hat, and see which size it picks and why. Pick a hat to see it on one pet of every shape (and every sheet with its own points), which is the quick way to check a new hat.
 - **Lineup:** every character side by side with the same animation, face and hat. Filter it by theme, by rarity, and with or without colour variants.
