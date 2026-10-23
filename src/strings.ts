@@ -460,6 +460,8 @@ export const STRINGS = {
     showAllMenus: 'Show every menu (skip unlocking)',
     visitorNow: 'Send a wanderer now',
     friendScore: (n: number) => `+${n} friendship`,
+    poopNow: 'Poop now',
+    smellNow: 'Make smelly',
   },
   // Said when part of the game opens up for the first time.
   unlocked: {
@@ -618,6 +620,24 @@ export const STRINGS = {
     bubble: (name: string, food: string) => `${name} is craving ${food}`,
     loved: (name: string, gold: number) => `Just what ${name} wanted! +${gold} gold`,
   },
+  // Poop and bath time (tap a poop to pick it up, tap a smelly pet for a bath).
+  bath: {
+    poop: (name: string) => `${name}'s poop. Tap to pick it up`,
+    pickedUp: 'All cleaned up!',
+    smelly: (name: string) => `${name} is a bit smelly. Tap ${name} for a bath`,
+    title: (name: string) => `Bath time for ${name}`,
+    sponge: 'Sponge',
+    dryer: 'Dryer',
+    close: 'Close',
+    rubHint: (name: string) => `Hold and rub ${name} with the sponge`,
+    pickSponge: 'Pick the sponge to start',
+    dryHint: 'All washed! Now pick the dryer',
+    dryingHint: (name: string) => `Hold the dryer over ${name}`,
+    dryFirst: 'Wash first, then dry',
+    done: (name: string) => `${name} is squeaky clean!`,
+    stillWet: (name: string) => `${name} is still wet, and will be smelly again soon.`,
+    notSmelly: (name: string) => `${name} is clean already.`,
+  },
   messages: {
     title: 'Messages',
     mail: 'Mail',
@@ -660,6 +680,9 @@ export const STRINGS = {
   status: {
     warning: (name: string) =>
       `${name} isn't feeling great. Fill up the low bars soon, or ${name} may get sick.`,
+    // Germs from staying smelly too long, with the bars all fine.
+    germs: (name: string) =>
+      `${name} has been smelly for a while and caught some germs. Give ${name} a bath soon, or ${name} may get sick.`,
     sick: (name: string) => `${name} is sick and needs medicine.`,
     critical: (name: string, timeLeft: string) =>
       `${name} is very sick! Give medicine within ${timeLeft}, or ${name} will pass away.`,

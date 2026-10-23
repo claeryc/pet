@@ -89,6 +89,7 @@ import { STAT_ICONS } from './ui/icons';
 import type { Find } from './game/state';
 import { guideDue, markGuideRead, type GuideId } from './game/guides';
 import { createGuideCard } from './ui/guide';
+import { bathe, collectPoop, poopNow, shiftHygiene, smellNow } from './game/hygiene';
 
 const root = document.getElementById('app')!;
 
@@ -665,6 +666,23 @@ const home = createHomeScreen(root, {
   },
   onPlay: (activity) => playWith(activity),
   onPetTap: () => playWith('cuddle'),
+  onCollectPoop: (petId, slot) => {
+    setState(collectPoop(simulate(state, gameNow()), petId, slot));
+    sound('place');
+    lastTouched = performance.now();
+  },
+  onBathe: () => {
+    const before = simulate(state, gameNow()).pet;
+    const result = bathe(simulate(state, gameNow()), gameNow());
+    setState(result.state);
+    if (result.blocked) return false;
+    sound('done');
+    showGains(before, { happiness: CONFIG.hygiene.bathJoy });
+    react('happy', CONFIG.reactionMs, 'inLove');
+    home.toast(STRINGS.bath.done(state.pet.name));
+    return true;
+  },
+  petSheet: () => sprites.get(sheetFor(state.pet)),
   onLights: () => {
     if (!runAction(toggleLights)) return;
     sound(state.pet.asleep ? 'lightsOff' : 'lightsOn');
@@ -825,6 +843,8 @@ const home = createHomeScreen(root, {
     setState(switchPet(simulate(state, gameNow()), id));
     home.toast(STRINGS.friends.looking(state.pet.name));
   },
+  onPoopNow: () => setState(poopNow(simulate(state, gameNow()), gameNow())),
+  onSmellNow: () => setState(smellNow(simulate(state, gameNow()))),
   onVisitorNow: () => {
     const now = gameNow();
     const taken = [...allPets(state).map((p) => p.name), ...state.friends.map((f) => f.name)];
@@ -993,6 +1013,7 @@ const home = createHomeScreen(root, {
       stageStartedAt: p.stageStartedAt - off,
       recoveryUntil: p.recoveryUntil === null ? null : p.recoveryUntil - off,
       buffs: p.buffs.map((b) => ({ ...b, until: b.until - off })),
+      hygiene: shiftHygiene(p.hygiene, off),
     });
     const pet = shift(state.pet);
     const housemates = state.housemates.map(shift);
@@ -1048,27 +1069,45 @@ const ctx = setupCanvas(home.canvas);
 const atHome = [state.pet, ...state.housemates];
 loadSprites(sprites, [...atHome.map(sheetFor), ...atHome.map((p) => getHat(p.hat)?.sheet ?? '')]);
 
+// A smelly pet never looks happy or content. Pets with a face layer pull a
+// grumpy face instead (see chooseExpression); babies, teens and other
+// sheets with the face drawn into the body look sad rather than cheerful.
+function smellyBody(animation: string, smelly: boolean, sheet: { face?: unknown } | undefined): string {
+  if (!smelly || sheet?.face) return animation;
+  return animation === 'idle' || animation === 'cheerful' || animation === 'happy' ? 'sad' : animation;
+}
+
 function render(timeMs: number): void {
   const pet = state.pet;
   // A pet out on a journey isn't in the room.
   const away = isAway(pet);
   let animation: string = getLook(pet);
   if (reaction && timeMs < reaction.until && !pet.asleep) animation = reaction.animation;
+  const smelly = !away && pet.hygiene.smelly && !home.hidesSmell();
+  animation = smellyBody(animation, smelly, sprites.get(sheetFor(pet)));
   const trait = getTrait(pet.trait);
+  // In the bath: happy while being scrubbed, surprised while dripping wet.
+  const bath = home.bathScene(timeMs);
+  const bathFace: Expression | null = !bath ? null
+    : bath.wet > 0 ? 'surprised' : bath.tool === 'sponge' && bath.pointer?.down ? 'happy' : null;
   const face = chooseExpression({
     animation,
     // Playing with a friend: in love while the hearts float up.
-    reaction: faceReaction && timeMs < faceReaction.until ? faceReaction.expression : home.meetScene()?.hearts ? 'inLove' : null,
+    reaction: faceReaction && timeMs < faceReaction.until ? faceReaction.expression : home.meetScene()?.hearts ? 'inLove' : bathFace,
     stats: pet.stats,
     trait,
     // Nobody pouts at an empty screen, or about a game left in the background.
     aloneMs: document.hidden ? 0 : timeMs - lastTouched,
+    smelly,
   });
   // Another pet: its mood, without reactions.
-  const lookOf = (p: Pet, anim: string) => {
+  const lookOf = (p: Pet, look: string) => {
     const t = getTrait(p.trait);
-    return { animation: anim, face: chooseExpression({ animation: anim, stats: p.stats, trait: t }), idleEveryMs: idleEveryMs(t) };
+    const anim = smellyBody(look, p.hygiene.smelly, sprites.get(sheetFor(p)));
+    return { animation: anim, face: chooseExpression({ animation: anim, stats: p.stats, trait: t, smelly: p.hygiene.smelly }), idleEveryMs: idleEveryMs(t) };
   };
+  // Poops on the floor, and smell lines (not while it's soapy or wet).
+  const messOf = (p: Pet, washing = false) => ({ poops: p.hygiene.poops.map((q) => q.slot), smelly: p.hygiene.smelly && !washing });
   // The other pet in the room, and a friend over to play.
   const other = state.housemates.find((p) => !isAway(p));
   const meeting = home.meetScene();
@@ -1080,6 +1119,8 @@ function render(timeMs: number): void {
       animation,
       face,
       idleEveryMs: idleEveryMs(trait),
+      mess: away ? undefined : messOf(pet, home.hidesSmell()),
+      bath,
       glow: !away && pet.starGlow && pet.condition !== 'passed',
       note: away,
       night: isNight(gameNow()),
@@ -1091,6 +1132,7 @@ function render(timeMs: number): void {
         sheet: sprites.get(sheetFor(other)),
         hat: sprites.get(getHat(other.hat)?.sheet ?? ''),
         ...lookOf(other, getLook(other)),
+        mess: messOf(other),
         glow: other.starGlow && other.condition !== 'passed',
       },
       petOnLeft: petStandsLeft(state),

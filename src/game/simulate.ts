@@ -19,6 +19,7 @@ import { stepVisits } from './friends';
 import { stepJourneys, travelTick } from './journeys';
 import type { GameState, Pet } from './state';
 import { carePerks, gardenPerks, type CarePerks } from './skills';
+import { hygieneTick } from './hygiene';
 
 const MS_PER_MINUTE = 60_000;
 const TICKS_PER_HOUR = 60 / CONFIG.tickMinutes;
@@ -39,7 +40,7 @@ export function simulate(state: GameState, now: number): GameState {
   // Work on copies so the original state is never changed by accident.
   // Every pet in the room lives on, not just the one you're looking after.
   // (A trip is never changed in place, only replaced, so it can be shared.)
-  const copy = (p: Pet): Pet => ({ ...p, stats: { ...p.stats }, buffs: [...p.buffs] });
+  const copy = (p: Pet): Pet => ({ ...p, stats: { ...p.stats }, buffs: [...p.buffs], hygiene: { ...p.hygiene } });
   const pet = copy(state.pet);
   const housemates = state.housemates.map(copy);
 
@@ -105,6 +106,8 @@ function tick(pet: Pet, t: number, wasNight: boolean, perks: CarePerks): void {
     const lateNight = night ? cfg.sleep.energyMultiplierNightAwake : 1;
     s.energy = clampStat(s.energy - perTick(cfg.decayPerHour.energy) * lateNight);
   }
+  // Poop, and getting smelly (see hygiene.ts).
+  hygieneTick(pet, t, cfg.tickMinutes, slow);
 
   // 3. Health.
   let healthChange = -cfg.decayPerHour.health;
@@ -116,7 +119,8 @@ function tick(pet: Pet, t: number, wasNight: boolean, perks: CarePerks): void {
   // 4. Warning and sickness.
   if (pet.recoveryUntil !== null && t >= pet.recoveryUntil) pet.recoveryUntil = null;
   const recovering = pet.recoveryUntil !== null;
-  const neglected = isNeglected(s);
+  // Germs from staying smelly count like a low bar.
+  const neglected = isNeglected(s) || pet.hygiene.germs;
 
   if (pet.condition === 'healthy' && neglected) {
     pet.condition = 'warning';

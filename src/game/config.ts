@@ -243,6 +243,32 @@ export const CONFIG = {
     tapCooldownMs: 1400,
   },
 
+  // Poop and bath time (see src/game/hygiene.ts). Now and then the pet
+  // poops (tap a poop to pick it up) or gets smelly (tap the pet for a
+  // bath: rub it with the sponge, then dry it). Little ones need it more
+  // often. Each gap is the number of hours below, give or take a quarter,
+  // and only counts while the pet is awake.
+  hygiene: {
+    poopEveryHours: { baby: 4, teen: 6, adult: 10 },
+    smellyEveryHours: { baby: 10, teen: 14, adult: 20 },
+    maxPoops: 3, // at most this many lying around at once
+    poopSmellsAfterHours: 3, // a poop left this long makes the pet smelly too
+    // Smelly for this long (awake), the pet is "stinky": its joy drops a
+    // bit faster, and every hour it may catch germs, which count like a low
+    // bar (a warning, then sick). A bath washes the germs off.
+    stinkyAfterHours: 3,
+    stinkyJoyPerHour: 2,
+    germChancePerHour: 0.08,
+    bathJoy: 8, // joy from a bath, once it's dry
+    // The bath: how much rubbing (in room pixels moved over the pet) gets
+    // it clean, and how long the dryer takes while held over it (moving
+    // it about dries a little faster).
+    rubNeeded: 360,
+    dryMs: 2400,
+    // Stopping the bath before it's dry: the pet smells again this soon.
+    smellsAgainMs: 5000,
+  },
+
   // The fishing mini-game (in the Play panel). Cast, wait for a bite, tap
   // Reel in, then hold Pull to keep the dot on the green stripe until the
   // catch meter fills (see src/game/fishing.ts).

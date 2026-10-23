@@ -8,6 +8,8 @@
 //      sleepy (low energy), pouting (left alone for a while)
 //   4. the face its body animation pulls on its own (sad, happy), or else
 //      content
+// A smelly pet (see src/game/hygiene.ts) never looks happy or content:
+// it's grumpy instead, until it has had its bath.
 // A pet's trait moves the numbers (see src/game/traits.ts).
 
 import { CONFIG } from './config';
@@ -49,9 +51,15 @@ export interface FaceInput {
   stats: PetStats;
   trait?: Trait;
   aloneMs?: number; // how long since the player last did something with it
+  smelly?: boolean; // smelly and not being washed: no happy or content face
 }
 
-export function chooseExpression({ animation, reaction, stats, trait, aloneMs = 0 }: FaceInput): Expression {
+export function chooseExpression(input: FaceInput): Expression {
+  const face = pickExpression(input);
+  return input.smelly && (face === 'happy' || face === 'content') ? 'grumpy' : face;
+}
+
+function pickExpression({ animation, reaction, stats, trait, aloneMs = 0 }: FaceInput): Expression {
   if (animation === 'sleep' || animation === 'passed') return 'sleepy';
   if (animation === 'eat') return 'chewing';
   if (animation === 'sick') return 'sick';

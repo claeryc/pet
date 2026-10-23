@@ -12,6 +12,7 @@ import type { FishingPhase } from '../ui/fishing';
 import { drawGardenBackground, drawGardenPots, type GardenScene } from './garden';
 import { drawDelivery, type DeliveryScene } from './delivery';
 import { drawPlace } from './places';
+import { drawBath, drawMess, type BathScene, type PetMess } from './hygiene';
 
 export const ROOM_WIDTH = 64;
 export const ROOM_HEIGHT = 48;
@@ -25,6 +26,7 @@ export interface OtherPet {
   glow?: boolean; // brought back with a Revival Star
   face?: Expression; // its face (otherwise the one its animation pulls)
   idleEveryMs?: number; // how often it plays idle moves (its trait)
+  mess?: PetMess; // its poops and smell (see src/render/hygiene.ts)
 }
 
 // What the room should look like right now.
@@ -33,6 +35,8 @@ export interface Scene {
   glow?: boolean; // the pet was brought back with a Revival Star
   face?: Expression; // the pet's face (see src/game/expressions.ts)
   idleEveryMs?: number; // how often it plays idle moves (its trait)
+  mess?: PetMess; // the pet's poops and smell (see src/render/hygiene.ts)
+  bath?: BathScene | null; // while it's having a bath
   night: boolean; // night-time outside the window
   lightsOff: boolean; // the room is dark (pet is sleeping)
   fishing?: FishingPhase; // draws a little pond, rod and bobber while fishing
@@ -122,8 +126,8 @@ function drawFishing(ctx: CanvasRenderingContext2D, phase: FishingPhase, timeMs:
 
 // Where a pet stands (the left edge of its 32-pixel frame): in the middle
 // on its own, or on the left or right when two share the room.
-const SPOTS = { middle: 16, left: 2, right: 30 } as const;
-type Spot = keyof typeof SPOTS;
+export const SPOTS = { middle: 16, left: 2, right: 30 } as const;
+export type Spot = keyof typeof SPOTS;
 
 // Which pet a point in room pixels (0-64 across, 0-48 down) is on or near:
 // 'pet' (the one you're looking after), 'housemate' or null. Generous, so
@@ -356,9 +360,15 @@ export function drawRoom(
       const hx = SPOTS[spot === 'left' ? 'right' : 'left'];
       drawPetAt(ctx, housemate.sheet, housemate.animation, hx, timeMs, housemate.hat, housemate);
       if (housemate.glow) drawGlow(ctx, hx, timeMs);
+      if (housemate.mess) drawMess(ctx, housemate.mess, housemate.sheet, hx, timeMs);
     }
     drawPetAt(ctx, sheet, scene.animation, x, timeMs, hat, scene);
     if (scene.glow) drawGlow(ctx, x, timeMs);
+    // Poop and bath time only show in the room.
+    if (inRoom && !meeting) {
+      if (scene.mess) drawMess(ctx, scene.mess, sheet, x, timeMs);
+      if (scene.bath) drawBath(ctx, scene.bath, sheet, x, timeMs);
+    }
     if (meeting) {
       drawPetAt(ctx, meeting.sheet, meeting.animation, SPOTS.right, timeMs, meeting.hat, meeting);
       if (meeting.hearts) drawHearts(ctx, timeMs);

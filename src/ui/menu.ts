@@ -37,6 +37,8 @@ export interface DebugCallbacks {
   onShowAllMenus: (on: boolean) => void;
   onVisitorNow: () => void;
   onFriendScore: () => void;
+  onPoopNow: () => void;
+  onSmellNow: () => void;
 }
 
 export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks, FamilyCallbacks, SkillsCallbacks, JourneysCallbacks {
@@ -401,7 +403,15 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     friendship.className = 'chip';
     friendship.textContent = STRINGS.debug.friendScore(CONFIG.debug.friendScore);
     friendship.addEventListener('click', cb.onFriendScore);
-    row.append(back, grow, gold, visitor, friendship);
+    const poop = document.createElement('button');
+    poop.className = 'chip';
+    poop.textContent = STRINGS.debug.poopNow;
+    poop.addEventListener('click', cb.onPoopNow);
+    const smell = document.createElement('button');
+    smell.className = 'chip';
+    smell.textContent = STRINGS.debug.smellNow;
+    smell.addEventListener('click', cb.onSmellNow);
+    row.append(back, grow, gold, visitor, friendship, poop, smell);
     // Care Score presets, to try out which characters appear.
     const careLabel = document.createElement('p');
     careLabel.textContent = STRINGS.debug.setCare;

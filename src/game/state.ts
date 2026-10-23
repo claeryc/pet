@@ -5,6 +5,7 @@ import { CONFIG } from './config';
 import type { Stage } from './growth';
 import { newGarden } from './garden';
 import { inheritTrait } from './traits';
+import { newHygiene, type Hygiene } from './hygiene';
 
 export interface PetStats {
   hunger: number; // 0-100, higher is better (a full tummy)
@@ -66,6 +67,8 @@ export interface Pet {
   // Its bit of personality (an id from src/data/traits.json): only changes
   // how it looks and behaves, see src/game/traits.ts.
   trait: string;
+  // Poop on the floor and whether it's smelly (see src/game/hygiene.ts).
+  hygiene: Hygiene;
 }
 
 // Which character a parent grew into, and its colour variant.
@@ -419,6 +422,7 @@ export function newPet(
     trip: null,
     tripReadyAt: 0,
     trait: inheritTrait(id, family.parentTraits ?? []),
+    hygiene: newHygiene(),
   };
 }
 
