@@ -424,3 +424,452 @@ i.chip {
   border-radius: 8px;
   padding: 4px 8px;
 }
+
+/* ------------------------------------------------ the "?" how-to (howto.ts) */
+
+button.help {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  font-weight: 700;
+  background: var(--accent);
+  border-color: var(--accent-dark);
+  color: #fff;
+}
+
+body.howto-open {
+  overflow: hidden;
+}
+
+.howto {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: rgba(43, 33, 64, 0.45);
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+}
+
+.howto[hidden] {
+  display: none;
+}
+
+.howto-box {
+  background: var(--card);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 1100px;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(43, 33, 64, 0.3);
+}
+
+.howto-head {
+  grid-column: 1 / -1;
+  position: relative;
+  padding: 14px 56px 10px 20px;
+  border-bottom: 2px solid var(--lavender);
+}
+
+.howto-head h1 {
+  font-size: 20px;
+}
+
+.howto-head p {
+  margin: 4px 0 0;
+  color: var(--plum);
+  font-size: 13px;
+}
+
+.howto-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 16px;
+}
+
+.howto-nav {
+  position: relative;
+  overflow-y: auto;
+  padding: 10px 12px 20px;
+  border-right: 2px solid var(--lavender);
+  font-size: 13px;
+}
+
+.howto-nav h3 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--plum);
+  margin: 14px 0 4px;
+}
+
+.howto-nav a {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  padding: 3px 6px;
+  border-radius: 6px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.howto-nav a:hover {
+  background: #f3ecfa;
+}
+
+.howto-nav a.on {
+  background: var(--plum);
+  color: #fff;
+}
+
+.num {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--lavender);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  flex: none;
+}
+
+.howto-nav .num {
+  min-width: 18px;
+  height: 18px;
+  font-size: 10px;
+}
+
+.howto-body {
+  overflow-y: auto;
+  padding: 4px 24px 40vh;
+  scroll-behavior: smooth;
+}
+
+.howto-part {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent-dark);
+  margin: 26px 0 0;
+}
+
+.howto-step {
+  padding: 10px 0 22px;
+  border-bottom: 1px dashed var(--lavender);
+  scroll-margin-top: 8px;
+}
+
+.howto-step h2 {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 18px;
+  margin: 8px 0 6px;
+}
+
+.howto-step .num {
+  background: var(--plum);
+  color: #fff;
+}
+
+.howto-step .intro {
+  font-size: 15px;
+  margin: 0 0 12px;
+  max-width: 70ch;
+}
+
+.howto-step .visual {
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
+  margin: 0 0 12px;
+  overflow-x: auto;
+}
+
+.howto-step .tiles {
+  align-items: center;
+}
+
+.howto-step .tile {
+  margin: 0;
+}
+
+.todo {
+  margin: 0 0 10px;
+  padding-left: 22px;
+  max-width: 75ch;
+}
+
+.todo li {
+  margin: 4px 0;
+}
+
+.show-me {
+  background: var(--plum);
+  border-color: var(--plum);
+  color: #fff;
+  margin: 2px 0 10px;
+}
+
+.more {
+  margin: 6px 0;
+  background: #fff;
+  border-radius: 10px;
+  padding: 6px 12px;
+}
+
+.more summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--plum);
+}
+
+.more[open] summary {
+  margin-bottom: 6px;
+}
+
+.more.guide summary::after {
+  content: ' (technical)';
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+.more h2,
+.more h3,
+.more h4 {
+  font-size: 15px;
+  margin: 14px 0 4px;
+}
+
+.more img {
+  max-width: 100%;
+  image-rendering: pixelated;
+}
+
+.arrow {
+  font-size: 22px;
+  color: var(--lilac);
+  padding: 0 2px;
+}
+
+.flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.flow-box {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #f3ecfa;
+  border: 1px solid var(--lavender);
+  color: inherit;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+a.flow-box:hover {
+  border-color: var(--plum);
+}
+
+.flow-box small {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+}
+
+.terminal {
+  background: var(--ink);
+  color: #f3ecfa;
+  margin: 0;
+}
+
+.visual .terminal {
+  margin: 0;
+}
+
+.zoomed {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin: 0;
+}
+
+.zoomed canvas,
+.sheet,
+.strip {
+  image-rendering: pixelated;
+  border-radius: 6px;
+  max-width: 100%;
+  height: auto;
+}
+
+.zoomed figcaption,
+.sheet-figure figcaption {
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.sheet-figure {
+  margin: 12px 0 0;
+}
+
+.pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.outlines {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  line-height: 2;
+}
+
+.palette {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 6px;
+}
+
+.swatch {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  column-gap: 8px;
+  font-size: 12px;
+  align-items: center;
+}
+
+.swatch > i {
+  grid-row: span 3;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid rgba(43, 33, 64, 0.25);
+}
+
+.traits {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.trait {
+  background: #f3ecfa;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.badge {
+  background: var(--accent);
+  color: #fff;
+  border-radius: 6px;
+  padding: 0 5px;
+  opacity: 1;
+}
+
+.mock {
+  border: 2px solid var(--lavender);
+  border-radius: 10px;
+  overflow: hidden;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.mock-top {
+  background: #f3ecfa;
+  padding: 6px 10px;
+}
+
+.mock-cols {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr 1.2fr;
+}
+
+.mock-cols > div {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px;
+  border-left: 1px solid var(--lavender);
+  min-height: 90px;
+}
+
+.mock-cols > div:first-child {
+  border-left: 0;
+}
+
+.mock-cols small {
+  margin-bottom: 8px;
+}
+
+.legend {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+@media (max-width: 760px) {
+  .howto {
+    padding: 0;
+  }
+
+  .howto-box {
+    border-radius: 0;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+
+  .howto-nav {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 2px solid var(--lavender);
+    padding: 8px 12px;
+    white-space: nowrap;
+  }
+
+  .howto-nav h3 {
+    display: none;
+  }
+
+  .howto-body {
+    padding: 4px 16px 40vh;
+  }
+
+  .mock-cols {
+    grid-template-columns: 1fr;
+  }
+
+  .mock-cols > div {
+    border-left: 0;
+    border-top: 1px solid var(--lavender);
+    min-height: 0;
+  }
+}
+
+.terminal code {
+  background: none;
+  color: inherit;
+  padding: 0;
+}
