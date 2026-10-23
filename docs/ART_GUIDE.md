@@ -299,12 +299,29 @@ To change them, draw over the frames, then export with **Sheet type: Horizontal 
 - **Keep the top row empty** in every frame, even at the top of a jump. If the head (or its spikes, antenna...) runs off the top, hats can't follow it.
 - **Original designs only.** Don't copy existing game characters.
 
+## The art preview page
+
+Run `npm run dev` and open `/art.html` (for example `http://localhost:5173/art.html`). It's a page for drawing, not part of the game, and `npm run build` leaves it out. It draws every sheet the way the game does, and shows the matching part of this guide next to each tool.
+
+- **Pick a pet** on the left: the stages, every character by theme and rarity, and their variants.
+- **Guide lines** at the top: the feet line, the shadow row, the centre, the top row (red when something is drawn on it), the hat point and the face point, and a pixel grid.
+- **Animations:** play any row or idle move, pause, step frame by frame, and slow it down.
+- **Faces:** every expression on the chosen pet. Click one to keep it on.
+- **Hats:** try each hat, and see which size it picks and why.
+- **Lineup:** every character side by side with the same animation, face and hat.
+- **Tweak:** move a shape's hat point, face point or one hat's nudge and see it on every pet of that shape, then copy the JSON into `manifest.json`.
+- **Checks:** palette colours only, no soft edges, sheet size, an empty top row, feet on row 28 and centred, for one sheet or all of them.
+- **Traits:** what each trait changes, and a mood to try out which face it pulls.
+- **Try a PNG:** drop an exported sheet on the page. Named like an existing sheet (`sprig.png`, `beanie.png`, `blob.png`), it replaces that one on the page only. Any other name is shown on the selected pet's body.
+
+After exporting, click **Reload art** to see the new PNGs.
+
 ## Getting your art into the game
 
 - **On the GitHub website:** open the repository, go to the right folder, choose Add file → Upload files, and commit. Edit `manifest.json` and `characters.json` there with the pencil icon. Upload the `.aseprite` file to `art/` too, so it's kept safe.
 - **Ask Claude:** attach your PNG (or `.aseprite`) in the project thread and say its theme and rarity. Claude adds it.
 
-To try it on your computer, run `npm run dev` and use **Settings → Testing tools**: set the Care Score (10, 60 or 90), then **Grow up now** until it's an adult. Start over to roll a new pet. **+100 gold** helps for trying hats from the Shop.
+To look at it closely, use the [art preview page](#the-art-preview-page). To try it in the game, run `npm run dev` and use **Settings → Testing tools**: set the Care Score (10, 60 or 90), then **Grow up now** until it's an adult. Start over to roll a new pet. **+100 gold** helps for trying hats from the Shop.
 
 ## Regenerating the placeholders
 

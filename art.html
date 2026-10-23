@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Art Preview</title>
+    <!-- A page for drawing and checking the pet art, not part of the game.
+         Open it with `npm run dev` at /art.html. See docs/ART_GUIDE.md. -->
+    <link rel="stylesheet" href="/src/art/art.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Art preview</h1>
+      <div class="controls">
+        <label>Size <select id="scale"></select></label>
+        <label>Background <select id="bg"></select></label>
+        <span class="overlays" id="overlays"></span>
+        <button id="reload" title="Load the art again after exporting">Reload art</button>
+      </div>
+    </header>
+    <div class="layout">
+      <aside class="picker">
+        <div id="picker"></div>
+        <div class="drop" id="drop">
+          <strong>Try a PNG</strong>
+          <p>Drop an exported sheet anywhere on the page, or <label class="link">pick one<input type="file" id="file" accept="image/png" multiple hidden /></label>. A file named like an existing sheet (e.g. <code>sprig.png</code>) replaces it here only. Any other name is shown on the selected pet's body shape.</p>
+        </div>
+      </aside>
+      <main>
+        <div class="views" id="views"></div>
+        <div id="single">
+          <canvas id="stage"></canvas>
+          <p class="info" id="info"></p>
+        </div>
+        <div id="lineup" class="lineup" hidden></div>
+      </main>
+      <aside class="panel">
+        <nav class="tabs" id="tabs"></nav>
+        <div id="tab"></div>
+        <details class="guide" id="guide">
+          <summary>From the art guide</summary>
+          <div id="guide-text"></div>
+        </details>
+      </aside>
+    </div>
+    <script type="module" src="/src/art/main.ts"></script>
+  </body>
+</html>
