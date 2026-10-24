@@ -764,11 +764,12 @@ export const STRINGS = {
     extraPot: 'Garden pot',
     extraPotNote: 'One more pot for your garden',
     potBought: 'A new pot is waiting in your garden!',
-    // Picked-up poop, made into fertilizer.
-    poop: 'Poop',
-    poopNote: (have: number, per: number) => `${per} make 1 fertilizer. You have ${have}`,
-    compost: 'Make',
-    composted: 'You made a bag of fertilizer!',
+    // Homemade fertilizer: picked-up poop, crafted into the same
+    // fertilizer the Shop sells (they share one count).
+    homemade: 'Homemade fertilizer',
+    homemadeHave: (count: number) => `You have: ${count}`,
+    poopSlots: (have: number, per: number) => `${Math.min(have, per)} of ${per} poop`,
+    composted: 'You made a bag of homemade fertilizer!',
     notEnoughPoop: (per: number) => `You need ${per} poop to make fertilizer. Pick some up at home.`,
     wallpapers: {
       plain: 'Plain wall',

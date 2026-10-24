@@ -6606,6 +6606,30 @@ body {
   white-space: pre-line;
 }
 
+/* Homemade fertilizer: a poop for each one towards the next bag, grey
+   until it's picked up. */
+.poop-slots {
+  display: flex;
+  gap: 3px;
+  margin-top: 3px;
+}
+
+.poop-slot {
+  width: 18px;
+  height: 18px;
+}
+
+.poop-slot svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.poop-slot:not(.on) {
+  filter: grayscale(1);
+  opacity: 0.4;
+}
+
 .shop-row-actions {
   display: inline-flex;
   align-items: center;

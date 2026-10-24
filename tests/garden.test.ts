@@ -87,7 +87,7 @@ describe('crops', () => {
       expect(ITEM_ICONS[c.id]).toBeTruthy();
       expect(ITEM_ICONS[`seed_${c.id}`]).toBeTruthy();
     }
-    for (const id of ['garden', 'fertilizer', 'plantCure', 'plantSprout', 'plantGrowing', 'plantSick', 'plantDead', 'poop']) {
+    for (const id of ['garden', 'fertilizer', 'plantCure', 'plantSprout', 'plantGrowing', 'plantSick', 'plantDead', 'poop', 'homemadeFertilizer']) {
       expect(ITEM_ICONS[id], id).toBeTruthy();
     }
   });
