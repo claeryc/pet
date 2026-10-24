@@ -516,6 +516,19 @@ export const CONFIG = {
     wandererStars: { 1: 65, 2: 25, 3: 10 },
   },
 
+  // Genes (see src/game/genes.ts). When a little one leans towards its
+  // parents' themes (friends.parentThemeChance), this share (percent) of
+  // the time it's a theme they carry instead, if they carry one neither of
+  // them shows. A colour variant a parent shows or carries comes back this
+  // share of the time, when the little one grows into that character
+  // (otherwise the variant's usual chance applies). A first pet or a
+  // wanderer carries a colour variant this share of the time.
+  genes: {
+    carriedThemeChance: 30,
+    variantChance: 20,
+    wildVariantChance: 10,
+  },
+
   // Journeys (Play > Journeys, see src/game/journeys.ts). A teen or
   // grown-up pet goes out to one of the places for a while and comes home
   // with a backpack of finds. Three offers are on the board at a time; each

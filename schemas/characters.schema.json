@@ -3,7 +3,7 @@
   "title": "Characters",
   "description": "Every character a pet can grow into (src/data/characters.json). See docs/ART_GUIDE.md.",
   "type": "object",
-  "required": ["stages", "themes", "characters"],
+  "required": ["stages", "themes", "elements", "themeElements", "characters"],
   "additionalProperties": false,
   "properties": {
     "$schema": { "type": "string" },
@@ -16,6 +16,8 @@
       "properties": { "egg": { "type": "string" }, "baby": { "type": "string" }, "teen": { "type": "string" } }
     },
     "themes": { "type": "object", "description": "Theme ids and the names players see.", "additionalProperties": { "type": "string" } },
+    "elements": { "type": "object", "description": "Element ids and the names players see. These never change: new themes join one.", "additionalProperties": { "type": "string" } },
+    "themeElements": { "type": "object", "description": "Which element each theme belongs to (theme id -> element id).", "additionalProperties": { "type": "string" } },
     "characters": {
       "type": "array",
       "items": {

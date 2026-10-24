@@ -856,6 +856,9 @@ export const STRINGS = {
     views: { list: 'List', tree: 'Tree' },
     showTreeOf: (name: string) => `Show ${name}'s family`,
     backTo: (name: string) => `Back to ${name}`,
+    // What a grown-up carries but doesn't show, e.g. "Carries Ocean · Sprig (Autumn)".
+    carries: (genes: string[]) => `Carries ${genes.join(' · ')}`,
+    carriesTitle: 'Hidden genes it can pass on to its little ones',
     firstPet: 'First of the family. Parents will show up here for pets born from two others.',
     siblings: 'Brothers and sisters',
     children: 'Little ones',
