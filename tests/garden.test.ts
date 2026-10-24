@@ -7,9 +7,11 @@ import { cook, couldBeRecipe } from '../src/game/cooking';
 import {
   addSeed,
   clearPlot,
+  compost,
   cure,
   diesAt,
   fertilize,
+  fertilizerReady,
   findSeed,
   growPlot,
   harvest,
@@ -29,6 +31,7 @@ import { STRINGS } from '../src/strings';
 import { ITEM_ICONS } from '../src/ui/icons';
 import type { GameState } from '../src/game/state';
 import { newTeen } from './helpers';
+import { collectPoop, poopCount, poopNow } from '../src/game/hygiene';
 
 const START = new Date(2026, 0, 1, 10, 0).getTime();
 const HOUR = 3_600_000;
@@ -84,7 +87,7 @@ describe('crops', () => {
       expect(ITEM_ICONS[c.id]).toBeTruthy();
       expect(ITEM_ICONS[`seed_${c.id}`]).toBeTruthy();
     }
-    for (const id of ['garden', 'fertilizer', 'plantCure', 'plantSprout', 'plantGrowing', 'plantSick', 'plantDead']) {
+    for (const id of ['garden', 'fertilizer', 'plantCure', 'plantSprout', 'plantGrowing', 'plantSick', 'plantDead', 'poop']) {
       expect(ITEM_ICONS[id], id).toBeTruthy();
     }
   });
@@ -140,6 +143,38 @@ describe('growing', () => {
     const plot = growPlot(s.garden[0], START, START + 6 * HOUR);
     expect(plot.growth).toBeCloseTo(7.5 * HOUR);
     expect(fertilize(wateredCarrot(), 0, START).blocked).toBe('noFertilizer');
+  });
+
+  it('picked-up poop makes fertilizer, 3 to a bag', () => {
+    let s = wateredCarrot();
+    s.inventory.supplies = {};
+    // Three poops on the floor, picked up one by one, are kept.
+    for (let i = 0; i < 3; i++) s = poopNow(s, START);
+    for (const slot of [0, 1, 2]) s = collectPoop(s, s.pet.id, slot);
+    expect(poopCount(s)).toBe(G.poopPerFertilizer);
+    expect(fertilizerReady(s)).toBe(1);
+    const made = compost(s).state;
+    expect(poopCount(made)).toBe(0);
+    expect(supplyCount(made, 'fertilizer')).toBe(1);
+    expect(compost(made).blocked).toBe('notEnoughPoop');
+  });
+
+  it('Fertilize makes a bag from poop when you are out', () => {
+    let s = wateredCarrot();
+    s.inventory.supplies = { poop: 4 };
+    const r = fertilize(s, 0, START);
+    expect(r.composted).toBe(true);
+    expect(poopCount(r.state)).toBe(1);
+    expect(supplyCount(r.state, 'fertilizer')).toBe(0);
+    expect(r.state.garden[0].fertilizedUntil).toBe(START + G.fertilizer.hours * HOUR);
+    // A bought bag is used first, and the poop is kept.
+    s.inventory.supplies = { poop: 4, fertilizer: 1 };
+    const bought = fertilize(s, 0, START);
+    expect(bought.composted).toBe(false);
+    expect(poopCount(bought.state)).toBe(4);
+    // Not enough poop is the same as no fertilizer.
+    s.inventory.supplies = { poop: 2 };
+    expect(fertilize(s, 0, START).blocked).toBe('noFertilizer');
   });
 
   // Finishing while fertilized used to leave some plants a hair short of

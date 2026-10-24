@@ -390,6 +390,10 @@ export const CONFIG = {
     daysUntilDead: 3,
     // Fertilizer: one pot grows `speedUp` faster for `hours` hours.
     fertilizer: { hours: 6, speedUp: 0.25 },
+    // Poop you pick up is kept, and this many make one bag of fertilizer
+    // (in the Shop's garden tab, or straight from Fertilize when you're
+    // out of bags). It's the same fertilizer the Shop sells.
+    poopPerFertilizer: 3,
     // Prices in the Shop.
     supplies: { fertilizer: 15, plantCure: 20 },
     // The chance (0-1) of finding a seed: per landed fish, and per cuddle

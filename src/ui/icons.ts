@@ -955,6 +955,21 @@ export const ITEM_ICONS: Record<string, string> = {
     '.kkkkkkkkkk.',
     '............',
   ]),
+  // A picked-up poop (the swirl from the room floor): a few make fertilizer.
+  poop: pixelIcon([
+    '............',
+    '.....kk.....',
+    '....kcck....',
+    '....kkcck...',
+    '...kcccck...',
+    '..kcocccck..',
+    '..kkkkcccck.',
+    '.kcccccccck.',
+    'kcocccccccck',
+    'kccccccccck.',
+    '.kkkkkkkkk..',
+    '............',
+  ]),
   // A glowing star with a little heart inside: brings back a pet that
   // passed away.
   revivalStar: pixelIcon(REVIVAL_STAR, { b: PALETTE.blush }),

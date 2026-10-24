@@ -35,6 +35,7 @@ import { LEAP_MS } from './ui/fishing';
 import { cook } from './game/cooking';
 import {
   clearPlot,
+  compost,
   cure,
   fertilize,
   findSeed,
@@ -89,7 +90,7 @@ import { STAT_ICONS } from './ui/icons';
 import type { Find } from './game/state';
 import { guideDue, markGuideRead, type GuideId } from './game/guides';
 import { createGuideCard } from './ui/guide';
-import { bathe, collectPoop, poopNow, shiftHygiene, smellNow } from './game/hygiene';
+import { bathe, collectPoop, poopCount, poopNow, shiftHygiene, smellNow } from './game/hygiene';
 
 const root = document.getElementById('app')!;
 
@@ -670,6 +671,7 @@ const home = createHomeScreen(root, {
     setState(collectPoop(simulate(state, gameNow()), petId, slot));
     sound('place');
     lastTouched = performance.now();
+    home.toast(STRINGS.bath.keptPoop(poopCount(state), CONFIG.garden.poopPerFertilizer));
   },
   onBathe: () => {
     const before = simulate(state, gameNow()).pet;
@@ -754,7 +756,16 @@ const home = createHomeScreen(root, {
     if (watered) sound('water');
     return watered;
   },
-  onFertilize: (pot) => runGarden((s, now) => fertilize(s, pot, now), STRINGS.garden.fertilizedNow),
+  onFertilize: (pot) => {
+    // Out of bags, it makes one from your poop first, and says so.
+    let composted = false;
+    const done = runGarden((s, now) => {
+      const result = fertilize(s, pot, now);
+      composted = !!result.composted;
+      return result;
+    });
+    if (done) home.toast(composted ? STRINGS.garden.compostedNow(CONFIG.garden.poopPerFertilizer) : STRINGS.garden.fertilizedNow);
+  },
   onCure: (pot) => runGarden((s, now) => cure(s, pot, now), STRINGS.garden.cured),
   onHarvest: (pot) => {
     const now = gameNow();
@@ -986,6 +997,13 @@ const home = createHomeScreen(root, {
     setState(result.state);
     if (result.blocked) return blocked(STRINGS.shop.notEnoughFragments);
     home.craft({ fragment: FRAGMENT_ICON, star: ITEM_ICONS.revivalStar, onLock: () => sound('place'), onStar: () => sound('grewUp') });
+  },
+  onCompost: () => {
+    const result = compost(state);
+    setState(result.state);
+    if (result.blocked) return blocked(STRINGS.shop.notEnoughPoop(CONFIG.garden.poopPerFertilizer));
+    sound('place');
+    home.toast(STRINGS.shop.composted);
   },
   onWearHat: (id) => runShop(wearHat(state, id)),
   hatImage,

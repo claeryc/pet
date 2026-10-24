@@ -8,7 +8,8 @@
 // hours there's a chance the plant gets sick; a sick plant stops growing
 // until it gets Plant cure, and dies if it's left sick for too long.
 // Fertilizer makes one pot grow faster for a while and lowers the chance
-// of getting sick.
+// of getting sick. You buy it in the Shop, or make it from the poop you
+// pick up (compost).
 //
 // Everything here works from timestamps, so catching up after a week away
 // is as quick as after a minute. The sickness rolls are worked out from a
@@ -20,6 +21,7 @@ import { addTally } from './achievements';
 import type { FoodId } from './actions';
 import type { GameState, Plot } from './state';
 import { perk, type GardenPerks } from './skills';
+import { poopCount } from './hygiene';
 
 const HOUR = 3_600_000;
 const G = CONFIG.garden;
@@ -237,14 +239,40 @@ export function water(state: GameState, index: number, now: number, perfect: boo
   };
 }
 
-export function fertilize(state: GameState, index: number, now: number): GardenResult {
+// Fertilizes a growing pot. Out of bags but with enough poop, it makes a
+// bag from the poop first (`composted` says so).
+export function fertilize(state: GameState, index: number, now: number): GardenResult & { composted?: boolean } {
   const plot = state.garden[index];
   if (!plot) return { state, blocked: 'noPlot' };
   if (plotStage(plot) !== 'growing') return { state, blocked: 'notGrowing' };
   if (isFertilized(plot, now)) return { state, blocked: 'alreadyFertilized' };
-  const s = useItem(state, 'supplies', 'fertilizer');
+  const composted = supplyCount(state, 'fertilizer') === 0 && canCompost(state);
+  const s = useItem(composted ? compost(state).state : state, 'supplies', 'fertilizer');
   if (!s) return { state, blocked: 'noFertilizer' };
-  return { state: withPlot(s, index, (p) => (p.fertilizedUntil = now + G.fertilizer.hours * HOUR)) };
+  return { state: withPlot(s, index, (p) => (p.fertilizedUntil = now + G.fertilizer.hours * HOUR)), composted };
+}
+
+// ---- Compost: poop into fertilizer ----
+
+export function canCompost(state: GameState): boolean {
+  return poopCount(state) >= G.poopPerFertilizer;
+}
+
+// How many bags of fertilizer you could use right now: the ones you have,
+// and the ones your poop would make.
+export function fertilizerReady(state: GameState): number {
+  return supplyCount(state, 'fertilizer') + Math.floor(poopCount(state) / G.poopPerFertilizer);
+}
+
+// Turns `poopPerFertilizer` poops into one bag of fertilizer.
+export function compost(state: GameState): { state: GameState; blocked?: 'notEnoughPoop' } {
+  if (!canCompost(state)) return { state, blocked: 'notEnoughPoop' };
+  const supplies = {
+    ...state.inventory.supplies,
+    poop: poopCount(state) - G.poopPerFertilizer,
+    fertilizer: supplyCount(state, 'fertilizer') + 1,
+  };
+  return { state: { ...state, inventory: { ...state.inventory, supplies } } };
 }
 
 // Heals a sick plant. It carries on growing from where it stopped. If the
