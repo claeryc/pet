@@ -121,11 +121,22 @@ export function starParents(parentLooks: readonly ParentLook[]): boolean {
   return parentLooks.length === 2 && parentLooks.every((l) => getCharacter(l.character)?.stars === 3);
 }
 
+// The star odds (percent) for a Care Score (and the parents, if any).
+export function starOdds(careScore: number, parentLooks: readonly ParentLook[] = []): Record<Stars, number> {
+  const table = starParents(parentLooks) ? CONFIG.rarityStarParents : CONFIG.rarity;
+  return (table.find((r) => careScore >= r.minCare) ?? table[table.length - 1]).odds;
+}
+
 // Rolls a star rarity for a Care Score (and the parents, if any).
 export function rollStars(careScore: number, petId: string, parentLooks: readonly ParentLook[] = []): Stars {
-  const table = starParents(parentLooks) ? CONFIG.rarityStarParents : CONFIG.rarity;
-  const band = table.find((r) => careScore >= r.minCare) ?? table[table.length - 1];
-  return rollStarsWith(band.odds, seededRoll(petId, 'stars'));
+  return rollStarsWith(starOdds(careScore, parentLooks), seededRoll(petId, 'stars'));
+}
+
+// The rarity a pet really gets when it rolls `rolled`: the same if anyone
+// has it, otherwise the next one down (then up) that someone has.
+export function starsInGame(rolled: Stars): Stars {
+  const order = [rolled, ...([3, 2, 1] as Stars[]).filter((s) => s < rolled), ...([1, 2, 3] as Stars[]).filter((s) => s > rolled)];
+  return order.find((s) => IN_GAME.some((c) => c.stars === s)) ?? 1;
 }
 
 // Picks a character of a star rarity, and maybe a colour variant. If
@@ -142,9 +153,7 @@ export function characterOfStars(
 ): { character: Character; variant: Variant | null } {
   const themes = family.themes ?? [];
   const carried = family.carriedThemes ?? [];
-  const order = [rolled, ...([3, 2, 1] as Stars[]).filter((s) => s < rolled), ...([1, 2, 3] as Stars[]).filter((s) => s > rolled)];
-  const stars = order.find((s) => IN_GAME.some((c) => c.stars === s)) ?? 1;
-  let options = IN_GAME.filter((c) => c.stars === stars);
+  let options = IN_GAME.filter((c) => c.stars === starsInGame(rolled));
   if (themes.length > 0 && seededRoll(seed, 'parentTheme') * 100 < CONFIG.friends.parentThemeChance) {
     const fromCarried = carried.length > 0 && seededRoll(seed, 'carriedTheme') * 100 < CONFIG.genes.carriedThemeChance;
     const pool = fromCarried ? carried : themes;

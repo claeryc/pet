@@ -64,6 +64,7 @@ import {
   makeWanderer,
   meet,
   mingle,
+  mingleBlock,
   petStandsLeft,
   removeFriend,
   retire,
@@ -72,6 +73,8 @@ import {
   type MingleBlock,
 } from './game/friends';
 import { createChoiceBox } from './ui/choice';
+import { forecast } from './game/forecast';
+import { forecastHtml } from './ui/forecast';
 import { createAwayCard } from './ui/away';
 import { awayNotes } from './game/away';
 import type { Pet } from './game/state';
@@ -576,7 +579,26 @@ function askWhoRetires(): void {
   });
 }
 
+// Mingle first shows the forecast: what a little one could grow into.
+// The pets only mingle if the player goes ahead. When they can't mingle
+// right now, mingling straight away says why.
 function onMingle(id: string): void {
+  const now = simulate(state, gameNow());
+  const friend = getFriend(now, id);
+  if (!friend || mingleBlock(now, id, gameNow())) return mingleNow(id);
+  const f = forecast(now.pet, friend);
+  choice.open({
+    title: STRINGS.friends.forecastTitle(now.pet.name, friend.name),
+    text: STRINGS.friends.forecastText(f.littleOne),
+    detail: forecastHtml(f),
+    options: [
+      { label: STRINGS.friends.mingleNow, onPick: () => mingleNow(id) },
+      { label: STRINGS.friends.notNow, soft: true, onPick: () => {} },
+    ],
+  });
+}
+
+function mingleNow(id: string): void {
   const friend = getFriend(state, id);
   const parent = state.pet;
   const result = mingle(simulate(state, gameNow()), id, gameNow(), Math.random());
