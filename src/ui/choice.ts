@@ -15,6 +15,7 @@ export interface ChoiceRequest {
   artReadable?: boolean; // the picture has words a screen reader should read
   title: string;
   text: string;
+  detail?: string; // more to read under the text (markup), e.g. the forecast before mingling
   options: ChoiceOption[];
 }
 
@@ -39,9 +40,11 @@ export function createChoiceBox(root: HTMLElement): ChoiceBox {
   title.id = 'choice-box-title';
   const text = document.createElement('p');
   text.className = 'name-ask';
+  const detail = document.createElement('div');
+  detail.className = 'choice-detail';
   const buttons = document.createElement('div');
   buttons.className = 'choice-buttons';
-  box.append(art, title, text, buttons);
+  box.append(art, title, text, detail, buttons);
   backdrop.append(box);
   root.append(backdrop);
 
@@ -54,6 +57,8 @@ export function createChoiceBox(root: HTMLElement): ChoiceBox {
       art.setAttribute('aria-hidden', String(!request.artReadable));
       title.textContent = request.title;
       text.textContent = request.text;
+      detail.innerHTML = request.detail ?? '';
+      detail.hidden = !request.detail;
       buttons.replaceChildren(
         ...request.options.map((o) => {
           const b = document.createElement('button');

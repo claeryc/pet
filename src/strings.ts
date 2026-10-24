@@ -543,6 +543,13 @@ export const STRINGS = {
     mingleHint: (pct: number) => `Mingle when the hearts are ${pct}% full`,
     mingleChance: (pct: number) => `Mingle  ·  ${pct}% chance of a little one`,
     mingleWait: (time: string) => `Mingle again in ${time}`,
+    // The forecast card before mingling (see src/ui/forecast.ts).
+    forecastTitle: (pet: string, friend: string) => `${pet} & ${friend}`,
+    forecastText: (pct: number) => `${pct}% chance of a little one. With great care, it could grow into:`,
+    forecastRarity: 'Rarity with great care',
+    forecastColours: 'Colours:',
+    mingleNow: 'Mingle',
+    notNow: 'Not now',
     noLittleOne: (pet: string, friend: string) => `${pet} and ${friend} had a lovely time. No little one this time.`,
     littleOne: (pet: string, friend: string) => `A little one! ${pet} and ${friend} have an egg.`,
     blocked: {
