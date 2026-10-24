@@ -125,6 +125,25 @@ function fragmentsRow(pieces: number, perStar: number, days: number, perFragment
   return el;
 }
 
+// Homemade fertilizer: how many bags you have (shared with the bought
+// ones, it's the same fertilizer), then a poop icon for each poop towards
+// the next bag, grey until picked up, and Craft.
+function homemadeRow(state: GameState, cb: ShopCallbacks): HTMLElement {
+  const per = CONFIG.garden.poopPerFertilizer;
+  const poops = poopCount(state);
+  const filled = Math.min(poops, per);
+  const el = row(ITEM_ICONS.homemadeFertilizer, STRINGS.shop.homemade,
+    STRINGS.shop.homemadeHave(supplyCount(state, 'fertilizer')), craftButton(canCompost(state), cb.onCompost));
+  const slots = document.createElement('span');
+  slots.className = 'poop-slots';
+  slots.setAttribute('role', 'img');
+  slots.setAttribute('aria-label', STRINGS.shop.poopSlots(poops, per));
+  slots.innerHTML = Array.from({ length: per }, (_, i) =>
+    `<span class="poop-slot${i < filled ? ' on' : ''}">${ITEM_ICONS.poop}</span>`).join('');
+  el.querySelector('.shop-row-text')!.append(slots);
+  return el;
+}
+
 // A small hourglass left of the price, for items that are only in today.
 function stockIcon(): HTMLElement {
   const el = document.createElement('span');
@@ -295,15 +314,11 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
     count: countBadge(g.count),
     row: row(g.icon, g.name, g.note, priceButton(priceOf(g.item), state.gold, () => cb.onBuyGardenItem(g.item))),
   }));
-  // Poop you've picked up: [Make] turns a few into a bag of fertilizer.
-  // Greyed out like a price you can't afford until there's enough.
-  const per = CONFIG.garden.poopPerFertilizer;
-  const make = button(STRINGS.shop.compost, cb.onCompost);
-  make.classList.toggle('too-pricey', !canCompost(state));
+  // Homemade fertilizer, crafted from poop you've picked up.
   garden.push({
-    icon: ITEM_ICONS.poop,
+    icon: ITEM_ICONS.homemadeFertilizer,
     count: countBadge(poopCount(state)),
-    row: row(ITEM_ICONS.poop, STRINGS.shop.poop, STRINGS.shop.poopNote(poopCount(state), per), make),
+    row: homemadeRow(state, cb),
   });
   // One more pot, until the garden is as big as it gets.
   if (canBuyPot(state)) {

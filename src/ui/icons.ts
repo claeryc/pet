@@ -955,6 +955,22 @@ export const ITEM_ICONS: Record<string, string> = {
     '.kkkkkkkkkk.',
     '............',
   ]),
+  // Homemade fertilizer: a paper bag with a sprout on top and a poop
+  // swirl on its label.
+  homemadeFertilizer: pixelIcon([
+    '.....gg.....',
+    '....kmgk....',
+    '..kkkkkkkk..',
+    '.kcccccccck.',
+    '.kceeeeeeck.',
+    '.kceeeneeck.',
+    '.kceennneck.',
+    '.kcennnnnck.',
+    '.kceeeeeeck.',
+    '.kcccccccck.',
+    '.kkkkkkkkkk.',
+    '............',
+  ], { n: PALETTE.bark }),
   // A picked-up poop (the swirl from the room floor): a few make fertilizer.
   poop: pixelIcon([
     '............',
