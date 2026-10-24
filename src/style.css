@@ -2230,6 +2230,10 @@ body {
   opacity: 0.9;
 }
 
+.tree-info .tree-genes {
+  font-style: italic; /* hidden genes: quieter than what it shows */
+}
+
 .tree-stats {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -13,6 +13,7 @@
 
 import type { FamilyMember, GameState, Pet } from './state';
 import type { Stage } from './growth';
+import { carriedOf } from './genes';
 
 export const NAME_MAX = 12; // letters in a pet's name
 export const OWNER_MAX = 16; // letters in the player's name
@@ -76,6 +77,8 @@ export function rememberPet(pet: Pet, owner: string): FamilyMember {
     generation: pet.generation,
     parents: [...pet.parents],
     trait: pet.trait,
+    // Only a grown-up shows what it carries (it's set when it grows up).
+    ...(pet.stage === 'adult' ? { carried: carriedOf(pet) } : {}),
   };
 }
 

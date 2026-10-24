@@ -6,14 +6,16 @@
 //   1. roll a star rarity, with better odds for a higher Care Score (and
 //      better still for a little one of two 3-star parents),
 //   2. pick a character of that rarity (any theme, though a little one
-//      leans towards its parents' themes),
-//   3. maybe pick one of that character's colour variants.
+//      leans towards its parents' themes, now and then a theme they carry),
+//   3. maybe pick one of that character's colour variants (more likely one
+//      a parent shows or carries, see genes.ts).
 // The rolls are based on the pet's id, so reloading never changes them.
 
 import { CONFIG } from './config';
 import data from '../data/characters.json';
 import type { ParentLook, Pet } from './state';
 import { fitTrait } from './traits';
+import { genesAtGrowUp, inheritanceOf, type Inheritance } from './genes';
 
 export type Stage = 'egg' | 'baby' | 'teen' | 'adult';
 export const STAGES: Stage[] = ['egg', 'baby', 'teen', 'adult'];
@@ -39,6 +41,14 @@ export interface Character {
 
 export const CHARACTERS = data.characters as Character[];
 export const THEMES: Record<string, string> = data.themes;
+// The elements every theme belongs to (they never change, new themes join
+// one), and which one each theme is in.
+export const ELEMENTS: Record<string, string> = data.elements;
+const THEME_ELEMENTS: Record<string, string> = data.themeElements;
+
+export function elementOf(theme: string | null | undefined): string | null {
+  return (theme && THEME_ELEMENTS[theme]) || null;
+}
 // Themes from packs that aren't out yet: pets that already have one of
 // their characters keep it, but no new pet grows into one.
 export const LATER_PACKS: readonly string[] = data.laterPacks;
@@ -120,23 +130,33 @@ export function rollStars(careScore: number, petId: string, parentLooks: readonl
 
 // Picks a character of a star rarity, and maybe a colour variant. If
 // nobody has that rarity yet, it steps down (then up) until someone does.
-// `themes` (a little one's parents' themes) are favoured
+// A little one's parents' themes are favoured
 // CONFIG.friends.parentThemeChance of the time, when they have a character
-// of that rarity.
+// of that rarity, and CONFIG.genes.carriedThemeChance of those times it's
+// a theme they carry instead. A colour variant a parent shows or carries
+// comes back CONFIG.genes.variantChance of the time.
 export function characterOfStars(
   rolled: Stars,
   seed: string,
-  themes: readonly string[] = [],
+  family: Partial<Inheritance> = {},
 ): { character: Character; variant: Variant | null } {
+  const themes = family.themes ?? [];
+  const carried = family.carriedThemes ?? [];
   const order = [rolled, ...([3, 2, 1] as Stars[]).filter((s) => s < rolled), ...([1, 2, 3] as Stars[]).filter((s) => s > rolled)];
   const stars = order.find((s) => IN_GAME.some((c) => c.stars === s)) ?? 1;
   let options = IN_GAME.filter((c) => c.stars === stars);
   if (themes.length > 0 && seededRoll(seed, 'parentTheme') * 100 < CONFIG.friends.parentThemeChance) {
-    const theme = themes[Math.floor(seededRoll(seed, 'whichParent') * themes.length)];
+    const fromCarried = carried.length > 0 && seededRoll(seed, 'carriedTheme') * 100 < CONFIG.genes.carriedThemeChance;
+    const pool = fromCarried ? carried : themes;
+    const theme = pool[Math.floor(seededRoll(seed, 'whichParent') * pool.length)];
     const ofTheme = options.filter((c) => c.theme === theme);
     if (ofTheme.length > 0) options = ofTheme;
   }
   const character = options[Math.floor(seededRoll(seed, 'character') * options.length)];
+  const inherited = (character.variants ?? []).filter((v) => (family.variants ?? []).includes(`${character.id}:${v.id}`));
+  if (inherited.length > 0 && seededRoll(seed, 'variantGene') * 100 < CONFIG.genes.variantChance) {
+    return { character, variant: inherited[Math.floor(seededRoll(seed, 'whichVariantGene') * inherited.length)] };
+  }
   const variants = (character.variants ?? []).map((v): [Variant, number] => [v, v.chance]);
   return { character, variant: pickByChance(variants, seededRoll(seed, 'variant')) };
 }
@@ -145,10 +165,10 @@ export function characterOfStars(
 export function chooseCharacter(
   careScore: number,
   petId: string,
-  themes: readonly string[] = [],
+  family: Partial<Inheritance> = {},
   parentLooks: readonly ParentLook[] = [],
 ): { character: Character; variant: Variant | null } {
-  return characterOfStars(rollStars(careScore, petId, parentLooks), petId, themes);
+  return characterOfStars(rollStars(careScore, petId, parentLooks), petId, family);
 }
 
 // Moves the pet into its next stage at time `t` (changes `pet` in place).
@@ -162,9 +182,10 @@ export function growUp(pet: Pet, t: number): void {
     pet.stats = { ...CONFIG.startingStats };
   }
   if (next === 'adult') {
-    const { character, variant } = chooseCharacter(pet.careScore, pet.id, pet.themes ?? [], pet.parentLooks ?? []);
+    const { character, variant } = chooseCharacter(pet.careScore, pet.id, inheritanceOf(pet), pet.parentLooks ?? []);
     pet.character = character.id;
     pet.variant = variant?.id ?? null;
+    pet.carried = genesAtGrowUp(pet, character, pet.variant);
     pet.trait = fitTrait(pet.id, pet.trait, character);
   }
 }

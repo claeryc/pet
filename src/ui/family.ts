@@ -5,7 +5,8 @@
 // on the home screen.
 
 import { STRINGS } from '../strings';
-import { characterSheet, getCharacter, getVariant, sheetFor } from '../game/growth';
+import { THEMES, characterSheet, getCharacter, getVariant, sheetFor } from '../game/growth';
+import { carriedOf } from '../game/genes';
 import { ageInDays, familyGenerations, pedigree, type TreeMember } from '../game/family';
 import { getTrait } from '../game/traits';
 import type { GameState, PetStats } from '../game/state';
@@ -48,6 +49,25 @@ function traitLine(m: TreeMember, line: HTMLElement): HTMLElement {
     line.append(` · ${trait.name}`);
     line.title = trait.about;
   }
+  return line;
+}
+
+// "Carries Ocean · Sprig (Autumn)" for a grown-up that carries genes it
+// doesn't show, or null.
+function carriesLine(m: TreeMember): HTMLElement | null {
+  if (m.stage !== 'adult' || !m.character) return null;
+  const genes = carriedOf(m);
+  const parts: string[] = [];
+  if (genes.theme && THEMES[genes.theme]) parts.push(THEMES[genes.theme]);
+  if (genes.variant) {
+    const [id, variant] = genes.variant.split(':');
+    const character = getCharacter(id);
+    const name = getVariant(character, variant)?.name;
+    if (character && name) parts.push(STRINGS.characterName(character.name, name));
+  }
+  if (parts.length === 0) return null;
+  const line = el('small', 'tree-genes', STRINGS.family.carries(parts));
+  line.title = STRINGS.family.carriesTitle;
   return line;
 }
 
@@ -99,6 +119,7 @@ function card(m: TreeMember, state: GameState, cb: FamilyCallbacks): HTMLElement
   info.append(
     top,
     traitLine(m, el('small', 'tree-what', whatItIs(m))),
+    ...[carriesLine(m)].filter((line): line is HTMLElement => !!line),
     el('small', '', m.fromWild ? STRINGS.family.raisedInWild : m.owner ? STRINGS.family.raisedBy(m.owner) : STRINGS.family.raisedByYou),
     el('small', '', m.home ? STRINGS.family.age(ageInDays(m.bornAt, state.lastUpdated)) : bornOn(m.bornAt)),
   );

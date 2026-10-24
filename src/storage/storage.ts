@@ -12,13 +12,14 @@ import { getCharacter } from '../game/growth';
 import { guidesAlreadyKnown } from '../game/guides';
 import { backfillRegulars } from '../game/regulars';
 import { fitTrait, rollTrait } from '../game/traits';
+import { carriedOf, genesAtGrowUp } from '../game/genes';
 import { newHygiene } from '../game/hygiene';
 
 const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 26;
+export const SAVE_VERSION = 27;
 
 export interface SaveFile {
   version: number;
@@ -301,6 +302,21 @@ export function migrate(save: SaveFile): SaveFile {
     const st = save.state;
     for (const p of [st.pet, ...(st.housemates ?? [])]) if (p && !p.hygiene) p.hygiene = newHygiene();
     save.version = 26;
+  }
+  // Version 26 -> 27: genes. Each pet remembers what its parents carry (the
+  // genes their ids roll), and a grown-up gets the ones it would have
+  // carried had genes been there when it grew up.
+  if (save.version === 26) {
+    const st = save.state;
+    const pets: any[] = [st.pet, ...(st.housemates ?? [])].filter(Boolean);
+    const known = new Map<string, any>();
+    for (const m of [...(st.family ?? []), ...(st.friends ?? []), ...pets]) known.set(m.id, m);
+    for (const p of pets) {
+      p.parentCarried = (p.parents ?? []).map((id: string) => carriedOf(known.get(id) ?? { id }));
+      const character = getCharacter(p.character ?? null);
+      p.carried = p.stage === 'adult' && character ? genesAtGrowUp(p, character, p.variant ?? null) : null;
+    }
+    save.version = 27;
   }
   return save;
 }

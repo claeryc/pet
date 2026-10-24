@@ -6,6 +6,7 @@ import type { Stage } from './growth';
 import { newGarden } from './garden';
 import { inheritTrait } from './traits';
 import { newHygiene, type Hygiene } from './hygiene';
+import type { Genes } from './genes';
 
 export interface PetStats {
   hunger: number; // 0-100, higher is better (a full tummy)
@@ -56,6 +57,10 @@ export interface Pet {
   // What its parents grew into (none for a first pet). Two 3-star parents
   // give better star odds when it grows up (see growth.ts).
   parentLooks: ParentLook[];
+  // The genes its parents carry (none for a first pet), and the ones it
+  // carries itself once it grows up (null before). See src/game/genes.ts.
+  parentCarried: Genes[];
+  carried: Genes | null;
   // The friend it had a little one with. A pet only ever has one partner.
   partner: string | null;
   // Brought back with a Revival Star: it keeps a faint star-glow.
@@ -181,6 +186,7 @@ export interface FamilyMember {
   generation: number;
   parents: string[]; // ids of other family members
   trait?: string; // its trait, if it had one (see src/game/traits.ts)
+  carried?: Genes; // the genes it carries (rolled from its id if it has none, see genes.ts)
 }
 
 // A pet you can meet (see src/game/friends.ts). For now every friend is a
@@ -205,6 +211,7 @@ export interface Friend {
   partner: string | null; // the pet of yours it had a little one with
   mingledAt: number; // when it last mingled (0 = never)
   trait?: string; // its trait (one rolled from its id if it has none, see traits.ts)
+  carried?: Genes; // the genes it carries (rolled from its id if it has none, see genes.ts)
 }
 
 // Who's over right now, one at a time: a new wanderer (`guest`) or one of
@@ -390,7 +397,14 @@ export function makeId(): string {
 // themes; a first pet has none.
 export function newPet(
   now: number,
-  family: { generation: number; parents: string[]; themes: string[]; parentLooks: ParentLook[]; parentTraits?: string[] } = {
+  family: {
+    generation: number;
+    parents: string[];
+    themes: string[];
+    parentLooks: ParentLook[];
+    parentTraits?: string[];
+    parentCarried?: Genes[];
+  } = {
     generation: 1, parents: [], themes: [], parentLooks: [],
   },
 ): Pet {
@@ -417,6 +431,8 @@ export function newPet(
     hat: null,
     themes: [...family.themes],
     parentLooks: family.parentLooks.map((l) => ({ ...l })),
+    parentCarried: (family.parentCarried ?? []).map((g) => ({ ...g })),
+    carried: null,
     partner: null,
     starGlow: false,
     trip: null,
