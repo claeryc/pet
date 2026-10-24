@@ -25,6 +25,7 @@ import { CONFIG } from '../game/config';
 import {
   CROPS,
   diesAt,
+  fertilizerReady,
   getCrop,
   isFertilized,
   moisture,
@@ -394,7 +395,7 @@ export function createGarden(cb: GardenCallbacks): Garden {
     clearBtn.hidden = stage !== 'dead';
     if (stage !== 'empty') plantDrawer.close();
     // Out of something: still tappable, so it can say where to get more.
-    const fert = supplyCount(s, 'fertilizer');
+    const fert = fertilizerReady(s); // bags, and the ones your poop would make
     const cures = supplyCount(s, 'plantCure');
     fertilizeBtn.textContent = `${STRINGS.garden.fertilize} ×${fert}`;
     fertilizeBtn.classList.toggle('faded', fert === 0 || isFertilized(s.garden[selected], now));

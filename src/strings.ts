@@ -288,6 +288,7 @@ export const STRINGS = {
     watered: 'Watered!',
     perfectPour: 'Perfect pour! The soil stays moist longer.',
     fertilizedNow: 'Fertilized! It grows faster for 6 hours.',
+    compostedNow: (poops: number) => `Mixed ${poops} poop into fertilizer! It grows faster for 6 hours.`,
     cured: 'All better! It carries on growing.',
     cleared: 'The pot is ready for a new seed.',
     blocked: {
@@ -297,7 +298,7 @@ export const STRINGS = {
       nothingToWater: 'Nothing here needs water.',
       notGrowing: 'Only a healthy, growing plant can be fertilized.',
       alreadyFertilized: 'Already fertilized. Try again once it wears off.',
-      noFertilizer: 'No fertilizer. You can buy some in the Shop.',
+      noFertilizer: 'No fertilizer. Buy some in the Shop, or pick up poop to make your own.',
       notSick: "This plant isn't sick.",
       noCure: 'No plant cure. You can buy some in the Shop.',
       notReady: "It isn't ready yet.",
@@ -624,6 +625,9 @@ export const STRINGS = {
   bath: {
     poop: (name: string) => `${name}'s poop. Tap to pick it up`,
     pickedUp: 'All cleaned up!',
+    // Picked-up poop is kept: every few make a bag of fertilizer.
+    keptPoop: (have: number, per: number) =>
+      have >= per ? `Poop ×${have}: enough to make fertilizer for the garden!` : `Poop ×${have}. ${per} make fertilizer for the garden.`,
     smelly: (name: string) => `${name} is a bit smelly. Tap ${name} for a bath`,
     title: (name: string) => `Bath time for ${name}`,
     sponge: 'Sponge',
@@ -760,6 +764,12 @@ export const STRINGS = {
     extraPot: 'Garden pot',
     extraPotNote: 'One more pot for your garden',
     potBought: 'A new pot is waiting in your garden!',
+    // Picked-up poop, made into fertilizer.
+    poop: 'Poop',
+    poopNote: (have: number, per: number) => `${per} make 1 fertilizer. You have ${have}`,
+    compost: 'Make',
+    composted: 'You made a bag of fertilizer!',
+    notEnoughPoop: (per: number) => `You need ${per} poop to make fertilizer. Pick some up at home.`,
     wallpapers: {
       plain: 'Plain wall',
       stripes: 'Mint stripes',

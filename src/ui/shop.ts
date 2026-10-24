@@ -10,7 +10,8 @@ import { CURTAINS, WALLPAPERS, inUse, ownsDecor, type Decor, type DecorKind } fr
 import type { GameState } from '../game/state';
 import type { Food, FoodId } from '../game/actions';
 import { FRAGMENT_ICON, ITEM_ICONS, STAT_ICONS } from './icons';
-import { SEEDS_FOR_SALE, SUPPLIES, priceOf, seedCount, supplyCount, type ShopItem } from '../game/garden';
+import { SEEDS_FOR_SALE, SUPPLIES, canCompost, priceOf, seedCount, supplyCount, type ShopItem } from '../game/garden';
+import { poopCount } from '../game/hygiene';
 import { CHARMS, charmCount, percyFree } from '../game/journeys';
 import { isUnlocked } from '../game/unlocks';
 import { formatDuration } from './time';
@@ -27,6 +28,7 @@ export interface ShopCallbacks {
   onUseDecor: (kind: DecorKind, id: string | null) => void;
   onBuyPack: (productId: string) => void; // Revival Stars, with real money
   onMakeStar: () => void; // star fragments into a Revival Star
+  onCompost: () => void; // picked-up poop into fertilizer
   onFragmentsHelp: () => void; // what star fragments are, in a card
   onWakePercy: () => void; // ends Percy's rest after a journey, for gold
   // The picture of a hat, as a URL (from its sprite sheet), if loaded.
@@ -293,6 +295,16 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
     count: countBadge(g.count),
     row: row(g.icon, g.name, g.note, priceButton(priceOf(g.item), state.gold, () => cb.onBuyGardenItem(g.item))),
   }));
+  // Poop you've picked up: [Make] turns a few into a bag of fertilizer.
+  // Greyed out like a price you can't afford until there's enough.
+  const per = CONFIG.garden.poopPerFertilizer;
+  const make = button(STRINGS.shop.compost, cb.onCompost);
+  make.classList.toggle('too-pricey', !canCompost(state));
+  garden.push({
+    icon: ITEM_ICONS.poop,
+    count: countBadge(poopCount(state)),
+    row: row(ITEM_ICONS.poop, STRINGS.shop.poop, STRINGS.shop.poopNote(poopCount(state), per), make),
+  });
   // One more pot, until the garden is as big as it gets.
   if (canBuyPot(state)) {
     garden.push({

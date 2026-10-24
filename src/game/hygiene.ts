@@ -93,11 +93,20 @@ function withHygiene(state: GameState, petId: string, change: (h: Hygiene) => Hy
   return { ...state, pet: up(state.pet), housemates: state.housemates.map(up) };
 }
 
-// Picks up a poop in spot `slot` by pet `petId`. Nothing if it isn't there.
+// Picks up a poop in spot `slot` by pet `petId`, and keeps it (a few make
+// fertilizer for the garden, see compost() in garden.ts). Nothing if it
+// isn't there.
 export function collectPoop(state: GameState, petId: string, slot: number): GameState {
   const pet = [state.pet, ...state.housemates].find((p) => p.id === petId);
   if (!pet || !pet.hygiene.poops.some((p) => p.slot === slot)) return state;
-  return withHygiene(state, petId, (h) => ({ ...h, poops: h.poops.filter((p) => p.slot !== slot) }));
+  const supplies = { ...state.inventory.supplies, poop: poopCount(state) + 1 };
+  const kept = { ...state, inventory: { ...state.inventory, supplies } };
+  return withHygiene(kept, petId, (h) => ({ ...h, poops: h.poops.filter((p) => p.slot !== slot) }));
+}
+
+// How many picked-up poops you're keeping.
+export function poopCount(state: GameState): number {
+  return state.inventory.supplies.poop ?? 0;
 }
 
 export type BathBlock = 'egg' | 'asleep' | 'away' | 'passed' | 'notSmelly';
