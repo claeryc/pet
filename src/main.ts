@@ -27,6 +27,7 @@ import {
 import { purchase, type ProductId } from './payments';
 import { useDecor } from './game/decor';
 import { getLook, isNight } from './game/stats';
+import { feeling } from './game/likes';
 import { afterEating, chooseExpression, idleEveryMs, reactionMs, type Expression, type Reaction } from './game/expressions';
 import { getTrait, traitOf } from './game/traits';
 import { drawFace } from './render/faces';
@@ -428,7 +429,7 @@ function playWith(activity: 'cuddle' | 'tickle'): void {
   if (result.blocked) return blocked(STRINGS.blocked[result.blocked](state.pet.name));
   showGains(before, CONFIG.activities.find((a) => a.id === activity)!);
   sound('cuddle');
-  react('happy');
+  react('happy', CONFIG.reactionMs, result.felt === 'loved' ? 'inLove' : undefined);
   luckySeed('play');
 }
 
@@ -696,11 +697,14 @@ const home = createHomeScreen(root, {
     // gets a happy wiggle after.
     react('eat', CONFIG.eating.ms);
     if (result.craved) home.toast(STRINGS.craving.loved(state.pet.name, result.craved));
-    // A greedy pet loves every snack.
-    const after = afterEating(!!result.craved, getTrait(state.pet.trait));
-    if (after === 'inLove') {
+    // A greedy pet loves every snack, and every pet loves its favourite
+    // (but not a food it dislikes).
+    const after = result.felt === 'disliked' ? 'grumpy'
+      : result.felt === 'loved' ? 'inLove'
+      : afterEating(!!result.craved, getTrait(state.pet.trait));
+    if (after !== 'happy') {
       const fed = reaction;
-      window.setTimeout(() => reaction === fed && react('happy', CONFIG.reactionMs, 'inLove'), CONFIG.eating.ms);
+      window.setTimeout(() => reaction === fed && (after === 'grumpy' ? pullFace('grumpy') : react('happy', CONFIG.reactionMs, 'inLove')), CONFIG.eating.ms);
     }
   },
   onPlay: (activity) => playWith(activity),
@@ -718,7 +722,9 @@ const home = createHomeScreen(root, {
     if (result.blocked) return false;
     sound('done');
     showGains(before, { happiness: CONFIG.hygiene.bathJoy });
-    react('happy', CONFIG.reactionMs, 'inLove');
+    // Most pets love a bath; one that doesn't is grumpy after.
+    if (result.felt === 'disliked') pullFace('grumpy');
+    else react('happy', CONFIG.reactionMs, 'inLove');
     home.toast(STRINGS.bath.done(state.pet.name));
     return true;
   },
@@ -726,7 +732,7 @@ const home = createHomeScreen(root, {
   onLights: () => {
     if (!runAction(toggleLights)) return;
     sound(state.pet.asleep ? 'lightsOff' : 'lightsOn');
-    if (!state.pet.asleep && getTrait(state.pet.trait)?.grumpyWhenWoken) pullFace('grumpy');
+    if (!state.pet.asleep && (getTrait(state.pet.trait)?.grumpyWhenWoken || feeling(state.pet, 'woken') === 'disliked')) pullFace('grumpy');
   },
   onMedicine: () => {
     const before = simulate(state, gameNow()).pet;

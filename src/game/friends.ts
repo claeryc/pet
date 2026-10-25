@@ -26,6 +26,7 @@
 // Friends from other players will use the same shapes once there's a
 // server (see the Hangout and mingle design doc).
 
+import { likesOf } from './likes';
 import { addTally, countUp } from './achievements';
 import { startingCare } from './skills';
 import { CONFIG } from './config';
@@ -409,6 +410,7 @@ export function mingle(state: GameState, friendId: string, now: number, roll: nu
     parentLooks: [parent, friend].map((p) => ({ character: p.character, variant: p.variant })),
     parentTraits: [parent.trait, traitOf(friend)],
     parentCarried: [carriedOf(parent), carriedOf(friend)],
+    parentFoods: [likesOf(parent).food, likesOf(friend).food],
   });
   egg.careScore = startingCare(s); // the Gentle start skill
   s = withFriend(s, friendId, (f) => (f.partner = parent.id));

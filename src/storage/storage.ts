@@ -13,13 +13,14 @@ import { guidesAlreadyKnown } from '../game/guides';
 import { backfillRegulars } from '../game/regulars';
 import { fitTrait, rollTrait } from '../game/traits';
 import { carriedOf, genesAtGrowUp } from '../game/genes';
+import { rollLikes } from '../game/likes';
 import { newHygiene } from '../game/hygiene';
 
 const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 28;
+export const SAVE_VERSION = 29;
 
 export interface SaveFile {
   version: number;
@@ -318,10 +319,17 @@ export function migrate(save: SaveFile): SaveFile {
     }
     save.version = 27;
   }
-  // Version 27 -> 28: the nest and met characters. Friends you already
+  // Version 27 -> 28: likes and dislikes. Every pet gets the ones its id
+  // rolls, none found yet, and so do the pets in the Family Tree.
+  if (save.version === 27) {
+    const st = save.state;
+    for (const p of [st.pet, ...(st.housemates ?? []), ...(st.family ?? [])]) if (p && !p.likes) p.likes = rollLikes(p.id);
+    save.version = 28;
+  }
+  // Version 28 -> 29: the nest and met characters. Friends you already
   // have (and friends in the Family Tree) count as met. A room holding
   // more pets than fit puts its newest egg in the nest instead.
-  if (save.version === 27) {
+  if (save.version === 28) {
     const st = save.state;
     const met = [...(st.friends ?? []), ...(st.family ?? []).filter((m: any) => m.fromFriend || m.fromWild)]
       .filter((f: any) => f.character)
@@ -336,7 +344,7 @@ export function migrate(save: SaveFile): SaveFile {
       st.pet = rest[0];
       st.housemates = rest.slice(1);
     }
-    save.version = 28;
+    save.version = 29;
   }
   return save;
 }

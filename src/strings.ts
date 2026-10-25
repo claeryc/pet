@@ -904,6 +904,17 @@ export const STRINGS = {
     // What a grown-up carries but doesn't show, e.g. "Carries Ocean · Sprig (Autumn)".
     carries: (genes: string[]) => `Carries ${genes.join(' · ')}`,
     carriesTitle: 'Hidden genes it can pass on to its little ones',
+    // What the pet has shown it likes so far, e.g. "Loves Strawberry ·
+    // Favourite: Cuddle · Dislikes ?". '?' for what it hasn't shown yet.
+    likes: {
+      food: (food: string) => `Loves ${food}`,
+      play: (activity: string) => `Favourite: ${activity}`,
+      dislike: (what: string) => `Dislikes ${what}`,
+      bath: 'baths',
+      woken: 'being woken',
+      unknown: '?',
+      title: 'Your pet shows what it loves and dislikes with its face. Each one is written down here the first time.',
+    },
     firstPet: 'First of the family. Parents will show up here for pets born from two others.',
     siblings: 'Brothers and sisters',
     children: 'Little ones',

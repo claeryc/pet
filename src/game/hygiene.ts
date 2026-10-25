@@ -16,6 +16,7 @@ import { seededRoll } from './growth';
 import { clampStat } from './stats';
 import type { GameState, Pet } from './state';
 import { isAway } from './presence';
+import { feeling, noticeFeeling } from './likes';
 
 const HOUR = 3_600_000;
 const H = CONFIG.hygiene;
@@ -123,20 +124,20 @@ export function bathBlock(pet: Pet): BathBlock | null {
 
 // The pet you're looking after had its bath and is dry: no more smell or
 // germs, a little joy, and the next smell is a while off.
-export function bathe(state: GameState, now: number): { state: GameState; blocked?: BathBlock } {
+export function bathe(state: GameState, now: number): { state: GameState; blocked?: BathBlock; felt?: 'loved' | 'disliked' } {
   const blocked = bathBlock(state.pet);
   if (blocked) return { state, blocked };
   const pet = state.pet;
-  return {
-    state: {
-      ...state,
-      pet: {
-        ...pet,
-        stats: { ...pet.stats, happiness: clampStat(pet.stats.happiness + H.bathJoy) },
-        hygiene: { ...pet.hygiene, smelly: false, smellyMinutes: 0, germs: false, nextSmellAt: now + gapMs(pet, 'smell', now) },
-      },
+  const felt = feeling(pet, 'bath');
+  const washed: GameState = {
+    ...state,
+    pet: {
+      ...pet,
+      stats: { ...pet.stats, happiness: clampStat(pet.stats.happiness + H.bathJoy) },
+      hygiene: { ...pet.hygiene, smelly: false, smellyMinutes: 0, germs: false, nextSmellAt: now + gapMs(pet, 'smell', now) },
     },
   };
+  return { state: noticeFeeling(washed, 'bath', felt), ...(felt ? { felt } : {}) };
 }
 
 // Testing tools: a poop or a smell right now.
