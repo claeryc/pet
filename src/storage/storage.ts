@@ -20,7 +20,7 @@ const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 29;
+export const SAVE_VERSION = 30;
 
 export interface SaveFile {
   version: number;
@@ -345,6 +345,27 @@ export function migrate(save: SaveFile): SaveFile {
       st.housemates = rest.slice(1);
     }
     save.version = 29;
+  }
+  // Version 29 -> 30: Ribbit takes Stumpy's place as Nature's 3-star pet.
+  // Stumpy turns into Ribbit everywhere a character is remembered, and a
+  // pet that was Stumpy gets a trait Ribbit allows.
+  if (save.version === 29) {
+    const st = save.state;
+    const fix = (thing: any) => {
+      if (thing?.character !== 'stumpy') return false;
+      thing.character = 'ribbit';
+      return true;
+    };
+    const pets: any[] = [st.pet, ...(st.housemates ?? []), st.nest, ...(st.family ?? [])].filter(Boolean);
+    for (const p of pets) {
+      if (fix(p) && p.trait) p.trait = fitTrait(p.id, p.trait, getCharacter('ribbit'));
+      for (const look of p.parentLooks ?? []) fix(look);
+    }
+    for (const m of [...(st.friends ?? []), st.visit?.guest, ...(st.messages ?? [])]) fix(m);
+    const key = (k: string) => (k === 'stumpy' || k.startsWith('stumpy:') ? k.replace('stumpy', 'ribbit') : k);
+    st.charactersFound = [...new Set((st.charactersFound ?? []).map(key))];
+    st.charactersMet = [...new Set((st.charactersMet ?? []).map(key))];
+    save.version = 30;
   }
   return save;
 }

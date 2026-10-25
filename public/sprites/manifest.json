@@ -98,16 +98,17 @@
         "y": 17
       }
     },
-    "stump": {
+    "frog": {
       "head": {
         "x": 16,
-        "y": 12,
-        "width": 14
+        "y": 11,
+        "width": 10
       },
       "face": {
         "x": 16,
-        "y": 18
-      }
+        "y": 14
+      },
+      "faces": "frog"
     },
     "dome": {
       "head": {
@@ -199,6 +200,9 @@
     },
     "owl": {
       "file": "faces/owl.png"
+    },
+    "frog": {
+      "file": "faces/frog.png"
     }
   },
   "sheets": {
@@ -245,9 +249,9 @@
         "cheerful": [0, -1, 0, 1]
       }
     },
-    "stumpy": {
-      "file": "characters/nature/stumpy.png",
-      "shape": "stump",
+    "ribbit": {
+      "file": "characters/nature/ribbit.png",
+      "shape": "frog",
       "headShifts": {
         "sick": [0, -1, 0, 1]
       }
