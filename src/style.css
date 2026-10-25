@@ -6806,19 +6806,27 @@ body {
   flex: 1 1 0;
 }
 
+/* The bath panel: a little tiled bathroom with a wavy water edge along
+   its top, the bars on the left and the shelf with the tools on the right. */
 .bath {
   position: absolute;
   inset: 0;
   border-radius: 16px;
-  background: var(--card);
-  box-shadow: inset 0 0 0 4px #9ad3f0;
+  background:
+    radial-gradient(circle at 8px 0, var(--bath-water) 7px, transparent 7.5px) 0 0 / 16px 9px repeat-x,
+    linear-gradient(var(--bath-water) 3px, transparent 3px),
+    linear-gradient(90deg, var(--bath-grout) 1px, transparent 1px) 0 0 / 14px 14px,
+    linear-gradient(var(--bath-grout) 1px, transparent 1px) 0 0 / 14px 14px,
+    var(--bath-tile);
   transform: translateY(100%);
   transition: transform 0.45s cubic-bezier(0.5, 0, 0.9, 0.6);
-  padding: 8px 12px;
+  padding: 12px 12px 8px 16px;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
+  align-items: center;
+  gap: 8px;
+  --bath-water: #9ad3f0;
+  --bath-grout: #cfe9f6;
+  --bath-tile: #eef8fd;
 }
 
 .bath[hidden] {
@@ -6830,71 +6838,170 @@ body {
   transition: transform 0.7s cubic-bezier(0.45, 0, 0.55, 1);
 }
 
+.bath-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
 .bath-title {
   font-size: 0.95rem;
-  padding: 0 4px;
 }
 
-/* A tool: its icon, its name and a bar of blocks that fills as it works. */
-.bath-tool {
-  font: inherit;
-  color: inherit;
-  display: grid;
-  grid-template-columns: 26px 64px 1fr;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 8px;
-  border: 2px solid transparent;
-  border-radius: 12px;
-  background: none;
-  cursor: pointer;
-  text-align: left;
-  touch-action: manipulation;
-}
-
-.bath-tool-icon {
+.bath-bars {
+  position: relative;
   display: flex;
-  width: 26px;
-  height: 26px;
+  flex-direction: column;
+  gap: 7px;
 }
 
-.bath-tool-icon svg {
-  width: 100%;
-  height: 100%;
-}
-
-.bath-tool-name {
-  font-weight: 700;
-  font-size: 0.95rem;
-}
-
-.bath-tool.is-picked {
-  background: #e3f3fb;
-  border-color: #9ad3f0;
-}
-
-.bath-tool[aria-disabled='true'] {
-  opacity: 0.5;
-}
-
-/* The dryer is next: it gives a little bounce to say so. */
-.bath-tool.is-ready .bath-tool-icon {
-  animation: bath-nudge 1.2s ease-in-out infinite;
-}
-
-/* The bars fill sky blue, like water. */
-.bath-tool .stat-seg.on {
-  background: #9ad3f0;
+/* A glass bar with a shine along its top, filling from the left. */
+.bath-bar {
+  height: 16px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: #fff;
+  position: relative;
+  overflow: hidden;
   box-shadow:
-    inset 0 2px 0 #d6effa,
-    inset 0 -2px 0 #5a8fd6;
+    inset 0 3px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -2px 0 rgba(43, 33, 64, 0.08);
+}
+
+.bath-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  overflow: hidden;
+  transition: width 0.15s linear;
+}
+
+.bath-bar-suds .bath-bar-fill {
+  background: linear-gradient(#bfe6f7, #7fc4ea);
+}
+
+/* Drying: still wet and blue at the start, warm and yellow at the end. */
+.bath-bar-dry .bath-bar-fill {
+  background: linear-gradient(90deg, #8fcdee, #c9e7c8 55%, #ffe08a);
+  background-size: var(--bath-bar-w, 280px) 100%;
+}
+
+.bath-bubble {
+  position: absolute;
+  width: var(--s);
+  height: var(--s);
+  border-radius: 50%;
+  border: 1px solid #fff;
+  background: rgba(255, 255, 255, 0.45);
+  animation: bath-bubble 1.6s var(--d) ease-in infinite;
+}
+
+@keyframes bath-bubble {
+  from { transform: translateY(4px); opacity: 1; }
+  to { transform: translateY(-10px); opacity: 0; }
+}
+
+/* The bubbles and drops (src/render/bathfx.ts), over the bars and a little
+   above them. */
+.bath-fx {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: calc(100% + 15px);
+  image-rendering: pixelated;
+  pointer-events: none;
 }
 
 .bath-hint {
   margin: 0;
-  padding: 0 4px;
-  font-size: 0.85rem;
-  opacity: 0.8;
+  font-size: 0.8rem;
+  opacity: 0.75;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The shelf: a spot for each tool, on a little wooden plank. */
+.bath-shelf {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 0 0 10px;
+  border-left: 2px dashed #b9dff2;
+}
+
+.bath-spot {
+  font: inherit;
+  position: relative;
+  width: 54px;
+  height: 46px;
+  padding: 0;
+  border: none;
+  background: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.bath-spot::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: -2px;
+  height: 5px;
+  border-radius: 3px;
+  background: #c49a7a;
+  box-shadow: 0 2px 0 var(--cocoa);
+}
+
+.bath-spot-art {
+  width: 44px;
+  height: 38px;
+}
+
+.bath-spot-art svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.bath-spot[aria-disabled='true'] .bath-spot-art {
+  opacity: 0.4;
+  filter: grayscale(0.7);
+}
+
+/* The dryer is next: it gives a little bounce to say so. */
+.bath-spot.is-ready .bath-spot-art {
+  animation: bath-nudge 1.2s ease-in-out infinite;
+}
+
+.bath-check {
+  display: none;
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: var(--good);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.7rem;
+  line-height: 16px;
+  text-align: center;
+}
+
+.bath-spot.is-done:not(.is-out) .bath-check {
+  display: block;
 }
 
 @keyframes bath-nudge {
@@ -6910,7 +7017,8 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bath-tool.is-ready .bath-tool-icon {
+  .bath-spot.is-ready .bath-spot-art,
+  .bath-bubble {
     animation: none;
   }
 }

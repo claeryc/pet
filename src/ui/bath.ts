@@ -1,23 +1,28 @@
-// Bath time. Tapping a smelly pet slides this panel up over the stat bars:
+// Bath time. Tapping a smelly pet slides this panel up over the stat bars,
+// a little tiled bathroom:
 //
-//   Bath time for Mochi
-//   [sponge] Sponge  ▮▮▮▮▮▯▯▯▯▯
-//   [dryer]  Dryer   ▯▯▯▯▯▯▯▯▯▯
-//   Hold and rub Mochi with the sponge
+//   Bath time for Mochi                    |  [bucket]
+//   (suds bar, bubbles rising in it)       |  ========
+//   (drying bar, blue turning warm yellow) |  [dryer]
+//   Hold and rub Mochi with the sponge     |  ========
 //
-// and the button row becomes [Close]. Pick the sponge, then hold and rub
-// the pet: suds build up until it's soapy, then it's rinsed and dripping
-// wet. Pick the dryer and hold it over the pet until it's dry, and it's
-// clean (see bathe() in src/game/hygiene.ts). Closing before it's dry
-// leaves it wet for a few seconds, then it smells again.
+// and the button row becomes [Close]. The sponge is picked up from its
+// bucket to start (the bucket stays on the shelf, empty): hold and rub the
+// pet and suds build up until it's soapy, then it's rinsed and dripping
+// wet, and the sponge goes back. Tap the dryer to take it off its shelf
+// and hold it over the pet until it's dry, and it's clean (see bathe() in
+// src/game/hygiene.ts). Closing before it's dry leaves it wet for a few
+// seconds, then it smells again.
 //
 // The room draws the suds, drips, sponge and dryer (src/render/hygiene.ts)
 // from scene(); home.ts passes on where your finger is, in room pixels.
+// The bubbles and drops on the bars are src/render/bathfx.ts.
 
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import { ITEM_ICONS } from './icons';
 import { SPARKLE_MS, type BathScene } from '../render/hygiene';
+import { createBathFx, FX_HEADROOM, FX_PX, type FxBar } from '../render/bathfx';
 
 export interface BathCallbacks {
   onClean: () => boolean; // it's dry: wash the smell off (false if refused)
@@ -49,11 +54,14 @@ export interface Bath {
 
 // How long the panel takes to slide in and out (matches .bath in style.css).
 export const BATH_OUT_MS = 450;
-const SEGMENTS = 10;
 const MAX_FOAM = 18;
 const FOAM_EVERY = 5; // room pixels of rubbing per new bubble
 // Moving the dryer about dries this much faster than holding it still.
 const DRY_MOVING = 1.6;
+// The suds bar fizzes for this long after the sponge last moved.
+const FIZZ_MS = 180;
+// The little bubbles rising inside the suds bar: [left %, bottom px, size px].
+const SUDS_BUBBLES = [[6, 2, 6], [19, 6, 4], [32, 1, 5], [45, 7, 3], [58, 3, 6], [71, 5, 4], [84, 2, 5]];
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text?: string): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
@@ -79,6 +87,7 @@ export function createBath(cb: BathCallbacks): Bath {
   let travel = 0; // rubbing since the last bubble
   let pointer: { x: number; y: number; down: boolean; onPet: boolean } | null = null;
   let movedAt = 0; // when the dryer last moved, for drying faster
+  let rubbedAt = 0; // when the sponge last scrubbed, for the fizz
   let lastFrame = 0;
   let sparkleFrom = 0;
   // After closing early: wet (and smell-free) until this time.
@@ -87,33 +96,66 @@ export function createBath(cb: BathCallbacks): Bath {
 
   const panel = el('div', 'bath');
   panel.hidden = true;
+  const main = el('div', 'bath-main');
   const title = el('b', 'bath-title');
   const hint = el('p', 'bath-hint');
   hint.setAttribute('aria-live', 'polite');
 
-  // One row per tool: its icon, name and a bar of blocks like the stats.
-  function toolRow(id: Tool, label: string) {
-    const b = el('button', 'bath-tool');
-    b.dataset.tool = id;
-    const icon = el('span', 'bath-tool-icon');
-    icon.innerHTML = ITEM_ICONS[id];
-    const track = el('span', 'stat-segments');
-    const segs = Array.from({ length: SEGMENTS }, () => el('span', 'stat-seg'));
-    track.append(...segs);
-    b.append(icon, el('span', 'bath-tool-name', label), track);
-    b.addEventListener('click', () => pick(id));
+  // A glass bar that fills from the left: suds (bubbles rising in blue
+  // water), or drying (blue turning warm yellow).
+  function bar(kind: 'suds' | 'dry', label: string) {
+    const b = el('div', `bath-bar bath-bar-${kind}`);
+    b.setAttribute('role', 'meter');
+    b.setAttribute('aria-label', label);
+    b.setAttribute('aria-valuemin', '0');
+    b.setAttribute('aria-valuemax', '100');
+    const fill = el('span', 'bath-bar-fill');
+    if (kind === 'suds') {
+      for (const [left, bottom, size] of SUDS_BUBBLES) {
+        const i = el('i', 'bath-bubble');
+        i.style.cssText = `left:${left}%;bottom:${bottom}px;--s:${size}px;--d:${(left / 13) * 0.35}s`;
+        fill.append(i);
+      }
+    }
+    b.append(fill);
     return {
       el: b,
-      set(fill: number) {
-        const lit = Math.floor(fill * SEGMENTS + 1e-6);
-        segs.forEach((s, i) => s.classList.toggle('on', i < lit));
-        b.setAttribute('aria-label', `${label}: ${Math.round(fill * 100)}%`);
+      level: 0,
+      set(level: number) {
+        this.level = level;
+        const pct = Math.round(Math.max(0, Math.min(1, level)) * 100);
+        fill.style.width = `${pct}%`;
+        // The drying colours run along the whole bar, so the fill shows
+        // more of the warm end the drier it gets.
+        if (b.clientWidth) fill.style.setProperty('--bath-bar-w', `${b.clientWidth}px`);
+        b.setAttribute('aria-valuenow', String(pct));
       },
     };
   }
-  const sponge = toolRow('sponge', STRINGS.bath.sponge);
-  const dryer = toolRow('dryer', STRINGS.bath.dryer);
-  panel.append(title, sponge.el, dryer.el, hint);
+  const sudsBar = bar('suds', STRINGS.bath.sponge);
+  const dryBar = bar('dry', STRINGS.bath.dryer);
+  const bars = el('div', 'bath-bars');
+  const fx = createBathFx();
+  bars.append(sudsBar.el, dryBar.el, fx.canvas);
+  main.append(title, bars, hint);
+
+  // The shelf: each tool has its spot, and is gone from it while in use.
+  function spot(id: Tool, label: string) {
+    const b = el('button', 'bath-spot');
+    b.dataset.tool = id;
+    b.setAttribute('aria-label', label);
+    const art = el('span', 'bath-spot-art');
+    const check = el('span', 'bath-check', '✓');
+    check.setAttribute('aria-hidden', 'true');
+    b.append(art, check);
+    b.addEventListener('click', () => pick(id));
+    return { el: b, art };
+  }
+  const sponge = spot('sponge', STRINGS.bath.sponge);
+  const dryer = spot('dryer', STRINGS.bath.dryer);
+  const shelf = el('div', 'bath-shelf');
+  shelf.append(sponge.el, dryer.el);
+  panel.append(main, shelf);
 
   const row = el('div', 'actions bath-row');
   row.hidden = true;
@@ -140,17 +182,47 @@ export function createBath(cb: BathCallbacks): Bath {
   }
 
   function render(): void {
-    sponge.set(phase === 'wash' ? Math.min(1, rubbed / H.rubNeeded) : 1);
-    dryer.set(phase === 'done' ? 1 : Math.min(1, dried / H.dryMs));
-    sponge.el.classList.toggle('is-picked', tool === 'sponge');
-    dryer.el.classList.toggle('is-picked', tool === 'dryer');
+    sudsBar.set(phase === 'wash' ? Math.min(1, rubbed / H.rubNeeded) : 1);
+    dryBar.set(phase === 'done' ? 1 : Math.min(1, dried / H.dryMs));
+    // The sponge is out of its bucket while scrubbing, and the dryer off
+    // its shelf while drying. Each is back, with a tick, once done.
+    const spongeOut = phase === 'wash' && tool === 'sponge';
+    const dryerOut = phase === 'wet' && tool === 'dryer';
+    sponge.art.innerHTML = spongeOut ? ITEM_ICONS.bathBucketEmpty : ITEM_ICONS.bathBucket;
+    dryer.art.innerHTML = dryerOut ? '' : ITEM_ICONS.bathDryer;
+    sponge.el.classList.toggle('is-out', spongeOut);
+    dryer.el.classList.toggle('is-out', dryerOut);
     sponge.el.classList.toggle('is-done', phase !== 'wash');
+    dryer.el.classList.toggle('is-done', phase === 'done');
     dryer.el.classList.toggle('is-ready', phase === 'wet' && tool !== 'dryer');
     dryer.el.setAttribute('aria-disabled', String(phase === 'wash'));
+    sponge.el.setAttribute('aria-pressed', String(spongeOut));
+    dryer.el.setAttribute('aria-pressed', String(dryerOut));
     hint.textContent =
       phase === 'done' ? STRINGS.bath.done(name)
       : phase === 'wet' ? (tool === 'dryer' ? STRINGS.bath.dryingHint(name) : STRINGS.bath.dryHint)
       : tool === 'sponge' ? STRINGS.bath.rubHint(name) : STRINGS.bath.pickSponge;
+  }
+
+  // Where a bar sits on the fizz canvas, in canvas pixels. The canvas is
+  // sized to the bars here too, in case the screen changed size.
+  function fxBar(b: { el: HTMLElement; level: number }, active: boolean): FxBar {
+    const box = bars.getBoundingClientRect();
+    const r = b.el.getBoundingClientRect();
+    const w = Math.round(box.width / FX_PX);
+    const h = Math.round(box.height / FX_PX) + FX_HEADROOM;
+    if (fx.canvas.width !== w || fx.canvas.height !== h) {
+      fx.canvas.width = w;
+      fx.canvas.height = h;
+    }
+    return {
+      x: (r.left - box.left) / FX_PX + 1,
+      y: (r.top - box.top) / FX_PX + FX_HEADROOM,
+      w: r.width / FX_PX - 2,
+      h: r.height / FX_PX,
+      level: Math.min(1, b.level),
+      active,
+    };
   }
 
   const inside = (x: number, y: number, box: Box) => x >= box.x0 && x <= box.x1 && y >= box.y0 && y <= box.y1;
@@ -160,6 +232,7 @@ export function createBath(cb: BathCallbacks): Bath {
     const d = Math.hypot(x - pointer.x, y - pointer.y);
     if (!pointer.down || !inside(x, y, box) || tool !== 'sponge' || phase !== 'wash') return;
     rubbed += d;
+    if (d > 0) rubbedAt = performance.now();
     travel += d;
     while (travel >= FOAM_EVERY) {
       travel -= FOAM_EVERY;
@@ -174,6 +247,7 @@ export function createBath(cb: BathCallbacks): Bath {
       phase = 'wet';
       tool = null;
       foam = [];
+      fx.burst('suds');
       navigator.vibrate?.(15);
     }
     render();
@@ -200,6 +274,7 @@ export function createBath(cb: BathCallbacks): Bath {
       tool = 'sponge'; // ready to go: most people reach for the sponge first
       rubbed = dried = travel = 0;
       foam = [];
+      fx.clear();
       sparkleFrom = 0;
       lingerUntil = 0;
       pointer = null;
@@ -238,10 +313,12 @@ export function createBath(cb: BathCallbacks): Bath {
         return { foam: [], wet: Math.max(0.25, lingerWet) * Math.min(1, left * 2), tool: null, pointer: null, sparkleFrom: 0 };
       }
       // The dryer dries while held over the pet.
-      if (phase === 'wet' && tool === 'dryer' && pointer?.down && pointer.onPet) {
+      const drying = phase === 'wet' && tool === 'dryer' && !!pointer?.down && !!pointer.onPet;
+      if (drying) {
         const moving = performance.now() - movedAt < 150;
         dried += dt * (moving ? DRY_MOVING : 1);
         if (dried >= H.dryMs) {
+          fx.burst('dry');
           if (cb.onClean()) {
             phase = 'done';
             sparkleFrom = timeMs;
@@ -258,6 +335,7 @@ export function createBath(cb: BathCallbacks): Bath {
         }
         render();
       }
+      fx.draw(timeMs, fxBar(sudsBar, phase === 'wash' && performance.now() - rubbedAt < FIZZ_MS), fxBar(dryBar, drying));
       return {
         foam,
         wet: phase === 'wet' ? 1 - dried / H.dryMs : 0,
