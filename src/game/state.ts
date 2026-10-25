@@ -377,6 +377,9 @@ export interface GameState {
   stock: Stock;
   // Whether fishing uses bait (switched on in the pond).
   baitOn: boolean;
+  // Fish landed today, for the daily limit on XP and seeds from fishing
+  // (CONFIG.fishing.rewardedPerDay).
+  pond: { day: string; fish: number };
   // Achievements (see src/game/achievements.ts): how many times things
   // have been done ("fish" -> 12), and the badge earned for each ("fish"
   // -> "bronze").
@@ -487,6 +490,7 @@ export function createNewGame(now: number): GameState {
     room: { wallpaper: 'plain', curtains: null },
     stock: { day: '', bought: 0 },
     baitOn: false,
+    pond: { day: '', fish: 0 },
     tally: {},
     badges: {},
     milestones: [],

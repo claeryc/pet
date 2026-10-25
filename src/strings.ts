@@ -232,6 +232,7 @@ export const STRINGS = {
     perfect: 'Perfect!',
     streak: (n: number) => `${n} in a row!`,
     bait: (count: number, on: boolean) => `Use bait (${count} left): ${on ? 'on' : 'off'}`,
+    shy: 'The fish are getting shy. More catches today give no XP or seeds, but you can keep fishing for food.',
   },
   cooking: {
     open: 'Cook',
@@ -371,7 +372,7 @@ export const STRINGS = {
       fishing: {
         name: 'Fishing',
         pages: [
-          { title: 'Cast your line', text: 'Tap Cast to throw your line into the pond. Each cast uses a little energy.' },
+          { title: 'Cast your line', text: 'Tap Cast to throw your line into the pond. Each cast uses a little energy. The first 30 fish each day give XP.' },
           { title: 'Wait for the !', text: 'Watch the line. When a ! pops up, tap Reel in quickly. Tap too soon and nothing is there.' },
           { title: 'Keep the dot on green', text: 'Hold Pull to move the dot right, let go to drift back. Stay on green to fill the meter and land the fish.' },
         ],

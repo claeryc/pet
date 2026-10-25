@@ -309,6 +309,11 @@ export const CONFIG = {
     // How many fish one successful catch gives. A food buff could raise this
     // later on (e.g. a chance of an extra fish).
     fishPerCatch: 1,
+    // The first this many fish landed each day (however many pets take a
+    // turn) give Keeper XP and a chance of a seed. After that the fish are
+    // shy: you can keep fishing for food, but without XP or seeds. One pet
+    // lands about 15 a day, so only swapping in rested pets reaches it.
+    rewardedPerDay: 30,
     // Bait from the Shop. While you have some, each fish you land uses one
     // and is more likely to be a salmon or lobster (odds in percent).
     bait: {

@@ -31,7 +31,7 @@ import { feeling } from './game/likes';
 import { afterEating, chooseExpression, idleEveryMs, reactionMs, type Expression, type Reaction } from './game/expressions';
 import { getTrait, traitOf } from './game/traits';
 import { drawFace } from './render/faces';
-import { cast, land, toggleBait } from './game/fishing';
+import { cast, justGotShy, land, toggleBait } from './game/fishing';
 import { TOSS_MS } from './render/garden';
 import { LEAP_MS } from './ui/fishing';
 import { cook } from './game/cooking';
@@ -749,14 +749,15 @@ const home = createHomeScreen(root, {
     return !result.blocked;
   },
   onLand: (grade) => {
-    const { state: next, caught, count } = land(state, grade, Math.random(), Math.random());
+    const { state: next, caught, count, rewarded } = land(state, grade, Math.random(), Math.random());
     setState(next);
     const label = STRINGS.fishing.grades[grade];
     if (caught) {
       // Show it once it has flipped up out of the water.
       window.setTimeout(() => {
         showGot(caught, count, label);
-        luckySeed('fishing', grade === 'perfect');
+        if (rewarded) luckySeed('fishing', grade === 'perfect');
+        else if (justGotShy(state)) home.notice(STRINGS.fishing.shy);
       }, LEAP_MS);
       react('happy');
     } else {

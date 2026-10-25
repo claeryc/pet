@@ -20,7 +20,7 @@ const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 29;
+export const SAVE_VERSION = 30;
 
 export interface SaveFile {
   version: number;
@@ -345,6 +345,12 @@ export function migrate(save: SaveFile): SaveFile {
       st.housemates = rest.slice(1);
     }
     save.version = 29;
+  }
+  // Version 29 -> 30: the daily limit on XP and seeds from fishing. No
+  // fish counted yet today.
+  if (save.version === 29) {
+    save.state.pond = { day: '', fish: 0 };
+    save.version = 30;
   }
   return save;
 }

@@ -6,6 +6,7 @@ import {
   biteDelayMs,
   cast,
   gradeAt,
+  justGotShy,
   land,
   nextCenter,
   pickCatch,
@@ -142,6 +143,32 @@ describe('reeling in', () => {
 });
 
 describe('landing a fish', () => {
+  it('gives XP for the first fish each day, then the fish get shy', () => {
+    let s = newTeen(START);
+    const limit = f.rewardedPerDay;
+    for (let i = 0; i < limit; i++) {
+      const r = land(s, 'good', 0, 0);
+      expect(r.rewarded).toBe(true);
+      s = r.state;
+    }
+    expect(justGotShy(s)).toBe(false);
+    const xp = s.keeper.xp;
+    const over = land(s, 'perfect', 0, 0);
+    expect(over.rewarded).toBe(false);
+    expect(over.caught).not.toBeNull();
+    expect(justGotShy(over.state)).toBe(true);
+    // No XP, but the fish is kept and still counts for the badge.
+    expect(over.state.keeper.xp).toBe(xp);
+    expect(over.state.tally.fish).toBe(limit + 1);
+    expect(foodCount(over.state, 'shrimp')).toBe(foodCount(s, 'shrimp') + 1);
+    // A new day starts the count again.
+    const tomorrow = { ...over.state, lastUpdated: START + 24 * HOUR };
+    const next = land(tomorrow, 'good', 0, 0);
+    expect(next.rewarded).toBe(true);
+    expect(next.state.keeper.xp).toBeGreaterThan(xp);
+    expect(next.state.pond.fish).toBe(1);
+  });
+
   it('uses the chance for each kind of catch', () => {
     const s = newTeen(START);
     expect(land(s, 'perfect', 0.999, 0).count).toBe(1);
