@@ -7023,74 +7023,163 @@ body {
   }
 }
 
-/* The forecast before mingling (src/ui/forecast.ts): rarity odds, a bar
-   per theme the little one could grow into, and colours from the family. */
-.forecast {
+/* ---- The fortune cookie, opened on the mingle card (src/ui/fortune.ts) ---- */
+/* Timeline: it wobbles 0.3-1.6s, cracks at 1.6s, breaks in two at 2s
+   (crumbs fly), and the slip unrolls 2.5-3.4s with its words at 3.4s. */
+
+.fortune {
+  display: grid;
+  justify-items: center;
   width: 100%;
-  text-align: left;
-  font-size: 0.85rem;
+  cursor: pointer;
 }
 
-.forecast-stars {
-  display: flex;
-  justify-content: center;
-  gap: 14px;
-  margin-bottom: 8px;
+.fortune-cookie {
+  position: relative;
+  width: 132px;
+  height: 72px;
+  margin: 12px 0 10px;
+  animation: fortune-wobble 1.3s ease-in-out 0.3s both;
 }
 
-.forecast-stars b {
-  color: var(--accent);
-}
-
-.forecast-themes {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 4px;
-}
-
-.forecast-themes li {
-  display: grid;
-  grid-template-columns: 4.5rem 3.2rem 1fr 2.6rem;
-  align-items: center;
-  gap: 6px;
-}
-
-.forecast-name {
-  font-weight: 700;
-}
-
-.forecast-element {
-  opacity: 0.6;
-}
-
-.forecast-bar {
-  height: 8px;
-  border-radius: 4px;
-  background: var(--seg-empty);
-  overflow: hidden;
-}
-
-.forecast-bar i {
-  display: block;
+.fortune-cookie svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
   height: 100%;
-  background: var(--good);
+  overflow: visible; /* the halves tip out past the box */
 }
 
-.forecast-pct {
-  text-align: right;
+/* Turning about the bottom middle, so the halves tip outwards. */
+.fortune-half {
+  transform-origin: 50% 100%;
 }
 
-.forecast-colours {
-  margin: 8px 0 0;
-  opacity: 0.8;
+.fortune-left {
+  animation: fortune-left 0.5s cubic-bezier(0.2, 0.8, 0.3, 1) 2s both;
 }
 
-.choice-detail {
-  margin-bottom: 12px;
+.fortune-right {
+  animation: fortune-right 0.5s cubic-bezier(0.2, 0.8, 0.3, 1) 2s both;
 }
 
-.choice-detail[hidden] {
-  display: none;
+.fortune-crack {
+  opacity: 0;
+  animation: fortune-crack 0.4s steps(4) 1.6s forwards;
+}
+
+.fortune-crumb {
+  position: absolute;
+  left: 63px;
+  top: 30px;
+  width: 6px;
+  height: 6px;
+  background: var(--c);
+  opacity: 0;
+  animation: fortune-crumb 0.7s ease-out 2s forwards;
+}
+
+.fortune-slip {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 270px;
+  margin-top: -4px;
+  padding: 10px 26px;
+  text-align: center;
+  color: var(--low-dark);
+  background: #fffdf5 repeating-linear-gradient(90deg, rgba(200, 170, 120, 0.07) 0 2px, transparent 2px 5px);
+  box-shadow: 0 1px 0 #eadcc4, 0 3px 6px rgba(91, 63, 110, 0.18);
+  transform: rotate(-2deg);
+  clip-path: inset(0 50%);
+  animation: fortune-unroll 0.9s ease-out 2.5s both;
+}
+
+/* A little flower printed at each end, like on a real slip. */
+.fortune-slip::before,
+.fortune-slip::after {
+  content: '\273F';
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.fortune-slip::before {
+  left: 8px;
+}
+
+.fortune-slip::after {
+  right: 8px;
+}
+
+.fortune-text,
+.fortune-lucky {
+  margin: 0;
+  opacity: 0;
+  animation: reveal-in 0.4s ease-out 3.4s forwards;
+}
+
+.fortune-text {
+  font: italic 600 0.92rem/1.3 Georgia, 'Times New Roman', serif;
+}
+
+.fortune-lucky {
+  margin-top: 5px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+@keyframes fortune-wobble {
+  0%, 100% { transform: none; }
+  10% { transform: rotate(-3deg); }
+  20% { transform: rotate(3deg); }
+  30% { transform: rotate(-4deg); }
+  40% { transform: rotate(4deg); }
+  50% { transform: translateX(-2px) rotate(-6deg); }
+  60% { transform: translateX(2px) rotate(6deg); }
+  70% { transform: translateX(-3px) rotate(-8deg); }
+  80% { transform: translateX(3px) rotate(8deg); }
+  90% { transform: rotate(-2deg); }
+}
+
+@keyframes fortune-crack {
+  from { opacity: 1; clip-path: inset(0 0 100% 0); }
+  99% { opacity: 1; clip-path: inset(0); }
+  to { opacity: 0; clip-path: inset(0); }
+}
+
+@keyframes fortune-left {
+  to { transform: translate(-36px, -2px) rotate(-22deg); }
+}
+
+@keyframes fortune-right {
+  to { transform: translate(36px, -2px) rotate(22deg); }
+}
+
+@keyframes fortune-crumb {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translate(var(--dx), var(--dy)); }
+}
+
+@keyframes fortune-unroll {
+  to { clip-path: inset(0); }
+}
+
+/* Tapped to skip, or reduced motion: straight to the open slip. */
+.fortune.skip *,
+.fortune.skip *::before {
+  animation-duration: 1ms !important;
+  animation-delay: 0s !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fortune *,
+  .fortune *::before {
+    animation-duration: 1ms !important;
+    animation-delay: 0s !important;
+  }
 }

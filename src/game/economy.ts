@@ -107,7 +107,7 @@ export function grantPack(state: GameState, productId: string): GameState {
   return { ...state, inventory: { ...state.inventory, supplies } };
 }
 
-// ---- Fishing bait, the extra garden pot and room decorations ----
+// ---- Fishing bait, fortune cookies, the extra garden pot and room decorations ----
 
 export function baitCount(state: GameState): number {
   return state.inventory.supplies.bait ?? 0;
@@ -117,6 +117,17 @@ export function buyBait(state: GameState): ShopResult {
   const { price } = CONFIG.fishing.bait;
   if (!canAfford(state, price)) return { state, blocked: 'notEnoughGold' };
   const supplies = { ...state.inventory.supplies, bait: baitCount(state) + 1 };
+  return { state: { ...state, gold: state.gold - price, inventory: { ...state.inventory, supplies } } };
+}
+
+export function fortuneCookies(state: GameState): number {
+  return state.inventory.supplies.fortuneCookie ?? 0;
+}
+
+export function buyFortuneCookie(state: GameState): ShopResult {
+  const { price } = CONFIG.fortune;
+  if (!canAfford(state, price)) return { state, blocked: 'notEnoughGold' };
+  const supplies = { ...state.inventory.supplies, fortuneCookie: fortuneCookies(state) + 1 };
   return { state: { ...state, gold: state.gold - price, inventory: { ...state.inventory, supplies } } };
 }
 

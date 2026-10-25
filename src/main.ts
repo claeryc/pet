@@ -20,7 +20,8 @@ import {
 } from './game/actions';
 import { characterSheet, getCharacter, getVariant, sheetFor } from './game/growth';
 import {
-  buyBait, buyDecor, buyFood, buyGardenItem, buyHat, buyPot, checkIn, earn, getHat, grantPack, revivalStars, wearHat,
+  buyBait, buyDecor, buyFood, buyFortuneCookie, buyGardenItem, buyHat, buyPot, checkIn, earn, fortuneCookies, getHat, grantPack,
+  revivalStars, wearHat,
   type ShopResult,
 } from './game/economy';
 import { purchase, type ProductId } from './payments';
@@ -74,7 +75,8 @@ import {
 } from './game/friends';
 import { createChoiceBox } from './ui/choice';
 import { forecast } from './game/forecast';
-import { forecastHtml } from './ui/forecast';
+import { fortuneOf, useFortuneCookie } from './game/fortune';
+import { fortuneArt, skipFortuneOnTap } from './ui/fortune';
 import { createAwayCard } from './ui/away';
 import { awayNotes } from './game/away';
 import type { Pet } from './game/state';
@@ -579,21 +581,49 @@ function askWhoRetires(): void {
   });
 }
 
-// Mingle first shows the forecast: what a little one could grow into.
-// The pets only mingle if the player goes ahead. When they can't mingle
-// right now, mingling straight away says why.
+// Mingle first asks, with the chance of a little one. With a fortune
+// cookie from the Shop, the player can open one first for a hint about
+// what the little one could grow into. The pets only mingle if the player
+// goes ahead. When they can't mingle right now, mingling straight away
+// says why.
 function onMingle(id: string): void {
   const now = simulate(state, gameNow());
   const friend = getFriend(now, id);
   if (!friend || mingleBlock(now, id, gameNow())) return mingleNow(id);
   const f = forecast(now.pet, friend);
+  const cookies = fortuneCookies(state);
   choice.open({
-    title: STRINGS.friends.forecastTitle(now.pet.name, friend.name),
-    text: STRINGS.friends.forecastText(f.littleOne),
-    detail: forecastHtml(f),
+    title: STRINGS.friends.mingleTitle(now.pet.name, friend.name),
+    text: STRINGS.friends.mingleAsk(f.littleOne, cookies),
     options: [
-      { label: STRINGS.friends.mingleNow, onPick: () => mingleNow(id) },
+      ...(cookies > 0 ? [{ label: STRINGS.friends.openCookie(cookies), onPick: () => openFortune(id) }] : []),
+      { label: STRINGS.friends.mingleNow, soft: cookies > 0, onPick: () => mingleNow(id) },
       { label: STRINGS.friends.notNow, soft: true, onPick: () => {} },
+    ],
+  });
+}
+
+// Opens a fortune cookie on the mingle card: it cracks and the slip says
+// which theme the little one most likely grows into.
+function openFortune(id: string): void {
+  const used = useFortuneCookie(state);
+  const now = simulate(state, gameNow());
+  const friend = getFriend(now, id);
+  if (!used || !friend) return;
+  setState(used);
+  sound('place');
+  const fortune = fortuneOf(forecast(now.pet, friend), `${now.pet.id}:${friend.id}`);
+  const S = STRINGS.friends;
+  const likely = (fortune.likely && S.fortuneLikely[fortune.likely]) || S.fortuneSomething;
+  const surprise = fortune.surprise ? (S.fortuneSurprise[fortune.surprise] ?? null) : null;
+  choice.open({
+    art: fortuneArt(S.fortuneText(likely, surprise), S.fortuneLucky(fortune.lucky)),
+    artReadable: true,
+    title: S.mingleTitle(now.pet.name, friend.name),
+    text: S.cookieOpened,
+    options: [
+      { label: S.mingleNow, onPick: () => mingleNow(id) },
+      { label: S.notNow, soft: true, onPick: () => {} },
     ],
   });
 }
@@ -914,6 +944,7 @@ const home = createHomeScreen(root, {
   onSetCare: (careScore) => setState({ ...state, pet: { ...state.pet, careScore } }),
   onBuyFood: (food) => runShop(buyFood(state, food, gameNow()), STRINGS.shop.bought(STRINGS.foods[food])),
   onBuyBait: () => runShop(buyBait(state), STRINGS.shop.bought(STRINGS.shop.bait)),
+  onBuyFortuneCookie: () => runShop(buyFortuneCookie(state), STRINGS.shop.bought(STRINGS.shop.fortuneCookie)),
   onBuyCharm: (id) => runShop(buyCharm(state, id), STRINGS.shop.bought(STRINGS.journeys.charms[id]?.name ?? id)),
   onBuyPot: () => runShop(buyPot(state), STRINGS.shop.potBought),
   onBuyDecor: (kind, id) => {
@@ -1090,6 +1121,7 @@ const home = createHomeScreen(root, {
 // Made after the home screen, which clears the page when it starts.
 const naming = createNamingBox(root);
 const choice = createChoiceBox(root);
+skipFortuneOnTap();
 const away = createAwayCard(root);
 const guide = createGuideCard(root);
 home.update(state, gameNow());
