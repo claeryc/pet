@@ -3,6 +3,7 @@ import manifest from '../public/sprites/manifest.json';
 import { CONFIG } from '../src/game/config';
 import { afterEating, chooseExpression, EXPRESSIONS, faceForAnimation, idleEveryMs, reactionMs } from '../src/game/expressions';
 import { allowedTraits, fitTrait, getTrait, inheritTrait, rollTrait, traitOf, TRAITS, type Trait } from '../src/game/traits';
+import { getCharacter } from '../src/game/growth';
 import { countFaceFrames, faceFrame, type FaceSheet } from '../src/render/faces';
 import type { ManifestFile, Shape } from '../src/render/sprites';
 
@@ -89,6 +90,16 @@ describe('traits', () => {
     expect(fitTrait('a', 'shy', grumpo)).toBe('shy'); // allowed: kept
     for (let i = 0; i < 50; i++) expect(['sleepy', 'shy']).toContain(fitTrait(`p${i}`, 'playful', grumpo));
     expect(fitTrait('a', 'playful', undefined)).toBe('playful');
+  });
+
+  it('gives each 3-star starter pet one or two traits, and the others any', () => {
+    const locked = { stumpy: ['shy', 'sleepy'], tidecrest: ['playful', 'cheery'], cuppie: ['greedy', 'cheery'], starhoot: ['sleepy'] };
+    for (const [id, traits] of Object.entries(locked)) expect(allowedTraits(getCharacter(id))).toEqual(traits);
+    for (const id of ['sprig', 'acornet', 'bubbit', 'jellop', 'dumpling', 'puddling', 'cloudlet', 'moonpip']) {
+      expect(allowedTraits(getCharacter(id))).toEqual(allowedTraits(undefined));
+    }
+    // A Greedy teen that grows into a Starhoot becomes Sleepy.
+    expect(fitTrait('mochi', 'greedy', getCharacter('starhoot'))).toBe('sleepy');
   });
 
   it("can pass a parent's special trait on, kept by a character that lists it", () => {

@@ -13,13 +13,14 @@ import { guidesAlreadyKnown } from '../game/guides';
 import { backfillRegulars } from '../game/regulars';
 import { fitTrait, rollTrait } from '../game/traits';
 import { carriedOf, genesAtGrowUp } from '../game/genes';
+import { rollLikes } from '../game/likes';
 import { newHygiene } from '../game/hygiene';
 
 const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 27;
+export const SAVE_VERSION = 28;
 
 export interface SaveFile {
   version: number;
@@ -317,6 +318,13 @@ export function migrate(save: SaveFile): SaveFile {
       p.carried = p.stage === 'adult' && character ? genesAtGrowUp(p, character, p.variant ?? null) : null;
     }
     save.version = 27;
+  }
+  // Version 27 -> 28: likes and dislikes. Every pet gets the ones its id
+  // rolls, none found yet, and so do the pets in the Family Tree.
+  if (save.version === 27) {
+    const st = save.state;
+    for (const p of [st.pet, ...(st.housemates ?? []), ...(st.family ?? [])]) if (p && !p.likes) p.likes = rollLikes(p.id);
+    save.version = 28;
   }
   return save;
 }

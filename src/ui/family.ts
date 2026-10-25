@@ -9,6 +9,7 @@ import { THEMES, characterSheet, getCharacter, getVariant, sheetFor } from '../g
 import { carriedOf } from '../game/genes';
 import { ageInDays, familyGenerations, pedigree, type TreeMember } from '../game/family';
 import { getTrait } from '../game/traits';
+import { likesOf } from '../game/likes';
 import type { GameState, PetStats } from '../game/state';
 import { STAT_ICONS, UNKNOWN_ICON } from './icons';
 import type { CollectionCallbacks } from './collection';
@@ -71,6 +72,25 @@ function carriesLine(m: TreeMember): HTMLElement | null {
   return line;
 }
 
+// "Loves Strawberry · Favourite: Cuddle · Dislikes ?": what one of your
+// pets has shown it likes, '?' for the rest. Friends' and wild pets weren't
+// yours to get to know, so they show nothing.
+function likesLine(m: TreeMember): HTMLElement | null {
+  if (m.stage === 'egg' || m.fromFriend || m.fromWild) return null;
+  const t = STRINGS.family.likes;
+  const likes = likesOf(m);
+  const shown = (kind: 'food' | 'play' | 'dislike', name: string) => (likes.found.includes(kind) ? name : t.unknown);
+  const foodName = (id: string) => STRINGS.foods[id as keyof typeof STRINGS.foods] ?? id;
+  const dislike = likes.dislike === 'bath' ? t.bath : likes.dislike === 'woken' ? t.woken : foodName(likes.dislike);
+  const line = el('small', 'tree-likes', [
+    t.food(shown('food', foodName(likes.food))),
+    t.play(shown('play', STRINGS.activities[likes.play as keyof typeof STRINGS.activities] ?? likes.play)),
+    t.dislike(shown('dislike', dislike)),
+  ].join(' · '));
+  line.title = t.title;
+  return line;
+}
+
 function sheetOf(m: TreeMember, state: GameState): string {
   const atHome = [state.pet, ...state.housemates].find((p) => p.id === m.id);
   if (atHome) return sheetFor(atHome);
@@ -119,7 +139,7 @@ function card(m: TreeMember, state: GameState, cb: FamilyCallbacks): HTMLElement
   info.append(
     top,
     traitLine(m, el('small', 'tree-what', whatItIs(m))),
-    ...[carriesLine(m)].filter((line): line is HTMLElement => !!line),
+    ...[carriesLine(m), likesLine(m)].filter((line): line is HTMLElement => !!line),
     el('small', '', m.fromWild ? STRINGS.family.raisedInWild : m.owner ? STRINGS.family.raisedBy(m.owner) : STRINGS.family.raisedByYou),
     el('small', '', m.home ? STRINGS.family.age(ageInDays(m.bornAt, state.lastUpdated)) : bornOn(m.bornAt)),
   );

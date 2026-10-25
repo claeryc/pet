@@ -5,6 +5,7 @@ import { CONFIG } from './config';
 import type { Stage } from './growth';
 import { newGarden } from './garden';
 import { inheritTrait } from './traits';
+import { rollLikes, type Likes } from './likes';
 import { newHygiene, type Hygiene } from './hygiene';
 import type { Genes } from './genes';
 
@@ -72,6 +73,9 @@ export interface Pet {
   // Its bit of personality (an id from src/data/traits.json): only changes
   // how it looks and behaves, see src/game/traits.ts.
   trait: string;
+  // Its favourite food, favourite way to play and one dislike, and which of
+  // them the player has seen (see src/game/likes.ts).
+  likes: Likes;
   // Poop on the floor and whether it's smelly (see src/game/hygiene.ts).
   hygiene: Hygiene;
 }
@@ -187,6 +191,7 @@ export interface FamilyMember {
   parents: string[]; // ids of other family members
   trait?: string; // its trait, if it had one (see src/game/traits.ts)
   carried?: Genes; // the genes it carries (rolled from its id if it has none, see genes.ts)
+  likes?: Likes; // its likes and dislikes, and which were found (see src/game/likes.ts)
 }
 
 // A pet you can meet (see src/game/friends.ts). For now every friend is a
@@ -404,6 +409,7 @@ export function newPet(
     parentLooks: ParentLook[];
     parentTraits?: string[];
     parentCarried?: Genes[];
+    parentFoods?: string[]; // its parents' favourite foods
   } = {
     generation: 1, parents: [], themes: [], parentLooks: [],
   },
@@ -438,6 +444,7 @@ export function newPet(
     trip: null,
     tripReadyAt: 0,
     trait: inheritTrait(id, family.parentTraits ?? []),
+    likes: rollLikes(id, family.parentFoods ?? []),
     hygiene: newHygiene(),
   };
 }
