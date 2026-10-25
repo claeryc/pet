@@ -11,9 +11,14 @@
 // Meeting and gifts raise the friend score (0-100, shown as hearts), with
 // daily caps so it can't be rushed. A friend who visits and leaves without
 // meeting your pet loses a point, but never a whole heart. Once the hearts are 70% full, two grown-ups can
-// mingle, and that may bring a little one: an egg that joins your room
-// (the room fits two pets; past that, one retires into the Family Tree).
-// The little one leans towards its parents' themes when it grows up.
+// mingle, and that may bring a little one: an egg that joins your room,
+// while the parent stays the pet you look after. If the room is full (it
+// fits two pets), the egg waits in the nest until a pet moves out into
+// the Family Tree, which is always your choice. The little one takes
+// after one of its parents' themes when it grows up (see growth.ts).
+//
+// Meeting a pet also puts its character in the Collection, and wanderers
+// lean towards characters you haven't met yet.
 //
 // A pet only ever has one partner, and never mingles with its own parent,
 // little one or brother or sister.
@@ -25,7 +30,7 @@ import { likesOf } from './likes';
 import { addTally, countUp } from './achievements';
 import { startingCare } from './skills';
 import { CONFIG } from './config';
-import { characterOfStars, getCharacter, rollStarsWith, seededRoll } from './growth';
+import { IN_GAME, characterOfStars, getCharacter, rollStarsWith, seededRoll, variantOf } from './growth';
 import { localDay, useFood } from './economy';
 import { clampStat, canPlayMinigames } from './stats';
 import { rememberPet } from './family';
@@ -91,12 +96,24 @@ function freshDay(f: Friend, day: string): void {
 
 // --- Wanderers ---------------------------------------------------------------
 
+// The characters you've met or raised, by id (without colour variants).
+export function seenCharacters(state: GameState): string[] {
+  return [...new Set([...state.charactersFound, ...state.charactersMet].map((key) => key.split(':')[0]))];
+}
+
 // Makes the wanderer that arrives at time `t`. Everything about it comes
-// from `t`, so it's the same however the game catches up. `taken` are names
-// it shouldn't use (your pets', your friends').
-export function makeWanderer(t: number, taken: readonly string[]): Friend {
+// from `t` (and what you've `seen`), so it's the same however the game
+// catches up. `taken` are names it shouldn't use (your pets', your
+// friends'). F.unmetWandererChance of the time it's a character of the
+// rolled rarity you haven't met yet, while there is one.
+export function makeWanderer(t: number, taken: readonly string[], seen: readonly string[] = []): Friend {
   const id = `wild-${t}`;
-  const { character, variant } = characterOfStars(rollStarsWith(F.wandererStars, seededRoll(id, 'stars')), id);
+  let { character, variant } = characterOfStars(rollStarsWith(F.wandererStars, seededRoll(id, 'stars')), id);
+  const unmet = IN_GAME.filter((c) => c.stars === character.stars && !seen.includes(c.id));
+  if (unmet.length > 0 && !unmet.includes(character) && seededRoll(id, 'unmet') * 100 < F.unmetWandererChance) {
+    character = unmet[Math.floor(seededRoll(id, 'whichUnmet') * unmet.length)];
+    variant = variantOf(character, id, {});
+  }
   const names = STRINGS.petNames.filter((n) => !taken.includes(n));
   const pool = names.length > 0 ? names : STRINGS.petNames;
   return {
@@ -157,7 +174,7 @@ export function stepVisits(state: GameState, t: number): GameState {
     let who: Friend;
     if (arrive >= v.wildAt) {
       const taken = [...allPets(s).map((p) => p.name), ...s.friends.map((f) => f.name)];
-      who = makeWanderer(arrive, taken);
+      who = makeWanderer(arrive, taken, seenCharacters(s));
       v = { ...v, guest: who, until, met: false, wildAt: arrive + F.wildEveryHours * HOUR };
     } else if (s.friends.length > 0) {
       who = s.friends[Math.floor(seededRoll(`visit-${arrive}`, 'who') * s.friends.length)];
@@ -226,6 +243,9 @@ export function meet(state: GameState, friendId: string, now: number): FriendRes
     f.score = clampStat(f.score + gained);
   });
   s = { ...s, visit: { ...s.visit, met: true } };
+  const friend = getFriend(s, friendId)!;
+  const key = friend.variant ? `${friend.character}:${friend.variant}` : friend.character;
+  if (key && !s.charactersMet.includes(key)) s = { ...s, charactersMet: [...s.charactersMet, key] };
   const stats = { ...s.pet.stats };
   stats.happiness = clampStat(stats.happiness + F.meet.happiness);
   stats.energy = clampStat(stats.energy + F.meet.energy);
@@ -310,6 +330,7 @@ export type MingleBlock =
   | 'taken' // one of them already has a different partner
   | 'family' // they're parent and little one, or brothers and sisters
   | 'wait' // they mingled recently
+  | 'nest' // an egg is already waiting in the nest for room
   | 'notFriend' // add the guest as a friend first
   | 'away'; // they aren't over right now
 
@@ -329,6 +350,7 @@ export function mingleBlock(state: GameState, friendId: string, now: number): Mi
   if (related) return 'family';
   if (friend.score < F.mingle.minScore) return 'hearts';
   if (friend.mingledAt > 0 && now - friend.mingledAt < F.mingle.waitDays * DAY) return 'wait';
+  if (state.nest) return 'nest';
   return null;
 }
 
@@ -341,9 +363,9 @@ export interface MingleResult {
   state: GameState;
   blocked?: MingleBlock | FriendBlock;
   egg?: Pet; // the little one, when there is one
-  // The room was already full: one of these pets has to retire to make
-  // space for the egg (see retire()).
-  crowded?: boolean;
+  // The room was already full: the egg waits in the nest until a pet
+  // moves out (see retire()).
+  nested?: boolean;
 }
 
 // How a friend is remembered in the Family Tree.
@@ -365,9 +387,9 @@ export function rememberFriend(f: Friend): FamilyMember {
 }
 
 // The pets meet (it counts as a meeting) and, with luck, a little one
-// comes: an egg with both of them as parents, which you look after next.
-// The pet that had it stays at home for now. If the room was already
-// full, `crowded` says one of the others has to retire. `roll` is a number
+// comes: an egg with both of them as parents. It joins the room, and the
+// parent stays the pet you're looking after. If the room was already full,
+// the egg waits in the nest (`nested`) until a pet moves out. `roll` is a number
 // from 0 to 1 (Math.random() in the game, fixed in tests).
 export function mingle(state: GameState, friendId: string, now: number, roll: number): MingleResult {
   const block = mingleBlock(state, friendId, now);
@@ -394,15 +416,17 @@ export function mingle(state: GameState, friendId: string, now: number, roll: nu
   s = withFriend(s, friendId, (f) => (f.partner = parent.id));
   // The friend goes in the Family Tree, so the little one's tree works.
   const family = s.family.some((m) => m.id === friend.id) ? s.family : [...s.family, rememberFriend(friend)];
+  const nested = allPets(s).length >= F.maxPets;
   s = {
     ...s,
     family,
-    pet: egg,
-    housemates: [{ ...parent, partner: friend.id }, ...s.housemates],
+    pet: { ...parent, partner: friend.id },
+    housemates: nested ? s.housemates : [...s.housemates, egg],
+    nest: nested ? egg : s.nest,
   };
   s = logMessage(s, { kind: 'littleOne', at: now, name: parent.name, friend: friend.name });
   s = addTally(s, 'littleOnes');
-  return { state: s, egg, crowded: allPets(s).length > F.maxPets };
+  return { state: s, egg, nested };
 }
 
 // --- Pets in the room ---------------------------------------------------------
@@ -421,8 +445,9 @@ export function switchPet(state: GameState, id: string): GameState {
 
 // A pet moves out of the room into the Family Tree. There's always at
 // least one pet left; if it was the one you were looking after, the next
-// one takes its place.
-export function retire(state: GameState, id: string): GameState {
+// one takes its place. An egg waiting in the nest moves in, and starts
+// its time to hatch from `now`.
+export function retire(state: GameState, id: string, now = state.lastUpdated): GameState {
   const pets = allPets(state);
   const leaving = pets.find((p) => p.id === id);
   if (!leaving || pets.length < 2) return state;
@@ -430,10 +455,12 @@ export function retire(state: GameState, id: string): GameState {
   // Retiring counts for the Family Tree milestone; saying goodbye to a pet
   // that passed away doesn't.
   const s = leaving.condition === 'passed' ? state : countUp(state, 'retired');
+  const egg = s.nest ? [{ ...s.nest, stageStartedAt: now }] : [];
   return {
     ...s,
     pet: rest[0],
-    housemates: rest.slice(1),
+    housemates: [...rest.slice(1), ...egg],
+    nest: null,
     family: [...s.family, rememberPet(leaving, s.owner)],
   };
 }

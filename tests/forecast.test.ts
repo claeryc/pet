@@ -50,11 +50,18 @@ describe('the forecast before mingling', () => {
     for (const v of f.variants) expect(Math.abs(v.chance - real.variant(v.character, v.variant))).toBeLessThan(1.5);
   });
 
-  it('shows great-care rarity odds, better for two 3-star parents', () => {
+  it('shows great-care rarity odds, after the 1-star floor and the 3-star climb', () => {
+    // Two 1-star parents: 1 star at least at the floor, and no 3 stars.
     const plain = forecast(...Object.values(parents({}, {})) as [Pet, Friend]);
-    expect(plain.stars).toEqual(CONFIG.rarity[0].odds);
+    expect(plain.stars[1]).toBe(CONFIG.inheritance.oneStarFloor);
+    expect(plain.stars[3]).toBe(0);
+    expect(plain.stars[1] + plain.stars[2]).toBeCloseTo(100, 5);
+    // Two 3-star parents: their own themes reach 3 stars, a carried theme
+    // (the outside share) stops at 2.
     const stars = forecast(...Object.values(parents({ character: 'stumpy' }, { character: 'tidecrest', variant: null })) as [Pet, Friend]);
-    expect(stars.stars).toEqual(CONFIG.rarityStarParents[0].odds);
+    const best = CONFIG.rarityStarParents[0].odds;
+    expect(stars.stars[1]).toBe(best[1]);
+    expect(stars.stars[3]).toBeCloseTo(best[3] * (1 - CONFIG.inheritance.outsideThemeChance / 100), 5);
   });
 
   it('gives the chance of a little one from the friend\'s hearts', () => {

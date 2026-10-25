@@ -498,7 +498,8 @@ export const CONFIG = {
     missedVisit: 1,
     // Mingling needs this score (70 = hearts 70% full). The chance of a
     // little one goes up with the score (first row that fits, percent).
-    // After a mingle the pair waits `waitDays` before the next one.
+    // After a mingle the pair waits `waitDays` before the next one, so a
+    // little one is a big moment rather than a steady stream.
     mingle: {
       minScore: 70,
       chance: [
@@ -506,29 +507,41 @@ export const CONFIG = {
         { minScore: 85, chance: 65 },
         { minScore: 70, chance: 50 },
       ],
-      waitDays: 3,
+      waitDays: 7,
     },
-    // How many pets fit in the room. A little one past that means one of
-    // the others retires into the Family Tree.
+    // How many pets fit in the room. A little one that arrives when it's
+    // full waits in the nest until you make room (nobody has to leave).
     maxPets: 2,
-    // A little one favours its parents' themes when it grows up: this
-    // share (percent) of the time it becomes a character of one of them,
-    // otherwise any theme. Rarity still comes from the Care Score.
-    parentThemeChance: 60,
     // Wanderers lean towards common characters (percent by stars), so
     // friends' pets stay the best route to rare little ones.
     wandererStars: { 1: 65, 2: 25, 3: 10 },
+    // This share (percent) of wanderers is a character you haven't met or
+    // raised yet (of the rarity rolled), while there's one left to meet.
+    unmetWandererChance: 60,
   },
 
-  // Genes (see src/game/genes.ts). When a little one leans towards its
-  // parents' themes (friends.parentThemeChance), this share (percent) of
-  // the time it's a theme they carry instead, if they carry one neither of
-  // them shows. A colour variant a parent shows or carries comes back this
-  // share of the time, when the little one grows into that character
-  // (otherwise the variant's usual chance applies). A first pet or a
-  // wanderer carries a colour variant this share of the time.
+  // What a little one grows into (see src/game/growth.ts). It takes after
+  // one of its parents' themes ("climbing the family"):
+  // - It only grows into a 3-star character if a parent shows that theme
+  //   as a 2-star or 3-star character. Otherwise it stops at 2 stars.
+  // - With a 1-star parent, it's a 1-star at least `oneStarFloor` percent
+  //   of the time, whatever the Care Score (the rest come off 3 stars,
+  //   then 2).
+  // - `outsideThemeChance` percent of the time it grows into a theme a
+  //   parent only carries (see `genes`), if they carry one, never a theme
+  //   from nowhere.
+  inheritance: {
+    oneStarFloor: 35,
+    outsideThemeChance: 10,
+  },
+
+  // Genes (see src/game/genes.ts). A carried theme can come back now and
+  // then (`inheritance.outsideThemeChance`). A colour variant a parent
+  // shows or carries comes back this share of the time, when the little
+  // one grows into that character (otherwise the variant's usual chance
+  // applies). A first pet or a wanderer carries a colour variant this
+  // share of the time.
   genes: {
-    carriedThemeChance: 30,
     variantChance: 20,
     wildVariantChance: 10,
   },
@@ -679,7 +692,7 @@ export const CONFIG = {
   // pet you raise.
   skills: {
     // XP for each thing counted for an achievement (per one).
-    xp: { fish: 3, deliveries: 5, harvests: 4, dishes: 3, cravings: 5, gifts: 2, littleOnes: 50, journeys: 8, epicFinds: 15, adventures: 10 },
+    xp: { fish: 3, deliveries: 5, harvests: 4, dishes: 3, cravings: 5, gifts: 2, littleOnes: 20, journeys: 8, epicFinds: 15, adventures: 10 },
     perfectFishXp: 2, // extra for a perfect catch (5 in all)
     deliveryXp: { bronze: 0, silver: 5, gold: 15 }, // extra for a fuller order (5 / 10 / 20 in all)
     grownUpXp: { 1: 20, 2: 40, 3: 80 }, // a pet growing up, by its stars

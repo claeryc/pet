@@ -71,15 +71,14 @@ describe('inheritance', () => {
   });
 
   it('a carried theme comes back now and then, but parents\' shown themes win', () => {
-    const picks = ids.map((id) => characterOfStars(1, id, { themes: ['ocean'], carriedThemes: ['bakery'] }).character.theme);
+    const picks = ids.map((id) => chooseCharacter(90, id, { themes: ['ocean'], carriedThemes: ['bakery'] }).character.theme);
     const ocean = share(picks.filter((t) => t === 'ocean').length);
     const bakery = share(picks.filter((t) => t === 'bakery').length);
-    // Any theme the rest of the time, so each of the 4 gets a share of that too.
-    const anyTheme = (100 - CONFIG.friends.parentThemeChance) / 4;
-    const expected = (CONFIG.friends.parentThemeChance * CONFIG.genes.carriedThemeChance) / 100 + anyTheme;
+    // Never a theme from nowhere.
+    expect(ocean + bakery).toBe(100);
+    const expected = CONFIG.inheritance.outsideThemeChance;
     expect(bakery).toBeGreaterThan(expected - 4);
     expect(bakery).toBeLessThan(expected + 4);
-    expect(ocean).toBeGreaterThan(bakery + 10);
   });
 
   it('a colour variant a parent has comes back more often than its usual chance', () => {

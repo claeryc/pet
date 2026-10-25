@@ -4,7 +4,7 @@ import { feed, play, toggleLights } from '../src/game/actions';
 import { bathe, smellNow } from '../src/game/hygiene';
 import { FAVOURITE_FOODS, feeling, likesOf, rollLikes } from '../src/game/likes';
 import { rememberPet } from '../src/game/family';
-import { migrate } from '../src/storage/storage';
+import { migrate, SAVE_VERSION } from '../src/storage/storage';
 import type { FoodId } from '../src/game/actions';
 import type { GameState } from '../src/game/state';
 import { newTeen } from './helpers';
@@ -126,7 +126,7 @@ describe('remembering likes', () => {
     delete s.pet.likes;
     s.family = [{ id: 'gran' }];
     const out = migrate({ version: 27, state: s });
-    expect(out.version).toBe(28);
+    expect(out.version).toBe(SAVE_VERSION);
     expect(out.state.pet.likes).toEqual(rollLikes(s.pet.id));
     expect(out.state.family[0].likes).toEqual(rollLikes('gran'));
   });

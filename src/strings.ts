@@ -442,7 +442,7 @@ export const STRINGS = {
       collection: {
         name: 'Collection',
         pages: [
-          { title: 'Your Collection', text: 'Every character, recipe and badge you find is kept here. Badges go from bronze to silver to gold, and Milestones mark the big moments.' },
+          { title: 'Your Collection', text: 'Every character, recipe and badge you find is kept here. Meeting a pet adds its character, and the ones you raise yourself get a gold frame. Badges go from bronze to silver to gold, and Milestones mark the big moments.' },
         ],
       },
     } as Record<string, { name: GuideText; pages: { title: GuideText; text: GuideText }[] }>,
@@ -592,20 +592,22 @@ export const STRINGS = {
       hearts: (_name: string) => 'You need more hearts first. Keep meeting and giving gifts!',
       taken: (name: string) => `${name} already has a partner, and a pet only ever has one.`,
       family: (name: string) => `They're family! ${name} can't mingle with a parent, a little one or a brother or sister.`,
-      wait: (_name: string) => 'They mingled not long ago. Give it a few days.',
+      wait: (_name: string) => 'They mingled not long ago. Give it a week or so.',
+      nest: (_name: string) => 'An egg is already waiting in the nest. Make room for it first.',
       notFriend: (_name: string) => 'Add them as a friend first.',
       away: (_name: string) => "They aren't over right now. Invite them from Messages > Friends.",
       busy: (_name: string) => 'Someone is already over. Invite a friend once they leave.',
       invited: (_name: string) => "You've invited a friend today. Invite another tomorrow!",
     },
-    // The egg arrives: keep the parent in the room, or retire it.
-    keepTitle: 'A little one!',
-    keepAsk: (parent: string) =>
-      `${parent} has an egg! The egg is yours to look after now. Should ${parent} stay at home too? Tap a pet in the room to look after it.`,
-    keep: (name: string) => `Keep ${name}`,
+    // An egg that arrives when the room is full waits in the nest. Making
+    // room is always the player's choice, and "Not yet" is fine.
     retire: (name: string) => `Retire ${name}`,
-    fullTitle: 'The room is full',
-    fullAsk: 'The room fits two pets, so one moves into the Family Tree to make space for the egg. Who retires?',
+    nestTitle: 'An egg in the nest',
+    nestAsk:
+      "A little one's egg is waiting in the nest. The room fits two pets, so it moves in once one of them moves into the Family Tree. There's no hurry.",
+    notYet: 'Not yet',
+    nestBanner: 'An egg is waiting in the nest.',
+    makeRoom: 'Make room',
     retired: (name: string) => `${name} retired to the Family Tree.`,
     looking: (name: string) => `Looking after ${name}`,
   },
@@ -926,6 +928,9 @@ export const STRINGS = {
     count: (title: string, found: number, total: number) => `${title}  ${found}/${total}`,
     unknown: '???',
     notFound: 'Not found yet',
+    // A character you've met as a visitor, or raised yourself (gold frame).
+    met: (theme: string) => `${theme} · Met`,
+    raised: (theme: string) => `${theme} · Raised`,
   },
   // Achievements in the Collection: badges from bronze to silver to gold.
   achievements: {

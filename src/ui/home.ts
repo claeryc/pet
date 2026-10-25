@@ -69,6 +69,7 @@ export interface HomeCallbacks extends MenuCallbacks {
   onMingle: (friend: string) => void;
   onAddFriend: () => void;
   onSwitchPet: (id: string) => void; // tapped the other pet in the room
+  onMakeRoom: () => void; // an egg is waiting in the nest
   onCollectPoop: (petId: string, slot: number) => void;
   onBathe: () => boolean; // the bath is done and it's dry; false if refused
   petSheet: () => SpriteSheet | undefined; // the pet's sprite, for where its body is
@@ -350,7 +351,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   // A pet out on a journey can be called home, and one that's back has a
   // backpack to open.
   const openBackpack = button(STRINGS.journeys.openBackpack, 'btn', () => latest && cb.onOpenBackpack(latest.state.pet.id));
-  banner.append(bannerText, medicine, passedButtons, openBackpack);
+  const makeRoom = button(STRINGS.friends.makeRoom, 'btn', () => cb.onMakeRoom());
+  banner.append(bannerText, medicine, passedButtons, openBackpack, makeRoom);
 
   const bars: Record<keyof PetStats, StatBar> = {
     hunger: statBar(STRINGS.stats.hunger, STAT_ICONS.hunger),
@@ -1141,12 +1143,16 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
         text = STRINGS.status.recovering(pet.name, formatDuration(pet.recoveryUntil! - now));
       else if (pet.condition === 'warning')
         text = pet.hygiene.germs && !isNeglected(pet.stats) ? STRINGS.status.germs(pet.name) : STRINGS.status.warning(pet.name);
+      // Nothing else to say: an egg waiting in the nest for room.
+      const nestWaits = text === '' && !petAway && !!state.nest;
+      if (nestWaits) text = STRINGS.friends.nestBanner;
       banner.hidden = text === '';
       banner.dataset.kind = pet.trip ? 'info' : passed ? 'passed' : isCritical(pet) ? 'critical' : pet.condition === 'sick' ? 'sick' : 'info';
       bannerText.textContent = text;
       medicine.hidden = pet.condition !== 'sick' || !!pet.trip;
       passedButtons.hidden = !passed || !!pet.trip;
       openBackpack.hidden = !hasBackpack(pet);
+      makeRoom.hidden = !nestWaits;
 
       // Lights button shows what pressing it will do.
       const label = pet.asleep ? STRINGS.buttons.lightsOn : STRINGS.buttons.lightsOff;
@@ -1167,8 +1173,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       if (bath.active() && (pet.asleep || petAway || isEgg || passed || switched || !pet.hygiene.smelly)) stopBath();
       // Fishing stops if the pet falls asleep or gets sick.
       if (!canPlayMinigames(pet, now) || isEgg) stopFishing();
-      // A little one arrived (you're looking after the egg now): the friend
-      // goes home.
+      // Looking after an egg now (it can't meet anyone): the friend goes
+      // home.
       if (isEgg && meet.active()) {
         meet.stop();
         showActions(MEET_OUT_MS);

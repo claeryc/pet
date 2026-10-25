@@ -20,7 +20,7 @@ const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 28;
+export const SAVE_VERSION = 29;
 
 export interface SaveFile {
   version: number;
@@ -325,6 +325,26 @@ export function migrate(save: SaveFile): SaveFile {
     const st = save.state;
     for (const p of [st.pet, ...(st.housemates ?? []), ...(st.family ?? [])]) if (p && !p.likes) p.likes = rollLikes(p.id);
     save.version = 28;
+  }
+  // Version 28 -> 29: the nest and met characters. Friends you already
+  // have (and friends in the Family Tree) count as met. A room holding
+  // more pets than fit puts its newest egg in the nest instead.
+  if (save.version === 28) {
+    const st = save.state;
+    const met = [...(st.friends ?? []), ...(st.family ?? []).filter((m: any) => m.fromFriend || m.fromWild)]
+      .filter((f: any) => f.character)
+      .map((f: any) => characterKey(f.character, f.variant ?? null));
+    st.charactersMet = [...new Set(met)];
+    st.nest = null;
+    const pets: any[] = [st.pet, ...(st.housemates ?? [])].filter(Boolean);
+    const egg = pets.filter((p) => p.stage === 'egg').sort((a, b) => b.bornAt - a.bornAt)[0];
+    if (egg && pets.length > CONFIG.friends.maxPets) {
+      const rest = pets.filter((p) => p !== egg);
+      st.nest = egg;
+      st.pet = rest[0];
+      st.housemates = rest.slice(1);
+    }
+    save.version = 29;
   }
   return save;
 }

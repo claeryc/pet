@@ -321,6 +321,10 @@ export interface GameState {
   // swaps it in here.
   pet: Pet;
   housemates: Pet[];
+  // A little one's egg waiting for room (the room fits
+  // CONFIG.friends.maxPets). It doesn't hatch until it moves in, which it
+  // does by itself as soon as a pet moves out.
+  nest: Pet | null;
   // The moment the simulation last caught up to. simulate() moves the world
   // forward from here to "now".
   lastUpdated: number;
@@ -340,6 +344,9 @@ export interface GameState {
   // or "pebblit:amber" for a colour variant). Shown in the Collection.
   caught: string[];
   charactersFound: string[];
+  // Characters met as a visiting friend or wanderer (same keys). The
+  // Collection shows them too; the ones you raised get a gold frame.
+  charactersMet: string[];
   // Parts of the game that have opened up (see src/game/unlocks.ts), and
   // the ones the player has already looked at (the rest get a "new" dot).
   unlocked: string[];
@@ -453,6 +460,7 @@ export function createNewGame(now: number): GameState {
   return {
     pet: newPet(now),
     housemates: [],
+    nest: null,
     lastUpdated: now,
     clockOffsetMs: 0,
     gold: CONFIG.economy.startingGold,
@@ -462,6 +470,7 @@ export function createNewGame(now: number): GameState {
     recentFoods: [],
     caught: [],
     charactersFound: [],
+    charactersMet: [],
     unlocked: [],
     seen: [],
     showAllMenus: false,

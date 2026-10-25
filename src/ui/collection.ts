@@ -1,6 +1,8 @@
 // The Collection page inside the gear menu: every character, recipe and
 // fish there is to find, and the achievements. Found ones show their
-// picture, name and stars; the rest are a "???" to aim for. Achievements
+// picture, name and stars; the rest are a "???" to aim for. A character
+// counts once you've met one (as a visitor), and gets a gold frame once
+// you've raised one. Achievements
 // show their badge (bronze, silver or gold) and how far it is to the next;
 // Milestones are one badge each, with a medal of their own.
 // Each category folds up into a grid of pictures, like the Shop.
@@ -97,9 +99,14 @@ export function collectionPage(state: GameState, cb: CollectionCallbacks, open: 
         sheet: v.sheet,
       })),
     ];
-    return forms.filter((f) => !LATER_PACKS.includes(c.theme) || state.charactersFound.includes(f.key)).map((f) =>
-      entry(state.charactersFound.includes(f.key), portrait(cb.characterImage(f.sheet)), f.name, THEMES[c.theme] ?? '', c.stars),
-    );
+    const seen = (key: string) => state.charactersFound.includes(key) || state.charactersMet.includes(key);
+    return forms.filter((f) => !LATER_PACKS.includes(c.theme) || seen(f.key)).map((f) => {
+      const raised = state.charactersFound.includes(f.key);
+      const theme = THEMES[c.theme] ?? '';
+      const e = entry(seen(f.key), portrait(cb.characterImage(f.sheet)), f.name,
+        raised ? STRINGS.collection.raised(theme) : STRINGS.collection.met(theme), c.stars);
+      return raised ? { ...e, tier: 'gold' } : e;
+    });
   });
   const recipes: Entry[] = RECIPES.map((r) =>
     entry(state.recipesFound.includes(r.id), ITEM_ICONS[r.id], STRINGS.foods[r.id], '', foodStars(r.id)),
