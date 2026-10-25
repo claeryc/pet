@@ -19,7 +19,7 @@ export const POND_WIDTH = 96;
 
 // Little sprites drawn from text grids: "." is see-through, any other
 // letter is a pixel in the colour the sprite is drawn with.
-type Sprite = string[];
+export type Sprite = string[];
 
 // Fish shadows (facing right; flipped when swimming left).
 const FISH: Sprite[] = [
@@ -27,8 +27,8 @@ const FISH: Sprite[] = [
   ['k...kkkk..', 'kk.kkkkkkk', 'kkkkkkkkk.', 'k...kkk...'],
   ['.......kk....', 'k...kkkkkkk..', 'kk.kkkkkkkkkk', 'k...kkkkkkkk.', '.....kk......'],
 ];
-const BUBBLES: Sprite[] = [['w'], ['.w.', 'w.w', '.w.'], ['.ww.', 'w..w', 'w..w', '.ww.']];
-const FOAM: Sprite[] = [
+export const BUBBLES: Sprite[] = [['w'], ['.w.', 'w.w', '.w.'], ['.ww.', 'w..w', 'w..w', '.ww.']];
+export const FOAM: Sprite[] = [
   ['w.w', '.w.'],
   ['.ww.', 'wwww', '.w..'],
   ['w..w.', '.www.', 'ww.ww'],
@@ -37,7 +37,7 @@ const FOAM: Sprite[] = [
 // The bait: a little pink worm on a hook.
 const BAIT: Sprite = ['..k..', '.ppk.', 'pp.k.', '.ppp.', '..pp.', 'k.pk.', '.kk..'];
 
-function drawSprite(
+export function drawSprite(
   ctx: CanvasRenderingContext2D,
   sprite: Sprite,
   x: number,
@@ -56,8 +56,8 @@ function drawSprite(
   });
 }
 
-const rand = (min: number, max: number) => min + Math.random() * (max - min);
-const pick = <T>(list: T[]): T => list[Math.floor(Math.random() * list.length)];
+export const rand = (min: number, max: number) => min + Math.random() * (max - min);
+export const pick = <T>(list: T[]): T => list[Math.floor(Math.random() * list.length)];
 
 interface Fish {
   sprite: Sprite;
