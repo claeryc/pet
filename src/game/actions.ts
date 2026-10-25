@@ -13,6 +13,7 @@ import { newPet, type GameState, type Pet } from './state';
 import { rememberPet } from './family';
 import { retire } from './friends';
 import { isAway } from './presence';
+import { feeling, noticeFeeling } from './likes';
 
 export type BlockReason = 'egg' | 'asleep' | 'tooTired' | 'notSick' | 'noFood' | 'resting' | 'passed' | 'noRevival' | 'away';
 
@@ -20,6 +21,9 @@ export interface ActionResult {
   state: GameState;
   blocked?: BlockReason;
   craved?: number; // fed what the pet was craving: the gold tip it gave
+  // Its favourite food or way to play ('loved'), or its dislike ('disliked'):
+  // the face it pulls after (see src/game/likes.ts).
+  felt?: 'loved' | 'disliked';
 }
 
 // Helper: returns a copy of the state with the pet changed by `change`.
@@ -67,8 +71,10 @@ export function feed(state: GameState, now: number, foodId: FoodId = 'riceBall')
     }
   });
   // Just what it was craving? A little extra on top.
-  const { state: next, tip } = satisfyCraving(fed, foodId, now);
-  return tip > 0 ? { state: next, craved: tip } : { state: next };
+  const { state: craved, tip } = satisfyCraving(fed, foodId, now);
+  const felt = feeling(s.pet, 'food', foodId);
+  const next = noticeFeeling(craved, 'food', felt);
+  return { state: next, ...(tip > 0 ? { craved: tip } : {}), ...(felt ? { felt } : {}) };
 }
 
 export function play(state: GameState, now: number, activityId: ActivityId = 'cuddle'): ActionResult {
@@ -79,13 +85,13 @@ export function play(state: GameState, now: number, activityId: ActivityId = 'cu
   if (s.pet.asleep) return { state: s, blocked: 'asleep' };
   const activity = CONFIG.activities.find((a) => a.id === activityId)!;
   if (s.pet.stats.energy < -activity.energy) return { state: s, blocked: 'tooTired' };
-  return {
-    state: withPet(s, (pet) => {
-      pet.stats.happiness = clampStat(pet.stats.happiness + activity.happiness);
-      pet.stats.hunger = clampStat(pet.stats.hunger + activity.hunger);
-      pet.stats.energy = clampStat(pet.stats.energy + activity.energy);
-    }),
-  };
+  const played = withPet(s, (pet) => {
+    pet.stats.happiness = clampStat(pet.stats.happiness + activity.happiness);
+    pet.stats.hunger = clampStat(pet.stats.hunger + activity.hunger);
+    pet.stats.energy = clampStat(pet.stats.energy + activity.energy);
+  });
+  const felt = feeling(s.pet, 'play', activityId);
+  return { state: noticeFeeling(played, 'play', felt), ...(felt ? { felt } : {}) };
 }
 
 // Turns the lights off (pets go to sleep) or on (pets wake up). The pets
@@ -100,7 +106,10 @@ export function toggleLights(state: GameState, now: number): ActionResult {
   const housemates = s.housemates.map((p) =>
     isAway(p) || p.condition === 'passed' || p.stage === 'egg' || p.asleep === asleep ? p : { ...p, asleep },
   );
-  return { state: withPet({ ...s, housemates }, (pet) => (pet.asleep = asleep)) };
+  const switched = withPet({ ...s, housemates }, (pet) => (pet.asleep = asleep));
+  // Only waking can upset a pet (one that doesn't like being woken).
+  const felt = asleep ? null : feeling(s.pet, 'woken');
+  return { state: noticeFeeling(switched, 'woken', felt), ...(felt ? { felt } : {}) };
 }
 
 // Cures sickness and starts the recovery rest.
