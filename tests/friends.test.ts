@@ -10,6 +10,7 @@ import {
   invite,
   makeWanderer,
   meet,
+  seenCharacters,
   mingle,
   mingleBlock,
   removeFriend,
@@ -244,22 +245,26 @@ describe('mingling', () => {
     const parent = state.pet;
     const result = mingle(state, friend.id, NOON, 0);
     const s = result.state;
+    const egg = s.housemates[0];
     expect(result.egg).toBeDefined();
-    expect(s.pet.stage).toBe('egg');
-    expect(s.pet.parents).toEqual([parent.id, friend.id]);
-    expect(s.pet.generation).toBe(2);
-    expect(s.pet.themes.sort()).toEqual(['cave', 'nature']);
-    expect(s.pet.parentLooks).toEqual([
+    expect(egg.stage).toBe('egg');
+    expect(egg.parents).toEqual([parent.id, friend.id]);
+    expect(egg.generation).toBe(2);
+    expect(egg.themes.sort()).toEqual(['cave', 'nature']);
+    expect(egg.parentLooks).toEqual([
       { character: parent.character, variant: parent.variant },
       { character: friend.character, variant: friend.variant },
     ]);
-    // The parent stays at home, and the friend joins the Family Tree.
-    expect(s.housemates.map((p) => p.id)).toEqual([parent.id]);
-    expect(s.housemates[0].partner).toBe(friend.id);
+    // The parent stays the pet you look after, and the friend joins the
+    // Family Tree.
+    expect(s.pet.id).toBe(parent.id);
+    expect(s.pet.partner).toBe(friend.id);
+    expect(s.housemates).toHaveLength(1);
     expect(s.family.find((m) => m.id === friend.id)?.fromWild).toBe(true);
-    expect(result.crowded).toBe(false);
+    expect(result.nested).toBe(false);
+    expect(s.nest).toBeNull();
     expect(s.messages[0].kind).toBe('littleOne');
-    const tree = pedigree(s, null);
+    const tree = pedigree(s, egg.id);
     expect(tree.parents.map((p) => p?.name)).toEqual([parent.name, friend.name]);
   });
 
@@ -268,8 +273,9 @@ describe('mingling', () => {
     for (let i = 0; i < 60; i++) {
       const { state, friend } = withFriend(100);
       const s = mingle({ ...state, pet: { ...state.pet, trait: 'sleepy' } }, friend.id, NOON, 0).state;
-      expect(getTrait(s.pet.trait)).toBeDefined();
-      if ([traitOf(friend), 'sleepy'].includes(s.pet.trait)) fromParent++;
+      const egg = s.housemates[0];
+      expect(getTrait(egg.trait)).toBeDefined();
+      if ([traitOf(friend), 'sleepy'].includes(egg.trait)) fromParent++;
       expect(s.family.find((m) => m.id === friend.id)?.trait).toBe(traitOf(friend));
     }
     expect(fromParent).toBeGreaterThan(20);
@@ -283,7 +289,7 @@ describe('mingling', () => {
     expect(mingle(state, friend.id, NOON, 0.49).egg).toBeDefined();
   });
 
-  it('the pair waits a few days before mingling again', () => {
+  it('the pair waits a week before mingling again', () => {
     const { state, friend } = withFriend(100);
     const s = mingle(state, friend.id, NOON, 0.99).state;
     expect(mingleBlock(s, friend.id, NOON + DAY)).toBe('wait');
@@ -293,12 +299,12 @@ describe('mingling', () => {
   it('a pet only ever has one partner', () => {
     const { state, friend } = withFriend(100);
     let s = mingle(state, friend.id, NOON, 0).state;
-    s = switchPet(s, s.housemates[0].id); // back to the parent
+    const later = NOON + F.mingle.waitDays * DAY;
     const other = { ...makeWanderer(NOON - 2 * DAY, []), score: 100 };
     s = { ...s, friends: [...s.friends, other], visit: { ...s.visit, friendId: other.id } };
-    expect(mingleBlock(s, other.id, NOON + 5 * DAY)).toBe('taken');
+    expect(mingleBlock(s, other.id, later)).toBe('taken');
     s = { ...s, visit: { ...s.visit, friendId: friend.id } };
-    expect(mingleBlock(s, friend.id, NOON + 5 * DAY)).toBeNull();
+    expect(mingleBlock(s, friend.id, later)).toBeNull();
   });
 
   it("never with a parent, little one, brother or sister", () => {
@@ -310,14 +316,24 @@ describe('mingling', () => {
     expect(mingleBlock(sibling, friend.id, NOON)).toBe('family');
   });
 
-  it('a full room means one pet retires', () => {
+  it('in a full room the egg waits in the nest until a pet moves out', () => {
     const { state, friend } = withFriend(100);
     let s = mingle(state, friend.id, NOON, 0).state; // parent + egg
-    s = switchPet(s, s.housemates[0].id);
-    const result = mingle(s, friend.id, NOON + 4 * DAY, 0);
-    expect(result.crowded).toBe(true);
-    s = retire(result.state, s.housemates[0].id); // the first egg moves out
+    const later = NOON + F.mingle.waitDays * DAY;
+    const result = mingle(s, friend.id, later, 0);
+    expect(result.nested).toBe(true);
+    s = result.state;
     expect(s.housemates).toHaveLength(1);
+    expect(s.nest?.stage).toBe('egg');
+    // Nobody has to leave, and no more eggs until this one has room.
+    expect(mingleBlock(s, friend.id, later + F.mingle.waitDays * DAY)).toBe('nest');
+    // The nest egg doesn't hatch while it waits.
+    expect(simulate(s, later + 2 * DAY).nest?.stage).toBe('egg');
+    const nestId = s.nest!.id;
+    s = retire(s, s.housemates[0].id, later + DAY); // the first egg moves out
+    expect(s.nest).toBeNull();
+    expect(s.housemates.map((p) => p.id)).toEqual([nestId]);
+    expect(s.housemates[0].stageStartedAt).toBe(later + DAY);
     expect(s.family.some((m) => m.generation === 2)).toBe(true);
   });
 });
@@ -335,14 +351,14 @@ describe('pets in the room', () => {
     const { state, friend } = withFriend(100);
     const s = mingle(state, friend.id, NOON, 0).state;
     const later = simulate(s, NOON + 2 * HOUR);
-    expect(later.pet.stage).toBe('baby'); // the egg hatched
-    expect(later.housemates[0].stats.hunger).toBeLessThan(s.housemates[0].stats.hunger);
+    expect(later.housemates[0].stage).toBe('baby'); // the egg hatched
+    expect(later.pet.stats.hunger).toBeLessThan(s.pet.stats.hunger);
   });
 
   it('retiring moves a pet into the Family Tree; the last pet never retires', () => {
     const { state, friend } = withFriend(100);
     const s = mingle(state, friend.id, NOON, 0).state;
-    const parent = s.housemates[0];
+    const parent = s.pet;
     const after = retire(s, parent.id);
     expect(after.housemates).toHaveLength(0);
     expect(after.family.find((m) => m.id === parent.id)?.name).toBe('Mochi');
@@ -354,16 +370,29 @@ describe('pets in the room', () => {
 });
 
 describe('growing up as a little one', () => {
-  it("leans towards the parents' themes", () => {
-    let fromParents = 0;
-    const runs = 400;
-    for (let i = 0; i < runs; i++) {
-      const { character } = chooseCharacter(90, `pet-${i}`, { themes: ['ocean'] });
-      if (character.theme === 'ocean') fromParents++;
-    }
-    // About 60% from the parent's theme plus a quarter of the rest.
-    expect(fromParents / runs).toBeGreaterThan(0.55);
-    expect(fromParents / runs).toBeLessThan(0.85);
+  it("takes after its parents' themes", () => {
+    for (let i = 0; i < 400; i++) expect(chooseCharacter(90, `pet-${i}`, { themes: ['ocean'] }).character.theme).toBe('ocean');
+  });
+
+  it('climbs the family: 3 stars only with a 2-star or better parent of that theme', () => {
+    const kids = (looks: { character: string; variant: null }[], themes: string[]) =>
+      Array.from({ length: 400 }, (_, i) => chooseCharacter(100, `kid-${i}`, { themes }, looks).character);
+    // Two 1-star parents: no 3-star little ones.
+    const plain = kids([{ character: 'sprig', variant: null }, { character: 'bubbit', variant: null }], ['nature', 'ocean']);
+    expect(plain.some((c) => c.stars === 3)).toBe(false);
+    // A Jellop parent lets an Ocean little one reach Tidecrest, but a
+    // Nature one still stops at Acornet.
+    const climbed = kids([{ character: 'sprig', variant: null }, { character: 'jellop', variant: null }], ['nature', 'ocean']);
+    expect(climbed.some((c) => c.id === 'tidecrest')).toBe(true);
+    expect(climbed.some((c) => c.id === 'stumpy')).toBe(false);
+  });
+
+  it('a 1-star parent keeps 1-star little ones coming, whatever the care', () => {
+    const looks = [{ character: 'sprig', variant: null }, { character: 'jellop', variant: null }];
+    const ones = Array.from({ length: 2000 }, (_, i) => chooseCharacter(100, `kid-${i}`, { themes: ['nature', 'ocean'] }, looks))
+      .filter((r) => r.character.stars === 1).length / 2000;
+    expect(ones).toBeGreaterThan(CONFIG.inheritance.oneStarFloor / 100 - 0.04);
+    expect(ones).toBeLessThan(CONFIG.inheritance.oneStarFloor / 100 + 0.04);
   });
 
   it('never grows into a pack that isn\'t out yet, even with Cave parents', () => {
@@ -404,5 +433,43 @@ describe('saves', () => {
       { character: 'geodon', variant: null },
       { character: null, variant: null },
     ]);
+  });
+
+  it('upgrades a version 27 save: friends count as met, and a crowded room fills the nest', () => {
+    const { state, friend } = withFriend(100);
+    // The old rules put the egg in your hands, and squeezed in a third pet
+    // until you picked who retires.
+    const egg = { ...createNewGame(NOON).pet, id: 'egg', bornAt: NOON };
+    const s: any = { ...state, pet: egg, housemates: [{ ...state.pet }, { ...state.pet, id: 'other' }] };
+    delete s.nest;
+    delete s.charactersMet;
+    const file = migrate({ version: 27, state: s });
+    expect(file.state.charactersMet).toEqual([friend.character]);
+    expect(file.state.nest?.id).toBe('egg');
+    expect([file.state.pet, ...file.state.housemates].map((p: any) => p.id)).toEqual([state.pet.id, 'other']);
+  });
+});
+
+describe('the Collection and wanderers', () => {
+  it('meeting a pet puts its character in the Collection as met', () => {
+    const { state, friend } = withFriend(0);
+    expect(state.charactersMet).toEqual([]);
+    const s = meet(state, friend.id, NOON).state;
+    expect(s.charactersMet).toEqual(['sprig']);
+    expect(seenCharacters({ ...s, charactersFound: ['pebblit:amber'] }).sort()).toEqual(['pebblit', 'sprig']);
+  });
+
+  it("wanderers lean towards characters you haven't met yet", () => {
+    const ones = ['sprig', 'bubbit', 'dumpling', 'cloudlet'];
+    const seen = ['sprig', 'bubbit', 'dumpling'];
+    const wanderers = Array.from({ length: 600 }, (_, i) => makeWanderer(NOON + i * DAY, [], seen));
+    const oneStar = wanderers.filter((w) => ones.includes(w.character!));
+    const cloudlets = oneStar.filter((w) => w.character === 'cloudlet').length / oneStar.length;
+    // A quarter by luck, plus the lean towards the one you haven't met.
+    const lean = CONFIG.friends.unmetWandererChance / 100;
+    expect(cloudlets).toBeGreaterThan(0.25 + 0.75 * lean - 0.08);
+    // Nothing new to meet: just as before.
+    const all = makeWanderer(NOON, [], ['sprig', 'bubbit', 'dumpling', 'cloudlet', 'acornet', 'jellop', 'puddling', 'moonpip', 'stumpy', 'tidecrest', 'cuppie', 'starhoot']);
+    expect(all.character).toBe(makeWanderer(NOON, []).character);
   });
 });

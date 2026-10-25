@@ -515,7 +515,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
         s &&
         JSON.stringify([
           s.gold, s.inventory, s.pet.hat, s.pet.stage, s.unlocked, s.seen, s.showAllMenus,
-          s.recipesFound, s.caught, s.charactersFound, s.pet.name, s.pet.named, s.owner, s.family,
+          s.recipesFound, s.caught, s.charactersFound, s.charactersMet, s.pet.name, s.pet.named, s.owner, s.family,
           s.messages, s.messagesSeenAt, s.keeper, s.delivery, s.friends, s.visit.guest, s.housemates.map((p) => [p.id, p.name, p.stage]),
           s.journeys, [s.pet, ...s.housemates].map((p) => [p.id, p.trip?.backAt, p.trip?.percy]), s.guidesRead,
           page === 'messages' && Math.floor(s.lastUpdated / 60_000),

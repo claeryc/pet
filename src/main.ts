@@ -63,6 +63,7 @@ import {
   getFriend,
   giveGift,
   makeWanderer,
+  seenCharacters,
   meet,
   mingle,
   mingleBlock,
@@ -172,7 +173,6 @@ function setState(next: GameState): void {
     for (const message of notices) home.notice(message);
   }
   announceMail(oldMessages);
-  askWhoRetires();
   playMusic();
   for (const id of guides) showGuide(id);
 }
@@ -558,26 +558,28 @@ function friendBlocked(reason: FriendBlock | MingleBlock): void {
 // A pet's portrait, for the choice box.
 const portraitOf = (pet: Pet) => characterImage(sheetFor(pet));
 
-// The room fits CONFIG.friends.maxPets pets. When a little one makes it
-// too full, the player picks who retires into the Family Tree (asked again
-// on the next visit if the game closed first).
-function askWhoRetires(): void {
-  if (choice.isOpen() || naming.isOpen() || allPets(state).length <= CONFIG.friends.maxPets) return;
-  // The newest pet (the egg) always stays.
-  const newest = allPets(state).reduce((a, b) => (b.bornAt > a.bornAt ? b : a));
+// The room fits CONFIG.friends.maxPets pets. A little one that arrives
+// when it's full waits in the nest, and the player can make room for it
+// whenever they like: asked once when the egg arrives, then from the
+// banner's Make room button.
+function askToMakeRoom(): void {
+  if (!state.nest || choice.isOpen() || naming.isOpen()) return;
   choice.open({
-    title: STRINGS.friends.fullTitle,
-    text: STRINGS.friends.fullAsk,
-    // (A pet out on a journey isn't in the room to ask.)
-    options: allPets(state).filter((p) => p.id !== newest.id && !isAway(p)).map((p) => ({
-      label: STRINGS.friends.retire(p.name),
-      picture: portraitOf(p),
-      soft: true,
-      onPick: () => {
-        setState(retire(state, p.id));
-        home.toast(STRINGS.friends.retired(p.name));
-      },
-    })),
+    title: STRINGS.friends.nestTitle,
+    text: STRINGS.friends.nestAsk,
+    options: [
+      // (A pet out on a journey isn't in the room to ask.)
+      ...allPets(state).filter((p) => !isAway(p)).map((p) => ({
+        label: STRINGS.friends.retire(p.name),
+        picture: portraitOf(p),
+        soft: true,
+        onPick: () => {
+          setState(retire(simulate(state, gameNow()), p.id, gameNow()));
+          home.toast(STRINGS.friends.retired(p.name));
+        },
+      })),
+      { label: STRINGS.friends.notYet, onPick: () => {} },
+    ],
   });
 }
 
@@ -638,24 +640,8 @@ function mingleNow(id: string): void {
   if (!result.egg) return home.toast(STRINGS.friends.noLittleOne(parent.name, friend?.name ?? ''));
   sound('grewUp');
   home.toast(STRINGS.friends.littleOne(parent.name, friend?.name ?? ''));
-  // A crowded room asks who retires (from setState). Otherwise the parent
-  // can stay or retire.
-  if (result.crowded) return;
-  choice.open({
-    title: STRINGS.friends.keepTitle,
-    text: STRINGS.friends.keepAsk(parent.name),
-    options: [
-      { label: STRINGS.friends.keep(parent.name), picture: portraitOf(parent), onPick: () => {} },
-      {
-        label: STRINGS.friends.retire(parent.name),
-        soft: true,
-        onPick: () => {
-          setState(retire(state, parent.id));
-          home.toast(STRINGS.friends.retired(parent.name));
-        },
-      },
-    ],
-  });
+  // A full room keeps the egg in the nest until there's room.
+  if (result.nested) askToMakeRoom();
 }
 
 // Gives the check-in bonus if one is due (on opening the game or coming back).
@@ -911,7 +897,7 @@ const home = createHomeScreen(root, {
   onVisitorNow: () => {
     const now = gameNow();
     const taken = [...allPets(state).map((p) => p.name), ...state.friends.map((f) => f.name)];
-    const guest = makeWanderer(now, taken);
+    const guest = makeWanderer(now, taken, seenCharacters(state));
     const visit = { ...state.visit, guest, friendId: null, met: false, until: now + CONFIG.friends.stayHours * 3_600_000, wildAt: now + CONFIG.friends.wildEveryHours * 3_600_000 };
     const c = getCharacter(guest.character);
     setState(logMessage({ ...state, visit }, { kind: 'visitor', at: now, name: guest.name, character: guest.character, variant: guest.variant }));
@@ -1003,6 +989,7 @@ const home = createHomeScreen(root, {
       ],
     });
   },
+  onMakeRoom: askToMakeRoom,
   onOpenBackpack: (id) => {
     const pet = allPets(state).find((p) => p.id === id);
     if (!pet) return;
@@ -1127,7 +1114,6 @@ const guide = createGuideCard(root);
 home.update(state, gameNow());
 startAudio();
 playMusic();
-askWhoRetires();
 announceMail(lastVisitMessages);
 showLevels(startup.levels); // levels reached while away (Percy's pickups)
 showFragments(startup.fragments);
