@@ -384,7 +384,7 @@ describe('growing up as a little one', () => {
     // Nature one still stops at Acornet.
     const climbed = kids([{ character: 'sprig', variant: null }, { character: 'jellop', variant: null }], ['nature', 'ocean']);
     expect(climbed.some((c) => c.id === 'tidecrest')).toBe(true);
-    expect(climbed.some((c) => c.id === 'stumpy')).toBe(false);
+    expect(climbed.some((c) => c.id === 'ribbit')).toBe(false);
   });
 
   it('a 1-star parent keeps 1-star little ones coming, whatever the care', () => {
@@ -469,7 +469,7 @@ describe('the Collection and wanderers', () => {
     const lean = CONFIG.friends.unmetWandererChance / 100;
     expect(cloudlets).toBeGreaterThan(0.25 + 0.75 * lean - 0.08);
     // Nothing new to meet: just as before.
-    const all = makeWanderer(NOON, [], ['sprig', 'bubbit', 'dumpling', 'cloudlet', 'acornet', 'jellop', 'puddling', 'moonpip', 'stumpy', 'tidecrest', 'cuppie', 'starhoot']);
+    const all = makeWanderer(NOON, [], ['sprig', 'bubbit', 'dumpling', 'cloudlet', 'acornet', 'jellop', 'puddling', 'moonpip', 'ribbit', 'tidecrest', 'cuppie', 'starhoot']);
     expect(all.character).toBe(makeWanderer(NOON, []).character);
   });
 });

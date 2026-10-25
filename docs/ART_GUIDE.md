@@ -14,7 +14,7 @@ Each theme has a common (★), an uncommon (★★) and a rare (★★★) chara
 
 | Theme | ★ | ★★ | ★★★ |
 | --- | --- | --- | --- |
-| Nature | Sprig | Acornet | Stumpy |
+| Nature | Sprig | Acornet | Ribbit |
 | Ocean | Bubbit | Jellop | Tidecrest |
 | Bakery | Dumpling | Puddling | Cuppie |
 | Starry | Cloudlet | Moonpip | Starhoot |
@@ -26,7 +26,7 @@ The starter characters only have their idle pose properly drawn so far. The othe
 
 **Later packs.** A theme listed under `"laterPacks"` in `characters.json` isn't out yet: pets that already have one of its characters keep it, but no new pet or wanderer grows into one, and the Collection only shows the ones already found. Cave is listed there. Remove it from the list when the pack comes out.
 
-**Shelved art.** Retired characters (Bunbun, Mosscap, Fernwhisk, Glimmer, Starwisp and the old Dumpling, Sprig, Cloudlet and Moonpip) are kept in `art/shelved/`. `npm run export-art` skips that folder.
+**Shelved art.** Retired characters (Bunbun, Mosscap, Fernwhisk, Glimmer, Starwisp, Stumpy and the old Dumpling, Sprig, Cloudlet and Moonpip) are kept in `art/shelved/`. `npm run export-art` skips that folder.
 
 ## Where everything lives
 
@@ -112,7 +112,7 @@ A sheet uses a set with `"idleSet": "curious"`, and has those moves drawn on tho
 
 The starter characters have their bodies drawn **without a face**. The face is drawn by the game on top, from a shared **face set**, and moves with the head like a hat. So a new expression is drawn once, not once per character and animation.
 
-**A face set** (`art/faces/blob.aseprite`, exported to `public/sprites/faces/blob.png`) has 32×32 frames, see-through except for the eyes, brows, mouth, cheeks and extras like tears or hearts. Each tag is one expression, named as below, with as many frames as you like. `npm run export-art` puts each one on its row by name. A new expression always goes at the **end** of the list (in `src/game/expression-order.ts`), since the game finds each one by its row:
+**A face set** (`art/faces/blob.aseprite`, exported to `public/sprites/faces/blob.png`) has 32×32 frames, see-through except for the eyes, brows, mouth, cheeks and extras like tears or sparkles. Each tag is one expression, named as below, with as many frames as you like. `npm run export-art` puts each one on its row by name. A new expression always goes at the **end** of the list (in `src/game/expression-order.ts`), since the game finds each one by its row:
 
 | Row | Tag | Shows when |
 | --- | --- | --- |
@@ -135,7 +135,7 @@ Draw the faces around the pixel (16, 18), which is the bottom of the eyes. The f
 
 **In the manifest**, a body shape's `face` is where the face goes: the pixel in the first idle frame where the bottom of the eyes is. For example `"blob": { "head": {...}, "face": { "x": 16, "y": 18 } }`. Characters with the face lower or higher only need a different `y`.
 
-There are two face sets: **`blob`** for most characters, and **`owl`** (`art/faces/owl.aseprite`) for Starhoot, with big round eyes, a beak and owl versions of every expression.
+There are three face sets: **`blob`** for most characters, **`owl`** (`art/faces/owl.aseprite`) for Starhoot, with big round eyes, a beak and owl versions of every expression, and **`frog`** (`art/faces/frog.aseprite`) for Ribbit, with big eyes that sit in its eye bumps, a wide grin across its body and goofier extras (a snot bubble when asleep, a tongue that shoots out at a fly when hungry).
 
 **A new face set**, for example special faces for 3-star pets:
 
@@ -239,7 +239,7 @@ Characters drawn on the same body (same size, same top where a hat rests) share 
 | `tall` | teen |
 | `blob` | Sprig, Bubbit, Dumpling, Moonpip |
 | `acorn` | Acornet (hat sits on the acorn cap) |
-| `stump` | Stumpy |
+| `frog` | Ribbit (between the eye bumps) |
 | `dome` | Jellop |
 | `crest` | Tidecrest |
 | `flan` | Puddling |
