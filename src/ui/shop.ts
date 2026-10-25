@@ -4,7 +4,7 @@
 
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
-import { HATS, baitCount, revivalStars, canBuyPot, foodCount, limitedInStock, limitedLeft, localDay } from '../game/economy';
+import { HATS, baitCount, fortuneCookies, revivalStars, canBuyPot, foodCount, limitedInStock, limitedLeft, localDay } from '../game/economy';
 import { earnedFrom } from '../game/regulars';
 import { CURTAINS, WALLPAPERS, inUse, ownsDecor, type Decor, type DecorKind } from '../game/decor';
 import type { GameState } from '../game/state';
@@ -22,6 +22,7 @@ export interface ShopCallbacks {
   onBuyGardenItem: (item: ShopItem) => void;
   onWearHat: (hat: string | null) => void;
   onBuyBait: () => void;
+  onBuyFortuneCookie: () => void;
   onBuyCharm: (charm: string) => void; // a charm for the journey lunchbox
   onBuyPot: () => void;
   onBuyDecor: (kind: DecorKind, id: string) => void;
@@ -280,6 +281,15 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
       if (f.limited) el.insertBefore(stockIcon(), action);
       return { icon: ITEM_ICONS[f.id], count: countBadge(foodCount(state, f.id)), row: el };
     });
+  // Fortune cookies, opened before mingling, once friends drop by.
+  if (isUnlocked(state, 'meet')) {
+    food.push({
+      icon: ITEM_ICONS.fortuneCookie,
+      count: countBadge(fortuneCookies(state)),
+      row: row(ITEM_ICONS.fortuneCookie, STRINGS.shop.fortuneCookie, STRINGS.shop.fortuneCookieNote(fortuneCookies(state)),
+        priceButton(CONFIG.fortune.price, state.gold, cb.onBuyFortuneCookie)),
+    });
+  }
   const hats: Entry[] = HATS.map((h) => {
     const owned = state.inventory.hats.includes(h.id);
     const buy = h.fragments

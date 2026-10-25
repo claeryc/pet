@@ -487,6 +487,22 @@ export const ITEM_ICONS: Record<string, string> = {
     '...kkkkkk...',
     '............',
   ]),
+  // A fortune cookie, side on, the same shape as the one that opens on
+  // the mingle card (see fortune.ts).
+  fortuneCookie: pixelIcon([
+    '............',
+    '............',
+    '...kkkkkk...',
+    '..kyyyyyyk..',
+    '.kywyyyyyok.',
+    'kyyyyyyyyook',
+    'kyyyokkoyook',
+    'kyyok..koook',
+    'kook....kook',
+    '.kk......kk.',
+    '............',
+    '............',
+  ]),
   cookie: pixelIcon([
     '...kkkkkk...',
     '..koooooook.',

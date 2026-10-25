@@ -533,6 +533,15 @@ export const CONFIG = {
     wildVariantChance: 10,
   },
 
+  // The fortune cookie (see src/game/fortune.ts), sold in the Shop and
+  // opened before mingling for a hint about the little one. A second theme
+  // only gets a mention ("…and maybe a sweet surprise") if its chance is at
+  // least `surpriseFrom` percent.
+  fortune: {
+    price: 20,
+    surpriseFrom: 8,
+  },
+
   // Journeys (Play > Journeys, see src/game/journeys.ts). A teen or
   // grown-up pet goes out to one of the places for a while and comes home
   // with a backpack of finds. Three offers are on the board at a time; each

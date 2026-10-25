@@ -544,11 +544,34 @@ export const STRINGS = {
     mingleHint: (pct: number) => `Mingle when the hearts are ${pct}% full`,
     mingleChance: (pct: number) => `Mingle  ·  ${pct}% chance of a little one`,
     mingleWait: (time: string) => `Mingle again in ${time}`,
-    // The forecast card before mingling (see src/ui/forecast.ts).
-    forecastTitle: (pet: string, friend: string) => `${pet} & ${friend}`,
-    forecastText: (pct: number) => `${pct}% chance of a little one. With great care, it could grow into:`,
-    forecastRarity: 'Rarity with great care',
-    forecastColours: 'Colours:',
+    // Before mingling: go ahead, or open a fortune cookie for a hint
+    // about the little one first (see src/ui/fortune.ts).
+    mingleTitle: (pet: string, friend: string) => `${pet} & ${friend}`,
+    mingleAsk: (pct: number, cookies: number) =>
+      cookies > 0
+        ? `${pct}% chance of a little one.`
+        : `${pct}% chance of a little one. A fortune cookie from the Shop could hint at what it grows into.`,
+    openCookie: (left: number) => `Open a fortune cookie (${left} left)`,
+    cookieOpened: 'Percy left you a fortune cookie…',
+    // The slip inside: the theme the little one most likely grows into,
+    // and maybe a less likely one.
+    fortuneLikely: {
+      nature: 'Green, growing things lie ahead',
+      ocean: 'Your future is full of splashes',
+      bakery: 'Something sweet is coming your way',
+      starry: 'Look up: your future twinkles',
+      cave: 'Cosy, quiet places are calling',
+    } as Record<string, string>,
+    fortuneSurprise: {
+      nature: 'a leafy surprise',
+      ocean: 'a splashy surprise',
+      bakery: 'a sweet surprise',
+      starry: 'a twinkly surprise',
+      cave: 'a cosy surprise',
+    } as Record<string, string>,
+    fortuneSomething: 'Something new lies ahead',
+    fortuneText: (likely: string, surprise: string | null) => (surprise ? `${likely}… and maybe ${surprise}.` : `${likely}.`),
+    fortuneLucky: (numbers: number[]) => `Lucky numbers ${numbers.join(' · ')}`,
     mingleNow: 'Mingle',
     notNow: 'Not now',
     noLittleOne: (pet: string, friend: string) => `${pet} and ${friend} had a lovely time. No little one this time.`,
@@ -768,6 +791,8 @@ export const STRINGS = {
     soldOutToday: 'Sold out for today. Check back another day!',
     bait: 'Bait',
     baitNote: (count: number) => `Rarer fish for each catch. You have ${count}`,
+    fortuneCookie: 'Fortune cookie',
+    fortuneCookieNote: (count: number) => `Open one before mingling for a hint about the little one. You have ${count}`,
     extraPot: 'Garden pot',
     extraPotNote: 'One more pot for your garden',
     potBought: 'A new pot is waiting in your garden!',

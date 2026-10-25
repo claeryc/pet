@@ -139,7 +139,7 @@ export interface Inventory {
   food: Record<string, number>; // food id -> how many
   hats: string[]; // ids of hats bought (each is bought once)
   seeds: Record<string, number>; // crop id -> how many seeds
-  supplies: Record<string, number>; // 'fertilizer' / 'plantCure' / 'bait' / 'revivalStar' / 'poop' -> how many
+  supplies: Record<string, number>; // 'fertilizer' / 'plantCure' / 'bait' / 'revivalStar' / 'poop' / 'fortuneCookie' -> how many
   decor: string[]; // room decorations bought, e.g. "wallpaper:dots", "curtains:rose"
   bags: string[]; // journey bags besides the plain sack (see src/render/bags.ts)
 }
