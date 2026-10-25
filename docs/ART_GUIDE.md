@@ -112,7 +112,7 @@ A sheet uses a set with `"idleSet": "curious"`, and has those moves drawn on tho
 
 The starter characters have their bodies drawn **without a face**. The face is drawn by the game on top, from a shared **face set**, and moves with the head like a hat. So a new expression is drawn once, not once per character and animation.
 
-**A face set** (`art/faces/blob.aseprite`, exported to `public/sprites/faces/blob.png`) has 32×32 frames, see-through except for the eyes, brows, mouth, cheeks and extras like tears or hearts. Each tag is one expression, named as below, with as many frames as you like. `npm run export-art` puts each one on its row by name. A new expression always goes at the **end** of the list (in `src/game/expression-order.ts`), since the game finds each one by its row:
+**A face set** (`art/faces/blob.aseprite`, exported to `public/sprites/faces/blob.png`) has 32×32 frames, see-through except for the eyes, brows, mouth, cheeks and extras like tears or sparkles. Each tag is one expression, named as below, with as many frames as you like. `npm run export-art` puts each one on its row by name. A new expression always goes at the **end** of the list (in `src/game/expression-order.ts`), since the game finds each one by its row:
 
 | Row | Tag | Shows when |
 | --- | --- | --- |
