@@ -15,6 +15,7 @@ import { poopCount } from '../game/hygiene';
 import { CHARMS, charmCount, percyFree } from '../game/journeys';
 import { isUnlocked } from '../game/unlocks';
 import { formatDuration } from './time';
+import { ownsFamilyHome } from '../game/rooms';
 
 export interface ShopCallbacks {
   onBuyFood: (food: FoodId) => void;
@@ -28,6 +29,7 @@ export interface ShopCallbacks {
   onBuyDecor: (kind: DecorKind, id: string) => void;
   onUseDecor: (kind: DecorKind, id: string | null) => void;
   onBuyPack: (productId: string) => void; // Revival Stars, with real money
+  onBuyFamilyHome: (withFragments: boolean) => void; // the second room, for star fragments or money
   onMakeStar: () => void; // star fragments into a Revival Star
   onCompost: () => void; // picked-up poop into fertilizer
   onFragmentsHelp: () => void; // what star fragments are, in a card
@@ -363,7 +365,19 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
         priceButton(c.price, state.gold, () => cb.onBuyCharm(c.id))),
     };
   })] : [];
-  const room: Entry[] = [...WALLPAPERS, ...CURTAINS].map((d) => decorEntry(state, d, cb));
+  // The Family Home first: star fragments or money, side by side.
+  const owned = ownsFamilyHome(state);
+  const homeActions = document.createElement('span');
+  homeActions.className = 'shop-row-actions';
+  if (owned) homeActions.append(label(STRINGS.shop.owned));
+  else homeActions.append(
+    fragmentButton(CONFIG.familyHome.fragments, state.fragments.pieces, () => cb.onBuyFamilyHome(true)),
+    button(CONFIG.familyHome.price, () => cb.onBuyFamilyHome(false)),
+  );
+  const room: Entry[] = [
+    { icon: ITEM_ICONS.familyHome, faded: owned, row: row(ITEM_ICONS.familyHome, STRINGS.familyHome.name, STRINGS.familyHome.shopNote, homeActions) },
+    ...[...WALLPAPERS, ...CURTAINS].map((d) => decorEntry(state, d, cb)),
+  ];
   // Revival Stars: the star fragments collected so far (free, from good
   // care), which make a star once there are enough, then stars to keep in
   // your pocket, bought with real money.

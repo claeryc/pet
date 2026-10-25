@@ -9,7 +9,7 @@
 
 import { CONFIG } from './game/config';
 
-export type ProductId = (typeof CONFIG.store)[number]['id'];
+export type ProductId = (typeof CONFIG.store)[number]['id'] | 'familyHome';
 
 // Asks for payment. `confirm` shows the player what they're buying and
 // resolves true if they went ahead.

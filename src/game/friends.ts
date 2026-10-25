@@ -28,6 +28,7 @@
 
 import { likesOf } from './likes';
 import { addTally, countUp } from './achievements';
+import { capacity, roomOf, roommates, roomWithSpace } from './rooms';
 import { startingCare } from './skills';
 import { CONFIG } from './config';
 import { IN_GAME, characterOfStars, getCharacter, rollStarsWith, seededRoll, variantOf } from './growth';
@@ -416,7 +417,9 @@ export function mingle(state: GameState, friendId: string, now: number, roll: nu
   s = withFriend(s, friendId, (f) => (f.partner = parent.id));
   // The friend goes in the Family Tree, so the little one's tree works.
   const family = s.family.some((m) => m.id === friend.id) ? s.family : [...s.family, rememberFriend(friend)];
-  const nested = allPets(s).length >= F.maxPets;
+  const nested = allPets(s).length >= capacity(s);
+  // The egg moves into a room with a free spot (the main room first).
+  if (!nested) egg.room = roomWithSpace(s) ?? 'main';
   s = {
     ...s,
     family,
@@ -443,31 +446,35 @@ export function switchPet(state: GameState, id: string): GameState {
   };
 }
 
-// A pet moves out of the room into the Family Tree. There's always at
-// least one pet left; if it was the one you were looking after, the next
-// one takes its place. An egg waiting in the nest moves in, and starts
-// its time to hatch from `now`.
+// A pet moves to the Meadow (or, after it passed away, says goodbye), and
+// is remembered in the Family Tree. There's always at least one pet left;
+// if it was the one you were looking after, the next one takes its place.
+// An egg waiting in the nest moves into the spot it left, and starts its
+// time to hatch from `now`.
 export function retire(state: GameState, id: string, now = state.lastUpdated): GameState {
   const pets = allPets(state);
   const leaving = pets.find((p) => p.id === id);
   if (!leaving || pets.length < 2) return state;
   const rest = pets.filter((p) => p.id !== id);
-  // Retiring counts for the Family Tree milestone; saying goodbye to a pet
+  // Moving to the Meadow counts for the milestone; saying goodbye to a pet
   // that passed away doesn't.
-  const s = leaving.condition === 'passed' ? state : countUp(state, 'retired');
-  const egg = s.nest ? [{ ...s.nest, stageStartedAt: now }] : [];
+  const passed = leaving.condition === 'passed';
+  const s = passed ? state : countUp(state, 'retired');
+  const egg = s.nest ? [{ ...s.nest, stageStartedAt: now, room: roomOf(leaving) }] : [];
+  // Stay in the same room if someone else is there.
+  const next = rest.find((p) => roomOf(p) === roomOf(leaving)) ?? rest[0];
   return {
     ...s,
-    pet: rest[0],
-    housemates: [...rest.slice(1), ...egg],
+    pet: next,
+    housemates: [...rest.filter((p) => p !== next), ...egg],
     nest: null,
-    family: [...s.family, rememberPet(leaving, s.owner)],
+    family: [...s.family, { ...rememberPet(leaving, s.owner), ...(passed ? {} : { meadow: true }) }],
   };
 }
 
 // With two pets in the room, the older one stands on the left. True when
 // the pet you're looking after is that one (or is alone).
 export function petStandsLeft(state: GameState): boolean {
-  const other = state.housemates[0];
+  const other = roommates(state)[0];
   return !other || state.pet.bornAt <= other.bornAt;
 }

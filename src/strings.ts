@@ -423,7 +423,7 @@ export const STRINGS = {
         name: 'Little ones',
         pages: [
           { title: 'Mingle', text: 'A grown-up with full hearts can Mingle with a friend. With luck, a little one arrives as an egg!' },
-          { title: 'The Family Tree', text: 'The room fits two pets. Pets who retire or pass away rest in Menu › Family Tree with their family.' },
+          { title: 'The Family Tree', text: 'A room fits two pets. Pets who move to the Meadow or pass away stay in Menu › Family Tree with their family.' },
         ],
       },
       skills: {
@@ -602,14 +602,14 @@ export const STRINGS = {
     },
     // An egg that arrives when the room is full waits in the nest. Making
     // room is always the player's choice, and "Not yet" is fine.
-    retire: (name: string) => `Retire ${name}`,
+    retire: (name: string) => `Move ${name} to the Meadow`,
     nestTitle: 'An egg in the nest',
     nestAsk:
-      "A little one's egg is waiting in the nest. The room fits two pets, so it moves in once one of them moves into the Family Tree. There's no hurry.",
+      "A little one's egg is waiting in the nest. A room fits two pets, so it moves in once one of them moves to the Meadow. Pets in the Meadow stay in your Family Tree. There's no hurry.",
     notYet: 'Not yet',
     nestBanner: 'An egg is waiting in the nest.',
     makeRoom: 'Make room',
-    retired: (name: string) => `${name} retired to the Family Tree.`,
+    retired: (name: string) => `${name} moved to the Meadow.`,
     looking: (name: string) => `Looking after ${name}`,
   },
   // Percy the pigeon's delivery orders.
@@ -740,6 +740,31 @@ export const STRINGS = {
   },
   // Bringing back a pet that passed away, and the Star Shop that sells
   // Revival Stars for real money (a stand-in purchase for now).
+  // The Family Home: a second room (see src/game/rooms.ts).
+  familyHome: {
+    name: 'Family Home',
+    shopNote: 'A second room with two more spots. Pets there get hungry and bored more slowly.',
+    payWhat: 'the Family Home',
+    bought: 'The Family Home is yours! Tap the door in the corner of the room to go there.',
+    nestHint: 'A Family Home from the Shop would fit everyone.',
+    seeShop: 'See the Family Home',
+    door: 'Rooms',
+    needsYou: 'Someone in the other room needs you',
+    rooms: { main: 'Main room', family: 'Family Home' } as Record<string, string>,
+    ask: 'Pets in the Family Home get hungry and bored more slowly, but still need baths and poop picked up. Only a pet that is well can move in.',
+    goTo: { main: 'Go to the main room', family: 'Go to the Family Home' } as Record<string, string>,
+    move: (name: string, to: string) => (to === 'family' ? `Move ${name} to the Family Home` : `Move ${name} to the main room`),
+    swap: (name: string, other: string) => `Swap ${name} and ${other}`,
+    moved: (name: string, to: string) => (to === 'family' ? `${name} moved to the Family Home.` : `${name} moved to the main room.`),
+    blocked: {
+      noHome: (_name: string) => 'Get the Family Home in the Shop first.',
+      empty: (_name: string) => 'Nobody lives there yet.',
+      full: (_name: string) => 'That room is full.',
+      unwell: (name: string) => `${name} isn't feeling well. Only a pet that is well can move into the Family Home.`,
+      away: (name: string) => `${name} is out on a journey.`,
+    } as Record<string, (name: string) => string>,
+    notNow: 'Not now',
+  },
   revival: {
     title: (name: string) => `Bring ${name} back?`,
     useAsk: (name: string, have: number) =>
@@ -892,6 +917,7 @@ export const STRINGS = {
     raisedByYou: 'Raised by you',
     raisedInWild: 'Raised in the wild',
     atHome: 'At home',
+    meadow: 'In the Meadow',
     age: (days: number) => (days === 0 ? 'Born today' : days === 1 ? '1 day old' : `${days} days old`),
     born: (date: string) => `Born ${date}`,
     stages: { egg: 'Egg', baby: 'Baby', teen: 'Teen', adult: 'Grown up' },
@@ -976,7 +1002,7 @@ export const STRINGS = {
       threeStar: 'Shining Star',
       allRecipes: 'Master Chef',
       allFish: 'Full Net',
-      retired: 'Family Tree',
+      retired: 'The Meadow',
       starMaker: 'Star Maker',
     },
     // How to earn it.
@@ -987,7 +1013,7 @@ export const STRINGS = {
       threeStar: 'Raise a pet into a 3-star character',
       allRecipes: 'Find every recipe',
       allFish: 'Catch every kind of fish',
-      retired: 'Let a grown-up pet retire into the Family Tree',
+      retired: 'Send a grown-up pet to the Meadow',
       starMaker: 'Make a Revival Star from star fragments',
     },
     done: 'Earned!',

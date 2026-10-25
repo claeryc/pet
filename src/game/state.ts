@@ -78,6 +78,9 @@ export interface Pet {
   likes: Likes;
   // Poop on the floor and whether it's smelly (see src/game/hygiene.ts).
   hygiene: Hygiene;
+  // Which room it lives in: the main room, or the Family Home once you
+  // have it (see src/game/rooms.ts). Unset means the main room.
+  room?: 'main' | 'family';
 }
 
 // Which character a parent grew into, and its colour variant.
@@ -192,6 +195,7 @@ export interface FamilyMember {
   trait?: string; // its trait, if it had one (see src/game/traits.ts)
   carried?: Genes; // the genes it carries (rolled from its id if it has none, see genes.ts)
   likes?: Likes; // its likes and dislikes, and which were found (see src/game/likes.ts)
+  meadow?: boolean; // one of yours that moved to the Meadow (not one that passed away)
 }
 
 // A pet you can meet (see src/game/friends.ts). For now every friend is a
@@ -374,6 +378,9 @@ export interface GameState {
   visit: Visit;
   // How the room is decorated, and today's limited Shop stock.
   room: Room;
+  // The second room (see src/game/rooms.ts): whether you have it, and how
+  // it's decorated.
+  familyHome: { owned: boolean; room: Room };
   stock: Stock;
   // Whether fishing uses bait (switched on in the pond).
   baitOn: boolean;
@@ -488,6 +495,7 @@ export function createNewGame(now: number): GameState {
     friends: [],
     visit: { guest: null, friendId: null, until: 0, met: false, nextAt: 0, wildAt: 0, invitedDay: '' },
     room: { wallpaper: 'plain', curtains: null },
+    familyHome: { owned: false, room: { wallpaper: 'plain', curtains: null } },
     stock: { day: '', bought: 0 },
     baitOn: false,
     pond: { day: '', fish: 0 },

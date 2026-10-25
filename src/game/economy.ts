@@ -11,7 +11,7 @@ import type { GameState } from './state';
 import type { Food, FoodId } from './actions';
 import { emptyPlot, priceOf, type ShopItem } from './garden';
 import { seededRoll } from './growth';
-import { decorKey, getDecor, ownsDecor, type DecorKind } from './decor';
+import { decorKey, getDecor, ownsDecor, useDecor, type DecorKind } from './decor';
 
 export interface Hat {
   id: string;
@@ -143,7 +143,8 @@ export function buyPot(state: GameState): ShopResult {
   return { state: { ...state, gold: state.gold - price, garden: [...state.garden, emptyPlot()] } };
 }
 
-// Buys a wallpaper or curtains, and puts it up straight away.
+// Buys a wallpaper or curtains, and puts it up straight away (in the room
+// you're looking at).
 export function buyDecor(state: GameState, kind: DecorKind, id: string): ShopResult {
   const d = getDecor(kind, id);
   if (!d) return { state };
@@ -151,8 +152,8 @@ export function buyDecor(state: GameState, kind: DecorKind, id: string): ShopRes
   if (d.earned) return { state, blocked: 'earnedOnly' };
   if (!canAfford(state, d.price)) return { state, blocked: 'notEnoughGold' };
   const decor = [...state.inventory.decor, decorKey(kind, id)];
-  const room = kind === 'wallpaper' ? { ...state.room, wallpaper: id } : { ...state.room, curtains: id };
-  return { state: { ...state, gold: state.gold - d.price, inventory: { ...state.inventory, decor }, room } };
+  const bought = { ...state, gold: state.gold - d.price, inventory: { ...state.inventory, decor } };
+  return { state: useDecor(bought, kind, id).state };
 }
 
 // Buys a seed, fertilizer or plant cure.
