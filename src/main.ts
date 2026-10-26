@@ -25,7 +25,7 @@ import {
   type ShopResult,
 } from './game/economy';
 import { purchase, type ProductId } from './payments';
-import { takeDownFurniture, useDecor } from './game/decor';
+import { placeFurniture, takeDownFurniture, useDecor } from './game/decor';
 import { getLook, isNight } from './game/stats';
 import { feeling } from './game/likes';
 import { afterEating, chooseExpression, idleEveryMs, reactionMs, type Expression, type Reaction } from './game/expressions';
@@ -1137,6 +1137,12 @@ const home = createHomeScreen(root, {
   },
   onUseDecor: (kind, id) => runShop(useDecor(state, kind, id)),
   onTakeDownFurniture: (id) => runShop({ state: takeDownFurniture(state, id) }),
+  onPlaceFurniture: (spot, id) => {
+    const result = placeFurniture(state, spot, id);
+    if (result.blocked) return;
+    setState(result.state);
+    sound('place');
+  },
   onBuyBigJar: () => {
     const buy = () => runShop(buyBigJar(state), STRINGS.shop.bought(STRINGS.shop.bigJar));
     const cost = CONFIG.riceJar.bigger.fragments;
@@ -1479,6 +1485,7 @@ function render(timeMs: number): void {
   const other = roommates(state).find((p) => !isAway(p));
   const meeting = home.meetScene();
   const trip = home.tripScene();
+  const closeup = home.shelfScene();
   drawRoom(
     ctx,
     away ? undefined : sprites.get(sheetFor(pet)),
@@ -1505,6 +1512,8 @@ function render(timeMs: number): void {
       petOnLeft: petStandsLeft(state),
       room: roomDecor(state),
       keepsakes: keepsakesView(),
+      build: home.decorateScene(),
+      closeup: closeup && { things: keepsakesView().shelf, picked: closeup.picked },
       trip: trip && {
         place: trip.place,
         bag: (state.inventory.bags ?? []).includes('courier') ? 'courier' : 'sack',

@@ -15,13 +15,13 @@ import { fitTrait, rollTrait } from '../game/traits';
 import { carriedOf, genesAtGrowUp } from '../game/genes';
 import { rollLikes } from '../game/likes';
 import { newHygiene } from '../game/hygiene';
-import { petFromMember } from '../game/meadow';
+import { hangKeepsakePieces, petFromMember } from '../game/meadow';
 
 const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 36;
+export const SAVE_VERSION = 37;
 
 export interface SaveFile {
   version: number;
@@ -441,6 +441,13 @@ export function migrate(save: SaveFile): SaveFile {
       st.visit.meadowAt = moved.length > 0 ? now + CONFIG.meadow.firstVisitHours * 3_600_000 : 0;
     }
     save.version = 36;
+  }
+  if (save.version === 36) {
+    // The keepsake frame and shelf became pieces placed like furniture.
+    const st = save.state;
+    if (st.room) st.room = hangKeepsakePieces(st.room);
+    if (st.familyHome?.room) st.familyHome.room = hangKeepsakePieces(st.familyHome.room);
+    save.version = 37;
   }
   return save;
 }

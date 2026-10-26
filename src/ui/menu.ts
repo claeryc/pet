@@ -70,6 +70,7 @@ export interface Menu {
   showWardrobe: () => void;
   showShop: (category?: ShopCategory) => void; // open the Shop, at `category`'s tab
   showJournal: (place: string) => void; // the travel journal, at a place
+  showMeadow: () => void; // the Meadow and its keepsakes
 }
 
 // A row button, or with an `icon`, a square tile for the main grid.
@@ -547,6 +548,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
       }
     },
     showJournal: (place) => showJournal(place),
+    showMeadow: () => showMeadow(),
     update(next) {
       // Only redraw a page when something on it changed, so the list
       // doesn't jump while you scroll.

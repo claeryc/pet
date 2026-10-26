@@ -6,7 +6,7 @@ import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import { HATS, baitCount, fortuneCookies, revivalStars, canBuyPot, foodCount, limitedInStock, limitedLeft, localDay, dailySpecial, ownsSpecial, priceToday, hasBigJar, riceJarSize, getHat } from '../game/economy';
 import { earnedFrom } from '../game/regulars';
-import { CURTAINS, FURNITURE, WALLPAPERS, inUse, ownsDecor, type Decor, type DecorKind } from '../game/decor';
+import { CURTAINS, FURNITURE, SPOTS, WALLPAPERS, inUse, ownsDecor, piecesFor, type Decor, type DecorKind } from '../game/decor';
 import type { GameState } from '../game/state';
 import type { Food, FoodId } from '../game/actions';
 import { FRAGMENT_ICON, ITEM_ICONS, MENU_ICONS, STAT_ICONS } from './icons';
@@ -30,6 +30,7 @@ export interface ShopCallbacks {
   onBuyDecor: (kind: DecorKind, id: string) => void;
   onUseDecor: (kind: DecorKind, id: string | null) => void;
   onTakeDownFurniture: (id: string) => void; // out of the room you're looking at
+  onDecorate?: () => void; // pick where each piece goes, in the room
   onBuyBigJar: () => void; // the bigger rice jar, for star fragments
   onBuyPack: (productId: string) => void; // Revival Stars, with real money
   onBuyFamilyHome: (withFragments: boolean) => void; // the second room, for star fragments or money
@@ -460,7 +461,10 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
     fragmentButton(CONFIG.familyHome.fragments, state.fragments.pieces, () => cb.onBuyFamilyHome(true)),
     button(CONFIG.familyHome.price, () => cb.onBuyFamilyHome(false)),
   );
+  // Decorate: once there's a piece to put somewhere.
+  const decorate = button(STRINGS.shop.decorate, () => cb.onDecorate?.(), 'btn shop-decorate');
   const room: Entry[] = [
+    ...(cb.onDecorate && SPOTS.some((spot) => piecesFor(state, spot).length > 0) ? [{ icon: '', row: decorate }] : []),
     { icon: ITEM_ICONS.familyHome, faded: owned, row: row(ITEM_ICONS.familyHome, STRINGS.familyHome.name, STRINGS.familyHome.shopNote, homeActions) },
     ...[...FURNITURE, ...WALLPAPERS, ...CURTAINS].map((d) => decorEntry(state, d, cb)),
   ];

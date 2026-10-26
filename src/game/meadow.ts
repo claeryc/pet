@@ -69,7 +69,7 @@ export function addToMeadow(state: GameState, pet: Pet, now: number): GameState 
     const { frame, shelf } = roomKeepsakes(r);
     const free = gift.tier === 'portrait' ? -1 : shelf.indexOf(null);
     if (free >= 0) shelf[free] = gift.id;
-    return { ...r, frame: frame ?? gift.id, shelf };
+    return hangKeepsakePieces({ ...r, frame: frame ?? gift.id, shelf });
   };
   const placed = roomOf(pet) === 'family'
     ? { ...s, familyHome: { ...s.familyHome, room: putUp(s.familyHome.room) } }
@@ -216,9 +216,27 @@ export function roomKeepsakes(room: Room): { frame: string | null; shelf: (strin
   return { frame: room.frame ?? null, shelf };
 }
 
+// Puts the keepsake frame and shelf up in a room that has something for
+// them, if they aren't up yet and their spot is free: the frame beside the
+// window (or on the wall if that's taken), the shelf on the wall.
+export function hangKeepsakePieces(room: Room): Room {
+  if (!room.frame && !room.shelf?.some(Boolean)) return room;
+  const furniture = { ...room.furniture };
+  const up = (id: string) => Object.values(furniture).includes(id);
+  if (room.frame && !up('keepsakeFrame')) {
+    const spot = (['wallMid', 'wall'] as const).find((s) => !furniture[s]);
+    if (spot) furniture[spot] = 'keepsakeFrame';
+  }
+  if (room.shelf?.some(Boolean) && !up('keepsakeShelf') && !furniture.wall) furniture.wall = 'keepsakeShelf';
+  return { ...room, furniture };
+}
+
+// Changes the keepsakes of the room you're looking at, and puts the frame
+// or shelf up if they now hold something and aren't up yet.
 function editRoom(state: GameState, change: (room: Room) => Room): GameState {
-  if (currentRoom(state) === 'family') return { ...state, familyHome: { ...state.familyHome, room: change(state.familyHome.room) } };
-  return { ...state, room: change(state.room) };
+  const edit = (room: Room) => hangKeepsakePieces(change(room));
+  if (currentRoom(state) === 'family') return { ...state, familyHome: { ...state.familyHome, room: edit(state.familyHome.room) } };
+  return { ...state, room: edit(state.room) };
 }
 
 // Hangs a pet's portrait in the frame of the room you're looking at (null
