@@ -861,10 +861,14 @@ export const STRINGS = {
     // Where a piece of furniture goes.
     furnitureSlot: { wall: 'On the wall', left: 'Floor, left side', right: 'Floor, right side' } as Record<string, string>,
     place: 'Place',
-    // The daily special, above the Shop's tabs.
+    // The Today tab: the daily special, then things in short supply.
+    todayTab: 'Today',
     special: "Today's special",
     specialNote: (was: number) => `Usually ${was} gold`,
     specialOwned: 'Yours already. A new one tomorrow!',
+    specialNext: (hours: number) => `New special in ${hours}h`,
+    specialKind: { wallpaper: 'Wallpaper', curtains: 'Curtains', furniture: 'Furniture', hat: 'Hat' } as Record<string, string>,
+    fewLeft: 'Only a few left',
     // The bigger rice jar, bought with star fragments.
     bigJar: 'Bigger rice jar',
     bigJarNote: (extra: number, size: number) => `Holds ${extra} more free rice ball, ${size} in all`,

@@ -1261,6 +1261,21 @@ export const ITEM_ICONS: Record<string, string> = {
 
 // The tiles in the gear menu's grid, by unlock id (and Settings).
 export const MENU_ICONS: Record<string, string> = {
+  // A price tag on a string: the Shop's Today tab.
+  todayTag: pixelIcon([
+    '..kk........',
+    '.k..k.......',
+    '.k...kkkkk..',
+    '..k.kyyyyyk.',
+    '...kyykyyyyk',
+    '...kyyyyyyyk',
+    '...kyyyyyyyk',
+    '...kyyrryyyk',
+    '...kyyrryyyk',
+    '...kyyyyyyyk',
+    '....kyyyyyk.',
+    '.....kkkkk..',
+  ]),
   // A market stall with a striped awning.
   shop: pixelIcon([
     '............',
