@@ -199,7 +199,36 @@ function drawHill(ctx: CanvasRenderingContext2D, w: number, h: number, _night: b
   rect(ctx, PALETTE.white, w - 7, 43, 1, 1);
 }
 
+// The Meadow, for a Holiday: open sky, a rolling green field, a big tree
+// and flowers.
+function drawMeadowPlace(ctx: CanvasRenderingContext2D, w: number, h: number, night: boolean, timeMs: number): void {
+  rect(ctx, night ? PALETTE.plum : PALETTE.sky, 0, 0, w, GROUND);
+  if (night) stars(ctx, w, 18, timeMs);
+  else {
+    rect(ctx, PALETTE.white, 8, 6, 7, 2);
+    rect(ctx, PALETTE.white, 44, 10, 5, 1);
+  }
+  // A far hill, then the field.
+  for (let x = 0; x < w; x++) {
+    const top = GROUND - 6 + Math.round(Math.sin((x / w) * Math.PI * 1.5) * 3);
+    rect(ctx, PALETTE.mint, x, top, 1, GROUND - top);
+  }
+  rect(ctx, PALETTE.leaf, 0, GROUND, w, h - GROUND);
+  rect(ctx, PALETTE.mint, 0, GROUND, w, 1);
+  // The big tree on the right.
+  rect(ctx, PALETTE.cocoa, w - 9, 14, 3, GROUND - 14);
+  rect(ctx, PALETTE.leaf, w - 15, 6, 15, 9);
+  rect(ctx, PALETTE.leaf, w - 13, 4, 11, 2);
+  rect(ctx, PALETTE.mint, w - 11, 6, 2, 1);
+  // Flowers, nodding.
+  const nod = Math.floor(timeMs / 800) % 2;
+  for (const [x, y, c] of [[4, 38, PALETTE.pink], [11, 43, PALETTE.butter], [20, 40, PALETTE.white], [30, 45, PALETTE.pink], [44, 41, PALETTE.butter], [52, 46, PALETTE.white]] as const) {
+    rect(ctx, c, x + (y % 2 ? nod : 0), y, 1, 1);
+  }
+}
+
 const PLACES: Record<string, typeof drawMarket> = {
+  meadow: drawMeadowPlace,
   market: drawMarket,
   woods: drawWoods,
   caves: drawCaves,

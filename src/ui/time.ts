@@ -24,3 +24,9 @@ export function formatWhen(at: number, now: number, today: (t: string) => string
   if (day(at) === day(now - 86_400_000)) return yesterday(time);
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 }
+
+// A time that may be days away, like "14:05" today or "Sat 14:05".
+export function formatDayClock(at: number, now: number): string {
+  if (new Date(at).toDateString() === new Date(now).toDateString()) return formatClock(at);
+  return `${new Date(at).toLocaleDateString(undefined, { weekday: 'short' })} ${formatClock(at)}`;
+}

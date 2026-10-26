@@ -31,7 +31,7 @@ import { addTally, countUp } from './achievements';
 import { capacity, roomOf, roommates, roomWithSpace } from './rooms';
 import { startingCare } from './skills';
 import { CONFIG } from './config';
-import { IN_GAME, characterOfStars, getCharacter, rollStarsWith, seededRoll, variantOf } from './growth';
+import { IN_GAME, characterOfStars, getCharacter, rollStarsWith, seededRoll, variantOf, type Character, type Stars, type Variant } from './growth';
 import { localDay, useFood } from './economy';
 import { clampStat, canPlayMinigames } from './stats';
 import { rememberPet } from './family';
@@ -116,6 +116,29 @@ export function makeWanderer(t: number, taken: readonly string[], seen: readonly
     character = unmet[Math.floor(seededRoll(id, 'whichUnmet') * unmet.length)];
     variant = variantOf(character, id, {});
   }
+  return wildFriend(id, t, character, variant, taken);
+}
+
+// A friend a pet makes on a journey to a place of `theme` (see
+// journeys.ts): a grown-up of that theme, its stars rolled by `odds`, and
+// one you haven't met when there is one of those stars. `seed` makes it
+// the same however the game catches up.
+export function makeTripFriend(
+  seed: string, t: number, theme: string, odds: Record<Stars, number>, taken: readonly string[], seen: readonly string[] = [],
+): Friend {
+  const id = `trip-${seed}`;
+  const of = IN_GAME.filter((c) => c.theme === theme);
+  const rolled = rollStarsWith(odds, seededRoll(id, 'stars'));
+  // The nearest stars this theme has, if it has none of the rolled.
+  const stars = [rolled, rolled - 1, rolled + 1, rolled - 2, rolled + 2].find((n) => of.some((c) => c.stars === n));
+  const options = of.filter((c) => c.stars === stars);
+  const unmet = options.filter((c) => !seen.includes(c.id));
+  const from = unmet.length > 0 ? unmet : options;
+  const character = from[Math.floor(seededRoll(id, 'character') * from.length)];
+  return { ...wildFriend(id, t, character, variantOf(character, id, {}), taken), score: CONFIG.journeys.friend.score };
+}
+
+function wildFriend(id: string, t: number, character: Character, variant: Variant | null, taken: readonly string[]): Friend {
   const names = STRINGS.petNames.filter((n) => !taken.includes(n));
   const pool = names.length > 0 ? names : STRINGS.petNames;
   return {

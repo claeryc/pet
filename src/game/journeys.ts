@@ -20,19 +20,33 @@
 // off: halfway (or when the trip is called off early) he flies home with
 // the best find, then rests for a couple of days.
 //
+// Each postcard tells a little story about the pet that went, from its
+// likes, its trait and the place (and sometimes shows a like for the first
+// time). After a few trips a pet picks a favourite place, where it finds a
+// bit more. An Adventure can bring home a new friend.
+//
+// From the evening to the morning one more ticket is on the board, a night
+// trip that lasts the night. And with a Holiday ticket (from the Star
+// Shop), every pet goes to the Meadow for a day or more while everything
+// at home waits: the safe way to be away.
+//
 // The numbers live in CONFIG.journeys.
 
 import { CONFIG } from './config';
 import type { Food, FoodId } from './actions';
 import { useFood, type ShopResult } from './economy';
-import { getCharacter, seededRoll } from './growth';
+import { getCharacter, seededRoll, sheetFor } from './growth';
+import { localDay } from './economy';
+import { makeTripFriend, seenCharacters } from './friends';
+import { likesOf } from './likes';
+import type { LikeKind } from './likes';
 import { addSeed, type CropId } from './garden';
 import { logMessage } from './messages';
 import { addTally, countUp } from './achievements';
 import { clampStat, isNight, isRecovering } from './stats';
 import { hasBackpack, isAway } from './presence';
 import { percyPerks } from './regulars';
-import type { Find, GameState, JournalPage, Offer, Pet, Rarity, Trip } from './state';
+import type { Find, GameState, JournalPage, Offer, Pet, Postcard, Rarity, Story, Trip } from './state';
 
 const HOUR = 3_600_000;
 const J = CONFIG.journeys;
@@ -48,6 +62,17 @@ export type Charm = (typeof J.charms)[number];
 export const CHARMS = J.charms as readonly Charm[];
 export const getCharm = (id: string | null | undefined): Charm | undefined => CHARMS.find((c) => c.id === id);
 export const tripHours = (rarity: Rarity): number => J.hours[rarity];
+// How long an offer's trip is: a night trip lasts the night.
+export const offerHours = (offer: Offer): number => (offer.night ? J.night.hours : tripHours(offer.rarity));
+
+// The board's spots are 0 to 2; the night ticket is spot NIGHT.
+export const NIGHT = 3;
+export function offerAt(state: GameState, slot: number): Offer | null {
+  return slot === NIGHT ? state.journeys.night ?? null : state.journeys.offers[slot] ?? null;
+}
+
+// Where a Holiday goes (not a place on the board).
+export const MEADOW = 'meadow';
 
 // ---- The places and the board ----
 
@@ -77,12 +102,33 @@ export function rollOffer(state: GameState, slot: number, at: number): Offer {
   return { place, rarity };
 }
 
-// Fills any empty spot on the board whose replacement is due.
+// Fills any empty spot on the board whose replacement is due, and puts
+// the night ticket up in the evening (or takes it down in the morning).
 function fillBoard(state: GameState, t: number): GameState {
-  const j = state.journeys;
-  if (j.offers.every((o, i) => o !== null || t < j.refillAt[i])) return state;
-  const offers = j.offers.map((o, i) => o ?? (t >= j.refillAt[i] ? rollOffer(state, i, j.refillAt[i] || t) : null));
-  return { ...state, journeys: { ...j, offers } };
+  let j = state.journeys;
+  if (j.offers.some((o, i) => o === null && t >= j.refillAt[i])) {
+    j = { ...j, offers: j.offers.map((o, i) => o ?? (t >= j.refillAt[i] ? rollOffer(state, i, j.refillAt[i] || t) : null)) };
+  }
+  const night = nightOf(t);
+  if (night && j.nightOf !== night) j = { ...j, night: rollNight(state, night), nightOf: night };
+  else if (!night && j.night) j = { ...j, night: null };
+  return j === state.journeys ? state : { ...state, journeys: j };
+}
+
+// Which night `t` is in (the evening's day), or null in the daytime.
+export function nightOf(t: number): string | null {
+  const hour = new Date(t).getHours();
+  if (hour < J.night.fromHour && hour >= CONFIG.sleep.wakeHour) return null;
+  return localDay(t - CONFIG.sleep.wakeHour * HOUR);
+}
+
+// The night ticket for the night of `day`.
+export function rollNight(state: GameState, day: string): Offer {
+  const open = PLACES.filter((p) => placeOpen(state, p));
+  const key = `journey-night:${day}`;
+  const place = open[Math.floor(seededRoll('journeys', `${key}:place`) * open.length)].id;
+  const rarity: Rarity = seededRoll('journeys', `${key}:rarity`) * 100 < J.night.odds.rare ? 'rare' : 'epic';
+  return { place, rarity, night: true };
 }
 
 // ---- The lunchbox and the trip check ----
@@ -111,12 +157,13 @@ export function lunchValue(lunch: readonly string[]): { hunger: number; energy: 
 
 // Where the pet's tummy and energy end up after the trip, and whether
 // that's enough (at or above the low line).
-export function planTrip(pet: Pet, rarity: Rarity, lunch: readonly string[]): {
+export function planTrip(pet: Pet, trip: Rarity | Offer, lunch: readonly string[]): {
   to: { hunger: number; energy: number };
   enoughFood: boolean;
   enoughEnergy: boolean;
 } {
-  const cost = J.cost[rarity];
+  // A night trip uses what an Adventure does: it's as long.
+  const cost = typeof trip === 'string' ? J.cost[trip] : trip.night ? J.cost.epic : J.cost[trip.rarity];
   const packed = lunchValue(lunch);
   const to = {
     hunger: clampStat(pet.stats.hunger + packed.hunger - cost.hunger),
@@ -187,7 +234,8 @@ export function rollFinds(pet: Pet, place: Place, rarity: Rarity, startedAt: num
   const roll = (label: string) => seededRoll(pet.id, `trip:${startedAt}:${label}`);
   const rule = J.finds[rarity];
   const charm = getCharm(charmId);
-  const home = getCharacter(pet.character)?.theme === place.theme ? 1 : 0;
+  const home = (getCharacter(pet.character)?.theme === place.theme ? 1 : 0) +
+    (pet.favouritePlace === place.id ? J.favourite.extraFinds : 0);
   const extra = charm && 'extraFinds' in charm ? charm.extraFinds : 0;
   const twoStar = Math.min(1, rule.twoStarChance + (charm && 'twoStar' in charm ? charm.twoStar : 0));
   const count = rule.min + Math.floor(roll('count') * (rule.max - rule.min + 1)) + home + extra;
@@ -238,18 +286,82 @@ function withPage(state: GameState, place: string, change: (page: JournalPage) =
   return { ...state, journeys: { ...state.journeys, journal } };
 }
 
-// Writes the food in `finds` into the place's journal page.
+// Writes the food and seeds in `finds` into the place's journal page
+// (seeds as "seed:carrot").
 function noteFound(state: GameState, place: string, finds: readonly Find[]): GameState {
-  const foods = finds.filter((f) => f.kind === 'food').map((f) => f.id);
+  const foods = finds.filter((f) => f.kind !== 'gold').map((f) => (f.kind === 'seed' ? `seed:${f.id}` : f.id));
   if (foods.every((id) => journalPage(state, place).found.includes(id))) return state;
   return withPage(state, place, (page) => ({ ...page, found: [...page.found, ...foods.filter((id) => !page.found.includes(id))] }));
+}
+
+// ---- Postcards ----
+
+// Which like a story shows (written into the Family Tree the first time).
+const STORY_LIKES: Record<string, LikeKind> = {
+  lovedFood: 'food', cuddle: 'play', tickle: 'play', dislikedFood: 'dislike', rain: 'dislike', drip: 'dislike', sunrise: 'dislike',
+};
+
+// The line on `pet`'s postcard from `trip` (with `finds`, what it brought).
+// A friend made on the way or a new favourite place come first; otherwise
+// it's often about something the pet loves or dislikes, else its trait or
+// the place. The same trip always tells the same story.
+export function storyOf(pet: Pet, trip: Trip, finds: readonly Find[], newFavourite = false): Story {
+  if (trip.friend) return { id: 'friend', friend: trip.friend.name, character: trip.friend.character };
+  if (newFavourite) return { id: 'favourite' };
+  const roll = (label: string) => seededRoll(pet.id, `story:${trip.startedAt}:${label}`);
+  const likes = likesOf(pet);
+  const foods = finds.filter((f) => f.kind === 'food').map((f) => f.id);
+  const liked: Story[] = [];
+  if (foods.includes(likes.food)) liked.push({ id: 'lovedFood', food: likes.food });
+  if (foods.includes(likes.dislike)) liked.push({ id: 'dislikedFood', food: likes.dislike });
+  if (likes.dislike === 'bath' && trip.place === 'woods') liked.push({ id: 'rain' });
+  if (likes.dislike === 'bath' && trip.place === 'caves') liked.push({ id: 'drip' });
+  if (likes.dislike === 'woken' && (trip.night || trip.rarity === 'epic')) liked.push({ id: 'sunrise' });
+  if (likes.play === 'cuddle' || likes.play === 'tickle') liked.push({ id: likes.play });
+  if (liked.length > 0 && roll('liked') < J.storyLikeChance) return liked[Math.floor(roll('whichLike') * liked.length)];
+  const other: Story[] = [{ id: `trait:${pet.trait}` }, { id: `place:${trip.place}:0` }, { id: `place:${trip.place}:1` }];
+  return other[Math.floor(roll('which') * other.length)];
+}
+
+// A postcard from `pet` about `trip`, sent at `at`.
+function postcardOf(pet: Pet, trip: Trip, at: number, story: Story, finds: readonly Find[]): Postcard {
+  return {
+    name: pet.name, at, pet: pet.id, look: sheetFor(pet), rarity: trip.rarity, story,
+    ...(trip.night ? { night: true } : {}),
+    ...(finds.some((f) => f.stars === 3) ? { star3: true } : {}),
+  };
+}
+
+// Writes down a like the story showed, the first time (as feeding or
+// playing would).
+function noteStoryLike(state: GameState, petId: string, story: Story): GameState {
+  const kind = STORY_LIKES[story.id];
+  const pet = allPets(state).find((p) => p.id === petId);
+  if (!kind || !pet) return state;
+  const likes = likesOf(pet);
+  if (likes.found.includes(kind)) return state;
+  return replacePet(state, { ...pet, likes: { ...likes, found: [...likes.found, kind] } });
+}
+
+// After a finished trip to `place`: counts it, and once the pet has been
+// on enough, it picks a favourite place (where it's been most; its own
+// theme, then the order of the places, breaks a tie). True if it just did.
+function countTravel(pet: Pet, place: string): { pet: Pet; newFavourite: boolean } {
+  const travels = { ...pet.travels, [place]: (pet.travels?.[place] ?? 0) + 1 };
+  const total = Object.values(travels).reduce((a, b) => a + b, 0);
+  if (pet.favouritePlace || total < J.favourite.afterTrips) return { pet: { ...pet, travels }, newFavourite: false };
+  const theme = getCharacter(pet.character)?.theme;
+  const score = (p: Place) => (travels[p.id] ?? 0) * 2 + (p.theme === theme ? 1 : 0);
+  const best = PLACES.reduce((a, b) => (score(b) > score(a) ? b : a));
+  return { pet: { ...pet, travels, favouritePlace: best.id }, newFavourite: true };
 }
 
 // ---- Setting off ----
 
 export type JourneyBlock =
   | 'tooYoung' | 'passed' | 'sick' | 'resting' | 'asleep' | 'away' | 'backpack' | 'wait' | 'sad' | 'unwell'
-  | 'noOffer' | 'nobody' | 'noFood' | 'tooMuch' | 'notEnoughFood' | 'notEnoughEnergy' | 'percyBusy' | 'noCharm' | 'home';
+  | 'noOffer' | 'nobody' | 'noFood' | 'tooMuch' | 'notEnoughFood' | 'notEnoughEnergy' | 'percyBusy' | 'noCharm' | 'home'
+  | 'noTicket' | 'notEnoughFragments';
 
 export interface JourneyResult {
   state: GameState;
@@ -273,6 +385,15 @@ export function cantGo(pet: Pet, now: number): JourneyBlock | null {
 }
 
 export const percyFree = (state: GameState, now: number): boolean => now >= state.journeys.percyFreeAt;
+
+// The friend `pet` makes on an epic trip `offer`, setting off at `now`,
+// J.friend.chance of the time (null otherwise).
+function tripFriend(state: GameState, pet: Pet, offer: Offer, now: number): Trip['friend'] {
+  if (offer.rarity !== 'epic' || seededRoll(pet.id, `trip:${now}:friend`) >= J.friend.chance) return null;
+  const theme = getPlace(offer.place)?.theme ?? 'bakery';
+  const taken = [...allPets(state).map((p) => p.name), ...state.friends.map((f) => f.name)];
+  return makeTripFriend(`${pet.id}-${now}`, now, theme, J.friend.stars, taken, seenCharacters(state));
+}
 
 // One pet in the line-up, with its own lunch (food ids: up to two foods
 // and a drink) and charm.
@@ -299,7 +420,7 @@ export function setOff(
 export function goTogether(
   state: GameState, now: number, slot: number, party: readonly Packed[], percy: boolean,
 ): JourneyResult & { pet?: string } {
-  const offer = state.journeys.offers[slot];
+  const offer = offerAt(state, slot);
   const ids = party.map((m) => m.pet);
   const pets = ids.map((id) => allPets(state).find((p) => p.id === id));
   if (!party.length || new Set(ids).size !== ids.length || pets.some((p) => !p)) return { state, blocked: 'nobody' };
@@ -314,7 +435,7 @@ export function goTogether(
     const drinks = m.lunch.filter(isDrink).length;
     if (drinks > J.lunch.drink || m.lunch.length - drinks > J.lunch.food) return stop('tooMuch');
     if (m.charm && (!getCharm(m.charm) || charmCount(s, m.charm) < 1)) return stop('noCharm');
-    const plan = planTrip(pet, offer.rarity, m.lunch);
+    const plan = planTrip(pet, offer, m.lunch);
     if (!plan.enoughFood) return stop('notEnoughFood');
     if (!plan.enoughEnergy) return stop('notEnoughEnergy');
     if (n === 0 && percy && !percyFree(state, now)) return stop('percyBusy');
@@ -331,7 +452,7 @@ export function goTogether(
       place: offer.place,
       rarity: offer.rarity,
       startedAt: now,
-      endsAt: now + tripHours(offer.rarity) * HOUR,
+      endsAt: now + offerHours(offer) * HOUR,
       from: { hunger: pet.stats.hunger, energy: pet.stats.energy },
       to: plan.to,
       joy: J.joy[offer.rarity],
@@ -341,10 +462,12 @@ export function goTogether(
       with: ids.find((id) => id !== pet.id) ?? null,
       backAt: null,
       early: false,
+      ...(offer.night ? { night: true } : {}),
+      friend: tripFriend(s, pet, offer, now),
     };
     trips.push({ ...pet, trip, asleep: false });
   }
-  const endsAt = now + tripHours(offer!.rarity) * HOUR;
+  const endsAt = now + offerHours(offer!) * HOUR;
   for (const pet of trips) s = replacePet(s, pet);
   const j = s.journeys;
   s = {
@@ -355,6 +478,7 @@ export function goTogether(
       ...j,
       offers: j.offers.map((o, i) => (i === slot ? null : o)),
       refillAt: j.refillAt.map((at, i) => (i === slot ? now + J.refillHours * HOUR : at)),
+      night: slot === NIGHT ? null : j.night,
       percyFreeAt: percy ? now + (endsAt - now) / 2 + percyPerks(state).restHours * HOUR : j.percyFreeAt,
     },
   };
@@ -390,7 +514,7 @@ function comeHome(pet: Pet, at: number): void {
   pet.stats.happiness = clampStat(pet.stats.happiness + trip.joy * done);
   pet.stageStartedAt += at - trip.startedAt;
   pet.asleep = isNight(at);
-  pet.tripReadyAt = at + (at - trip.startedAt) * J.waitShare;
+  pet.tripReadyAt = trip.holiday ? at : at + (at - trip.startedAt) * J.waitShare;
   pet.trip = { ...trip, backAt: at };
 }
 
@@ -405,7 +529,9 @@ function percyFlies(state: GameState, pet: Pet, at: number): GameState {
   if (!find) return s;
   s = noteFound(giveFind(s, find), trip.place, [find]);
   if (find.stars === 3) s = addTally(s, 'epicFinds');
-  s = withPage(s, trip.place, (page) => ({ ...page, postcards: [{ name: pet.name, at }, ...page.postcards] }));
+  const story = storyOf(pet, { ...trip, friend: null }, [find]);
+  s = withPage(s, trip.place, (page) => ({ ...page, postcards: [postcardOf(pet, trip, at, story, [find]), ...page.postcards] }));
+  s = noteStoryLike(s, pet.id, story);
   return logMessage(s, { kind: 'courier', at, name: pet.name, place: trip.place, find });
 }
 
@@ -430,11 +556,23 @@ export function stepJourneys(before: GameState, state: GameState, t: number): Ga
   }
   const wasAway = new Set(allPets(before).filter(isAway).map((p) => p.id));
   for (const pet of allPets(s)) {
-    if (wasAway.has(pet.id) && hasBackpack(pet)) {
+    if (wasAway.has(pet.id) && hasBackpack(pet) && !pet.trip!.holiday) {
       s = logMessage(s, { kind: 'tripHome', at: pet.trip!.backAt!, name: pet.name, place: pet.trip!.place });
     }
   }
+  s = endHoliday(s);
+  // The garden has caught up past the Holiday.
+  if (s.journeys.holiday && t >= s.journeys.holiday.until) s = { ...s, journeys: { ...s.journeys, holiday: null } };
   return lookAfterSomeoneHome(s);
+}
+
+// Pets home from a Holiday have no backpack: they're just home, and say so.
+function endHoliday(state: GameState): GameState {
+  const back = allPets(state).filter((p) => p.trip?.holiday && p.trip.backAt !== null);
+  if (back.length === 0) return state;
+  let s = state;
+  for (const pet of back) s = replacePet(s, { ...pet, trip: null });
+  return logMessage(s, { kind: 'holidayHome', at: back[0].trip!.backAt!, names: back.map((p) => p.name) });
 }
 
 // While the pet you're looking after is away, look after one that's home.
@@ -453,6 +591,18 @@ function lookAfterSomeoneHome(state: GameState): GameState {
 export function callHome(state: GameState, now: number, petId: string): JourneyResult {
   const pet = allPets(state).find((p) => p.id === petId);
   if (!pet || !isAway(pet)) return { state, blocked: 'home' };
+  if (pet.trip!.holiday) {
+    // Everyone on the Holiday comes home together.
+    let s = state;
+    for (const p of allPets(state).filter((q) => isAway(q) && q.trip!.holiday)) {
+      const home: Pet = { ...p, stats: { ...p.stats }, trip: { ...p.trip!, early: true } };
+      comeHome(home, now);
+      s = replacePet(s, home);
+    }
+    const h = s.journeys.holiday;
+    s = { ...s, journeys: { ...s.journeys, holiday: h ? { ...h, until: Math.min(h.until, now) } : null } };
+    return { state: lookAfterSomeoneHome(endHoliday(s)) };
+  }
   const mate = allPets(state).find((p) => p.id === pet.trip!.with && isAway(p) && p.trip!.startedAt === pet.trip!.startedAt);
   let s = callOneHome(state, now, pet.id);
   if (mate) s = callOneHome(s, now, mate.id);
@@ -482,30 +632,62 @@ function callOneHome(state: GameState, now: number, petId: string): GameState {
 // Opens the backpack of a pet that's home: everything in it goes into the
 // inventory, and a finished trip goes into the travel journal and counts
 // for the journey badges. Returns what was in it.
-export function openBackpack(state: GameState, petId: string): { state: GameState; finds: Find[]; place: string | null } {
+export function openBackpack(state: GameState, petId: string): {
+  state: GameState; finds: Find[]; place: string | null; postcard: Postcard | null; friend: string | null;
+} {
   const pet = allPets(state).find((p) => p.id === petId);
-  if (!pet || !hasBackpack(pet)) return { state, finds: [], place: null };
+  if (!pet || !hasBackpack(pet)) return { state, finds: [], place: null, postcard: null, friend: null };
   const trip = pet.trip!;
-  let s = replacePet(state, { ...pet, trip: null });
+  const counted = trip.early ? { pet, newFavourite: false } : countTravel(pet, trip.place);
+  let s = replacePet(state, { ...counted.pet, trip: null });
   for (const f of trip.finds) s = giveFind(s, f);
   s = noteFound(s, trip.place, trip.finds);
   // A 3-star find counts for Epic Finder even on a trip cut short: it's home.
   const epic = trip.finds.filter((f) => f.stars === 3).length;
   if (epic > 0) s = addTally(s, 'epicFinds', epic);
+  let postcard: Postcard | null = null;
+  let friend: string | null = null;
   if (!trip.early) {
+    const stamp = trip.night ? 'night' : trip.rarity;
+    // Percy brought this trip's postcard already, unless there's news.
+    if (trip.percy !== 'flown' || trip.friend || counted.newFavourite) {
+      const story = storyOf(counted.pet, trip, trip.finds, counted.newFavourite);
+      postcard = postcardOf(counted.pet, trip, trip.backAt!, story, trip.finds);
+      s = noteStoryLike(s, pet.id, story);
+    }
     s = withPage(s, trip.place, (page) => ({
       ...page,
       trips: page.trips + 1,
       best: !page.best || RARITIES.indexOf(trip.rarity) > RARITIES.indexOf(page.best) ? trip.rarity : page.best,
-      postcards: trip.percy === 'flown' ? page.postcards : [{ name: pet.name, at: trip.backAt! }, ...page.postcards],
+      postcards: postcard ? [postcard, ...page.postcards] : page.postcards,
+      stamps: (page.stamps ?? []).includes(stamp) ? page.stamps : [...(page.stamps ?? []), stamp],
     }));
     s = addTally(s, 'journeys');
     if (trip.rarity === 'epic') s = addTally(s, 'adventures');
     // Each pet's backpack counts, so a trip together counts twice: the
     // Travel Buddies milestone only asks for one.
     if (trip.with) s = countUp(s, 'together');
+    // A friend made on the way joins your friends.
+    if (trip.friend && !s.friends.some((f) => f.id === trip.friend!.id)) {
+      s = { ...s, friends: [...s.friends, trip.friend] };
+      s = logMessage(s, { kind: 'tripFriend', at: trip.backAt!, name: pet.name, friend: trip.friend.name, place: trip.place });
+      friend = trip.friend.name;
+    }
   }
-  return { state: s, finds: trip.finds, place: trip.place };
+  return { state: s, finds: trip.finds, place: trip.place, postcard, friend };
+}
+
+// Everything a place can give, for its "Found here" page in the journal:
+// its own ingredient first, then foods and seeds ("seed:carrot"), no gold.
+export function placeFinds(place: Place): string[] {
+  const all = [place.ingredient, ...place.finds[1], ...place.finds[2], ...place.finds[3]] as string[];
+  return [...new Set(all.filter((e) => !e.startsWith('gold:')))];
+}
+
+// The level a place's page has reached by its number of trips: 0 before
+// the first, then Visitor, Regular, Local and Legend.
+export function placeLevel(trips: number): number {
+  return J.levels.filter((n) => trips >= n).length;
 }
 
 // Wakes Percy up early, for gold (in the Shop).
@@ -516,4 +698,65 @@ export function restPercy(state: GameState, now: number): { state: GameState; bl
   const flying = allPets(state).some((p) => p.trip?.percy === 'coming');
   if (flying) return { state, blocked: 'notTired' };
   return { state: { ...state, gold: state.gold - J.percy.resetPrice, journeys: { ...state.journeys, percyFreeAt: now } } };
+}
+
+// ---- Holidays ----
+
+export const holidayTickets = (state: GameState): number => state.inventory.supplies['ticket:holiday'] ?? 0;
+
+// Buys a Holiday ticket in the Star Shop, for star fragments.
+export function buyHolidayTicket(state: GameState): ShopResult {
+  const cost = J.holiday.fragments;
+  if (state.fragments.pieces < cost) return { state, blocked: 'notEnoughFragments' };
+  const supplies = { ...state.inventory.supplies, 'ticket:holiday': holidayTickets(state) + 1 };
+  return {
+    state: {
+      ...state,
+      fragments: { ...state.fragments, pieces: state.fragments.pieces - cost },
+      inventory: { ...state.inventory, supplies },
+    },
+  };
+}
+
+// Why the pets can't go on a Holiday now (null if they can): every pet
+// goes, so nobody can be away, have a backpack to open, or be sick.
+export function cantHoliday(state: GameState): { blocked: JourneyBlock; pet?: string } | null {
+  if (holidayTickets(state) < 1) return { blocked: 'noTicket' };
+  for (const pet of allPets(state)) {
+    if (pet.condition === 'passed') continue;
+    if (isAway(pet)) return { blocked: 'away', pet: pet.id };
+    if (hasBackpack(pet)) return { blocked: 'backpack', pet: pet.id };
+    if (pet.condition === 'sick') return { blocked: 'sick', pet: pet.id };
+  }
+  return null;
+}
+
+// Every pet goes on a Holiday in the Meadow for `days` days, with a
+// ticket. Hunger, energy and everything else stay as they are until
+// they're home (with a little joy), and the garden waits too. The state
+// should already be caught up to `now`.
+export function goHoliday(state: GameState, now: number, days: number): JourneyResult & { pet?: string } {
+  const why = cantHoliday(state);
+  if (why) return { state, ...why };
+  if (!(J.holiday.days as readonly number[]).includes(days)) return { state, blocked: 'noOffer' };
+  const until = now + days * 24 * HOUR;
+  const going = allPets(state).filter((p) => p.condition !== 'passed');
+  let s: GameState = {
+    ...state,
+    inventory: { ...state.inventory, supplies: { ...state.inventory.supplies, 'ticket:holiday': holidayTickets(state) - 1 } },
+  };
+  for (const pet of going) {
+    const now2 = { hunger: pet.stats.hunger, energy: pet.stats.energy };
+    const trip: Trip = {
+      place: MEADOW, rarity: 'common', startedAt: now, endsAt: until, from: now2, to: now2, joy: J.holiday.joy,
+      finds: [], percy: 'none', charm: null, with: null, backAt: null, early: false, holiday: true,
+    };
+    s = replacePet(s, { ...pet, trip, asleep: false });
+  }
+  s = {
+    ...s,
+    craving: { ...s.craving, food: null, nextAt: Math.max(s.craving.nextAt, until) },
+    journeys: { ...s.journeys, holiday: { from: now, until } },
+  };
+  return { state: s };
 }
