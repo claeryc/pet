@@ -736,6 +736,13 @@ body {
   background: white;
 }
 
+/* Today's special, above the Shop's tabs: a butter frame so it stands out. */
+.shop-row.shop-special {
+  margin-bottom: 12px;
+  border-color: var(--butter);
+  background: #fffbe8;
+}
+
 .shop-row-text {
   flex: 1;
   min-width: 0;

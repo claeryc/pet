@@ -21,11 +21,11 @@ import {
 import { characterSheet, getCharacter, getVariant, sheetFor } from './game/growth';
 import {
   buyBait, buyDecor, buyFood, buyFortuneCookie, buyGardenItem, buyHat, buyPot, checkIn, earn, fortuneCookies, getHat, grantPack,
-  revivalStars, wearHat,
+  buyBigJar, hasBigJar, revivalStars, wearHat,
   type ShopResult,
 } from './game/economy';
 import { purchase, type ProductId } from './payments';
-import { useDecor } from './game/decor';
+import { takeDownFurniture, useDecor } from './game/decor';
 import { getLook, isNight } from './game/stats';
 import { feeling } from './game/likes';
 import { afterEating, chooseExpression, idleEveryMs, reactionMs, type Expression, type Reaction } from './game/expressions';
@@ -1033,9 +1033,27 @@ const home = createHomeScreen(root, {
   onBuyDecor: (kind, id) => {
     const result = buyDecor(state, kind, id);
     if (result.blocked === 'earnedOnly' && kind === 'wallpaper') return earnedOnly(kind, id);
-    runShop(result, STRINGS.shop.bought((kind === 'wallpaper' ? STRINGS.shop.wallpapers : STRINGS.shop.curtains)[id] ?? id));
+    const names = kind === 'wallpaper' ? STRINGS.shop.wallpapers : kind === 'curtains' ? STRINGS.shop.curtains : STRINGS.shop.furniture;
+    runShop(result, STRINGS.shop.bought(names[id] ?? id));
   },
   onUseDecor: (kind, id) => runShop(useDecor(state, kind, id)),
+  onTakeDownFurniture: (id) => runShop({ state: takeDownFurniture(state, id) }),
+  onBuyBigJar: () => {
+    const buy = () => runShop(buyBigJar(state), STRINGS.shop.bought(STRINGS.shop.bigJar));
+    const cost = CONFIG.riceJar.bigger.fragments;
+    const { perStar } = CONFIG.fragments;
+    const left = state.fragments.pieces - cost;
+    // Like a star-only hat: first say how far that leaves a free star.
+    if (left < 0 || left >= perStar || hasBigJar(state)) return buy();
+    choice.open({
+      title: STRINGS.shop.spendTitle,
+      text: STRINGS.shop.spendAsk(STRINGS.shop.bigJar, cost, left, perStar),
+      options: [
+        { label: STRINGS.shop.spendYes, onPick: buy },
+        { label: STRINGS.shop.spendNo, soft: true, onPick: () => {} },
+      ],
+    });
+  },
   onBuyPack: (id) => void buyPack(id as ProductId),
   onBuyFamilyHome,
   onRoomDoor: askRoomDoor,

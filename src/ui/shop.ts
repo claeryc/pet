@@ -4,9 +4,9 @@
 
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
-import { HATS, baitCount, fortuneCookies, revivalStars, canBuyPot, foodCount, limitedInStock, limitedLeft, localDay } from '../game/economy';
+import { HATS, baitCount, fortuneCookies, revivalStars, canBuyPot, foodCount, limitedInStock, limitedLeft, localDay, dailySpecial, ownsSpecial, priceToday, hasBigJar, riceJarSize, getHat } from '../game/economy';
 import { earnedFrom } from '../game/regulars';
-import { CURTAINS, WALLPAPERS, inUse, ownsDecor, type Decor, type DecorKind } from '../game/decor';
+import { CURTAINS, FURNITURE, WALLPAPERS, inUse, ownsDecor, type Decor, type DecorKind } from '../game/decor';
 import type { GameState } from '../game/state';
 import type { Food, FoodId } from '../game/actions';
 import { FRAGMENT_ICON, ITEM_ICONS, STAT_ICONS } from './icons';
@@ -28,6 +28,8 @@ export interface ShopCallbacks {
   onBuyPot: () => void;
   onBuyDecor: (kind: DecorKind, id: string) => void;
   onUseDecor: (kind: DecorKind, id: string | null) => void;
+  onTakeDownFurniture: (id: string) => void; // out of the room you're looking at
+  onBuyBigJar: () => void; // the bigger rice jar, for star fragments
   onBuyPack: (productId: string) => void; // Revival Stars, with real money
   onBuyFamilyHome: (withFragments: boolean) => void; // the second room, for star fragments or money
   onMakeStar: () => void; // star fragments into a Revival Star
@@ -244,18 +246,41 @@ function decorEntry(state: GameState, d: Decor, cb: ShopCallbacks): Entry {
   const owned = ownsDecor(state, d.kind, d.id);
   const using = inUse(state, d.kind, d.id);
   const icon = ITEM_ICONS[`${d.kind}_${d.id}`] ?? '';
-  const name = (d.kind === 'wallpaper' ? STRINGS.shop.wallpapers : STRINGS.shop.curtains)[d.id] ?? d.id;
+  const name = decorName(d.kind, d.id);
   let action: HTMLElement;
   let note = using ? STRINGS.shop.inUse : owned ? STRINGS.shop.owned : '';
+  // Furniture says where it goes, until it's in the room.
+  if (d.slot && !using) note = owned ? `${STRINGS.shop.owned} · ${STRINGS.shop.furnitureSlot[d.slot]}` : STRINGS.shop.furnitureSlot[d.slot];
   if (!owned && d.earned && d.kind === 'wallpaper') {
     const earned = earnedButton(d.kind, d.id, () => cb.onBuyDecor(d.kind, d.id));
     action = earned.button;
     note = earned.note;
-  } else if (!owned) action = priceButton(d.price, state.gold, () => cb.onBuyDecor(d.kind, d.id));
+  } else if (!owned) action = priceButton(priceToday(state, d.kind, d.id, d.price), state.gold, () => cb.onBuyDecor(d.kind, d.id));
   else if (using && d.kind === 'curtains') action = button(STRINGS.shop.takeDown, () => cb.onUseDecor(d.kind, null), 'shop-btn shop-btn-soft');
+  else if (using && d.kind === 'furniture') action = button(STRINGS.shop.takeDown, () => cb.onTakeDownFurniture(d.id), 'shop-btn shop-btn-soft');
   else if (using) action = label(STRINGS.shop.inUse);
-  else action = button(STRINGS.shop.use, () => cb.onUseDecor(d.kind, d.id));
+  else action = button(d.kind === 'furniture' ? STRINGS.shop.place : STRINGS.shop.use, () => cb.onUseDecor(d.kind, d.id));
   return { icon, mark: using, row: row(icon, name, note, action) };
+}
+
+const decorName = (kind: DecorKind, id: string) =>
+  (kind === 'wallpaper' ? STRINGS.shop.wallpapers : kind === 'curtains' ? STRINGS.shop.curtains : STRINGS.shop.furniture)[id] ?? id;
+
+// Today's special, above the tabs: one thing at a lower price, with its
+// usual price under its name. Once it's yours it says so until tomorrow.
+function specialRow(state: GameState, cb: ShopCallbacks): HTMLElement | null {
+  const special = dailySpecial(state);
+  if (!special) return null;
+  const hat = special.kind === 'hat' ? getHat(special.id) : undefined;
+  const icon = hat ? hatIcon(cb.hatImage(special.id)) : ITEM_ICONS[`${special.kind}_${special.id}`] ?? '';
+  const name = hat ? hat.name : decorName(special.kind as DecorKind, special.id);
+  const owned = ownsSpecial(state, special);
+  const buy = () => (hat ? cb.onBuyHat(special.id) : cb.onBuyDecor(special.kind as DecorKind, special.id));
+  const el = row(icon, `${STRINGS.shop.special}: ${name}`,
+    owned ? STRINGS.shop.specialOwned : STRINGS.shop.specialNote(special.was),
+    owned ? label(STRINGS.shop.owned) : priceButton(special.price, state.gold, buy));
+  el.classList.add('shop-special');
+  return el;
 }
 
 // The Shop's categories, in order. Other screens can open the Shop at one.
@@ -283,6 +308,15 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
       if (f.limited) el.insertBefore(stockIcon(), action);
       return { icon: ITEM_ICONS[f.id], count: countBadge(foodCount(state, f.id)), row: el };
     });
+  // The bigger rice jar, for star fragments, at the top once it's for sale.
+  const { bigger } = CONFIG.riceJar;
+  food.unshift({
+    icon: ITEM_ICONS.riceBall,
+    faded: hasBigJar(state),
+    row: row(ITEM_ICONS.riceBall, STRINGS.shop.bigJar,
+      hasBigJar(state) ? STRINGS.shop.owned : STRINGS.shop.bigJarNote(bigger.extra, riceJarSize(state) + bigger.extra),
+      hasBigJar(state) ? label(STRINGS.shop.owned) : fragmentButton(bigger.fragments, state.fragments.pieces, cb.onBuyBigJar)),
+  });
   // Fortune cookies, opened before mingling, once friends drop by.
   if (isUnlocked(state, 'meet')) {
     food.push({
@@ -296,7 +330,7 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
     const owned = state.inventory.hats.includes(h.id);
     const buy = h.fragments
       ? fragmentButton(h.fragments, state.fragments.pieces, () => cb.onBuyHat(h.id))
-      : priceButton(h.price, state.gold, () => cb.onBuyHat(h.id));
+      : priceButton(priceToday(state, 'hat', h.id, h.price), state.gold, () => cb.onBuyHat(h.id));
     const note = owned ? STRINGS.shop.owned : h.fragments ? STRINGS.shop.fragmentsOnly : '';
     return {
       icon: hatIcon(cb.hatImage(h.id)),
@@ -376,7 +410,7 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
   );
   const room: Entry[] = [
     { icon: ITEM_ICONS.familyHome, faded: owned, row: row(ITEM_ICONS.familyHome, STRINGS.familyHome.name, STRINGS.familyHome.shopNote, homeActions) },
-    ...[...WALLPAPERS, ...CURTAINS].map((d) => decorEntry(state, d, cb)),
+    ...[...FURNITURE, ...WALLPAPERS, ...CURTAINS].map((d) => decorEntry(state, d, cb)),
   ];
   // Star fragments: the ones collected so far (from good care, or bought),
   // which make a Revival Star once there are enough, then packs of them
@@ -417,7 +451,8 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
   const rows = document.createElement('div');
   rows.className = 'shop-cat-rows';
   rows.append(...shown.entries.map((e) => e.row));
-  return [shopTabs(tabs, view, redraw), rows];
+  const special = specialRow(state, cb);
+  return [...(special ? [special] : []), shopTabs(tabs, view, redraw), rows];
 }
 
 interface ShopTab {

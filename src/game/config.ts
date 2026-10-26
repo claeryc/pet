@@ -344,7 +344,9 @@ export const CONFIG = {
   // The rice jar: free rice balls, up to `size` in the pantry. While you
   // have fewer, one more appears every `refillHours`. Rice bought in the
   // Shop goes on top and doesn't count against the jar.
-  riceJar: { size: 3, refillHours: 4 },
+  // A bigger jar, bought once in the Shop for `bigger.fragments` star
+  // fragments, holds `bigger.extra` more.
+  riceJar: { size: 3, refillHours: 4, bigger: { fragments: 100, extra: 1 } },
   // A pet whose tummy is above this won't eat anything.
   tooFullAbove: 90,
 
@@ -678,9 +680,10 @@ export const CONFIG = {
     fishToOpen: 10,
   },
 
-  // Decorating the room, from the Shop: a wallpaper and window curtains.
-  // Each is bought once, then you pick which to use. Every room starts
-  // with the plain wallpaper and no curtains.
+  // Decorating the room, from the Shop: a wallpaper, window curtains and
+  // furniture. Each is bought once, then you pick which to use in each
+  // room. Every room starts with the plain wallpaper, no curtains and no
+  // furniture.
   room: {
     wallpapers: [
       { id: 'plain', price: 0 },
@@ -697,7 +700,25 @@ export const CONFIG = {
       { id: 'mint', price: 100 },
       { id: 'plum', price: 150 },
     ],
+    // Furniture: bought once, then placed in any room. Each piece has its
+    // own spot (`slot`): on the wall, or on the floor at the left or right
+    // side. A spot holds one piece at a time. How each looks lives in
+    // src/render/furniture.ts. Only for looks.
+    furniture: [
+      { id: 'garland', slot: 'wall', price: 100 },
+      { id: 'portrait', slot: 'wall', price: 120 },
+      { id: 'shelf', slot: 'wall', price: 160 },
+      { id: 'plant', slot: 'left', price: 120 },
+      { id: 'lamp', slot: 'left', price: 180 },
+      { id: 'toyBox', slot: 'right', price: 140 },
+      { id: 'bookshelf', slot: 'right', price: 220 },
+    ],
   },
+
+  // The Shop's daily special: one thing you don't own yet (furniture, a
+  // wallpaper, curtains or a gold hat), picked for each day, at `off`
+  // less (0.25 = a quarter off, rounded to 5 gold).
+  dailySpecial: { off: 0.25 },
 
   // Achievements (in the Collection): badges for doing something lots of
   // times. Each has three tiers, bronze, silver and gold, reached at these

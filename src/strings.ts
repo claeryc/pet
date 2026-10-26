@@ -849,6 +849,25 @@ export const STRINGS = {
       mint: 'Mint curtains',
       plum: 'Plum curtains',
     } as Record<string, string>,
+    furniture: {
+      garland: 'Star garland',
+      portrait: 'Heart portrait',
+      shelf: 'Little shelf',
+      plant: 'Potted plant',
+      lamp: 'Floor lamp',
+      toyBox: 'Toy box',
+      bookshelf: 'Bookshelf',
+    } as Record<string, string>,
+    // Where a piece of furniture goes.
+    furnitureSlot: { wall: 'On the wall', left: 'Floor, left side', right: 'Floor, right side' } as Record<string, string>,
+    place: 'Place',
+    // The daily special, above the Shop's tabs.
+    special: "Today's special",
+    specialNote: (was: number) => `Usually ${was} gold`,
+    specialOwned: 'Yours already. A new one tomorrow!',
+    // The bigger rice jar, bought with star fragments.
+    bigJar: 'Bigger rice jar',
+    bigJarNote: (extra: number, size: number) => `Holds ${extra} more free rice ball, ${size} in all`,
     use: 'Use',
     inUse: 'In use',
     takeDown: 'Take down',

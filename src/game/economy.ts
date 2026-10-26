@@ -11,7 +11,7 @@ import type { GameState } from './state';
 import type { Food, FoodId } from './actions';
 import { emptyPlot, priceOf, type ShopItem } from './garden';
 import { seededRoll } from './growth';
-import { decorKey, getDecor, ownsDecor, useDecor, type DecorKind } from './decor';
+import { CURTAINS, FURNITURE, WALLPAPERS, decorKey, getDecor, ownsDecor, useDecor, type DecorKind } from './decor';
 
 export interface Hat {
   id: string;
@@ -54,11 +54,33 @@ export function foodCount(state: GameState, id: FoodId): number {
   return (getFood(id).price as number) === 0 ? Infinity : (state.inventory.food[id] ?? 0);
 }
 
-// The rice jar: while you have fewer than CONFIG.riceJar.size rice balls,
-// one more appears every refillHours. `riceJarAt` is when the next one
-// comes (null while the jar is full). Runs as part of simulate().
+// How many rice balls the jar holds: more once the bigger jar is bought.
+export const hasBigJar = (state: GameState) => (state.inventory.supplies.bigRiceJar ?? 0) > 0;
+export const riceJarSize = (state: GameState) =>
+  CONFIG.riceJar.size + (hasBigJar(state) ? CONFIG.riceJar.bigger.extra : 0);
+
+// Buys the bigger rice jar, once, with star fragments. It starts filling
+// its new spot straight away.
+export function buyBigJar(state: GameState): ShopResult {
+  if (hasBigJar(state)) return { state, blocked: 'alreadyOwned' };
+  const cost = CONFIG.riceJar.bigger.fragments;
+  if (state.fragments.pieces < cost) return { state, blocked: 'notEnoughFragments' };
+  const supplies = { ...state.inventory.supplies, bigRiceJar: 1 };
+  return {
+    state: stepRiceJar({
+      ...state,
+      fragments: { ...state.fragments, pieces: state.fragments.pieces - cost },
+      inventory: { ...state.inventory, supplies },
+    }, state.lastUpdated),
+  };
+}
+
+// The rice jar: while you have fewer than riceJarSize() rice balls, one
+// more appears every refillHours. `riceJarAt` is when the next one comes
+// (null while the jar is full). Runs as part of simulate().
 export function stepRiceJar(state: GameState, now: number): GameState {
-  const { size, refillHours } = CONFIG.riceJar;
+  const { refillHours } = CONFIG.riceJar;
+  const size = riceJarSize(state);
   const gap = refillHours * 3_600_000;
   let count = state.inventory.food.riceBall ?? 0;
   let at = count >= size ? null : (state.riceJarAt ?? now + gap);
@@ -166,9 +188,10 @@ export function buyDecor(state: GameState, kind: DecorKind, id: string): ShopRes
   if (!d) return { state };
   if (ownsDecor(state, kind, id)) return { state, blocked: 'alreadyOwned' };
   if (d.earned) return { state, blocked: 'earnedOnly' };
-  if (!canAfford(state, d.price)) return { state, blocked: 'notEnoughGold' };
+  const price = priceToday(state, kind, id, d.price);
+  if (!canAfford(state, price)) return { state, blocked: 'notEnoughGold' };
   const decor = [...state.inventory.decor, decorKey(kind, id)];
-  const bought = { ...state, gold: state.gold - d.price, inventory: { ...state.inventory, decor } };
+  const bought = { ...state, gold: state.gold - price, inventory: { ...state.inventory, decor } };
   return { state: useDecor(bought, kind, id).state };
 }
 
@@ -192,8 +215,43 @@ export function buyHat(state: GameState, id: string): ShopResult {
     if (pieces < 0) return { state, blocked: 'notEnoughFragments' };
     return { state: { ...state, fragments: { ...state.fragments, pieces }, inventory: { ...state.inventory, hats } } };
   }
-  if (!canAfford(state, hat.price)) return { state, blocked: 'notEnoughGold' };
-  return { state: { ...state, gold: state.gold - hat.price, inventory: { ...state.inventory, hats } } };
+  const price = priceToday(state, 'hat', id, hat.price);
+  if (!canAfford(state, price)) return { state, blocked: 'notEnoughGold' };
+  return { state: { ...state, gold: state.gold - price, inventory: { ...state.inventory, hats } } };
+}
+
+// ---- The daily special ----
+
+// One thing a day at a lower price: a piece of furniture, a wallpaper,
+// curtains or a gold hat. The same for everyone on the same day, and it
+// stays put after it's bought (then it just says so).
+export interface Special {
+  kind: DecorKind | 'hat';
+  id: string;
+  was: number; // its usual price
+  price: number; // today's price
+}
+
+export function dailySpecial(state: GameState): Special | null {
+  const decor = [...FURNITURE, ...WALLPAPERS, ...CURTAINS]
+    .filter((d) => d.price > 0 && !d.earned)
+    .map((d) => ({ kind: d.kind, id: d.id, was: d.price }));
+  const hats = HATS.filter((h) => !h.fragments && h.price > 0).map((h) => ({ kind: 'hat' as const, id: h.id, was: h.price }));
+  const pool = [...decor, ...hats];
+  if (pool.length === 0) return null;
+  const pick = pool[Math.floor(seededRoll('shop', `special:${localDay(state.lastUpdated)}`) * pool.length)];
+  const price = Math.round((pick.was * (1 - CONFIG.dailySpecial.off)) / 5) * 5;
+  return { ...pick, price };
+}
+
+export function ownsSpecial(state: GameState, special: Special): boolean {
+  return special.kind === 'hat' ? state.inventory.hats.includes(special.id) : ownsDecor(state, special.kind, special.id);
+}
+
+// What a thing costs today: less if it's today's special.
+export function priceToday(state: GameState, kind: Special['kind'], id: string, price: number): number {
+  const special = dailySpecial(state);
+  return special && special.kind === kind && special.id === id ? special.price : price;
 }
 
 // Puts a hat on (or takes it off, with null).
