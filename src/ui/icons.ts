@@ -5,6 +5,7 @@
 
 import { PALETTE } from '../render/palette';
 import { CURTAINS, WALLPAPERS } from '../render/room';
+import { FURNITURE_ART, FURNITURE_COLORS } from '../render/furniture';
 
 const PIXEL_COLORS: Record<string, string> = {
   k: PALETTE.ink,
@@ -75,7 +76,23 @@ function curtainsIcon(id: string): string {
   );
 }
 
+// A piece of furniture, as it stands in the room, centred in a square.
+function furnitureIcon(id: string): string {
+  const rows = FURNITURE_ART[id];
+  const size = Math.max(rows.length, rows[0].length);
+  const left = Math.floor((size - rows[0].length) / 2);
+  const top = Math.floor((size - rows.length) / 2);
+  const pad = '.'.repeat(size);
+  const square = [
+    ...Array<string>(top).fill(pad),
+    ...rows.map((r) => '.'.repeat(left) + r + '.'.repeat(size - left - r.length)),
+    ...Array<string>(size - top - rows.length).fill(pad),
+  ];
+  return pixelIcon(square, FURNITURE_COLORS);
+}
+
 const ROOM_ICONS: Record<string, string> = Object.fromEntries([
+  ...Object.keys(FURNITURE_ART).map((id) => [`furniture_${id}`, furnitureIcon(id)]),
   ...Object.keys(WALLPAPERS).map((id) => [`wallpaper_${id}`, wallpaperIcon(id)]),
   ...Object.keys(CURTAINS).map((id) => [`curtains_${id}`, curtainsIcon(id)]),
 ]);
@@ -1244,6 +1261,21 @@ export const ITEM_ICONS: Record<string, string> = {
 
 // The tiles in the gear menu's grid, by unlock id (and Settings).
 export const MENU_ICONS: Record<string, string> = {
+  // A price tag on a string: the Shop's Today tab.
+  todayTag: pixelIcon([
+    '..kk........',
+    '.k..k.......',
+    '.k...kkkkk..',
+    '..k.kyyyyyk.',
+    '...kyykyyyyk',
+    '...kyyyyyyyk',
+    '...kyyyyyyyk',
+    '...kyyrryyyk',
+    '...kyyrryyyk',
+    '...kyyyyyyyk',
+    '....kyyyyyk.',
+    '.....kkkkk..',
+  ]),
   // A market stall with a striped awning.
   shop: pixelIcon([
     '............',

@@ -21,11 +21,11 @@ import {
 import { characterSheet, getCharacter, getVariant, sheetFor } from './game/growth';
 import {
   buyBait, buyDecor, buyFood, buyFortuneCookie, buyGardenItem, buyHat, buyPot, checkIn, earn, fortuneCookies, getHat, grantPack,
-  revivalStars, wearHat,
+  buyBigJar, hasBigJar, revivalStars, wearHat,
   type ShopResult,
 } from './game/economy';
 import { purchase, type ProductId } from './payments';
-import { useDecor } from './game/decor';
+import { takeDownFurniture, useDecor } from './game/decor';
 import { getLook, isNight } from './game/stats';
 import { feeling } from './game/likes';
 import { afterEating, chooseExpression, idleEveryMs, reactionMs, type Expression, type Reaction } from './game/expressions';
@@ -49,7 +49,7 @@ import {
   type GardenResult,
 } from './game/garden';
 import { markSeen, updateProgress } from './game/unlocks';
-import { makeStar } from './game/fragments';
+import { makeStar, weeksToStar } from './game/fragments';
 import { learn, nextCost, rankOf, resetTree, skillBefore, type SkillId } from './game/skills';
 import { SKILL_POINT_ICON } from './ui/icons';
 import { fillAll, orderPay, orderTier, putInBox, takeFromBox, type BoxResult } from './game/delivery';
@@ -214,7 +214,7 @@ function playMusic(): void {
 // Star fragments just found.
 function showFragments(pieces: number): void {
   if (pieces === 0) return;
-  const { perStar } = CONFIG.revival.fragments;
+  const { perStar } = CONFIG.fragments;
   sound('got');
   home.reveal({
     icon: FRAGMENT_ICON, name: STRINGS.shop.fragment, count: pieces, stars: 0,
@@ -476,13 +476,13 @@ function runBox(action: (s: GameState) => BoxResult, food?: string): void {
 const boxFood = (i: number) => state.delivery.order?.boxes[i]?.food;
 
 // The Star Shop: pays (a stand-in for now, see src/payments.ts) and hands
-// out the pack. Resolves true if it was bought.
+// out the pack's star fragments. Resolves true if it was bought.
 function buyPack(productId: ProductId): Promise<boolean> {
   const pack = CONFIG.store.find((p) => p.id === productId)!;
   const confirmPay = () => new Promise<boolean>((resolve) => {
     choice.open({
       title: STRINGS.revival.payTitle,
-      text: STRINGS.revival.payAsk(STRINGS.shop.revivalPack(pack.count), pack.price),
+      text: STRINGS.revival.payAsk(STRINGS.shop.fragmentPack(pack.fragments), pack.price),
       options: [
         { label: STRINGS.revival.pay(pack.price), onPick: () => resolve(true) },
         { label: STRINGS.revival.cancel, soft: true, onPick: () => resolve(false) },
@@ -493,14 +493,17 @@ function buyPack(productId: ProductId): Promise<boolean> {
     if (!paid) return false;
     setState(grantPack(state, productId));
     sound('purchase');
-    home.reveal({ icon: ITEM_ICONS[pack.item], name: STRINGS.shop.revivalStar, count: pack.count, stars: 0 });
-    home.toast(STRINGS.revival.bought(pack.count));
+    home.reveal({
+      icon: FRAGMENT_ICON, name: STRINGS.shop.fragment, count: pack.fragments, stars: 0,
+      caption: STRINGS.shop.fragmentsCount(state.fragments.pieces, CONFIG.fragments.perStar),
+    });
+    home.toast(STRINGS.revival.bought(pack.fragments));
     return true;
   });
 }
 
-// A pet that passed away: bring it back with a Revival Star, buying one
-// first if there's none.
+// A pet that passed away: bring it back with a Revival Star, making one
+// from fragments first if there's none. Never offers a purchase.
 function askRevive(): void {
   const name = state.pet.name;
   const doRevive = () => {
@@ -512,8 +515,7 @@ function askRevive(): void {
     react('happy');
   };
   const have = revivalStars(state);
-  const single = CONFIG.store[0];
-  const { perStar } = CONFIG.revival.fragments;
+  const { perStar } = CONFIG.fragments;
   const notNow = { label: STRINGS.revival.notNow, soft: true, onPick: () => {} };
   if (have > 0) {
     choice.open({
@@ -533,15 +535,12 @@ function askRevive(): void {
     });
     return;
   }
-  // None yet: say how far the free star (from fragments) has come, and
-  // offer to buy one.
+  // None yet: say how far the free star (from fragments) has come. No
+  // price here: this is about care, not a sale.
   choice.open({
     title: STRINGS.revival.title(name),
-    text: STRINGS.revival.buyAsk(name, state.fragments.pieces, CONFIG.revival.fragments.perStar),
-    options: [
-      { label: STRINGS.revival.buy(single.price), onPick: () => buyPack(single.id).then((ok) => ok && doRevive()) },
-      notNow,
-    ],
+    text: STRINGS.revival.progressAsk(name, state.fragments.pieces, perStar, weeksToStar(state.fragments.pieces)),
+    options: [notNow],
   });
 }
 
@@ -723,7 +722,7 @@ function onBuyFamilyHome(withFragments: boolean): void {
     const result = buyFamilyHome(state);
     if (result.blocked === 'notEnoughFragments') return blocked(STRINGS.shop.notEnoughFragments);
     if (result.blocked) return;
-    const { perStar } = CONFIG.revival.fragments;
+    const { perStar } = CONFIG.fragments;
     const left = state.fragments.pieces - CONFIG.familyHome.fragments;
     // Like a star-only hat: first say how far that leaves a free star.
     if (left >= perStar) return got(result.state);
@@ -1120,9 +1119,27 @@ const home = createHomeScreen(root, {
   onBuyDecor: (kind, id) => {
     const result = buyDecor(state, kind, id);
     if (result.blocked === 'earnedOnly' && kind === 'wallpaper') return earnedOnly(kind, id);
-    runShop(result, STRINGS.shop.bought((kind === 'wallpaper' ? STRINGS.shop.wallpapers : STRINGS.shop.curtains)[id] ?? id));
+    const names = kind === 'wallpaper' ? STRINGS.shop.wallpapers : kind === 'curtains' ? STRINGS.shop.curtains : STRINGS.shop.furniture;
+    runShop(result, STRINGS.shop.bought(names[id] ?? id));
   },
   onUseDecor: (kind, id) => runShop(useDecor(state, kind, id)),
+  onTakeDownFurniture: (id) => runShop({ state: takeDownFurniture(state, id) }),
+  onBuyBigJar: () => {
+    const buy = () => runShop(buyBigJar(state), STRINGS.shop.bought(STRINGS.shop.bigJar));
+    const cost = CONFIG.riceJar.bigger.fragments;
+    const { perStar } = CONFIG.fragments;
+    const left = state.fragments.pieces - cost;
+    // Like a star-only hat: first say how far that leaves a free star.
+    if (left < 0 || left >= perStar || hasBigJar(state)) return buy();
+    choice.open({
+      title: STRINGS.shop.spendTitle,
+      text: STRINGS.shop.spendAsk(STRINGS.shop.bigJar, cost, left, perStar),
+      options: [
+        { label: STRINGS.shop.spendYes, onPick: buy },
+        { label: STRINGS.shop.spendNo, soft: true, onPick: () => {} },
+      ],
+    });
+  },
   onBuyPack: (id) => void buyPack(id as ProductId),
   onBuyFamilyHome,
   onRoomDoor: askRoomDoor,
@@ -1224,7 +1241,7 @@ const home = createHomeScreen(root, {
   onBuyHat: (id) => {
     const hat = getHat(id);
     const buy = () => runShop(buyHat(state, id), STRINGS.shop.boughtHat(hat?.name ?? '', state.pet.name));
-    const { perStar } = CONFIG.revival.fragments;
+    const { perStar } = CONFIG.fragments;
     const left = state.fragments.pieces - (hat?.fragments ?? 0);
     // Fragments going on a hat: first say how far that leaves a free star.
     if (!hat?.fragments || left < 0 || left >= perStar || state.inventory.hats.includes(id)) return buy();
@@ -1238,16 +1255,19 @@ const home = createHomeScreen(root, {
     });
   },
   onFragmentsHelp: () => {
-    const { perStar, careDaysPerFragment } = CONFIG.revival.fragments;
-    // The fragments you have, lit up around a faded Revival Star.
+    const { perStar, perGoodDay, perMilestone } = CONFIG.fragments;
+    // How far the fragments have come, lit up around a faded Revival Star:
+    // one of the ring's pieces for each tenth of a star.
     const pieces = state.fragments.pieces;
-    const slots = Array.from({ length: perStar }, (_, i) =>
-      `<span class="frag-slot${i < pieces ? ' on' : ''}" style="--a:${(360 / perStar) * i}deg">${FRAGMENT_ICON}</span>`).join('');
+    const ring = 10;
+    const lit = Math.floor((Math.min(pieces, perStar) / perStar) * ring);
+    const slots = Array.from({ length: ring }, (_, i) =>
+      `<span class="frag-slot${i < lit ? ' on' : ''}" style="--a:${(360 / ring) * i}deg">${FRAGMENT_ICON}</span>`).join('');
     const art = `<div class="frag-ring">${slots}<span class="frag-ring-star">${ITEM_ICONS.revivalStar}</span></div>`;
     choice.open({
       art,
       title: STRINGS.shop.fragmentsHelpTitle(pieces, perStar),
-      text: STRINGS.shop.fragmentsHelp(careDaysPerFragment - state.fragments.careDays),
+      text: STRINGS.shop.fragmentsHelp(perGoodDay, perMilestone, weeksToStar(pieces)),
       options: [{ label: STRINGS.shop.fragmentsHelpOk, onPick: () => {} }],
     });
   },

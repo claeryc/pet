@@ -13,7 +13,7 @@ import { CONFIG } from '../game/config';
 import type { GameState } from '../game/state';
 import { isNew, isUnlocked, type UnlockId } from '../game/unlocks';
 import { LOCK_ICON, MENU_ICONS } from './icons';
-import { goldPill, shopPage, wardrobePage, type ShopCallbacks, type ShopCategory, type ShopView } from './shop';
+import { fragmentPill, goldPill, shopPage, wardrobePage, type ShopCallbacks, type ShopCategory, type ShopView } from './shop';
 import { collectionPage } from './collection';
 import { familyTreePage, type FamilyCallbacks, type TreeView } from './family';
 import { meadowPage, type MeadowCallbacks } from './meadow';
@@ -269,15 +269,15 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
   // The tree tab and skill picked in Skills. Each visit starts at Fishing
   // (or the first tree with a point to spend) and its next skill.
   const skillsView: SkillsView = { tree: 'fishing', skill: null };
-  // The Shop's tab. Each visit starts at the first one (Stars).
-  const shopView: ShopView = { tab: 'revival' };
+  // The Shop's tab. Each visit starts at the first one (Today).
+  const shopView: ShopView = { tab: 'today' };
 
   // The Shop, Wardrobe and Collection: a header (with gold on the right in
   // the Shop, lined up with the prices), then the list.
   function showList(which: 'shop' | 'wardrobe' | 'collection' | 'skills' | 'familyTree', fresh: boolean): void {
     if (fresh) {
       openCategories.clear();
-      shopView.tab = 'revival';
+      shopView.tab = 'today';
       treeView.focus = null;
       toTop();
     }
@@ -307,7 +307,14 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
       skills: STRINGS.skills.title,
       familyTree: STRINGS.menu.familyTree,
     }[which];
-    const right = which === 'shop' || which === 'skills' ? goldPill(state?.gold ?? 0) : undefined;
+    // The Shop shows star fragments next to the gold.
+    let right: HTMLElement | undefined;
+    if (which === 'skills') right = goldPill(state?.gold ?? 0);
+    if (which === 'shop') {
+      right = document.createElement('span');
+      right.className = 'shop-purse';
+      right.append(goldPill(state?.gold ?? 0), fragmentPill(state?.fragments.pieces ?? 0));
+    }
     panel.replaceChildren(header(title, showMain, right), list);
   }
   const showShop = (fresh = true) => showList('shop', fresh);
@@ -528,7 +535,8 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     update(next) {
       // Only redraw a page when something on it changed, so the list
       // doesn't jump while you scroll.
-      // The Family Tree also shows the pet's stats and age.
+      // The Family Tree also shows the pet's stats and age, and the Shop
+      // counts down to the next special.
       const key = (s: GameState | null) =>
         s &&
         JSON.stringify([
@@ -536,7 +544,9 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
           s.recipesFound, s.caught, s.charactersFound, s.charactersMet, s.pet.name, s.pet.named, s.owner, s.family,
           s.messages, s.messagesSeenAt, s.keeper, s.delivery, s.friends, s.visit.guest, s.housemates.map((p) => [p.id, p.name, p.stage]),
           s.journeys, [s.pet, ...s.housemates].map((p) => [p.id, p.trip?.backAt, p.trip?.percy]), s.guidesRead,
+          s.fragments.pieces, s.room, s.familyHome,
           page === 'messages' && Math.floor(s.lastUpdated / 60_000),
+          page === 'shop' && Math.floor(s.lastUpdated / 3_600_000), // the special's countdown
           page === 'familyTree' && [Object.values(s.pet.stats).map(Math.round), Math.floor(s.lastUpdated / 3_600_000)],
           page === 'meadow' && [s.meadow, s.keepsakes, s.room, s.familyHome.room, s.visit.meadowId, s.pet.room, Math.floor(s.lastUpdated / 3_600_000)],
         ]);

@@ -14,6 +14,7 @@ import { updateMilestones, type MilestoneId } from './milestones';
 import { creditGrownUps, keeperLevel, updateLevel } from './skills';
 import { getCharacter } from './growth';
 import { stepFragments } from './fragments';
+import { CONFIG } from './config';
 
 export type UnlockId =
   | 'shop' | 'cooking' | 'collection' | 'familyTree' | 'garden' | 'messages' | 'delivery' | 'meet' | 'skills' | 'journeys';
@@ -102,6 +103,6 @@ export function updateProgress(state: GameState): {
   const frag = stepFragments(s);
   return {
     state: frag.state, unlocked: opened, badges: badges.earned, milestones: milestones.earned, levels: levels.levels,
-    fragments: frag.pieces,
+    fragments: frag.pieces + milestones.earned.length * CONFIG.fragments.perMilestone,
   };
 }

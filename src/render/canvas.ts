@@ -4,6 +4,8 @@
 import { drawBag } from './bags';
 import { PALETTE } from './palette';
 import { drawCurtains, drawWall } from './room';
+import { drawFurniture } from './furniture';
+import type { FurnitureSlot } from '../game/state';
 import { frameFor } from './animations';
 import { drawFace } from './faces';
 import { faceForAnimation, type Expression } from '../game/expressions';
@@ -48,8 +50,9 @@ export interface Scene {
   housemate?: OtherPet | null;
   petOnLeft?: boolean;
   meeting?: (OtherPet & { hearts: boolean }) | null; // a friend over to play
-  // How the room is decorated: a wallpaper id, and curtains (or none).
-  room?: { wallpaper: string; curtains: string | null };
+  // How the room is decorated: a wallpaper id, curtains (or none) and the
+  // furniture in each spot.
+  room?: { wallpaper: string; curtains: string | null; furniture?: Partial<Record<FurnitureSlot, string>> };
   // Nobody's home (out on a journey): no pet in the room. (Its note sits
   // in the room's corner, see src/ui/home.ts.)
   note?: boolean;
@@ -354,6 +357,7 @@ export function drawRoom(
     ctx.fillRect(0, 34, ROOM_WIDTH, 1);
     drawWindow(ctx, scene.night, timeMs);
     if (scene.room?.curtains) drawCurtains(ctx, scene.room.curtains, WINDOW.x, WINDOW.y, WINDOW.w, WINDOW.h);
+    if (scene.room?.furniture && (!scene.fishing || scene.fishing === 'off')) drawFurniture(ctx, scene.room.furniture);
     if (scene.keepsakes) drawKeepsakes(ctx, scene.keepsakes, timeMs);
     if (scene.fishing && scene.fishing !== 'off') drawFishing(ctx, scene.fishing, timeMs);
   }

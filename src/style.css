@@ -736,6 +736,68 @@ body {
   background: white;
 }
 
+/* Today's special, at the top of the Today tab: a big card in a butter
+   frame, under a little pink and white shop awning. */
+.shop-special {
+  border: 2px solid #f0cf62;
+  border-radius: 16px;
+  background: #fffbe8;
+  overflow: hidden;
+}
+
+.shop-special::before {
+  content: '';
+  display: block;
+  height: 14px;
+  border-bottom: 2px solid #f0cf62;
+  background: repeating-linear-gradient(90deg, var(--accent) 0 18px, white 18px 36px);
+  /* scalloped bottom edge */
+  -webkit-mask: radial-gradient(9px at 9px 100%, #0000 98%, #000) 0 -5px / 18px 19px;
+  mask: radial-gradient(9px at 9px 100%, #0000 98%, #000) 0 -5px / 18px 19px;
+}
+
+.shop-special-body {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px 12px 12px;
+}
+
+.shop-special-icon {
+  flex: none;
+  width: 60px;
+  height: 60px;
+}
+
+.shop-special-icon svg,
+.shop-special-icon .hat-icon {
+  width: 100%;
+  height: 100%;
+}
+
+.shop-special .shop-row-text b {
+  font-size: 1.05rem;
+}
+
+.shop-special .shop-row-text em {
+  margin-top: 2px;
+  font-style: normal;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #a07a20;
+}
+
+/* The usual price, crossed out, inside the special's button. */
+.shop-was {
+  margin-right: 4px;
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
+.shop-special .shop-btn {
+  align-items: center;
+}
+
 .shop-row-text {
   flex: 1;
   min-width: 0;
@@ -1132,12 +1194,11 @@ body {
    from that category. It scrolls sideways when they don't all fit, and
    stays under the header while the rows scroll. */
 .shop-tabs {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 6px;
-  overflow-x: auto;
-  scrollbar-width: none;
   /* Up into the gap below the header, so no rows show through it. */
-  margin: -8px -8px 0;
+  margin: -8px -8px 6px;
   padding: 8px 8px 4px;
   position: sticky;
   top: 40px; /* right under the sticky header */
@@ -1145,25 +1206,30 @@ body {
   background: #fff5f8;
 }
 
-.shop-tabs::-webkit-scrollbar {
-  display: none;
-}
-
 .shop-tab {
   font: inherit;
   font-weight: 700;
-  font-size: 0.8rem;
-  flex: none;
-  display: inline-flex;
+  font-size: 0.72rem;
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 5px;
-  padding: 5px 10px 5px 6px;
+  gap: 3px;
+  padding: 7px 2px 5px;
   border: 2px solid var(--lavender);
-  border-radius: 999px;
+  border-radius: 14px;
   background: white;
   color: var(--ink);
   cursor: pointer;
   touch-action: manipulation;
+}
+
+.shop-tab-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .shop-tab[aria-pressed='true'] {
@@ -1178,14 +1244,32 @@ body {
 
 .shop-tab-icon {
   display: inline-flex;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
 }
 
 .shop-tab-icon svg,
 .shop-tab-icon .hat-icon {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
+}
+
+/* Something new on a tab (today's special, not yet bought). */
+.shop-tab-dot {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent-dark);
+  border: 2px solid white;
+}
+
+/* Gold and star fragments, side by side in the Shop's header. */
+.shop-purse {
+  display: inline-flex;
+  gap: 4px;
 }
 
 /* ---- Fishing ---- */
@@ -6768,10 +6852,10 @@ body {
 
 .frag-slot {
   position: absolute;
-  left: 57px;
-  top: 57px;
-  width: 36px;
-  height: 36px;
+  left: 61px;
+  top: 61px;
+  width: 28px;
+  height: 28px;
   transform: rotate(var(--a)) translateY(-52px);
   opacity: 0.25;
   filter: grayscale(1);

@@ -163,7 +163,12 @@ export interface Room {
   // left to right (pet ids). None at first.
   frame?: string | null;
   shelf?: (string | null)[];
+  furniture?: Partial<Record<FurnitureSlot, string>>; // the piece in each spot (none to start with)
 }
+
+// Where a piece of furniture goes: on the wall, or on the floor at the left
+// or right side of the room (see CONFIG.room.furniture).
+export type FurnitureSlot = 'wall' | 'left' | 'right';
 
 // What's been bought today of the Shop's limited stock (the energy drink).
 export interface Stock {
@@ -333,7 +338,7 @@ export type Message =
 // Star fragments, the free way to a Revival Star (see src/game/fragments.ts).
 export interface Fragments {
   pieces: number; // fragments collected and not spent yet
-  careDays: number; // good care days towards the next fragment
+  careDays: number; // good care days so far (each gave `CONFIG.fragments.perGoodDay`)
   day: string; // the local day being watched now, e.g. "2026-10-21"
   dayGood: boolean; // whether that day is still going well
   home?: boolean; // whether a pet was home that day (not all away on journeys)

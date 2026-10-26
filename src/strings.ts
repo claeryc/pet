@@ -438,7 +438,7 @@ export const STRINGS = {
         name: 'Sick pets',
         pages: [
           { title: (pet: string) => `${pet} is sick`, text: (pet: string) => `A sick pet needs medicine. Tap Give medicine. Wait too long and ${pet} gets very sick.` },
-          { title: 'Revival Stars', text: 'If a pet passes away, a Revival Star brings them back. Good care days give star fragments. Five make a star in the Shop, or spend them on a star-only hat.' },
+          { title: 'Revival Stars', text: 'If a pet passes away, a Revival Star brings them back. Every good care day gives star fragments. 500 make a star in the Shop.' },
         ],
       },
       collection: {
@@ -832,15 +832,16 @@ export const STRINGS = {
     title: (name: string) => `Bring ${name} back?`,
     useAsk: (name: string, have: number) =>
       `A Revival Star brings ${name} back, a little weak and needing rest. You have ${have}.`,
-    buyAsk: (name: string, pieces: number, perStar: number) =>
-      `A Revival Star brings ${name} back, a little weak and needing rest. You have ${pieces} of ${perStar} star fragments: ` +
-      'one comes with every few days your pets stay well.',
+    // No star and not enough fragments: how far the free star has come.
+    // Never a price here.
+    progressAsk: (name: string, pieces: number, perStar: number, weeks: number) =>
+      `A Revival Star brings ${name} back, a little weak and needing rest. You have ${pieces} of ${perStar} star fragments, ` +
+      `about ${weeks === 1 ? '1 more week' : `${weeks} more weeks`} of good care.`,
     use: 'Use a Revival Star',
     // No star yet, but enough fragments to make one.
     fragmentsAsk: (name: string, pieces: number) =>
       `A Revival Star brings ${name} back, a little weak and needing rest. Your ${pieces} star fragments are enough to make one.`,
     useFragments: (perStar: number) => `Use ${perStar} ✦`,
-    buy: (price: string) => `Buy for ${price}`,
     notNow: 'Not now',
     back: (name: string) => `${name} is back! Let ${name} rest for a while.`,
     goodbyeTitle: (name: string) => `Say goodbye to ${name}?`,
@@ -851,11 +852,11 @@ export const STRINGS = {
     goodbyeYes: 'Say goodbye',
     keep: 'Keep waiting',
     // The stand-in purchase: what a real store's payment sheet would ask.
-    payTitle: 'Revival Star',
+    payTitle: 'Star fragments',
     payAsk: (what: string, price: string) => `Buy ${what} for ${price}? This is a test shop for now, so no real money is charged.`,
     pay: (price: string) => `Pay ${price}`,
     cancel: 'Cancel',
-    bought: (count: number) => (count === 1 ? 'You got a Revival Star!' : `You got ${count} Revival Stars!`),
+    bought: (count: number) => `You got ${count} star fragments!`,
     // Under the dying countdown: what you already have, never a price.
     haveStars: (count: number) => (count === 1 ? 'You have 1 Revival Star.' : `You have ${count} Revival Stars.`),
     haveFragments: (pieces: number, perStar: number) =>
@@ -910,22 +911,48 @@ export const STRINGS = {
       mint: 'Mint curtains',
       plum: 'Plum curtains',
     } as Record<string, string>,
+    furniture: {
+      garland: 'Star garland',
+      portrait: 'Heart portrait',
+      shelf: 'Little shelf',
+      plant: 'Potted plant',
+      lamp: 'Floor lamp',
+      toyBox: 'Toy box',
+      bookshelf: 'Bookshelf',
+    } as Record<string, string>,
+    // Where a piece of furniture goes.
+    furnitureSlot: { wall: 'On the wall', left: 'Floor, left side', right: 'Floor, right side' } as Record<string, string>,
+    place: 'Place',
+    // The Today tab: the daily special, then things in short supply.
+    todayTab: 'Today',
+    special: "Today's special",
+    specialNote: (was: number) => `Usually ${was} gold`,
+    specialOwned: 'Yours already. A new one tomorrow!',
+    specialNext: (hours: number) => `New special in ${hours}h`,
+    specialKind: { wallpaper: 'Wallpaper', curtains: 'Curtains', furniture: 'Furniture', hat: 'Hat' } as Record<string, string>,
+    fewLeft: 'Only a few left',
+    // The bigger rice jar, bought with star fragments.
+    bigJar: 'Bigger rice jar',
+    bigJarNote: (extra: number, size: number) => `Holds ${extra} more free rice ball, ${size} in all`,
     use: 'Use',
     inUse: 'In use',
     takeDown: 'Take down',
     revivalTab: 'Stars',
     revivalStar: 'Revival Star',
-    revivalPack: (count: number) => (count === 1 ? 'Revival Star' : `${count} Revival Stars`),
-    revivalNote: (have: number) => `Keep a star in your pocket, just in case. You have ${have}`,
+    revivalNote: (have: number, perStar: number) => `Made from ${perStar} star fragments, just in case. You have ${have}`,
+    fragmentPack: (count: number) => `${count} star fragments`,
+    fragmentPackNote: 'For a Revival Star, a room or a hat',
+    fragmentPackBest: 'Best value: 30% extra',
     fragments: 'Star fragments',
     fragment: 'Star fragment',
-    // `days`: good care days towards the next fragment, as dots.
-    fragmentsNote: (pieces: number, days: number, perFragment: number) =>
-      `You have: ${pieces}\n${'●'.repeat(days)}${'○'.repeat(perFragment - days)}`,
+    // `perDay`: fragments from each good care day.
+    fragmentsNote: (pieces: number, perDay: number) => `You have: ${pieces}\n+${perDay} every good care day`,
     fragmentsHelpTitle: (pieces: number, perStar: number) =>
       pieces >= perStar ? `${pieces} fragments: ready to craft!` : `${pieces} of ${perStar} fragments`,
-    // `days`: good care days until the next fragment.
-    fragmentsHelp: (days: number) => (days === 1 ? 'Next one in 1 good care day' : `Next one in ${days} good care days`),
+    // How fragments come in, and `weeks` of good care left to a Revival Star.
+    fragmentsHelp: (perDay: number, perMilestone: number, weeks: number) =>
+      `Every good care day gives ${perDay}, and every Milestone ${perMilestone}.` +
+      (weeks > 0 ? ` About ${weeks === 1 ? '1 week' : `${weeks} weeks`} of good care to a Revival Star.` : ''),
     fragmentsHelpOk: 'Got it',
     fragmentsCount: (pieces: number, perStar: number) => `${pieces}/${perStar}`,
     craft: 'Craft',

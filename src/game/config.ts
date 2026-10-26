@@ -143,20 +143,24 @@ export const CONFIG = {
 
   // Bringing a pet back after it passed away. It wakes up a bit weak,
   // with these stats (at least), and rests like it does after medicine.
-  // A Revival Star can always be earned: `perStar` star fragments make
-  // one, and every `careDaysPerFragment` good care days (days you visit
-  // and no pet gets a warning, see src/game/fragments.ts) give a fragment.
   revival: {
     stats: { hunger: 60, happiness: 60, health: 60, energy: 60 },
-    fragments: { perStar: 5, careDaysPerFragment: 6 },
   },
+
+  // Star fragments (see src/game/fragments.ts): the one currency for
+  // things money can also buy. They're earned by caring well: every good
+  // care day (a day you visit and no pet gets a warning) gives `perGoodDay`,
+  // and every Milestone badge gives `perMilestone`. They can also be bought
+  // in packs (`store` below). `perStar` of them make a Revival Star, which
+  // money can't buy directly. A daily player earns about 150 a month.
+  fragments: { perGoodDay: 5, perMilestone: 25, perStar: 500 },
 
   // The Family Home: a second room with `friends.maxPets` more spots (see
   // src/game/rooms.ts). Pets there lose tummy, joy and energy at
   // `needsSpeed` of the usual rate; poop, baths and sickness don't change.
   // It costs `fragments` star fragments, or `price` in real money (only a
   // stand-in for now, see src/payments.ts).
-  familyHome: { needsSpeed: 0.5, fragments: 10, price: '€2.99' },
+  familyHome: { needsSpeed: 0.5, fragments: 300, price: '€2.99' },
 
   // The Meadow (see src/game/meadow.ts), where your pets go when they move
   // out. Nobody there gets hungry or sick. One of them drops by about every
@@ -177,12 +181,13 @@ export const CONFIG = {
     shelf: 3,
   },
 
-  // Revival Stars bought with real money, sold calmly as "a star in your
-  // pocket" in the Shop (never next to the dying countdown). `price` is
-  // shown as it is; buying is only a stand-in for now (see src/payments.ts).
+  // Star fragment packs, sold calmly in the Shop (never next to the dying
+  // countdown). Only the biggest pack has a bonus. `price` is shown as it
+  // is; buying is only a stand-in for now (see src/payments.ts).
   store: [
-    { id: 'revival1', item: 'revivalStar', count: 1, price: '€0.99' },
-    { id: 'revival3', item: 'revivalStar', count: 3, price: '€1.99' },
+    { id: 'fragments100', fragments: 100, price: '€0.99' },
+    { id: 'fragments300', fragments: 300, price: '€2.99' },
+    { id: 'fragments650', fragments: 650, price: '€4.99' },
   ],
 
   // The hidden Care Score (0-100) tracks long-term care. Later it decides
@@ -358,7 +363,9 @@ export const CONFIG = {
   // The rice jar: free rice balls, up to `size` in the pantry. While you
   // have fewer, one more appears every `refillHours`. Rice bought in the
   // Shop goes on top and doesn't count against the jar.
-  riceJar: { size: 3, refillHours: 4 },
+  // A bigger jar, bought once in the Shop for `bigger.fragments` star
+  // fragments, holds `bigger.extra` more.
+  riceJar: { size: 3, refillHours: 4, bigger: { fragments: 100, extra: 1 } },
   // A pet whose tummy is above this won't eat anything.
   tooFullAbove: 90,
 
@@ -692,9 +699,10 @@ export const CONFIG = {
     fishToOpen: 10,
   },
 
-  // Decorating the room, from the Shop: a wallpaper and window curtains.
-  // Each is bought once, then you pick which to use. Every room starts
-  // with the plain wallpaper and no curtains.
+  // Decorating the room, from the Shop: a wallpaper, window curtains and
+  // furniture. Each is bought once, then you pick which to use in each
+  // room. Every room starts with the plain wallpaper, no curtains and no
+  // furniture.
   room: {
     wallpapers: [
       { id: 'plain', price: 0 },
@@ -711,7 +719,25 @@ export const CONFIG = {
       { id: 'mint', price: 100 },
       { id: 'plum', price: 150 },
     ],
+    // Furniture: bought once, then placed in any room. Each piece has its
+    // own spot (`slot`): on the wall, or on the floor at the left or right
+    // side. A spot holds one piece at a time. How each looks lives in
+    // src/render/furniture.ts. Only for looks.
+    furniture: [
+      { id: 'garland', slot: 'wall', price: 100 },
+      { id: 'portrait', slot: 'wall', price: 120 },
+      { id: 'shelf', slot: 'wall', price: 160 },
+      { id: 'plant', slot: 'left', price: 120 },
+      { id: 'lamp', slot: 'left', price: 180 },
+      { id: 'toyBox', slot: 'right', price: 140 },
+      { id: 'bookshelf', slot: 'right', price: 220 },
+    ],
   },
+
+  // The Shop's daily special: one thing you don't own yet (furniture, a
+  // wallpaper, curtains or a gold hat), picked for each day, at `off`
+  // less (0.25 = a quarter off, rounded to 5 gold).
+  dailySpecial: { off: 0.25 },
 
   // Achievements (in the Collection): badges for doing something lots of
   // times. Each has three tiers, bronze, silver and gold, reached at these
