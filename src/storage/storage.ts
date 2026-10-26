@@ -20,7 +20,7 @@ const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 31;
+export const SAVE_VERSION = 32;
 
 export interface SaveFile {
   version: number;
@@ -346,17 +346,38 @@ export function migrate(save: SaveFile): SaveFile {
     }
     save.version = 29;
   }
-  // Version 29 -> 30: the daily limit on XP and seeds from fishing. No
-  // fish counted yet today.
+  // Version 29 -> 30: Ribbit takes Stumpy's place as Nature's 3-star pet.
+  // Stumpy turns into Ribbit everywhere a character is remembered, and a
+  // pet that was Stumpy gets a trait Ribbit allows.
   if (save.version === 29) {
-    save.state.pond = { day: '', fish: 0 };
+    const st = save.state;
+    const fix = (thing: any) => {
+      if (thing?.character !== 'stumpy') return false;
+      thing.character = 'ribbit';
+      return true;
+    };
+    const pets: any[] = [st.pet, ...(st.housemates ?? []), st.nest, ...(st.family ?? [])].filter(Boolean);
+    for (const p of pets) {
+      if (fix(p) && p.trait) p.trait = fitTrait(p.id, p.trait, getCharacter('ribbit'));
+      for (const look of p.parentLooks ?? []) fix(look);
+    }
+    for (const m of [...(st.friends ?? []), st.visit?.guest, ...(st.messages ?? [])]) fix(m);
+    const key = (k: string) => (k === 'stumpy' || k.startsWith('stumpy:') ? k.replace('stumpy', 'ribbit') : k);
+    st.charactersFound = [...new Set((st.charactersFound ?? []).map(key))];
+    st.charactersMet = [...new Set((st.charactersMet ?? []).map(key))];
     save.version = 30;
   }
-  // Version 30 -> 31: the Family Home. Nobody has it yet, and every pet
-  // lives in the main room.
+  // Version 30 -> 31: the daily limit on XP and seeds from fishing. No
+  // fish counted yet today.
   if (save.version === 30) {
-    save.state.familyHome = { owned: false, room: { wallpaper: 'plain', curtains: null } };
+    save.state.pond = { day: '', fish: 0 };
     save.version = 31;
+  }
+  // Version 31 -> 32: the Family Home. Nobody has it yet, and every pet
+  // lives in the main room.
+  if (save.version === 31) {
+    save.state.familyHome = { owned: false, room: { wallpaper: 'plain', curtains: null } };
+    save.version = 32;
   }
   return save;
 }

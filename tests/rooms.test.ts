@@ -138,7 +138,7 @@ describe('the Meadow', () => {
 
 describe('save migration to the Family Home', () => {
   it('starts without one', () => {
-    const out = migrate({ version: 30, state: { pet: { stage: 'teen' } } });
+    const out = migrate({ version: 31, state: { pet: { stage: 'teen' } } });
     expect(out.version).toBe(SAVE_VERSION);
     expect(out.state.familyHome).toEqual({ owned: false, room: { wallpaper: 'plain', curtains: null } });
   });

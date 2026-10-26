@@ -51,9 +51,32 @@ describe('save migration', () => {
     expect(out.housemates[0].character).toBe('puddling');
     expect(out.family.map((m: any) => m.character)).toEqual(['starhoot', 'pebblit']);
     expect(out.friends[0].character).toBe('acornet');
-    expect(out.visit.guest.character).toBe('stumpy');
+    expect(out.visit.guest.character).toBe('ribbit'); // fernwhisk -> stumpy -> ribbit
     expect(out.messages[0].character).toBe('cloudlet');
     expect(out.charactersFound).toEqual(['cuppie', 'cloudlet', 'pebblit:amber', 'dumpling', 'starhoot']);
+  });
+
+  it('turns Stumpy into Ribbit, with a trait Ribbit allows', () => {
+    const s: any = createNewGame(1);
+    s.pet = { ...s.pet, stage: 'adult', character: 'stumpy', trait: 'shy', parentLooks: [{ character: 'stumpy', variant: null }] };
+    s.housemates = [{ ...s.pet, id: 'h', character: 'sprig', trait: 'shy', parentLooks: [] }];
+    s.family = [{ id: 'f', character: 'stumpy', trait: 'greedy' }];
+    s.friends = [{ id: 'w', character: 'stumpy' }];
+    s.visit = { ...s.visit, guest: { id: 'v', character: 'stumpy' } };
+    s.messages = [{ kind: 'visitor', character: 'stumpy' }];
+    s.charactersFound = ['sprig', 'stumpy', 'ribbit'];
+    s.charactersMet = ['stumpy'];
+    const out = migrate({ version: 29, state: s }).state;
+    expect(out.pet.character).toBe('ribbit');
+    expect(['playful', 'greedy']).toContain(out.pet.trait);
+    expect(out.pet.parentLooks[0].character).toBe('ribbit');
+    expect(out.housemates[0]).toMatchObject({ character: 'sprig', trait: 'shy' });
+    expect(out.family[0]).toMatchObject({ character: 'ribbit', trait: 'greedy' });
+    expect(out.friends[0].character).toBe('ribbit');
+    expect(out.visit.guest.character).toBe('ribbit');
+    expect(out.messages[0].character).toBe('ribbit');
+    expect(out.charactersFound).toEqual(['sprig', 'ribbit']);
+    expect(out.charactersMet).toEqual(['ribbit']);
   });
 
   it('gives every pet, and the Family Tree, a trait', () => {
@@ -142,7 +165,7 @@ describe('save migration to the Shop extras', () => {
 
 describe('save migration to the daily fishing limit', () => {
   it('starts with no fish counted today', () => {
-    const out = migrate({ version: 29, state: { pet: { stage: 'teen' } } });
+    const out = migrate({ version: 30, state: { pet: { stage: 'teen' } } });
     expect(out.version).toBe(SAVE_VERSION);
     expect(out.state.pond).toEqual({ day: '', fish: 0 });
   });
