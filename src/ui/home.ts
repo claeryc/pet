@@ -98,6 +98,10 @@ export interface HomeScreen {
   deliveryScene: () => DeliveryScene | null; // ...or Percy's meadow, for his order
   meetScene: () => { friend: Friend; hearts: boolean } | null; // a friend over to play
   tripScene: () => { place: string; pets: Pet[] } | null; // looking at the current trip
+  // Whether the Shop is showing (so the room can show what's tried on),
+  // and the "Trying on · Party Hat" tag over the room, or null to take it off.
+  shopShowing: () => boolean;
+  tryOn: (name: string | null) => void;
   bathScene: (timeMs: number) => BathScene | null; // the suds, drips and sponge or dryer
   hidesSmell: () => boolean; // soapy, wet or just washed: no smell lines
   // With every pet out on a journey, shows the trip instead of the empty room.
@@ -353,7 +357,11 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   door.setAttribute('aria-label', STRINGS.familyHome.door);
   door.hidden = true;
   door.addEventListener('click', () => cb.onRoomDoor());
-  roomWrap.append(canvas, fx.el, bubble, corner, door);
+  // What's being tried on in the Shop, on a tag at the bottom of the room.
+  const tryTag = document.createElement('div');
+  tryTag.className = 'try-tag';
+  tryTag.hidden = true;
+  roomWrap.append(canvas, fx.el, bubble, corner, door, tryTag);
 
   // Warning / sick / recovering / passed away banner, hidden when all is well.
   const banner = document.createElement('div');
@@ -1248,6 +1256,12 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     deliveryScene: () => delivery.scene(),
     meetScene: () => meet.scene(),
     tripScene: () => trip.scene(),
+    shopShowing: () => (menuDrawer?.isOpen() ?? false) && menuOverStats,
+    tryOn(name) {
+      tryTag.hidden = !name;
+      if (!name) return;
+      tryTag.replaceChildren(Object.assign(document.createElement('span'), { textContent: STRINGS.shop.tryingOn }), Object.assign(document.createElement('b'), { textContent: name }));
+    },
     bathScene: (timeMs) => bath.scene(timeMs),
     hidesSmell: () => bath.hidesSmell(),
     showTripIfEmpty,

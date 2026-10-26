@@ -1,12 +1,21 @@
 // The Shop and Wardrobe pages inside the gear menu. They only show things
 // and pass button presses on; the rules (prices, owning, wearing) live in
 // src/game/economy.ts.
+//
+// The Shop is a little stall: a striped awning over its name and purse,
+// folder tabs for its parts, and cards with a picture, a name and one
+// button. A raised button is something you can do (a price, Use, Wear);
+// flat text is just how things are (Owned, In use). Tapping a card's
+// picture opens its sheet, and a hat or a decoration on a sheet is tried
+// on in the room above before you buy it. Real money only ever shows on
+// the Star counter's fragment packs; everything else is gold or star
+// fragments.
 
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import { HATS, baitCount, fortuneCookies, revivalStars, canBuyPot, foodCount, limitedInStock, limitedLeft, localDay, dailySpecial, ownsSpecial, priceToday, hasBigJar, riceJarSize, getHat } from '../game/economy';
 import { earnedFrom } from '../game/regulars';
-import { CURTAINS, FURNITURE, WALLPAPERS, inUse, ownsDecor, type Decor, type DecorKind } from '../game/decor';
+import { CURTAINS, FURNITURE, WALLPAPERS, getDecor, inUse, ownsDecor, type Decor, type DecorKind } from '../game/decor';
 import type { GameState } from '../game/state';
 import type { Food, FoodId } from '../game/actions';
 import { FRAGMENT_ICON, ITEM_ICONS, MENU_ICONS, STAT_ICONS } from './icons';
@@ -16,6 +25,15 @@ import { CHARMS, charmCount, holidayTickets, percyFree } from '../game/journeys'
 import { isUnlocked } from '../game/unlocks';
 import { formatDuration } from './time';
 import { ownsFamilyHome } from '../game/rooms';
+import { CURTAINS as CURTAIN_COLOURS, WALLPAPERS as WALL_PATTERNS } from '../render/room';
+import { PALETTE } from '../render/palette';
+
+// What the room above shows while a sheet is open: a hat on the pet, or a
+// decoration up in the room, before it's bought.
+export interface ShopPreview {
+  kind: 'hat' | DecorKind;
+  id: string;
+}
 
 export interface ShopCallbacks {
   onBuyFood: (food: FoodId) => void;
@@ -31,12 +49,13 @@ export interface ShopCallbacks {
   onUseDecor: (kind: DecorKind, id: string | null) => void;
   onTakeDownFurniture: (id: string) => void; // out of the room you're looking at
   onBuyBigJar: () => void; // the bigger rice jar, for star fragments
-  onBuyPack: (productId: string) => void; // Revival Stars, with real money
-  onBuyFamilyHome: (withFragments: boolean) => void; // the second room, for star fragments or money
+  onBuyPack: (productId: string) => void; // star fragments, with real money
+  onBuyFamilyHome: () => void; // the second room, for star fragments
   onMakeStar: () => void; // star fragments into a Revival Star
   onCompost: () => void; // picked-up poop into fertilizer
   onFragmentsHelp: () => void; // what star fragments are, in a card
   onWakePercy: () => void; // ends Percy's rest after a journey, for gold
+  onTryOn: (preview: ShopPreview | null) => void; // shows it in the room above, or stops
   // The picture of a hat, as a URL (from its sprite sheet), if loaded.
   hatImage: (hat: string) => string | undefined;
 }
@@ -82,12 +101,6 @@ function button(content: string | HTMLElement, onClick: () => void, className = 
   return b;
 }
 
-function priceButton(price: number, gold: number, onClick: () => void): HTMLButtonElement {
-  const b = button(goldPill(price), onClick);
-  b.classList.toggle('too-pricey', gold < price); // still tappable, so it can say why
-  return b;
-}
-
 // "[fragment] 145": star fragments, like goldPill.
 export function fragmentPill(pieces: number): HTMLElement {
   const pill = document.createElement('span');
@@ -96,80 +109,6 @@ export function fragmentPill(pieces: number): HTMLElement {
   pill.innerHTML = FRAGMENT_ICON;
   pill.append(String(pieces));
   return pill;
-}
-
-// "[fragment] 3": a price in star fragments (for things money can't buy).
-function fragmentButton(cost: number, have: number, onClick: () => void): HTMLButtonElement {
-  const b = button(fragmentPill(cost), onClick);
-  b.classList.toggle('too-pricey', have < cost);
-  return b;
-}
-
-// "♥♥♥♥": something only a regular gives (Percy's wallpaper), at that
-// many hearts. Greyed out like a price you can't afford, and a tap says
-// who gives it.
-function earnedButton(kind: 'wallpaper', id: string, onClick: () => void): { button: HTMLButtonElement; note: string } {
-  const from = earnedFrom(kind, id);
-  const b = button(from ? '♥'.repeat(from.hearts) : '?', onClick, 'shop-btn too-pricey shop-btn-hearts');
-  const note = from ? STRINGS.regulars.earnedNote(STRINGS.regulars.names[from.id] ?? from.id, from.hearts) : '';
-  return { button: b, note };
-}
-
-// "Craft": turns fragments into a star. Greyed out like a price you can't
-// afford until there are enough, but still tappable so it can say why.
-function craftButton(ready: boolean, onClick: () => void): HTMLButtonElement {
-  const b = button(STRINGS.shop.craft, onClick);
-  b.classList.toggle('too-pricey', !ready);
-  return b;
-}
-
-// Star fragments: how many you have and how many a good day gives, with a
-// "?" for the details and the Craft button.
-function fragmentsRow(pieces: number, perStar: number, cb: ShopCallbacks): HTMLElement {
-  const help = button('?', cb.onFragmentsHelp, 'shop-help');
-  help.setAttribute('aria-label', STRINGS.shop.fragments);
-  const actions = document.createElement('span');
-  actions.className = 'shop-row-actions';
-  actions.append(help, craftButton(pieces >= perStar, cb.onMakeStar));
-  const el = row(FRAGMENT_ICON, STRINGS.shop.fragments, STRINGS.shop.fragmentsNote(pieces, CONFIG.fragments.perGoodDay), actions);
-  el.classList.add('shop-row-lines');
-  return el;
-}
-
-// Homemade fertilizer: how many bags you have (shared with the bought
-// ones, it's the same fertilizer), then a poop icon for each poop towards
-// the next bag, grey until picked up, and Craft.
-function homemadeRow(state: GameState, cb: ShopCallbacks): HTMLElement {
-  const per = CONFIG.garden.poopPerFertilizer;
-  const poops = poopCount(state);
-  const filled = Math.min(poops, per);
-  const el = row(ITEM_ICONS.homemadeFertilizer, STRINGS.shop.homemade,
-    STRINGS.shop.homemadeHave(supplyCount(state, 'fertilizer')), craftButton(canCompost(state), cb.onCompost));
-  const slots = document.createElement('span');
-  slots.className = 'poop-slots';
-  slots.setAttribute('role', 'img');
-  slots.setAttribute('aria-label', STRINGS.shop.poopSlots(poops, per));
-  slots.innerHTML = Array.from({ length: per }, (_, i) =>
-    `<span class="poop-slot${i < filled ? ' on' : ''}">${ITEM_ICONS.poop}</span>`).join('');
-  el.querySelector('.shop-row-text')!.append(slots);
-  return el;
-}
-
-// A small hourglass left of the price, for items that are only in today.
-function stockIcon(): HTMLElement {
-  const el = document.createElement('span');
-  el.className = 'shop-stock';
-  el.innerHTML = STAT_ICONS.hourglass;
-  el.setAttribute('aria-hidden', 'true');
-  return el;
-}
-
-// A small heading between rows.
-function section(text: string): HTMLElement {
-  const el = document.createElement('div');
-  el.className = 'shop-section';
-  el.textContent = text;
-  return el;
 }
 
 export function label(text: string): HTMLElement {
@@ -192,13 +131,12 @@ export interface Entry {
   tier?: string;
   mark?: boolean;
   faded?: boolean;
-  limited?: boolean; // only a few for sale (also listed under Today)
 }
 
-// A category such as "Food" or "Hats". Folded up (the default) it shows
-// only the items' pictures in a small grid; tap the title, or any picture,
-// to unfold it into the full rows. `open` remembers which categories are
-// unfolded, so they stay that way when the page redraws after buying.
+// A category such as "Badges" in the Collection. Folded up (the default)
+// it shows only the items' pictures in a small grid; tap the title, or any
+// picture, to unfold it into the full rows. `open` remembers which
+// categories are unfolded, so they stay that way when the page redraws.
 export function category(id: string, title: string, entries: Entry[], open: Set<string>, empty?: string): HTMLElement {
   const el = document.createElement('section');
   el.className = 'shop-cat';
@@ -249,83 +187,390 @@ export function category(id: string, title: string, entries: Entry[], open: Set<
   return el;
 }
 
-// The number in a picture's corner: nothing for none, ∞ for free food.
-function countBadge(count: number): string | undefined {
-  if (count === 0) return undefined;
-  return count === Infinity ? '∞' : String(count);
+// ---------- little helpers for building the page ----------
+
+function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = '', html = ''): HTMLElementTagNameMap[K] {
+  const e = document.createElement(tag);
+  if (className) e.className = className;
+  if (html) e.innerHTML = html;
+  return e;
 }
 
-// A wallpaper or curtains: its price until it's yours, then Use (or, for
-// curtains in use, Take down).
-function decorEntry(state: GameState, d: Decor, cb: ShopCallbacks): Entry {
-  const owned = ownsDecor(state, d.kind, d.id);
-  const using = inUse(state, d.kind, d.id);
-  const icon = ITEM_ICONS[`${d.kind}_${d.id}`] ?? '';
-  const name = decorName(d.kind, d.id);
-  let action: HTMLElement;
-  let note = using ? STRINGS.shop.inUse : owned ? STRINGS.shop.owned : '';
-  // Furniture says where it goes, until it's in the room.
-  if (d.slot && !using) note = owned ? `${STRINGS.shop.owned} · ${STRINGS.shop.furnitureSlot[d.slot]}` : STRINGS.shop.furnitureSlot[d.slot];
-  if (!owned && d.earned && d.kind === 'wallpaper') {
-    const earned = earnedButton(d.kind, d.id, () => cb.onBuyDecor(d.kind, d.id));
-    action = earned.button;
-    note = earned.note;
-  } else if (!owned) action = priceButton(priceToday(state, d.kind, d.id, d.price), state.gold, () => cb.onBuyDecor(d.kind, d.id));
-  else if (using && d.kind === 'curtains') action = button(STRINGS.shop.takeDown, () => cb.onUseDecor(d.kind, null), 'shop-btn shop-btn-soft');
-  else if (using && d.kind === 'furniture') action = button(STRINGS.shop.takeDown, () => cb.onTakeDownFurniture(d.id), 'shop-btn shop-btn-soft');
-  else if (using) action = label(STRINGS.shop.inUse);
-  else action = button(d.kind === 'furniture' ? STRINGS.shop.place : STRINGS.shop.use, () => cb.onUseDecor(d.kind, d.id));
-  return { icon, mark: using, row: row(icon, name, note, action) };
+function text<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, content: string): HTMLElementTagNameMap[K] {
+  const e = el(tag, className);
+  e.textContent = content;
+  return e;
 }
+
+const CHECK = `<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 5.5l2 2 4-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const BACK = `<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M7.5 2.5L4 6l3.5 3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+type Cur = 'gold' | 'frag';
+
+// What a thing costs, on a raised button: pink for gold, lilac for star
+// fragments, pale while you can't afford it (still tappable, so it can
+// say why). `was` is the usual price, crossed out; `label` a word before
+// the price ("Buy"), for the big button on a sheet.
+interface Price {
+  cur: Cur;
+  cost: number;
+  was?: number;
+  onBuy: () => void;
+}
+
+function priceButton(p: Price, have: number, opts: { wide?: boolean; label?: string } = {}): HTMLButtonElement {
+  const b = el('button', `shop-buy${p.cur === 'frag' ? ' is-frag' : ''}${have < p.cost ? ' is-short' : ''}${opts.wide ? ' is-wide' : ''}`);
+  if (opts.label) b.append(text('span', 'shop-buy-label', opts.label));
+  if (p.was) {
+    const was = text('s', '', String(p.was));
+    was.title = STRINGS.shop.specialNote(p.was);
+    b.append(was);
+  }
+  b.append(el('span', 'shop-ic', p.cur === 'gold' ? STAT_ICONS.gold : FRAGMENT_ICON), String(p.cost));
+  b.setAttribute('aria-label', p.cur === 'gold' ? STRINGS.shop.buyGold(p.cost) : STRINGS.shop.buyFragments(p.cost));
+  b.addEventListener('click', (e) => {
+    e.stopPropagation();
+    p.onBuy();
+  });
+  return b;
+}
+
+// A soft, white button: Try it, Use, Take down.
+function ghostButton(content: string, onClick: () => void, wide = false): HTMLButtonElement {
+  const b = text('button', `shop-buy is-ghost${wide ? ' is-wide' : ''}`, content);
+  b.addEventListener('click', (e) => {
+    e.stopPropagation();
+    onClick();
+  });
+  return b;
+}
+
+// Flat text for how things are: "✓ Owned", "In use", "Sold out".
+function fact(content: string, ok = true): HTMLElement {
+  const f = el('span', `shop-fact${ok ? ' is-ok' : ''}`, ok ? CHECK : '');
+  f.append(content);
+  return f;
+}
+
+// "Wallpaper ............ 1 of 5"
+function section(title: string, right = ''): HTMLElement {
+  const s = el('div', 'shop-sec');
+  s.append(text('h3', '', title));
+  if (right) s.append(text('span', 'shop-sec-count', right));
+  return s;
+}
+
+function grid(kind: '' | 'small' | 'two', cards: HTMLElement[]): HTMLElement {
+  const g = el('div', `shop-grid${kind ? ` is-${kind}` : ''}`);
+  g.append(...cards);
+  return g;
+}
+
+// A pixel picture from rows of letters, like the room's own art.
+function pix(rows: string[], colours: Record<string, string>, stretch = false): string {
+  let r = '';
+  rows.forEach((line, y) => [...line].forEach((ch, x) => {
+    const c = colours[ch];
+    if (c) r += `<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="${c}"/>`;
+  }));
+  return `<svg viewBox="0 0 ${rows[0].length} ${rows.length}"${stretch ? ' preserveAspectRatio="none"' : ''} shape-rendering="crispEdges" aria-hidden="true">${r}</svg>`;
+}
+
+// A wallpaper as a big swatch, drawn with the room's own pattern.
+function wallSwatch(id: string, w = 30, h = 14): string {
+  const pattern = WALL_PATTERNS[id];
+  if (!pattern) return ITEM_ICONS[`wallpaper_${id}`] ?? '';
+  const rows = Array.from({ length: h }, (_, y) => Array.from({ length: w }, (_, x) => pattern(x, y, false)));
+  let r = '';
+  rows.forEach((line, y) => line.forEach((c, x) => (r += `<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="${c}"/>`)));
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" shape-rendering="crispEdges" aria-hidden="true">${r}</svg>`;
+}
+
+// Curtains, wide: a window with the cloth drawn back on both sides.
+function curtainSwatch(id: string): string {
+  const [a, b] = CURTAIN_COLOURS[id] ?? [PALETTE.pink, PALETTE.blush];
+  return pix([
+    'cccccccccccccccccccccccc',
+    'ABABAB............BABABA',
+    'ABABAB.kkkkkkkkkk.BABABA',
+    'ABABAB.kssssksssk.BABABA',
+    'ABABAB.kswssksssk.BABABA',
+    'ABABA..kssssksssk..ABABA',
+    'ABAB...kkkkkkkkkk...BABA',
+    'ABAB...kssssksssk...BABA',
+    'ABA....ksssskssmk....ABA',
+    'AB.....kssssksmmk.....BA',
+    'AB.....kkkkkkkkkk.....BA',
+    'B......................B',
+  ], { A: a, B: b, k: PALETTE.ink, s: PALETTE.sky, w: PALETTE.white, m: PALETTE.mint, c: PALETTE.cocoa });
+}
+
+// A pile of star fragments, bigger for bigger packs.
+function fragmentPile(size: number): string {
+  const spots: [number, number, number][][] = [
+    [[22, 18, 30]],
+    [[10, 22, 26], [30, 14, 30]],
+    [[4, 26, 24], [22, 10, 32], [40, 26, 24], [24, 34, 22]],
+  ];
+  const pile = spots[Math.min(size, spots.length) - 1];
+  return `<span class="shop-pile" aria-hidden="true">${pile.map(([x, y, s]) => `<i style="left:${x}%;top:${y}%;width:${s}px;height:${s}px">${FRAGMENT_ICON}</i>`).join('')}</span>`;
+}
+
+// ---------- the things for sale ----------
+
+// One thing on a card, and in its sheet. A card shows `price` until it's
+// yours; then `use` (a soft button) or `fact`. The sheet adds `about`,
+// `effects` and, for hats and decorations, a try-on in the room above.
+interface Item {
+  key: string; // which sheet is open, kept while the page redraws
+  art: string;
+  name: string;
+  kind: string; // the small word over the name in its sheet
+  about: string;
+  tint?: string; // the colour of the plate behind the picture
+  count?: number; // how many you have, in the plate's corner
+  tag?: string; // a little label on the plate: "3 left", "Craving"
+  starTag?: boolean; // the tag in star-fragment lilac
+  dim?: boolean;
+  price?: Price;
+  hearts?: { hearts: number; onTap: () => void }; // only a regular gives it
+  // Use, Wear, Take down. `card`: on the card too; `undo`: it takes
+  // something away, so it's a soft button on the sheet as well.
+  use?: { label: string; onUse: () => void; card?: boolean; undo?: boolean };
+  fact?: string;
+  effects?: string; // food: what it does, as little stat chips
+  preview?: ShopPreview;
+}
+
+const TINT = {
+  food: '#fff1e6',
+  hat: '#fdeef3',
+  starHat: '#ece6f8',
+  furniture: '#f6efe6',
+  garden: '#eaf6e4',
+  fishing: '#e6f3fb',
+  charm: '#e3f5ea',
+  special: '#fff3cc',
+} as const;
+
+// The number in a picture's corner: nothing for none.
+const countOf = (n: number) => (n > 0 && n !== Infinity ? n : undefined);
 
 const decorName = (kind: DecorKind, id: string) =>
   (kind === 'wallpaper' ? STRINGS.shop.wallpapers : kind === 'curtains' ? STRINGS.shop.curtains : STRINGS.shop.furniture)[id] ?? id;
 
-// Today's special, at the top of the Today tab: one thing at a lower price,
-// shown big, with its usual price crossed out on the button and how long
-// until the next one. Once it's yours it says so until tomorrow.
-function specialCard(state: GameState, cb: ShopCallbacks): HTMLElement | null {
-  const special = dailySpecial(state);
-  if (!special) return null;
-  const hat = special.kind === 'hat' ? getHat(special.id) : undefined;
-  const icon = hat ? hatIcon(cb.hatImage(special.id)) : ITEM_ICONS[`${special.kind}_${special.id}`] ?? '';
-  const name = hat ? hat.name : decorName(special.kind as DecorKind, special.id);
-  const owned = ownsSpecial(state, special);
-  const buy = () => (hat ? cb.onBuyHat(special.id) : cb.onBuyDecor(special.kind as DecorKind, special.id));
-  const el = document.createElement('div');
-  el.className = 'shop-special';
-  const body = document.createElement('div');
-  body.className = 'shop-special-body';
-  const pic = document.createElement('span');
-  pic.className = 'shop-special-icon';
-  pic.innerHTML = icon;
-  const text = document.createElement('span');
-  text.className = 'shop-row-text';
-  const lines: [string, string][] = [
-    ['small', STRINGS.shop.special],
-    ['b', name],
-    ['small', STRINGS.shop.specialKind[special.kind] ?? ''],
-    ['em', owned ? STRINGS.shop.specialOwned : STRINGS.shop.specialNext(Math.ceil(untilTomorrow(state.lastUpdated) / 3_600_000))],
-  ];
-  for (const [tag, line] of lines) {
-    const t = document.createElement(tag);
-    t.textContent = line;
-    text.append(t);
-  }
-  let action: HTMLElement;
-  if (owned) action = label(STRINGS.shop.owned);
-  else {
-    action = priceButton(special.price, state.gold, buy);
-    const was = document.createElement('s');
-    was.className = 'shop-was';
-    was.textContent = String(special.was);
-    was.title = STRINGS.shop.specialNote(special.was);
-    action.prepend(was);
-  }
-  body.append(pic, text, action);
-  el.append(body);
-  return el;
+function decorArt(d: Decor): string {
+  if (d.kind === 'wallpaper') return wallSwatch(d.id);
+  if (d.kind === 'curtains') return curtainSwatch(d.id);
+  return ITEM_ICONS[`furniture_${d.id}`] ?? '';
 }
+
+// A wallpaper, curtains or a piece of furniture: its price until it's
+// yours, then Use (or, in use, Take down for curtains and furniture).
+function decorItem(state: GameState, d: Decor, cb: ShopCallbacks): Item {
+  const owned = ownsDecor(state, d.kind, d.id);
+  const using = inUse(state, d.kind, d.id);
+  const item: Item = {
+    key: `${d.kind}:${d.id}`,
+    art: decorArt(d),
+    name: decorName(d.kind, d.id),
+    kind: STRINGS.shop.specialKind[d.kind] ?? '',
+    about: d.slot ? STRINGS.shop.furnitureSlot[d.slot] : STRINGS.shop.decorAbout,
+    tint: TINT.furniture,
+    preview: using ? undefined : { kind: d.kind, id: d.id },
+  };
+  if (!owned && d.earned && d.kind === 'wallpaper') {
+    const from = earnedFrom(d.kind, d.id);
+    item.hearts = { hearts: from?.hearts ?? 0, onTap: () => cb.onBuyDecor(d.kind, d.id) };
+    if (from) item.about = STRINGS.regulars.earnedNote(STRINGS.regulars.names[from.id] ?? from.id, from.hearts);
+  } else if (!owned) {
+    const cost = priceToday(state, d.kind, d.id, d.price);
+    item.price = { cur: 'gold', cost, was: cost < d.price ? d.price : undefined, onBuy: () => cb.onBuyDecor(d.kind, d.id) };
+  } else if (using && d.kind === 'curtains') {
+    item.fact = STRINGS.shop.inUse;
+    item.use = { label: STRINGS.shop.takeDown, onUse: () => cb.onUseDecor(d.kind, null), undo: true };
+  } else if (using && d.kind === 'furniture') {
+    item.fact = STRINGS.shop.inUse;
+    item.use = { label: STRINGS.shop.takeDown, onUse: () => cb.onTakeDownFurniture(d.id), undo: true };
+  } else if (using) item.fact = STRINGS.shop.inUse;
+  else item.use = { label: d.kind === 'furniture' ? STRINGS.shop.place : STRINGS.shop.use, onUse: () => cb.onUseDecor(d.kind, d.id), card: true };
+  return item;
+}
+
+function hatItem(state: GameState, id: string, cb: ShopCallbacks): Item {
+  const h = getHat(id)!;
+  const owned = state.inventory.hats.includes(h.id);
+  const wearing = state.pet.hat === h.id;
+  const item: Item = {
+    key: `hat:${h.id}`,
+    art: hatIcon(cb.hatImage(h.id)),
+    name: h.name,
+    kind: STRINGS.shop.specialKind.hat,
+    about: STRINGS.shop.hatAbout[h.id] ?? '',
+    tint: h.fragments ? TINT.starHat : TINT.hat,
+    tag: h.fragments ? STRINGS.shop.starHat : undefined,
+    starTag: !!h.fragments,
+    preview: wearing ? undefined : { kind: 'hat', id: h.id },
+  };
+  if (!owned) {
+    item.price = h.fragments
+      ? { cur: 'frag', cost: h.fragments, onBuy: () => cb.onBuyHat(h.id) }
+      : { cur: 'gold', cost: priceToday(state, 'hat', h.id, h.price), was: priceToday(state, 'hat', h.id, h.price) < h.price ? h.price : undefined, onBuy: () => cb.onBuyHat(h.id) };
+  } else {
+    item.fact = wearing ? STRINGS.wardrobe.wearing : STRINGS.shop.owned;
+    item.use = wearing
+      ? { label: STRINGS.wardrobe.takeOff, onUse: () => cb.onWearHat(null), undo: true }
+      : { label: STRINGS.wardrobe.wear, onUse: () => cb.onWearHat(h.id) };
+  }
+  return item;
+}
+
+// What a food does, as little chips: [tummy] +10 [joy] +6.
+function foodEffects(f: Food): string {
+  const chips: string[] = [];
+  for (const stat of ['hunger', 'happiness', 'health', 'energy'] as const) {
+    const n = (f as unknown as Record<string, number | undefined>)[stat];
+    if (typeof n !== 'number' || n === 0) continue;
+    chips.push(`<span class="shop-chip${n < 0 ? ' is-down' : ''}" title="${STRINGS.stats[stat]}">${STAT_ICONS[stat]}${n > 0 ? '+' : ''}${n}</span>`);
+  }
+  return chips.join('');
+}
+
+function foodItem(state: GameState, f: Food, cb: ShopCallbacks, now: number): Item {
+  const left = f.limited ? limitedLeft(state, now) : Infinity;
+  const have = foodCount(state, f.id);
+  const item: Item = {
+    key: `food:${f.id}`,
+    art: ITEM_ICONS[f.id],
+    name: STRINGS.foods[f.id],
+    kind: STRINGS.shop.food,
+    about: f.limited ? STRINGS.shop.limitedAbout(left, CONFIG.economy.limited.perDay) : STRINGS.shop.have(have),
+    tint: f.limited ? TINT.special : TINT.food,
+    count: countOf(have),
+    tag: f.limited ? (left > 0 ? STRINGS.shop.nLeft(left) : STRINGS.shop.soldOut) : state.craving.food === f.id ? STRINGS.shop.cravingTag : undefined,
+    effects: foodEffects(f),
+  };
+  if (left <= 0) item.fact = STRINGS.shop.soldOut;
+  else item.price = { cur: 'gold', cost: f.price, onBuy: () => cb.onBuyFood(f.id) };
+  return item;
+}
+
+// ---------- cards ----------
+
+function cardAction(item: Item, state: GameState): HTMLElement {
+  if (item.price) return priceButton(item.price, item.price.cur === 'gold' ? state.gold : state.fragments.pieces);
+  if (item.hearts) {
+    const b = text('button', 'shop-buy is-short shop-hearts', '♥'.repeat(item.hearts.hearts) || '?');
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      item.hearts!.onTap();
+    });
+    return b;
+  }
+  if (item.use?.card) return ghostButton(item.use.label, item.use.onUse);
+  return fact(item.fact ?? '');
+}
+
+// The picture on its coloured plate, with how many you have and a tag.
+function plate(item: Item): HTMLElement {
+  const p = el('div', 'shop-plate', item.art);
+  if (item.tint) p.style.setProperty('--tint', item.tint);
+  if (item.count) p.append(text('span', 'shop-badge', `×${item.count}`));
+  if (item.tag) p.append(text('span', `shop-tag${item.starTag ? ' is-star' : ''}`, item.tag));
+  return p;
+}
+
+function card(item: Item, state: GameState, open: (key: string) => void): HTMLElement {
+  const c = el('div', `shop-card${item.dim ? ' is-dim' : ''}`);
+  const look = el('button', 'shop-card-look');
+  look.setAttribute('aria-label', item.name);
+  look.append(plate(item), text('b', 'shop-name', item.name));
+  look.addEventListener('click', () => open(item.key));
+  c.append(look, cardAction(item, state));
+  return c;
+}
+
+// A wallpaper or curtains: the swatch across the card, then name and price.
+function swatchCard(item: Item, state: GameState, open: (key: string) => void): HTMLElement {
+  const c = el('div', 'shop-swatch');
+  const look = el('button', 'shop-swatch-art', item.art);
+  look.setAttribute('aria-label', item.name);
+  look.addEventListener('click', () => open(item.key));
+  const foot = el('div', 'shop-swatch-row');
+  foot.append(text('b', '', item.name), cardAction(item, state));
+  c.append(look, foot);
+  return c;
+}
+
+// A card across the page, for one-off things: [picture] [name / note] [button]
+function wideCard(art: string, tint: string, name: string, note: string, action: HTMLElement, extra?: HTMLElement): HTMLElement {
+  const c = el('div', 'shop-wide');
+  const a = el('span', 'shop-wide-art', art);
+  a.style.setProperty('--tint', tint);
+  const t = el('span', 'shop-wide-text');
+  t.append(text('b', '', name), text('small', '', note));
+  if (extra) t.append(extra);
+  c.append(a, t, action);
+  return c;
+}
+
+// ---------- the sheet ----------
+
+// An item up close, from the bottom of the panel: the picture big, what it
+// is, and one clear button. A hat or decoration is on show in the room
+// above while the sheet is open (Take it off stops that).
+function sheet(item: Item, state: GameState, view: ShopView, cb: ShopCallbacks, redraw: () => void): HTMLElement {
+  const wrap = el('div', `shop-sheet-wrap${view.fresh ? ' is-new' : ''}`);
+  view.fresh = false;
+  const close = () => {
+    view.open = undefined;
+    cb.onTryOn(null);
+    redraw();
+  };
+  const scrim = el('button', 'shop-scrim');
+  scrim.setAttribute('aria-label', STRINGS.menu.close);
+  scrim.addEventListener('click', close);
+  const s = el('div', 'shop-sheet');
+  s.setAttribute('role', 'dialog');
+  s.setAttribute('aria-label', item.name);
+  const grab = el('button', 'shop-grab');
+  grab.setAttribute('aria-label', STRINGS.menu.close);
+  grab.addEventListener('click', close);
+  const top = el('div', 'shop-sheet-row');
+  const art = el('div', 'shop-sheet-art', item.art);
+  if (item.tint) art.style.setProperty('--tint', item.tint);
+  const info = el('div', 'shop-sheet-info');
+  info.append(text('span', 'shop-kicker', item.kind), text('b', '', item.name));
+  if (item.about) info.append(text('p', '', item.about));
+  if (item.effects) info.append(el('span', 'shop-chips', item.effects));
+  const trying = !!item.preview && view.trying !== false;
+  if (trying) info.append(fact(item.preview!.kind === 'hat' ? STRINGS.shop.onPet(state.pet.name) : STRINGS.shop.inRoom));
+  top.append(art, info);
+
+  const acts = el('div', 'shop-sheet-acts');
+  if (item.preview) {
+    acts.append(ghostButton(trying ? STRINGS.shop.takeItOff : STRINGS.shop.tryOn, () => {
+      view.trying = !trying;
+      cb.onTryOn(view.trying ? item.preview! : null);
+      redraw();
+    }));
+  }
+  if (item.price) acts.append(priceButton(item.price, item.price.cur === 'gold' ? state.gold : state.fragments.pieces, { wide: true, label: STRINGS.shop.buy }));
+  else if (item.hearts) acts.append(cardAction(item, state));
+  else if (item.use) {
+    if (item.fact) acts.append(fact(item.fact));
+    const use = ghostButton(item.use.label, item.use.onUse, true);
+    use.classList.toggle('is-ghost', !!item.use.undo);
+    acts.append(use);
+  } else acts.append(fact(item.fact ?? ''));
+  s.append(grab, top, acts);
+  wrap.append(scrim, s);
+  // The room above shows it while the sheet is open.
+  cb.onTryOn(trying ? item.preview! : null);
+  return wrap;
+}
+
+// ---------- the pages ----------
 
 // How long until local midnight, when the special changes. Shown in whole
 // hours (rounded up), so the Shop only needs redrawing once an hour.
@@ -335,235 +580,333 @@ function untilTomorrow(now: number): number {
 }
 
 // The Shop's categories, in order. Other screens can open the Shop at one.
+// ('revival' is the Star counter.)
 export type ShopCategory = 'today' | 'revival' | 'food' | 'garden' | 'fishing' | 'journeys' | 'room' | 'hats';
 
 // Food the Shop sells: only plain ingredients (the energy drink only on its days).
 export const soldInShop = (f: Food) => f.price > 0 && !f.caughtOnly && !f.grownOnly && !f.cookedOnly && !f.foundOnly;
 
-// The Shop: a row of tabs for the categories, then the picked category's
-// rows. Today comes first: the daily special and the things in short supply.
-export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, redraw: () => void): HTMLElement[] {
-  const now = state.lastUpdated;
-  const food: Entry[] = CONFIG.foods
-    .filter(soldInShop)
-    .filter((f: Food) => !f.limited || limitedInStock(localDay(now)))
-    .map((f: Food) => {
-      const left = f.limited ? limitedLeft(state, now) : Infinity;
-      const action = left <= 0
-        ? label(STRINGS.shop.soldOut)
-        : priceButton(f.price, state.gold, () => cb.onBuyFood(f.id));
-      // Limited items say how many are left today instead of how many you have.
-      const note = f.limited
-        ? STRINGS.shop.left(left, CONFIG.economy.limited.perDay)
-        : STRINGS.shop.have(foodCount(state, f.id));
-      const el = row(ITEM_ICONS[f.id], STRINGS.foods[f.id], note, action);
-      if (f.limited) el.insertBefore(stockIcon(), action);
-      return { icon: ITEM_ICONS[f.id], count: countBadge(foodCount(state, f.id)), row: el, limited: f.limited };
-    });
-  // The bigger rice jar, for star fragments, at the top once it's for sale.
-  const { bigger } = CONFIG.riceJar;
-  food.unshift({
-    icon: ITEM_ICONS.riceBall,
-    faded: hasBigJar(state),
-    row: row(ITEM_ICONS.riceBall, STRINGS.shop.bigJar,
-      hasBigJar(state) ? STRINGS.shop.owned : STRINGS.shop.bigJarNote(bigger.extra, riceJarSize(state) + bigger.extra),
-      hasBigJar(state) ? label(STRINGS.shop.owned) : fragmentButton(bigger.fragments, state.fragments.pieces, cb.onBuyBigJar)),
-  });
-  // Fortune cookies, opened before mingling, once friends drop by.
-  if (isUnlocked(state, 'meet')) {
-    food.push({
-      icon: ITEM_ICONS.fortuneCookie,
-      count: countBadge(fortuneCookies(state)),
-      row: row(ITEM_ICONS.fortuneCookie, STRINGS.shop.fortuneCookie, STRINGS.shop.fortuneCookieNote(fortuneCookies(state)),
-        priceButton(CONFIG.fortune.price, state.gold, cb.onBuyFortuneCookie)),
-    });
-  }
-  const hats: Entry[] = HATS.map((h) => {
-    const owned = state.inventory.hats.includes(h.id);
-    const buy = h.fragments
-      ? fragmentButton(h.fragments, state.fragments.pieces, () => cb.onBuyHat(h.id))
-      : priceButton(priceToday(state, 'hat', h.id, h.price), state.gold, () => cb.onBuyHat(h.id));
-    const note = owned ? STRINGS.shop.owned : h.fragments ? STRINGS.shop.fragmentsOnly : '';
-    return {
-      icon: hatIcon(cb.hatImage(h.id)),
-      faded: owned,
-      row: row(hatIcon(cb.hatImage(h.id)), h.name, note, owned ? label(STRINGS.shop.owned) : buy),
-    };
-  });
-  // Seeds you can buy, then fertilizer and plant cure.
-  const gardenItems: { item: ShopItem; icon: string; name: string; note: string; count: number }[] = [
-    ...SEEDS_FOR_SALE.map((id) => ({
-      item: { kind: 'seed', id } as ShopItem,
-      icon: ITEM_ICONS[`seed_${id}`],
-      name: STRINGS.garden.seedName(STRINGS.foods[id]),
-      note: STRINGS.shop.have(seedCount(state, id)),
-      count: seedCount(state, id),
-    })),
-    ...SUPPLIES.map((id) => ({
-      item: { kind: 'supply', id } as ShopItem,
-      icon: ITEM_ICONS[id],
-      name: STRINGS.garden.supplies[id],
-      note: `${STRINGS.garden.supplyNotes[id]}. ${STRINGS.shop.have(supplyCount(state, id))}`,
-      count: supplyCount(state, id),
-    })),
-  ];
-  const garden: Entry[] = gardenItems.map((g) => ({
-    icon: g.icon,
-    count: countBadge(g.count),
-    row: row(g.icon, g.name, g.note, priceButton(priceOf(g.item), state.gold, () => cb.onBuyGardenItem(g.item))),
-  }));
-  // Homemade fertilizer, crafted from poop you've picked up.
-  garden.push({
-    icon: ITEM_ICONS.homemadeFertilizer,
-    count: countBadge(poopCount(state)),
-    row: homemadeRow(state, cb),
-  });
-  // One more pot, until the garden is as big as it gets.
-  if (canBuyPot(state)) {
-    garden.push({
-      icon: ITEM_ICONS.gardenPot,
-      row: row(ITEM_ICONS.gardenPot, STRINGS.shop.extraPot, STRINGS.shop.extraPotNote,
-        priceButton(CONFIG.garden.extraPotPrice, state.gold, cb.onBuyPot)),
-    });
-  }
-  const fishing: Entry[] = [{
-    icon: ITEM_ICONS.bait,
-    count: countBadge(baitCount(state)),
-    row: row(ITEM_ICONS.bait, STRINGS.shop.bait, STRINGS.shop.baitNote(baitCount(state)),
-      priceButton(CONFIG.fishing.bait.price, state.gold, cb.onBuyBait)),
-  }];
-  // Percy rests after coming along on a journey: gold wakes him up early.
-  const resting = !percyFree(state, now);
-  // Charms for the lunchbox, used up on one trip.
-  const journeys: Entry[] = isUnlocked(state, 'journeys') ? [{
-    icon: ITEM_ICONS.percy,
-    faded: !resting,
-    row: row(ITEM_ICONS.percy, STRINGS.journeys.percyRest,
-      resting ? STRINGS.journeys.percyRestNote(formatDuration(state.journeys.percyFreeAt - now)) : STRINGS.journeys.percyReady,
-      resting ? priceButton(CONFIG.journeys.percy.resetPrice, state.gold, cb.onWakePercy) : label(STRINGS.journeys.ready)),
-  }, ...CHARMS.map((c) => {
-    const text = STRINGS.journeys.charms[c.id];
-    const have = charmCount(state, c.id);
-    return {
-      icon: ITEM_ICONS[`charm_${c.id}`] ?? '',
-      count: countBadge(have),
-      row: row(ITEM_ICONS[`charm_${c.id}`] ?? '', text?.name ?? c.id, STRINGS.journeys.charmShopNote(text?.note ?? '', have),
-        priceButton(c.price, state.gold, () => cb.onBuyCharm(c.id))),
-    };
-  })] : [];
-  // The Family Home first: star fragments or money, side by side.
-  const owned = ownsFamilyHome(state);
-  const homeActions = document.createElement('span');
-  homeActions.className = 'shop-row-actions';
-  if (owned) homeActions.append(label(STRINGS.shop.owned));
-  else homeActions.append(
-    fragmentButton(CONFIG.familyHome.fragments, state.fragments.pieces, () => cb.onBuyFamilyHome(true)),
-    button(CONFIG.familyHome.price, () => cb.onBuyFamilyHome(false)),
-  );
-  const room: Entry[] = [
-    { icon: ITEM_ICONS.familyHome, faded: owned, row: row(ITEM_ICONS.familyHome, STRINGS.familyHome.name, STRINGS.familyHome.shopNote, homeActions) },
-    ...[...FURNITURE, ...WALLPAPERS, ...CURTAINS].map((d) => decorEntry(state, d, cb)),
-  ];
-  // Star fragments: the ones collected so far (from good care, or bought),
-  // which make a Revival Star once there are enough, then packs of them
-  // bought with real money.
-  const { perStar } = CONFIG.fragments;
-  const pieces = state.fragments.pieces;
-  const revival: Entry[] = [
-    {
-      icon: FRAGMENT_ICON,
-      count: countBadge(pieces),
-      row: fragmentsRow(pieces, perStar, cb),
-    },
-    {
-      icon: ITEM_ICONS.revivalStar,
-      count: countBadge(revivalStars(state)),
-      row: row(ITEM_ICONS.revivalStar, STRINGS.shop.revivalStar, STRINGS.shop.revivalNote(revivalStars(state), perStar), label('')),
-    },
-    // A Holiday ticket, for going away (once there are journeys).
-    ...(journeys.length > 0 ? [{
-      icon: MENU_ICONS.meadow,
-      count: countBadge(holidayTickets(state)),
-      row: row(MENU_ICONS.meadow, STRINGS.journeys.holidayTicket, STRINGS.journeys.holidayShopNote(holidayTickets(state)),
-        fragmentButton(CONFIG.journeys.holiday.fragments, pieces, cb.onBuyHolidayTicket)),
-    }] : []),
-    ...CONFIG.store.map((p, i) => ({
-      icon: FRAGMENT_ICON,
-      row: row(FRAGMENT_ICON, STRINGS.shop.fragmentPack(p.fragments),
-        i === CONFIG.store.length - 1 ? STRINGS.shop.fragmentPackBest : STRINGS.shop.fragmentPackNote,
-        button(p.price, () => cb.onBuyPack(p.id))),
-    })),
-  ];
-  // One category at a time, picked from the tabs at the top. Journeys only
-  // shows once it has opened up.
-  const special = specialCard(state, cb);
-  const todays = dailySpecial(state);
-  const specialNew = !!todays && !ownsSpecial(state, todays);
-  const scarce = food.filter((e) => e.limited).map((e) => e.row);
-  const today: Entry[] = [
-    ...(special ? [{ icon: '', row: special }] : []),
-    ...(scarce.length > 0 ? [{ icon: '', row: section(STRINGS.shop.fewLeft) }] : []),
-    ...scarce.map((r) => ({ icon: '', row: r })),
-  ];
-  const tabs: ShopTab[] = [
-    { id: 'today', title: STRINGS.shop.todayTab, icon: MENU_ICONS.todayTag, entries: today, dot: specialNew },
-    { id: 'revival', title: STRINGS.shop.revivalTab, icon: ITEM_ICONS.revivalStar, entries: revival },
-    { id: 'food', title: STRINGS.shop.food, icon: ITEM_ICONS.strawberry, entries: food },
-    { id: 'garden', title: STRINGS.shop.garden, icon: ITEM_ICONS.gardenPot, entries: garden },
-    { id: 'fishing', title: STRINGS.shop.fishing, icon: ITEM_ICONS.bait, entries: fishing },
-    ...(journeys.length > 0 ? [{ id: 'journeys', title: STRINGS.shop.journeys, icon: ITEM_ICONS.charm_compass, entries: journeys } as ShopTab] : []),
-    { id: 'room', title: STRINGS.shop.room, icon: ITEM_ICONS[`wallpaper_${WALLPAPERS[1]?.id}`] ?? '', entries: room },
-    { id: 'hats', title: STRINGS.shop.hats, icon: hatIcon(cb.hatImage(HATS[1]?.id ?? '')), entries: hats },
-  ];
-  const shown = tabs.find((t) => t.id === view.tab) ?? tabs[0];
-  view.tab = shown.id;
-  const rows = document.createElement('div');
-  rows.className = 'shop-cat-rows';
-  rows.append(...shown.entries.map((e) => e.row));
-  return [shopTabs(tabs, view, redraw), rows];
-}
-
-interface ShopTab {
-  id: ShopCategory;
-  title: string;
-  icon: string;
-  entries: Entry[];
-  dot?: boolean; // something new on it (today's special, not yet bought)
-}
-
-// Which category's tab is showing, and how far the tabs are scrolled
-// sideways. Kept by the menu, so both stay while the page redraws after
-// buying something.
+// Which tab is showing, how far the tabs are scrolled sideways and which
+// sheet is open. Kept by the menu, so they stay while the page redraws
+// after buying something.
 export interface ShopView {
   tab: ShopCategory;
   scroll?: number;
+  open?: string; // an item's key
+  trying?: boolean; // false once Take it off is pressed on the open sheet
+  fresh?: boolean; // the sheet has just been opened (it slides up only then)
 }
 
-// [today][stars][FOOD][garden][fishing][journeys][room][hats]
-// One row of picture tabs, so the rows below get most of the room. They
-// share the width while each can stay at least 36px wide (set in the
-// CSS); past that (a small phone, or more categories) the row scrolls
-// sideways instead of the tabs getting too small to tap. It stays at the
-// top while the rows scroll.
-function shopTabs(tabs: ShopTab[], view: ShopView, redraw: () => void): HTMLElement {
-  const strip = document.createElement('div');
-  strip.className = 'shop-tabs';
+interface Page {
+  id: ShopCategory;
+  title: string;
+  icon: string;
+  dot?: boolean; // something new on it (today's special, not yet bought)
+  items: Item[]; // everything with a sheet
+  body: () => HTMLElement[];
+}
+
+// The Shop: the awning, its name and purse, the tabs, then the picked
+// tab's cards. Today comes first: the daily special, a craving, and the
+// things in short supply. The Star counter comes last, after its own
+// night-blue tab.
+export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, redraw: () => void, onBack: () => void): HTMLElement[] {
+  const now = state.lastUpdated;
+  const S = STRINGS.shop;
+  const open = (key: string) => {
+    view.open = key;
+    view.trying = undefined;
+    view.fresh = true;
+    redraw();
+  };
+  const goTo = (tab: ShopCategory) => {
+    view.tab = tab;
+    view.open = undefined;
+    cb.onTryOn(null);
+    redraw();
+  };
+  const gold = state.gold;
+  const pieces = state.fragments.pieces;
+
+  // Food, and the bigger rice jar.
+  const foods = CONFIG.foods
+    .filter(soldInShop)
+    .filter((f: Food) => !f.limited || limitedInStock(localDay(now)))
+    .map((f: Food) => foodItem(state, f, cb, now));
+  // Fortune cookies, opened before mingling, once friends drop by.
+  if (isUnlocked(state, 'meet')) {
+    foods.push({
+      key: 'fortuneCookie',
+      art: ITEM_ICONS.fortuneCookie,
+      name: S.fortuneCookie,
+      kind: S.food,
+      about: S.fortuneCookieNote(fortuneCookies(state)),
+      tint: TINT.food,
+      count: countOf(fortuneCookies(state)),
+      price: { cur: 'gold', cost: CONFIG.fortune.price, onBuy: cb.onBuyFortuneCookie },
+    });
+  }
+  const { bigger } = CONFIG.riceJar;
+  const bigJar = () => wideCard(ITEM_ICONS.riceBall, '#f1ecfa', S.bigJar,
+    hasBigJar(state) ? S.owned : S.bigJarNote(bigger.extra, riceJarSize(state) + bigger.extra),
+    hasBigJar(state) ? fact(S.owned) : priceButton({ cur: 'frag', cost: bigger.fragments, onBuy: cb.onBuyBigJar }, pieces));
+
+  // Hats.
+  const hats = HATS.map((h) => hatItem(state, h.id, cb));
+  const hatsOwned = HATS.filter((h) => state.inventory.hats.includes(h.id)).length;
+
+  // The garden: seeds, then fertilizer and plant cure, then the homemade
+  // fertilizer (crafted from poop) and one more pot.
+  const seeds: Item[] = SEEDS_FOR_SALE.map((id) => {
+    const item: ShopItem = { kind: 'seed', id };
+    return {
+      key: `seed:${id}`, art: ITEM_ICONS[`seed_${id}`], name: STRINGS.garden.seedName(STRINGS.foods[id]), kind: S.garden,
+      about: STRINGS.shop.have(seedCount(state, id)), tint: TINT.garden, count: countOf(seedCount(state, id)),
+      price: { cur: 'gold', cost: priceOf(item), onBuy: () => cb.onBuyGardenItem(item) },
+    };
+  });
+  const supplies: Item[] = SUPPLIES.map((id) => {
+    const item: ShopItem = { kind: 'supply', id };
+    return {
+      key: `supply:${id}`, art: ITEM_ICONS[id], name: STRINGS.garden.supplies[id], kind: S.garden,
+      about: `${STRINGS.garden.supplyNotes[id]}. ${S.have(supplyCount(state, id))}`, tint: TINT.garden, count: countOf(supplyCount(state, id)),
+      price: { cur: 'gold', cost: priceOf(item), onBuy: () => cb.onBuyGardenItem(item) },
+    };
+  });
+  const homemade = () => {
+    const per = CONFIG.garden.poopPerFertilizer;
+    const poops = poopCount(state);
+    const slots = el('span', 'poop-slots', Array.from({ length: per }, (_, i) =>
+      `<span class="poop-slot${i < Math.min(poops, per) ? ' on' : ''}">${ITEM_ICONS.poop}</span>`).join(''));
+    slots.setAttribute('role', 'img');
+    slots.setAttribute('aria-label', S.poopSlots(poops, per));
+    const craft = ghostButton(S.craft, cb.onCompost);
+    craft.classList.toggle('is-short', !canCompost(state));
+    return wideCard(ITEM_ICONS.homemadeFertilizer, TINT.garden, S.homemade, S.homemadeHave(supplyCount(state, 'fertilizer')), craft, slots);
+  };
+  const pot = () => wideCard(ITEM_ICONS.gardenPot, TINT.garden, S.extraPot, S.extraPotNote,
+    priceButton({ cur: 'gold', cost: CONFIG.garden.extraPotPrice, onBuy: cb.onBuyPot }, gold));
+
+  // Fishing.
+  const fishing: Item[] = [{
+    key: 'bait', art: ITEM_ICONS.bait, name: S.bait, kind: S.fishing, about: S.baitNote(baitCount(state)),
+    tint: TINT.fishing, count: countOf(baitCount(state)),
+    price: { cur: 'gold', cost: CONFIG.fishing.bait.price, onBuy: cb.onBuyBait },
+  }];
+
+  // Journeys: Percy rests after coming along, and gold wakes him early;
+  // charms for the lunchbox, used up on one trip; Holiday tickets.
+  const journeysOpen = isUnlocked(state, 'journeys');
+  const resting = !percyFree(state, now);
+  const charms: Item[] = CHARMS.map((c) => {
+    const t = STRINGS.journeys.charms[c.id];
+    return {
+      key: `charm:${c.id}`, art: ITEM_ICONS[`charm_${c.id}`] ?? '', name: t?.name ?? c.id, kind: S.charm, about: t?.note ?? '',
+      tint: TINT.charm, count: countOf(charmCount(state, c.id)),
+      price: { cur: 'gold', cost: c.price, onBuy: () => cb.onBuyCharm(c.id) },
+    };
+  });
+  const percy = () => wideCard(ITEM_ICONS.percy, '#e9f6ff', STRINGS.journeys.percyRest,
+    resting ? STRINGS.journeys.percyRestNote(formatDuration(state.journeys.percyFreeAt - now)) : STRINGS.journeys.percyReady,
+    resting ? priceButton({ cur: 'gold', cost: CONFIG.journeys.percy.resetPrice, onBuy: cb.onWakePercy }, gold) : fact(STRINGS.journeys.ready));
+  const holiday = () => wideCard(MENU_ICONS.meadow, '#f1ecfa', STRINGS.journeys.holidayTicket, STRINGS.journeys.holidayShopNote(holidayTickets(state)),
+    priceButton({ cur: 'frag', cost: CONFIG.journeys.holiday.fragments, onBuy: cb.onBuyHolidayTicket }, pieces));
+
+  // The room: the Family Home (for star fragments only), then wallpaper,
+  // furniture and curtains for the room you're looking at.
+  const walls = WALLPAPERS.map((d) => decorItem(state, d, cb));
+  const furniture = FURNITURE.map((d) => decorItem(state, d, cb));
+  const curtains = CURTAINS.map((d) => decorItem(state, d, cb));
+  const ownedOf = (list: Decor[]) => list.filter((d) => ownsDecor(state, d.kind, d.id)).length;
+  const familyHome = () => {
+    const owned = ownsFamilyHome(state);
+    const cost = CONFIG.familyHome.fragments;
+    const c = wideCard(ITEM_ICONS.familyHome, '#e9f6ff', STRINGS.familyHome.name, STRINGS.familyHome.shopNote,
+      owned ? fact(S.owned) : priceButton({ cur: 'frag', cost, onBuy: cb.onBuyFamilyHome }, pieces));
+    c.classList.add('is-home');
+    if (!owned && pieces < cost) {
+      const more = text('button', 'shop-link', S.needMore(cost - pieces));
+      more.addEventListener('click', () => goTo('revival'));
+      c.querySelector('.shop-wide-text')!.append(more);
+    }
+    return c;
+  };
+
+  // Today: the special, a craving the Shop can help with, and the things
+  // in short supply.
+  const special = dailySpecial(state);
+  const specialNew = !!special && !ownsSpecial(state, special);
+  const specialItem = special && (special.kind === 'hat' ? hatItem(state, special.id, cb) : decorItem(state, getDecor(special.kind, special.id)!, cb));
+  const craved = state.craving.food ? foods.find((f) => f.key === `food:${state.craving.food}` && f.price) : undefined;
+  const scarce = foods.filter((f) => CONFIG.foods.some((c: Food) => c.limited && f.key === `food:${c.id}`));
+  const today = (): HTMLElement[] => {
+    const out: HTMLElement[] = [];
+    if (special && specialItem) {
+      const hero = el('div', 'shop-hero');
+      hero.append(text('div', 'shop-ribbon', S.todayOff(Math.round(CONFIG.dailySpecial.off * 100))));
+      const r = el('div', 'shop-hero-row');
+      const art = el('button', `shop-hero-art${special.kind === 'wallpaper' || special.kind === 'curtains' ? ' is-swatch' : ''}`,
+        special.kind === 'wallpaper' ? wallSwatch(special.id, 22, 18) : specialItem.art);
+      art.setAttribute('aria-label', specialItem.name);
+      art.addEventListener('click', () => open(specialItem.key));
+      const info = el('div', 'shop-hero-info');
+      const owned = ownsSpecial(state, special);
+      info.append(text('b', '', specialItem.name),
+        text('small', '', owned ? S.specialOwned : S.specialAbout(S.specialKind[special.kind] ?? '', Math.ceil(untilTomorrow(now) / 3_600_000))));
+      const acts = el('div', 'shop-hero-acts');
+      if (owned) acts.append(fact(S.owned));
+      else {
+        if (specialItem.preview) acts.append(ghostButton(S.tryIt, () => open(specialItem.key)));
+        acts.append(priceButton({ cur: 'gold', cost: special.price, was: special.was, onBuy: specialItem.price?.onBuy ?? (() => {}) }, gold));
+      }
+      info.append(acts);
+      r.append(art, info);
+      hero.append(r);
+      out.push(hero);
+    }
+    if (craved) {
+      out.push(section(S.craving(state.pet.name)));
+      const c = el('div', 'shop-crave');
+      const bubble = el('button', 'shop-bubble', `<span>${craved.art}</span>`);
+      bubble.setAttribute('aria-label', craved.name);
+      bubble.addEventListener('click', () => open(craved.key));
+      const t = el('div', 'shop-wide-text');
+      t.append(text('b', '', craved.name), text('small', '', S.cravingNote(craved.count ?? 0)));
+      c.append(bubble, t, cardAction(craved, state));
+      out.push(c);
+    }
+    if (scarce.length > 0) {
+      out.push(section(S.onlyToday, S.untilMidnight), grid('', scarce.map((f) => card(f, state, open))));
+    }
+    return out;
+  };
+
+  // The Star counter: the fragments you have and how close they are to a
+  // Revival Star, then packs of them for real money (the only place real
+  // money shows).
+  const stars = (): HTMLElement[] => {
+    const { perStar, perGoodDay } = CONFIG.fragments;
+    const have = el('div', 'shop-stars-have');
+    const num = el('div', 'shop-have-num', `<span class="shop-ic">${FRAGMENT_ICON}</span>`);
+    num.append(String(pieces), text('small', '', S.fragmentsHave));
+    const goal = el('div', 'shop-goal');
+    const goalRow = el('div', 'shop-goal-row', `<span class="shop-goal-art">${ITEM_ICONS.revivalStar}</span>`);
+    goalRow.append(text('b', '', S.revivalStar), text('span', '', S.fragmentsCount(Math.min(pieces, perStar), perStar)));
+    const bar = el('div', 'shop-bar', `<i style="width:${Math.min(100, (pieces / perStar) * 100)}%"></i>`);
+    bar.setAttribute('role', 'progressbar');
+    bar.setAttribute('aria-valuemin', '0');
+    bar.setAttribute('aria-valuemax', String(perStar));
+    bar.setAttribute('aria-valuenow', String(Math.min(pieces, perStar)));
+    const acts = el('div', 'shop-goal-acts');
+    const craft = ghostButton(S.craft, cb.onMakeStar);
+    craft.classList.add('is-craft');
+    craft.classList.toggle('is-short', pieces < perStar);
+    acts.append(ghostButton(S.howItWorks, cb.onFragmentsHelp), craft);
+    goal.append(goalRow, bar, text('small', '', S.starNote(revivalStars(state), perGoodDay)), acts);
+    have.append(num, goal);
+    const packs = el('div', 'shop-packs');
+    CONFIG.store.forEach((p, i) => {
+      const best = i === CONFIG.store.length - 1;
+      const pack = el('div', `shop-pack${best ? ' is-best' : ''}`);
+      if (best) pack.append(text('span', 'shop-best', S.bestValue));
+      pack.insertAdjacentHTML('beforeend', fragmentPile(i + 1));
+      pack.append(text('b', '', String(p.fragments)), text('small', '', best ? S.packExtra : ''));
+      const buy = text('button', 'shop-buy is-cash', p.price);
+      buy.setAttribute('aria-label', S.packBuy(p.fragments, p.price));
+      buy.addEventListener('click', () => cb.onBuyPack(p.id));
+      pack.append(buy);
+      packs.append(pack);
+    });
+    return [have, section(S.getFragments), packs, text('p', 'shop-fine', S.realMoney)];
+  };
+
+  const pages: Page[] = [
+    { id: 'today', title: S.todayTab, icon: MENU_ICONS.todayTag, dot: specialNew, items: [...(specialItem ? [specialItem] : []), ...(craved ? [craved] : []), ...scarce], body: today },
+    {
+      id: 'food', title: S.food, icon: ITEM_ICONS.strawberry, items: foods,
+      body: () => [section(S.treats, S.tapToSee), grid('small', foods.map((f) => card(f, state, open))), section(S.jarTitle), bigJar()],
+    },
+    {
+      id: 'garden', title: S.garden, icon: ITEM_ICONS.gardenPot, items: [...seeds, ...supplies],
+      body: () => [
+        section(S.seeds), grid('small', seeds.map((f) => card(f, state, open))),
+        section(S.supplies), grid('small', supplies.map((f) => card(f, state, open))),
+        homemade(), ...(canBuyPot(state) ? [pot()] : []),
+      ],
+    },
+    { id: 'fishing', title: S.fishing, icon: ITEM_ICONS.bait, items: fishing, body: () => [section(S.fishing), grid('', fishing.map((f) => card(f, state, open)))] },
+    ...(journeysOpen ? [{
+      id: 'journeys', title: S.journeys, icon: ITEM_ICONS.charm_compass, items: charms,
+      body: () => [percy(), section(S.charms), grid('', charms.map((f) => card(f, state, open))), section(STRINGS.journeys.holidayTicket), holiday()],
+    } as Page] : []),
+    {
+      id: 'room', title: S.room, icon: ITEM_ICONS[`wallpaper_${WALLPAPERS[1]?.id}`] ?? '', items: [...walls, ...furniture, ...curtains],
+      body: () => [
+        familyHome(),
+        section(S.wallpaper, S.ofAll(ownedOf(WALLPAPERS), WALLPAPERS.length)), grid('two', walls.map((w) => swatchCard(w, state, open))),
+        section(S.furnitureTitle, S.ofAll(ownedOf(FURNITURE), FURNITURE.length)), grid('', furniture.map((f) => card(f, state, open))),
+        section(S.curtainsTitle, S.ofAll(ownedOf(CURTAINS), CURTAINS.length)), grid('two', curtains.map((c) => swatchCard(c, state, open))),
+      ],
+    },
+    { id: 'hats', title: S.hats, icon: hatIcon(cb.hatImage(HATS[1]?.id ?? '')), items: hats, body: () => [section(S.hats, S.ofAll(hatsOwned, HATS.length)), grid('', hats.map((h) => card(h, state, open)))] },
+    { id: 'revival', title: S.starCounter, icon: FRAGMENT_ICON, items: [], body: stars },
+  ];
+  const shown = pages.find((p) => p.id === view.tab) ?? pages[0];
+  view.tab = shown.id;
+  const night = shown.id === 'revival';
+
+  const page = el('div', `shop-page${night ? ' is-night' : ''}`);
+  const top = el('div', 'shop-top');
+  const awning = el('div', 'shop-awning');
+  awning.setAttribute('aria-hidden', 'true');
+  const head = el('div', 'shop-head');
+  const back = el('button', 'shop-back', BACK);
+  back.setAttribute('aria-label', STRINGS.menu.back);
+  back.addEventListener('click', onBack);
+  const purse = el('div', 'shop-purse');
+  const coin = el('span', 'shop-coin', `<span class="shop-ic">${STAT_ICONS.gold}</span>`);
+  coin.title = STRINGS.gold.label;
+  coin.append(String(gold));
+  const frags = el('button', 'shop-coin is-frag', `<span class="shop-ic">${FRAGMENT_ICON}</span>`);
+  frags.title = S.fragments;
+  frags.setAttribute('aria-label', `${S.fragments}: ${pieces}`);
+  frags.append(String(pieces));
+  frags.addEventListener('click', () => goTo('revival'));
+  purse.append(coin, frags);
+  head.append(back, text('h2', '', night ? S.starCounter : S.title), purse);
+  top.append(awning, head, shopTabs(pages, view, goTo));
+
+  const body = el('div', 'shop-body');
+  body.append(...shown.body());
+  page.append(top, body);
+  const item = view.open ? pages.flatMap((p) => p.items).find((i) => i.key === view.open) : undefined;
+  if (item) page.append(sheet(item, state, view, cb, redraw));
+  else {
+    view.open = undefined;
+    cb.onTryOn(null);
+  }
+  return [page];
+}
+
+// [today][FOOD][garden][fishing][journeys][room][hats][stars]
+// Folder tabs with pictures, the picked one white like the page under it.
+// They share the width while each can stay at least 36px wide (set in the
+// CSS); past that (a small phone, or more tabs) the row scrolls sideways
+// instead of the tabs getting too small to tap.
+function shopTabs(pages: Page[], view: ShopView, goTo: (tab: ShopCategory) => void): HTMLElement {
+  const strip = el('div', 'shop-tabs');
   strip.setAttribute('role', 'group');
   strip.setAttribute('aria-label', STRINGS.shop.title);
   let picked: HTMLElement | null = null;
-  for (const t of tabs) {
-    const b = document.createElement('button');
-    b.className = 'shop-tab';
-    b.title = t.title;
-    b.setAttribute('aria-label', t.title);
-    b.setAttribute('aria-pressed', String(t.id === view.tab));
-    b.innerHTML = `<span class="shop-tab-icon" aria-hidden="true">${t.icon}</span>`;
-    if (t.dot) b.append(Object.assign(document.createElement('span'), { className: 'shop-tab-dot' }));
-    if (t.id === view.tab) picked = b;
+  for (const p of pages) {
+    const b = el('button', `shop-tab${p.id === 'revival' ? ' is-stars' : ''}`, `<span class="shop-tab-icon" aria-hidden="true">${p.icon}</span>`);
+    b.title = p.title;
+    b.setAttribute('aria-label', p.title);
+    b.setAttribute('aria-pressed', String(p.id === view.tab));
+    if (p.dot) b.append(el('span', 'shop-tab-dot'));
+    if (p.id === view.tab) picked = b;
     b.addEventListener('click', () => {
-      if (view.tab === t.id) return;
-      view.tab = t.id;
-      redraw();
+      if (view.tab !== p.id) goTo(p.id);
     });
     strip.append(b);
   }
@@ -573,7 +916,7 @@ function shopTabs(tabs: ShopTab[], view: ShopView, redraw: () => void): HTMLElem
   requestAnimationFrame(() => {
     strip.scrollLeft = view.scroll ?? 0;
     if (!picked) return;
-    const left = picked.offsetLeft; // the strip is sticky, so it's the tabs' offsetParent
+    const left = picked.offsetLeft; // the strip is the tabs' offsetParent
     if (left < strip.scrollLeft) strip.scrollLeft = left;
     else if (left + picked.offsetWidth > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = left + picked.offsetWidth - strip.clientWidth;
   });

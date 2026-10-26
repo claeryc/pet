@@ -25,14 +25,14 @@ import {
   type ShopResult,
 } from './game/economy';
 import { purchase, type ProductId } from './payments';
-import { takeDownFurniture, useDecor } from './game/decor';
+import { getDecor, takeDownFurniture, useDecor } from './game/decor';
 import { getLook, isNight } from './game/stats';
 import { feeling } from './game/likes';
 import { afterEating, chooseExpression, idleEveryMs, reactionMs, type Expression, type Reaction } from './game/expressions';
 import { getTrait, traitOf } from './game/traits';
 import { drawFace } from './render/faces';
 import { cast, justGotShy, land, toggleBait } from './game/fishing';
-import { buyFamilyHome, goToRoom, grantFamilyHome, movePet, otherRoom, ownsFamilyHome, petsIn, roomDecor, roommates, type RoomBlock } from './game/rooms';
+import { buyFamilyHome, goToRoom, movePet, otherRoom, ownsFamilyHome, petsIn, roomDecor, roommates, type RoomBlock } from './game/rooms';
 import { TOSS_MS } from './render/garden';
 import { LEAP_MS } from './ui/fishing';
 import { cook } from './game/cooking';
@@ -85,11 +85,12 @@ import { fortuneOf, useFortuneCookie } from './game/fortune';
 import { fortuneArt, skipFortuneOnTap } from './ui/fortune';
 import { createAwayCard } from './ui/away';
 import { awayNotes } from './game/away';
-import type { Pet } from './game/state';
+import type { Pet, Room } from './game/state';
 import { clearSave, loadGame, saveGame } from './storage/storage';
 import { setupCanvas, drawRoom } from './render/canvas';
 import { loadSprites, type SpriteLibrary } from './render/sprites';
 import { createHomeScreen } from './ui/home';
+import type { ShopPreview } from './ui/shop';
 import { createNamingBox } from './ui/naming';
 import { STRINGS } from './strings';
 import { FRAGMENT_ICON, ITEM_ICONS } from './ui/icons';
@@ -288,6 +289,25 @@ function earnedOnly(kind: 'wallpaper', id: string): void {
 }
 
 const hatImage = (id: string) => sprites.get(getHat(id)?.sheet ?? '')?.image.src;
+
+// Trying something on in the Shop: a hat on the pet, or a decoration up in
+// the room, drawn in place of the real one while the Shop is showing.
+let preview: ShopPreview | null = null;
+function onTryOn(next: ShopPreview | null): void {
+  preview = next;
+  if (!next) return home.tryOn(null);
+  const names = next.kind === 'wallpaper' ? STRINGS.shop.wallpapers : next.kind === 'curtains' ? STRINGS.shop.curtains : STRINGS.shop.furniture;
+  home.tryOn(next.kind === 'hat' ? getHat(next.id)?.name ?? next.id : names[next.id] ?? next.id);
+}
+
+// The room as it's drawn: with whatever is being tried on.
+function shownRoom(room: Room, trying: ShopPreview | null): Room {
+  if (!trying || trying.kind === 'hat') return room;
+  if (trying.kind === 'wallpaper') return { ...room, wallpaper: trying.id };
+  if (trying.kind === 'curtains') return { ...room, curtains: trying.id };
+  const slot = getDecor('furniture', trying.id)?.slot;
+  return slot ? { ...room, furniture: { ...room.furniture, [slot]: trying.id } } : room;
+}
 
 // Asks for the pet's name: once it hatches (it must have one), or to
 // rename it from the Family Tree.
@@ -720,9 +740,8 @@ function blockedRoom(reason: RoomBlock, name: string): void {
   blocked(STRINGS.familyHome.blocked[reason](name));
 }
 
-// The Family Home from the Shop: star fragments, or money (a stand-in for
-// now, see src/payments.ts).
-function onBuyFamilyHome(withFragments: boolean): void {
+// The Family Home from the Shop, for star fragments.
+function onBuyFamilyHome(): void {
   if (ownsFamilyHome(state)) return;
   const got = (s: GameState) => {
     setState(s);
@@ -730,37 +749,20 @@ function onBuyFamilyHome(withFragments: boolean): void {
     home.reveal({ icon: ITEM_ICONS.familyHome, name: STRINGS.familyHome.name, count: 1, stars: 0 });
     home.toast(STRINGS.familyHome.bought);
   };
-  if (withFragments) {
-    const result = buyFamilyHome(state);
-    if (result.blocked === 'notEnoughFragments') return blocked(STRINGS.shop.notEnoughFragments);
-    if (result.blocked) return;
-    const { perStar } = CONFIG.fragments;
-    const left = state.fragments.pieces - CONFIG.familyHome.fragments;
-    // Like a star-only hat: first say how far that leaves a free star.
-    if (left >= perStar) return got(result.state);
-    choice.open({
-      title: STRINGS.shop.spendTitle,
-      text: STRINGS.shop.spendAsk(STRINGS.familyHome.name, CONFIG.familyHome.fragments, left, perStar),
-      options: [
-        { label: STRINGS.shop.spendYes, onPick: () => got(buyFamilyHome(state).state) },
-        { label: STRINGS.shop.spendNo, soft: true, onPick: () => {} },
-      ],
-    });
-    return;
-  }
-  const price = CONFIG.familyHome.price;
-  const confirmPay = () => new Promise<boolean>((resolve) => {
-    choice.open({
-      title: STRINGS.familyHome.name,
-      text: STRINGS.revival.payAsk(STRINGS.familyHome.payWhat, price),
-      options: [
-        { label: STRINGS.revival.pay(price), onPick: () => resolve(true) },
-        { label: STRINGS.revival.cancel, soft: true, onPick: () => resolve(false) },
-      ],
-    });
-  });
-  void purchase('familyHome', confirmPay).then((paid) => {
-    if (paid) got(grantFamilyHome(state));
+  const result = buyFamilyHome(state);
+  if (result.blocked === 'notEnoughFragments') return blocked(STRINGS.shop.notEnoughFragments);
+  if (result.blocked) return;
+  const { perStar } = CONFIG.fragments;
+  const left = state.fragments.pieces - CONFIG.familyHome.fragments;
+  // Like a star-only hat: first say how far that leaves a free star.
+  if (left >= perStar) return got(result.state);
+  choice.open({
+    title: STRINGS.shop.spendTitle,
+    text: STRINGS.shop.spendAsk(STRINGS.familyHome.name, CONFIG.familyHome.fragments, left, perStar),
+    options: [
+      { label: STRINGS.shop.spendYes, onPick: () => got(buyFamilyHome(state).state) },
+      { label: STRINGS.shop.spendNo, soft: true, onPick: () => {} },
+    ],
   });
 }
 
@@ -1336,6 +1338,7 @@ const home = createHomeScreen(root, {
     home.toast(STRINGS.shop.composted);
   },
   onWearHat: (id) => runShop(wearHat(state, id)),
+  onTryOn,
   hatImage,
   characterImage,
   onSeen: (id) => setState(markSeen(state, id)),
@@ -1479,6 +1482,9 @@ function render(timeMs: number): void {
   const other = roommates(state).find((p) => !isAway(p));
   const meeting = home.meetScene();
   const trip = home.tripScene();
+  const trying = preview && home.shopShowing() ? preview : null;
+  // A hat being tried on (not on an egg, which can't wear one).
+  const hatId = trying?.kind === 'hat' && pet.stage !== 'egg' ? trying.id : pet.hat;
   drawRoom(
     ctx,
     away ? undefined : sprites.get(sheetFor(pet)),
@@ -1503,7 +1509,7 @@ function render(timeMs: number): void {
         glow: other.starGlow && other.condition !== 'passed',
       },
       petOnLeft: petStandsLeft(state),
-      room: roomDecor(state),
+      room: shownRoom(roomDecor(state), trying),
       keepsakes: keepsakesView(),
       trip: trip && {
         place: trip.place,
@@ -1525,7 +1531,7 @@ function render(timeMs: number): void {
       },
     },
     timeMs,
-    away ? undefined : sprites.get(getHat(pet.hat)?.sheet ?? ''),
+    away ? undefined : sprites.get(getHat(hatId)?.sheet ?? ''),
   );
   requestAnimationFrame(render);
 }
