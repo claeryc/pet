@@ -15,7 +15,7 @@ Each theme has a common (★), an uncommon (★★) and a rare (★★★) chara
 | Theme | ★ | ★★ | ★★★ |
 | --- | --- | --- | --- |
 | Nature | Sprig | Acornet | Ribbit |
-| Ocean | Bubbit | Jellop | Tidecrest |
+| Ocean | Bubbit | Jellop | Tidecrest (and Lobster variant) |
 | Bakery | Dumpling | Puddling | Cuppie |
 | Starry | Cloudlet | Moonpip | Starhoot |
 | Cave (later pack) | Pebblit (and Amber variant) | Crystalback | Geodon |
