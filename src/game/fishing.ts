@@ -13,7 +13,8 @@
 // swims off.
 
 import { CONFIG } from './config';
-import { addTally } from './achievements';
+import { addTally, countUp } from './achievements';
+import { localDay } from './economy';
 import { simulate } from './simulate';
 import { canPlayMinigames, clampStat } from './stats';
 import { withPet, type ActionResult } from './actions';
@@ -226,16 +227,18 @@ export function pickCatch(grade: CatchGrade, random: number, baited = false, luc
 }
 
 // Tries to land the fish. `landRoll` (0-1) is rolled against the grade's
-// chance, and `kindRoll` (0-1) picks which fish it was. A landed fish goes
+// chance, and `kindRoll` picks which fish it was. A landed fish goes
 // into the inventory as food. With bait switched on, a landed fish uses one
-// up (a fish that gets away doesn't).
+// up (a fish that gets away doesn't). Only the first
+// `rewardedPerDay` fish each day give Keeper XP (and a chance of a seed,
+// see findSeed): `rewarded` says whether this one did.
 export function land(
   state: GameState,
   grade: CatchGrade,
   landRoll: number,
   kindRoll: number,
-): { state: GameState; caught: CatchId | null; count: number; baited: boolean } {
-  if (landRoll >= CONFIG.fishing.catchChance[grade]) return { state, caught: null, count: 0, baited: false };
+): { state: GameState; caught: CatchId | null; count: number; baited: boolean; rewarded: boolean } {
+  if (landRoll >= CONFIG.fishing.catchChance[grade]) return { state, caught: null, count: 0, baited: false, rewarded: false };
   const bait = state.inventory.supplies.bait ?? 0;
   const baited = state.baitOn && bait > 0;
   const caught = pickCatch(grade, kindRoll, baited, perk(state, 'luckyLine'));
@@ -243,9 +246,26 @@ export function land(
   const food = { ...state.inventory.food, [caught]: (state.inventory.food[caught] ?? 0) + count };
   const supplies = baited ? { ...state.inventory.supplies, bait: bait - 1 } : state.inventory.supplies;
   const kinds = state.caught.includes(caught) ? state.caught : [...state.caught, caught];
-  let next = addTally({ ...state, inventory: { ...state.inventory, food, supplies }, caught: kinds }, 'fish', count);
-  if (grade === 'perfect') next = addXp(next, CONFIG.skills.perfectFishXp);
-  return { state: next, caught, count, baited };
+  const today = localDay(state.lastUpdated);
+  const before = state.pond.day === today ? state.pond.fish : 0;
+  const rewarded = before < CONFIG.fishing.rewardedPerDay;
+  let next: GameState = {
+    ...state,
+    inventory: { ...state.inventory, food, supplies },
+    caught: kinds,
+    pond: { day: today, fish: before + count },
+  };
+  // Past the limit the fish still count for the Fishing badge, just
+  // without XP.
+  next = rewarded ? addTally(next, 'fish', count) : countUp(next, 'fish', count);
+  if (grade === 'perfect' && rewarded) next = addXp(next, CONFIG.skills.perfectFishXp);
+  return { state: next, caught, count, baited, rewarded };
+}
+
+// True when the fish just landed was the first one past the day's limit,
+// so the game can say once that the fish are shy now.
+export function justGotShy(state: GameState): boolean {
+  return state.pond.fish === CONFIG.fishing.rewardedPerDay + CONFIG.fishing.fishPerCatch;
 }
 
 // Switches bait on or off for fishing (the little dot in the pond).

@@ -3,7 +3,8 @@
 // and no curtains. How each one looks lives in src/render/canvas.ts.
 
 import { CONFIG } from './config';
-import type { GameState } from './state';
+import type { GameState, Room } from './state';
+import { currentRoom, roomDecor } from './rooms';
 
 export type DecorKind = 'wallpaper' | 'curtains';
 
@@ -31,16 +32,24 @@ export function ownsDecor(state: GameState, kind: DecorKind, id: string): boolea
   return !!d && ((d.price === 0 && !d.earned) || state.inventory.decor.includes(decorKey(kind, id)));
 }
 
+// In use in the room you're looking at (each room is decorated on its own).
 export function inUse(state: GameState, kind: DecorKind, id: string): boolean {
-  return kind === 'wallpaper' ? state.room.wallpaper === id : state.room.curtains === id;
+  const room = roomDecor(state);
+  return kind === 'wallpaper' ? room.wallpaper === id : room.curtains === id;
+}
+
+// Changes the decoration of the room you're looking at.
+function decorate(state: GameState, change: Partial<Room>): GameState {
+  if (currentRoom(state) === 'family') return { ...state, familyHome: { ...state.familyHome, room: { ...state.familyHome.room, ...change } } };
+  return { ...state, room: { ...state.room, ...change } };
 }
 
 export type DecorBlock = 'notOwned';
 
-// Puts a decoration up. Curtains can also be taken down (id null); the
-// wallpaper is always something.
+// Puts a decoration up in the room you're looking at. Curtains can also
+// be taken down (id null); the wallpaper is always something.
 export function useDecor(state: GameState, kind: DecorKind, id: string | null): { state: GameState; blocked?: DecorBlock } {
   if (id !== null && !ownsDecor(state, kind, id)) return { state, blocked: 'notOwned' };
-  if (kind === 'wallpaper') return { state: { ...state, room: { ...state.room, wallpaper: id ?? 'plain' } } };
-  return { state: { ...state, room: { ...state.room, curtains: id } } };
+  if (kind === 'wallpaper') return { state: decorate(state, { wallpaper: id ?? 'plain' }) };
+  return { state: decorate(state, { curtains: id }) };
 }

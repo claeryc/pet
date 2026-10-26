@@ -24,6 +24,7 @@ import { pointsToSpend, reelPerks } from '../game/skills';
 import { petAt, ROOM_HEIGHT, ROOM_WIDTH } from '../render/canvas';
 import { createMeet, MEET_OUT_MS } from './meet';
 import { petStandsLeft } from '../game/friends';
+import { needsYou, otherRoom, petsIn, roommates } from '../game/rooms';
 import type { Friend } from '../game/state';
 import { potAt, type GardenScene } from '../render/garden';
 import type { DeliveryScene } from '../render/delivery';
@@ -70,6 +71,7 @@ export interface HomeCallbacks extends MenuCallbacks {
   onAddFriend: () => void;
   onSwitchPet: (id: string) => void; // tapped the other pet in the room
   onMakeRoom: () => void; // an egg is waiting in the nest
+  onRoomDoor: () => void; // the door to the other room (with the Family Home)
   onCollectPoop: (petId: string, slot: number) => void;
   onBathe: () => boolean; // the bath is done and it's dry; false if refused
   petSheet: () => SpriteSheet | undefined; // the pet's sprite, for where its body is
@@ -231,8 +233,11 @@ function statBar(label: string, icon: string): StatBar {
 // block.
 const SLIDE_MS_PER_SEGMENT = 70;
 
+// The other pet in the room you're looking at (not the other room's).
+const roommate = (s: GameState): Pet | undefined => roommates(s)[0];
+
 // Two pets in the room: the other one is there, not out on a journey.
-const twoHome = (s: GameState) => s.housemates.length > 0 && !isAway(s.housemates[0]);
+const twoHome = (s: GameState) => { const mate = roommate(s); return !!mate && !isAway(mate); };
 
 function button(label: string, className: string, onClick: () => void): HTMLButtonElement {
   const b = document.createElement('button');
@@ -336,7 +341,16 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     mouth: 0.64,
     food: 0.72,
   }));
-  roomWrap.append(canvas, fx.el, bubble, corner);
+  // The door in the other top corner, once there's a Family Home: it goes
+  // to the other room, or moves a pet there. A dot on it says a pet in
+  // the other room needs you.
+  const door = document.createElement('button');
+  door.className = 'note-btn room-door';
+  door.innerHTML = ITEM_ICONS.roomDoor;
+  door.setAttribute('aria-label', STRINGS.familyHome.door);
+  door.hidden = true;
+  door.addEventListener('click', () => cb.onRoomDoor());
+  roomWrap.append(canvas, fx.el, bubble, corner, door);
 
   // Warning / sick / recovering / passed away banner, hidden when all is well.
   const banner = document.createElement('div');
@@ -578,7 +592,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     const which = tappedPet(e);
     if (!which) return;
     // Tapping the other pet looks after it instead.
-    const other = latest?.state.housemates[0];
+    const other = latest && roommate(latest.state);
     if (which === 'housemate' && other) return cb.onSwitchPet(other.id);
     press = { x: e.clientX, y: e.clientY, held: false };
     clearTimeout(holdTimer);
@@ -658,7 +672,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     if (!s || petAway) return false;
     const { x, y } = roomPoint(e);
     const lefts = petLefts(s);
-    const other = s.housemates[0];
+    const other = roommate(s);
     const candidates: [Pet, number][] = [[s.pet, lefts.pet]];
     if (other && lefts.other !== null) candidates.push([other, lefts.other]);
     for (const [p, left] of candidates) {
@@ -1049,6 +1063,11 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       // With two pets, the craving bubble floats over the one you're
       // looking after.
       roomWrap.dataset.spot = !twoHome(state) ? 'middle' : petStandsLeft(state) ? 'left' : 'right';
+      const elsewhere = otherRoom(state);
+      door.hidden = !elsewhere;
+      const waiting = !!elsewhere && petsIn(state, elsewhere).some(needsYou);
+      door.classList.toggle('needs-you', waiting);
+      door.setAttribute('aria-label', waiting ? `${STRINGS.familyHome.door}. ${STRINGS.familyHome.needsYou}` : STRINGS.familyHome.door);
       // How many of each food you have ("Free" for food that never runs out).
       // Caught fish and cooked dishes also show their stars. Dishes only
       // show up once you have some, to keep the list short.

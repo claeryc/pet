@@ -162,3 +162,11 @@ describe('save migration to the Shop extras', () => {
     expect(out.state.baitOn).toBe(false);
   });
 });
+
+describe('save migration to the daily fishing limit', () => {
+  it('starts with no fish counted today', () => {
+    const out = migrate({ version: 30, state: { pet: { stage: 'teen' } } });
+    expect(out.version).toBe(SAVE_VERSION);
+    expect(out.state.pond).toEqual({ day: '', fish: 0 });
+  });
+});

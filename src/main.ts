@@ -31,7 +31,8 @@ import { feeling } from './game/likes';
 import { afterEating, chooseExpression, idleEveryMs, reactionMs, type Expression, type Reaction } from './game/expressions';
 import { getTrait, traitOf } from './game/traits';
 import { drawFace } from './render/faces';
-import { cast, land, toggleBait } from './game/fishing';
+import { cast, justGotShy, land, toggleBait } from './game/fishing';
+import { buyFamilyHome, goToRoom, grantFamilyHome, movePet, otherRoom, ownsFamilyHome, petsIn, roomDecor, roommates, type RoomBlock } from './game/rooms';
 import { TOSS_MS } from './render/garden';
 import { LEAP_MS } from './ui/fishing';
 import { cook } from './game/cooking';
@@ -565,9 +566,12 @@ const portraitOf = (pet: Pet) => characterImage(sheetFor(pet));
 // banner's Make room button.
 function askToMakeRoom(): void {
   if (!state.nest || choice.isOpen() || naming.isOpen()) return;
+  // Without a Family Home, one quiet line says it would fit everyone. Never
+  // while a pet isn't well (nothing paid shows up then).
+  const hint = !ownsFamilyHome(state) && allPets(state).every((p) => p.condition === 'healthy');
   choice.open({
     title: STRINGS.friends.nestTitle,
-    text: STRINGS.friends.nestAsk,
+    text: hint ? `${STRINGS.friends.nestAsk} ${STRINGS.familyHome.nestHint}` : STRINGS.friends.nestAsk,
     options: [
       // (A pet out on a journey isn't in the room to ask.)
       ...allPets(state).filter((p) => !isAway(p)).map((p) => ({
@@ -579,8 +583,95 @@ function askToMakeRoom(): void {
           home.toast(STRINGS.friends.retired(p.name));
         },
       })),
+      ...(hint ? [{ label: STRINGS.familyHome.seeShop, soft: true, onPick: () => home.toast(STRINGS.familyHome.shopNote, 'room') }] : []),
       { label: STRINGS.friends.notYet, onPick: () => {} },
     ],
+  });
+}
+
+// The door to the other room: go there, or move the pet you're looking
+// after there (swapping with a pet there when it's full).
+function askRoomDoor(): void {
+  const s = simulate(state, gameNow());
+  const to = otherRoom(s);
+  if (!to) return;
+  const F = STRINGS.familyHome;
+  const pet = s.pet;
+  const there = petsIn(s, to).filter((p) => !isAway(p));
+  const full = petsIn(s, to).length >= CONFIG.friends.maxPets;
+  choice.open({
+    title: F.rooms[to === 'family' ? 'main' : 'family'],
+    text: F.ask,
+    options: [
+      ...(there.length > 0 ? [{ label: F.goTo[to], onPick: () => {
+        const result = goToRoom(simulate(state, gameNow()), to);
+        setState(result.state);
+        if (result.blocked) return blockedRoom(result.blocked, pet.name);
+        home.toast(F.rooms[to]);
+      } }] : []),
+      ...(isAway(pet) ? [] : full
+        ? there.map((p) => ({ label: F.swap(pet.name, p.name), picture: portraitOf(p), soft: true, onPick: () => moveTo(pet.id, to, p.id) }))
+        : [{ label: F.move(pet.name, to), picture: portraitOf(pet), soft: true, onPick: () => moveTo(pet.id, to) }]),
+      { label: F.notNow, soft: true, onPick: () => {} },
+    ],
+  });
+}
+
+function moveTo(id: string, to: string, swapWith?: string): void {
+  const s = simulate(state, gameNow());
+  const name = allPets(s).find((p) => p.id === id)?.name ?? '';
+  const result = movePet(s, id, swapWith);
+  setState(result.state);
+  if (result.blocked) return blockedRoom(result.blocked, name);
+  sound('place');
+  home.toast(STRINGS.familyHome.moved(name, to));
+}
+
+function blockedRoom(reason: RoomBlock, name: string): void {
+  blocked(STRINGS.familyHome.blocked[reason](name));
+}
+
+// The Family Home from the Shop: star fragments, or money (a stand-in for
+// now, see src/payments.ts).
+function onBuyFamilyHome(withFragments: boolean): void {
+  if (ownsFamilyHome(state)) return;
+  const got = (s: GameState) => {
+    setState(s);
+    sound('purchase');
+    home.reveal({ icon: ITEM_ICONS.familyHome, name: STRINGS.familyHome.name, count: 1, stars: 0 });
+    home.toast(STRINGS.familyHome.bought);
+  };
+  if (withFragments) {
+    const result = buyFamilyHome(state);
+    if (result.blocked === 'notEnoughFragments') return blocked(STRINGS.shop.notEnoughFragments);
+    if (result.blocked) return;
+    const { perStar } = CONFIG.revival.fragments;
+    const left = state.fragments.pieces - CONFIG.familyHome.fragments;
+    // Like a star-only hat: first say how far that leaves a free star.
+    if (left >= perStar) return got(result.state);
+    choice.open({
+      title: STRINGS.shop.spendTitle,
+      text: STRINGS.shop.spendAsk(STRINGS.familyHome.name, CONFIG.familyHome.fragments, left, perStar),
+      options: [
+        { label: STRINGS.shop.spendYes, onPick: () => got(buyFamilyHome(state).state) },
+        { label: STRINGS.shop.spendNo, soft: true, onPick: () => {} },
+      ],
+    });
+    return;
+  }
+  const price = CONFIG.familyHome.price;
+  const confirmPay = () => new Promise<boolean>((resolve) => {
+    choice.open({
+      title: STRINGS.familyHome.name,
+      text: STRINGS.revival.payAsk(STRINGS.familyHome.payWhat, price),
+      options: [
+        { label: STRINGS.revival.pay(price), onPick: () => resolve(true) },
+        { label: STRINGS.revival.cancel, soft: true, onPick: () => resolve(false) },
+      ],
+    });
+  });
+  void purchase('familyHome', confirmPay).then((paid) => {
+    if (paid) got(grantFamilyHome(state));
   });
 }
 
@@ -749,14 +840,15 @@ const home = createHomeScreen(root, {
     return !result.blocked;
   },
   onLand: (grade) => {
-    const { state: next, caught, count } = land(state, grade, Math.random(), Math.random());
+    const { state: next, caught, count, rewarded } = land(state, grade, Math.random(), Math.random());
     setState(next);
     const label = STRINGS.fishing.grades[grade];
     if (caught) {
       // Show it once it has flipped up out of the water.
       window.setTimeout(() => {
         showGot(caught, count, label);
-        luckySeed('fishing', grade === 'perfect');
+        if (rewarded) luckySeed('fishing', grade === 'perfect');
+        else if (justGotShy(state)) home.notice(STRINGS.fishing.shy);
       }, LEAP_MS);
       react('happy');
     } else {
@@ -946,6 +1038,8 @@ const home = createHomeScreen(root, {
   },
   onUseDecor: (kind, id) => runShop(useDecor(state, kind, id)),
   onBuyPack: (id) => void buyPack(id as ProductId),
+  onBuyFamilyHome,
+  onRoomDoor: askRoomDoor,
   onWakePercy: () => {
     const result = restPercy(simulate(state, gameNow()), gameNow());
     setState(result.state);
@@ -1173,7 +1267,7 @@ function render(timeMs: number): void {
   // Poops on the floor, and smell lines (not while it's soapy or wet).
   const messOf = (p: Pet, washing = false) => ({ poops: p.hygiene.poops.map((q) => q.slot), smelly: p.hygiene.smelly && !washing });
   // The other pet in the room, and a friend over to play.
-  const other = state.housemates.find((p) => !isAway(p));
+  const other = roommates(state).find((p) => !isAway(p));
   const meeting = home.meetScene();
   const trip = home.tripScene();
   drawRoom(
@@ -1200,7 +1294,7 @@ function render(timeMs: number): void {
         glow: other.starGlow && other.condition !== 'passed',
       },
       petOnLeft: petStandsLeft(state),
-      room: state.room,
+      room: roomDecor(state),
       trip: trip && {
         place: trip.place,
         bag: (state.inventory.bags ?? []).includes('courier') ? 'courier' : 'sack',

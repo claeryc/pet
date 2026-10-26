@@ -20,6 +20,7 @@ import { stepJourneys, travelTick } from './journeys';
 import type { GameState, Pet } from './state';
 import { carePerks, gardenPerks, type CarePerks } from './skills';
 import { hygieneTick } from './hygiene';
+import { needsSpeed } from './rooms';
 
 const MS_PER_MINUTE = 60_000;
 const TICKS_PER_HOUR = 60 / CONFIG.tickMinutes;
@@ -94,17 +95,19 @@ function tick(pet: Pet, t: number, wasNight: boolean, perks: CarePerks): void {
   const ageRate = cfg.growth.decayMultiplier[pet.stage];
   const slow = (pet.asleep ? cfg.sleep.decayMultiplierAsleep : 1) * ageRate * perks.decay;
   const sickJoy = pet.condition === 'sick' ? cfg.sickness.sickJoyMultiplier : 1;
+  // The Family Home is easier on tummy, joy and energy (not on poop and baths).
+  const home = needsSpeed(pet);
   // Timed food effects: drop any that have worn off, then apply the rest.
   pet.buffs = pet.buffs.filter((b) => t <= b.until);
   const hungerBuff = pet.buffs.find((b) => b.stat === 'hunger');
   const slowHunger = hungerBuff ? 1 - hungerBuff.percent / 100 : 1;
-  s.hunger = clampStat(s.hunger - perTick(cfg.decayPerHour.hunger) * slow * slowHunger);
-  s.happiness = clampStat(s.happiness - perTick(cfg.decayPerHour.happiness) * slow * sickJoy);
+  s.hunger = clampStat(s.hunger - perTick(cfg.decayPerHour.hunger) * slow * slowHunger * home);
+  s.happiness = clampStat(s.happiness - perTick(cfg.decayPerHour.happiness) * slow * sickJoy * home);
   if (pet.asleep) {
     s.energy = clampStat(s.energy + perTick(cfg.sleep.energyPerHourAsleep));
   } else {
     const lateNight = night ? cfg.sleep.energyMultiplierNightAwake : 1;
-    s.energy = clampStat(s.energy - perTick(cfg.decayPerHour.energy) * lateNight);
+    s.energy = clampStat(s.energy - perTick(cfg.decayPerHour.energy) * lateNight * home);
   }
   // Poop, and getting smelly (see hygiene.ts).
   hygieneTick(pet, t, cfg.tickMinutes, slow);

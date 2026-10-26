@@ -151,6 +151,13 @@ export const CONFIG = {
     fragments: { perStar: 5, careDaysPerFragment: 6 },
   },
 
+  // The Family Home: a second room with `friends.maxPets` more spots (see
+  // src/game/rooms.ts). Pets there lose tummy, joy and energy at
+  // `needsSpeed` of the usual rate; poop, baths and sickness don't change.
+  // It costs `fragments` star fragments, or `price` in real money (only a
+  // stand-in for now, see src/payments.ts).
+  familyHome: { needsSpeed: 0.5, fragments: 10, price: '€2.99' },
+
   // Revival Stars bought with real money, sold calmly as "a star in your
   // pocket" in the Shop (never next to the dying countdown). `price` is
   // shown as it is; buying is only a stand-in for now (see src/payments.ts).
@@ -309,6 +316,11 @@ export const CONFIG = {
     // How many fish one successful catch gives. A food buff could raise this
     // later on (e.g. a chance of an extra fish).
     fishPerCatch: 1,
+    // The first this many fish landed each day (however many pets take a
+    // turn) give Keeper XP and a chance of a seed. After that the fish are
+    // shy: you can keep fishing for food, but without XP or seeds. One pet
+    // lands about 15 a day, so only swapping in rested pets reaches it.
+    rewardedPerDay: 30,
     // Bait from the Shop. While you have some, each fish you land uses one
     // and is more likely to be a salmon or lobster (odds in percent).
     bait: {
@@ -509,8 +521,9 @@ export const CONFIG = {
       ],
       waitDays: 7,
     },
-    // How many pets fit in the room. A little one that arrives when it's
-    // full waits in the nest until you make room (nobody has to leave).
+    // How many pets fit in a room (the main room, and the Family Home once
+    // you have it). A little one that arrives when they're full waits in
+    // the nest until you make room (nobody has to leave).
     maxPets: 2,
     // Wanderers lean towards common characters (percent by stars), so
     // friends' pets stay the best route to rare little ones.

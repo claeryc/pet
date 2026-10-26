@@ -171,6 +171,36 @@ export const ITEM_ICONS: Record<string, string> = {
     '............',
   ]),
   // A flower pot with a "+" on it, for buying another.
+  // The Family Home: a little cottage with a heart in the window.
+  familyHome: pixelIcon([
+    '.....kk.....',
+    '....krrk....',
+    '...krrrrk...',
+    '..krrrrrrk..',
+    '.krrrrrrrrk.',
+    'kkkkkkkkkkkk',
+    '.keeeeeeeek.',
+    '.kepekkkeek.',
+    '.keeekcckek.',
+    '.keeekcckek.',
+    '.keeekcckek.',
+    '.kkkkkkkkkk.',
+  ]),
+  // The door in the corner of the room, to go between rooms.
+  roomDoor: pixelIcon([
+    '...kkkkkk...',
+    '..kcccccck..',
+    '..kcmccmck..',
+    '..kcmccmck..',
+    '..kcccccck..',
+    '..kcmccmck..',
+    '..kcmccmyk..',
+    '..kcmccmck..',
+    '..kcccccck..',
+    '..kcccccck..',
+    '..kcccccck..',
+    '.kkkkkkkkkk.',
+  ]),
   gardenPot: pixelIcon([
     '............',
     '.....gg.....',
