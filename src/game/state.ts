@@ -295,7 +295,7 @@ export type Message =
 // Star fragments, the free way to a Revival Star (see src/game/fragments.ts).
 export interface Fragments {
   pieces: number; // fragments collected and not spent yet
-  careDays: number; // good care days towards the next fragment
+  careDays: number; // good care days so far (each gave `CONFIG.fragments.perGoodDay`)
   day: string; // the local day being watched now, e.g. "2026-10-21"
   dayGood: boolean; // whether that day is still going well
   home?: boolean; // whether a pet was home that day (not all away on journeys)

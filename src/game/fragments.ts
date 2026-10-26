@@ -1,13 +1,15 @@
-// Star fragments: the free way to a Revival Star. They stay fragments until
-// the player spends them: five make a Revival Star (`makeStar`), and a few
-// things in the Shop cost fragments instead of gold (a star-only hat).
-// They only come from good care days, never from gold or real money:
-// a day you visit and none of your pets gets a warning (or worse). Every
-// `careDaysPerFragment` such days give a fragment. The days don't have to
-// be in a row: a missed day just doesn't count. A day counts once however
-// many pets you have. That's about one free star a month for someone who
-// plays every day. A day when every pet is away on a journey doesn't count
-// (nobody was home to look after).
+// Star fragments: the one currency for things money can also buy. They
+// stay fragments until the player spends them: `perStar` make a Revival
+// Star (`makeStar`), and the Family Home and a star-only hat cost
+// fragments instead of gold. They never buy gold, food or charms.
+// They're earned by caring well: every good care day gives `perGoodDay`
+// (a day you visit and none of your pets gets a warning, or worse), and
+// every Milestone badge gives `perMilestone` (see milestones.ts). The
+// days don't have to be in a row: a missed day just doesn't count. A day
+// counts once however many pets you have, so a daily player earns about
+// 150 a month. A day when every pet is away on a journey doesn't count
+// (nobody was home to look after). They can also be bought in packs
+// (`CONFIG.store`).
 
 import { CONFIG } from './config';
 import { countUp } from './achievements';
@@ -16,10 +18,10 @@ import { allPets } from './friends';
 import type { GameState } from './state';
 import { nobodyHome } from './presence';
 
-const F = CONFIG.revival.fragments;
+const F = CONFIG.fragments;
 
 // Hands out any fragments earned since last time. Says how many were just
-// earned.
+// earned. `careDays` counts every good care day so far.
 export function stepFragments(state: GameState): { state: GameState; pieces: number } {
   const fr = state.fragments;
   let { careDays, day, dayGood } = fr;
@@ -29,10 +31,9 @@ export function stepFragments(state: GameState): { state: GameState; pieces: num
   // A new day: the one before counts if it went well.
   const today = localDay(state.lastUpdated);
   if (day !== today) {
-    if (day !== '' && dayGood && home) careDays += 1;
-    if (careDays >= F.careDaysPerFragment) {
-      careDays -= F.careDaysPerFragment;
-      earned = 1;
+    if (day !== '' && dayGood && home) {
+      careDays += 1;
+      earned = F.perGoodDay;
     }
     day = today;
     dayGood = true;
@@ -54,6 +55,17 @@ export function stepFragments(state: GameState): { state: GameState; pieces: num
 }
 
 export const fragmentCount = (state: GameState) => state.fragments.pieces;
+
+// Adds fragments from a Milestone or a bought pack.
+export function addFragments(state: GameState, n: number): GameState {
+  return n > 0 ? { ...state, fragments: { ...state.fragments, pieces: state.fragments.pieces + n } } : state;
+}
+
+// About how many weeks of good care days are left before `pieces` reach a
+// Revival Star (0 once there are enough).
+export function weeksToStar(pieces: number): number {
+  return Math.max(0, Math.ceil((F.perStar - pieces) / F.perGoodDay / 7));
+}
 
 // Turns `perStar` fragments into a Revival Star.
 export function makeStar(state: GameState): { state: GameState; blocked?: 'notEnoughFragments' } {

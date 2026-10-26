@@ -6768,10 +6768,10 @@ body {
 
 .frag-slot {
   position: absolute;
-  left: 57px;
-  top: 57px;
-  width: 36px;
-  height: 36px;
+  left: 61px;
+  top: 61px;
+  width: 28px;
+  height: 28px;
   transform: rotate(var(--a)) translateY(-52px);
   opacity: 0.25;
   filter: grayscale(1);

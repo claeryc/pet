@@ -115,15 +115,15 @@ function craftButton(ready: boolean, onClick: () => void): HTMLButtonElement {
   return b;
 }
 
-// Star fragments: how many you have and the days towards the next one,
-// with a "?" for the details and the Craft button.
-function fragmentsRow(pieces: number, perStar: number, days: number, perFragment: number, cb: ShopCallbacks): HTMLElement {
+// Star fragments: how many you have and how many a good day gives, with a
+// "?" for the details and the Craft button.
+function fragmentsRow(pieces: number, perStar: number, cb: ShopCallbacks): HTMLElement {
   const help = button('?', cb.onFragmentsHelp, 'shop-help');
   help.setAttribute('aria-label', STRINGS.shop.fragments);
   const actions = document.createElement('span');
   actions.className = 'shop-row-actions';
   actions.append(help, craftButton(pieces >= perStar, cb.onMakeStar));
-  const el = row(FRAGMENT_ICON, STRINGS.shop.fragments, STRINGS.shop.fragmentsNote(pieces, days, perFragment), actions);
+  const el = row(FRAGMENT_ICON, STRINGS.shop.fragments, STRINGS.shop.fragmentsNote(pieces, CONFIG.fragments.perGoodDay), actions);
   el.classList.add('shop-row-lines');
   return el;
 }
@@ -378,27 +378,33 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
     { icon: ITEM_ICONS.familyHome, faded: owned, row: row(ITEM_ICONS.familyHome, STRINGS.familyHome.name, STRINGS.familyHome.shopNote, homeActions) },
     ...[...WALLPAPERS, ...CURTAINS].map((d) => decorEntry(state, d, cb)),
   ];
-  // Revival Stars: the star fragments collected so far (free, from good
-  // care), which make a star once there are enough, then stars to keep in
-  // your pocket, bought with real money.
-  const note = STRINGS.shop.revivalNote(revivalStars(state));
-  const { perStar, careDaysPerFragment } = CONFIG.revival.fragments;
+  // Star fragments: the ones collected so far (from good care, or bought),
+  // which make a Revival Star once there are enough, then packs of them
+  // bought with real money.
+  const { perStar } = CONFIG.fragments;
   const pieces = state.fragments.pieces;
   const revival: Entry[] = [
     {
       icon: FRAGMENT_ICON,
       count: countBadge(pieces),
-      row: fragmentsRow(pieces, perStar, state.fragments.careDays, careDaysPerFragment, cb),
+      row: fragmentsRow(pieces, perStar, cb),
     },
-    ...CONFIG.store.map((p) => ({
-      icon: ITEM_ICONS[p.item],
-      row: row(ITEM_ICONS[p.item], STRINGS.shop.revivalPack(p.count), note, button(p.price, () => cb.onBuyPack(p.id))),
+    {
+      icon: ITEM_ICONS.revivalStar,
+      count: countBadge(revivalStars(state)),
+      row: row(ITEM_ICONS.revivalStar, STRINGS.shop.revivalStar, STRINGS.shop.revivalNote(revivalStars(state), perStar), label('')),
+    },
+    ...CONFIG.store.map((p, i) => ({
+      icon: FRAGMENT_ICON,
+      row: row(FRAGMENT_ICON, STRINGS.shop.fragmentPack(p.fragments),
+        i === CONFIG.store.length - 1 ? STRINGS.shop.fragmentPackBest : STRINGS.shop.fragmentPackNote,
+        button(p.price, () => cb.onBuyPack(p.id))),
     })),
   ];
   // One category at a time, picked from the tabs at the top. Journeys only
   // shows once it has opened up.
   const tabs: ShopTab[] = [
-    { id: 'revival', title: STRINGS.shop.revivalTab, icon: ITEM_ICONS[CONFIG.store[0].item], entries: revival },
+    { id: 'revival', title: STRINGS.shop.revivalTab, icon: ITEM_ICONS.revivalStar, entries: revival },
     { id: 'food', title: STRINGS.shop.food, icon: ITEM_ICONS.strawberry, entries: food },
     { id: 'garden', title: STRINGS.shop.garden, icon: ITEM_ICONS.gardenPot, entries: garden },
     { id: 'fishing', title: STRINGS.shop.fishing, icon: ITEM_ICONS.bait, entries: fishing },

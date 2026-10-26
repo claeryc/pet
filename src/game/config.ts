@@ -143,27 +143,32 @@ export const CONFIG = {
 
   // Bringing a pet back after it passed away. It wakes up a bit weak,
   // with these stats (at least), and rests like it does after medicine.
-  // A Revival Star can always be earned: `perStar` star fragments make
-  // one, and every `careDaysPerFragment` good care days (days you visit
-  // and no pet gets a warning, see src/game/fragments.ts) give a fragment.
   revival: {
     stats: { hunger: 60, happiness: 60, health: 60, energy: 60 },
-    fragments: { perStar: 5, careDaysPerFragment: 6 },
   },
+
+  // Star fragments (see src/game/fragments.ts): the one currency for
+  // things money can also buy. They're earned by caring well: every good
+  // care day (a day you visit and no pet gets a warning) gives `perGoodDay`,
+  // and every Milestone badge gives `perMilestone`. They can also be bought
+  // in packs (`store` below). `perStar` of them make a Revival Star, which
+  // money can't buy directly. A daily player earns about 150 a month.
+  fragments: { perGoodDay: 5, perMilestone: 25, perStar: 500 },
 
   // The Family Home: a second room with `friends.maxPets` more spots (see
   // src/game/rooms.ts). Pets there lose tummy, joy and energy at
   // `needsSpeed` of the usual rate; poop, baths and sickness don't change.
   // It costs `fragments` star fragments, or `price` in real money (only a
   // stand-in for now, see src/payments.ts).
-  familyHome: { needsSpeed: 0.5, fragments: 10, price: '€2.99' },
+  familyHome: { needsSpeed: 0.5, fragments: 300, price: '€2.99' },
 
-  // Revival Stars bought with real money, sold calmly as "a star in your
-  // pocket" in the Shop (never next to the dying countdown). `price` is
-  // shown as it is; buying is only a stand-in for now (see src/payments.ts).
+  // Star fragment packs, sold calmly in the Shop (never next to the dying
+  // countdown). Only the biggest pack has a bonus. `price` is shown as it
+  // is; buying is only a stand-in for now (see src/payments.ts).
   store: [
-    { id: 'revival1', item: 'revivalStar', count: 1, price: '€0.99' },
-    { id: 'revival3', item: 'revivalStar', count: 3, price: '€1.99' },
+    { id: 'fragments100', fragments: 100, price: '€0.99' },
+    { id: 'fragments300', fragments: 300, price: '€2.99' },
+    { id: 'fragments650', fragments: 650, price: '€4.99' },
   ],
 
   // The hidden Care Score (0-100) tracks long-term care. Later it decides

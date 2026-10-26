@@ -3,6 +3,7 @@ import { simulate } from '../src/game/simulate';
 import { type GameState } from '../src/game/state';
 import { newTeen } from './helpers';
 import { feed, giveMedicine, play, revive, sayGoodbye } from '../src/game/actions';
+import { makeStar } from '../src/game/fragments';
 import { CONFIG } from '../src/game/config';
 import { grantPack, revivalStars } from '../src/game/economy';
 import { getLook, isCritical, timeLeftToTreat } from '../src/game/stats';
@@ -80,12 +81,17 @@ describe('passing away', () => {
   });
 });
 
+// A state with one Revival Star in the pocket.
+const withStar = (s: GameState): GameState =>
+  ({ ...s, inventory: { ...s.inventory, supplies: { ...s.inventory.supplies, revivalStar: revivalStars(s) + 1 } } });
+
 describe('Revival Stars', () => {
   const now = START + (PASS + 1) * HOUR;
 
-  it('a Star Shop pack adds stars', () => {
-    expect(revivalStars(grantPack(newTeen(START), 'revival1'))).toBe(1);
-    expect(revivalStars(grantPack(grantPack(newTeen(START), 'revival1'), 'revival3'))).toBe(4);
+  it('a Star Shop pack gives fragments, never a star on its own', () => {
+    const s = grantPack(newTeen(START), 'fragments650');
+    expect(revivalStars(s)).toBe(0);
+    expect(revivalStars(makeStar(s).state)).toBe(1);
   });
 
   it('cannot revive without a star', () => {
@@ -93,7 +99,7 @@ describe('Revival Stars', () => {
   });
 
   it('brings the pet back weak and resting, and uses one star', () => {
-    const gone = grantPack(simulate(sickPet(), now), 'revival1');
+    const gone = withStar(simulate(sickPet(), now));
     const back = revive(gone, now).state;
     expect(back.pet.condition).toBe('healthy');
     for (const [stat, least] of Object.entries(CONFIG.revival.stats)) {
@@ -105,7 +111,7 @@ describe('Revival Stars', () => {
   });
 
   it('does nothing to a pet that is still alive', () => {
-    const s = grantPack(newTeen(START), 'revival1');
+    const s = withStar(newTeen(START));
     expect(revive(s, START).blocked).toBe('notSick');
   });
 });

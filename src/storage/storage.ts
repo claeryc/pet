@@ -20,7 +20,7 @@ const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 34;
+export const SAVE_VERSION = 35;
 
 export interface SaveFile {
   version: number;
@@ -415,6 +415,16 @@ export function migrate(save: SaveFile): SaveFile {
     if (food) food.riceBall = Math.max(food.riceBall ?? 0, CONFIG.riceJar.size);
     st.riceJarAt = null;
     save.version = 34;
+  }
+  // Version 34 -> 35: star fragments come 5 a day instead of 1 every 6
+  // good care days, and prices went up to match. Each old fragment is
+  // worth 30 now (6 days of 5), and the good days already counted towards
+  // the next one are paid out at 5 each. `careDays` now counts every good
+  // day so far. Revival Stars already made stay as they are.
+  if (save.version === 34) {
+    const fr = save.state.fragments;
+    if (fr) fr.pieces = (fr.pieces ?? 0) * 30 + (fr.careDays ?? 0) * CONFIG.fragments.perGoodDay;
+    save.version = 35;
   }
   return save;
 }

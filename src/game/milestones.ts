@@ -13,6 +13,7 @@ import { RECIPES } from './cooking';
 import { getCharacter } from './growth';
 import { logMessage } from './messages';
 import { addXp } from './skills';
+import { addFragments } from './fragments';
 
 const counted = (key: string) => (state: GameState) => (state.tally[key] ?? 0) > 0;
 
@@ -40,14 +41,15 @@ export const MILESTONES = Object.keys(RULES) as MilestoneId[];
 
 export const hasMilestone = (state: GameState, id: MilestoneId) => state.milestones.includes(id);
 
-// Hands out any Milestone just reached, with its Keeper XP and a line in
-// Messages. Returns them so the game can say so.
+// Hands out any Milestone just reached, with its Keeper XP, its star
+// fragments and a line in Messages. Returns them so the game can say so.
 export function updateMilestones(state: GameState): { state: GameState; earned: MilestoneId[] } {
   let s = state;
   const earned: MilestoneId[] = [];
   for (const id of MILESTONES) {
     if (hasMilestone(s, id) || !RULES[id](s)) continue;
     s = addXp({ ...s, milestones: [...s.milestones, id] }, CONFIG.skills.milestoneXp);
+    s = addFragments(s, CONFIG.fragments.perMilestone);
     s = logMessage(s, { kind: 'milestone', at: s.lastUpdated, id });
     earned.push(id);
   }
