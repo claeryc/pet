@@ -380,10 +380,10 @@ describe('growing up as a little one', () => {
     // Two 1-star parents: no 3-star little ones.
     const plain = kids([{ character: 'sprig', variant: null }, { character: 'bubbit', variant: null }], ['nature', 'ocean']);
     expect(plain.some((c) => c.stars === 3)).toBe(false);
-    // A Jellop parent lets an Ocean little one reach Tidecrest, but a
+    // A Jellop parent lets an Ocean little one reach Pinchy, but a
     // Nature one still stops at Acornet.
     const climbed = kids([{ character: 'sprig', variant: null }, { character: 'jellop', variant: null }], ['nature', 'ocean']);
-    expect(climbed.some((c) => c.id === 'tidecrest')).toBe(true);
+    expect(climbed.some((c) => c.id === 'pinchy')).toBe(true);
     expect(climbed.some((c) => c.id === 'ribbit')).toBe(false);
   });
 
@@ -469,7 +469,7 @@ describe('the Collection and wanderers', () => {
     const lean = CONFIG.friends.unmetWandererChance / 100;
     expect(cloudlets).toBeGreaterThan(0.25 + 0.75 * lean - 0.08);
     // Nothing new to meet: just as before.
-    const all = makeWanderer(NOON, [], ['sprig', 'bubbit', 'dumpling', 'cloudlet', 'acornet', 'jellop', 'puddling', 'moonpip', 'ribbit', 'tidecrest', 'cuppie', 'starhoot']);
+    const all = makeWanderer(NOON, [], ['sprig', 'bubbit', 'dumpling', 'cloudlet', 'acornet', 'jellop', 'puddling', 'moonpip', 'ribbit', 'pinchy', 'cuppie', 'starhoot']);
     expect(all.character).toBe(makeWanderer(NOON, []).character);
   });
 });

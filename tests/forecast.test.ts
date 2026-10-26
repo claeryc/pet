@@ -58,7 +58,7 @@ describe('the forecast before mingling', () => {
     expect(plain.stars[1] + plain.stars[2]).toBeCloseTo(100, 5);
     // Two 3-star parents: their own themes reach 3 stars, a carried theme
     // (the outside share) stops at 2.
-    const stars = forecast(...Object.values(parents({ character: 'ribbit' }, { character: 'tidecrest', variant: null })) as [Pet, Friend]);
+    const stars = forecast(...Object.values(parents({ character: 'ribbit' }, { character: 'pinchy', variant: null })) as [Pet, Friend]);
     const best = CONFIG.rarityStarParents[0].odds;
     expect(stars.stars[1]).toBe(best[1]);
     expect(stars.stars[3]).toBeCloseTo(best[3] * (1 - CONFIG.inheritance.outsideThemeChance / 100), 5);

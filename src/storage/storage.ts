@@ -20,7 +20,7 @@ const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 32;
+export const SAVE_VERSION = 33;
 
 export interface SaveFile {
   version: number;
@@ -378,6 +378,34 @@ export function migrate(save: SaveFile): SaveFile {
   if (save.version === 31) {
     save.state.familyHome = { owned: false, room: { wallpaper: 'plain', curtains: null } };
     save.version = 32;
+  }
+  if (save.version === 32) {
+    // Pinchy (the lobster) took Tidecrest's place as Ocean's 3-star, and
+    // Tidecrest's Lobster colour went with it.
+    const st = save.state;
+    const fix = (thing: any) => {
+      if (thing?.character !== 'tidecrest') return;
+      thing.character = 'pinchy';
+      if ('variant' in thing) thing.variant = null;
+    };
+    const fixGenes = (genes: any) => {
+      if (genes?.variant?.startsWith('tidecrest:')) genes.variant = null;
+    };
+    const pets: any[] = [st.pet, ...(st.housemates ?? []), st.nest, ...(st.family ?? [])].filter(Boolean);
+    for (const p of pets) {
+      fix(p);
+      for (const look of p.parentLooks ?? []) fix(look);
+      fixGenes(p.carried);
+      for (const g of p.parentCarried ?? []) fixGenes(g);
+    }
+    for (const m of [...(st.friends ?? []), st.visit?.guest, ...(st.messages ?? [])]) {
+      fix(m);
+      fixGenes(m?.carried);
+    }
+    const key = (k: string) => (k === 'tidecrest' || k.startsWith('tidecrest:') ? 'pinchy' : k);
+    st.charactersFound = [...new Set((st.charactersFound ?? []).map(key))];
+    st.charactersMet = [...new Set((st.charactersMet ?? []).map(key))];
+    save.version = 33;
   }
   return save;
 }

@@ -15,7 +15,7 @@ Each theme has a common (★), an uncommon (★★) and a rare (★★★) chara
 | Theme | ★ | ★★ | ★★★ |
 | --- | --- | --- | --- |
 | Nature | Sprig | Acornet | Ribbit |
-| Ocean | Bubbit | Jellop | Tidecrest (and Lobster variant) |
+| Ocean | Bubbit | Jellop | Pinchy |
 | Bakery | Dumpling | Puddling | Cuppie |
 | Starry | Cloudlet | Moonpip | Starhoot |
 | Cave (later pack) | Pebblit (and Amber variant) | Crystalback | Geodon |
@@ -241,7 +241,7 @@ Characters drawn on the same body (same size, same top where a hat rests) share 
 | `acorn` | Acornet (hat sits on the acorn cap) |
 | `frog` | Ribbit (between the eye bumps) |
 | `dome` | Jellop |
-| `crest` | Tidecrest |
+| `lobster` | Pinchy |
 | `flan` | Puddling |
 | `cupcake` | Cuppie (hat sits on the frosting) |
 | `cloud` | Cloudlet (hat sits on the top puff) |

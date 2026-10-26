@@ -79,6 +79,28 @@ describe('save migration', () => {
     expect(out.charactersMet).toEqual(['ribbit']);
   });
 
+  it('turns Tidecrest (and its Lobster colour) into Pinchy', () => {
+    const s: any = createNewGame(1);
+    s.pet = { ...s.pet, stage: 'adult', character: 'tidecrest', variant: 'lobster', trait: 'cheery',
+      parentLooks: [{ character: 'tidecrest', variant: 'lobster' }], carried: { theme: null, variant: 'tidecrest:lobster' } };
+    s.family = [{ id: 'f', character: 'tidecrest', variant: null, trait: 'playful' }];
+    s.friends = [{ id: 'w', character: 'tidecrest', variant: 'lobster', carried: { theme: 'nature', variant: 'tidecrest:lobster' } }];
+    s.visit = { ...s.visit, guest: { id: 'v', character: 'tidecrest', variant: null } };
+    s.messages = [{ kind: 'visitor', character: 'tidecrest' }];
+    s.charactersFound = ['sprig', 'tidecrest', 'tidecrest:lobster'];
+    s.charactersMet = ['tidecrest:lobster'];
+    const out = migrate({ version: 32, state: s }).state;
+    expect(out.pet).toMatchObject({ character: 'pinchy', variant: null, trait: 'cheery' });
+    expect(out.pet.parentLooks[0]).toEqual({ character: 'pinchy', variant: null });
+    expect(out.pet.carried.variant).toBeNull();
+    expect(out.family[0].character).toBe('pinchy');
+    expect(out.friends[0]).toMatchObject({ character: 'pinchy', variant: null, carried: { theme: 'nature', variant: null } });
+    expect(out.visit.guest.character).toBe('pinchy');
+    expect(out.messages[0].character).toBe('pinchy');
+    expect(out.charactersFound).toEqual(['sprig', 'pinchy']);
+    expect(out.charactersMet).toEqual(['pinchy']);
+  });
+
   it('gives every pet, and the Family Tree, a trait', () => {
     const s: any = createNewGame(1);
     delete s.pet.trait;
