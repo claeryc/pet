@@ -9,7 +9,7 @@ import { earnedFrom } from '../game/regulars';
 import { CURTAINS, FURNITURE, WALLPAPERS, inUse, ownsDecor, type Decor, type DecorKind } from '../game/decor';
 import type { GameState } from '../game/state';
 import type { Food, FoodId } from '../game/actions';
-import { FRAGMENT_ICON, ITEM_ICONS, STAT_ICONS } from './icons';
+import { FRAGMENT_ICON, ITEM_ICONS, MENU_ICONS, STAT_ICONS } from './icons';
 import { SEEDS_FOR_SALE, SUPPLIES, canCompost, priceOf, seedCount, supplyCount, type ShopItem } from '../game/garden';
 import { poopCount } from '../game/hygiene';
 import { CHARMS, charmCount, percyFree } from '../game/journeys';
@@ -87,14 +87,19 @@ function priceButton(price: number, gold: number, onClick: () => void): HTMLButt
   return b;
 }
 
-// "[fragment] 3": a price in star fragments (for things money can't buy).
-function fragmentButton(cost: number, have: number, onClick: () => void): HTMLButtonElement {
+// "[fragment] 145": star fragments, like goldPill.
+export function fragmentPill(pieces: number): HTMLElement {
   const pill = document.createElement('span');
   pill.className = 'gold-pill';
   pill.title = STRINGS.shop.fragments;
   pill.innerHTML = FRAGMENT_ICON;
-  pill.append(String(cost));
-  const b = button(pill, onClick);
+  pill.append(String(pieces));
+  return pill;
+}
+
+// "[fragment] 3": a price in star fragments (for things money can't buy).
+function fragmentButton(cost: number, have: number, onClick: () => void): HTMLButtonElement {
+  const b = button(fragmentPill(cost), onClick);
   b.classList.toggle('too-pricey', have < cost);
   return b;
 }
@@ -158,6 +163,14 @@ function stockIcon(): HTMLElement {
   return el;
 }
 
+// A small heading between rows.
+function section(text: string): HTMLElement {
+  const el = document.createElement('div');
+  el.className = 'shop-section';
+  el.textContent = text;
+  return el;
+}
+
 export function label(text: string): HTMLElement {
   const el = document.createElement('span');
   el.className = 'shop-label';
@@ -178,6 +191,7 @@ export interface Entry {
   tier?: string;
   mark?: boolean;
   faded?: boolean;
+  limited?: boolean; // only a few for sale (also listed under Today)
 }
 
 // A category such as "Food" or "Hats". Folded up (the default) it shows
@@ -266,9 +280,10 @@ function decorEntry(state: GameState, d: Decor, cb: ShopCallbacks): Entry {
 const decorName = (kind: DecorKind, id: string) =>
   (kind === 'wallpaper' ? STRINGS.shop.wallpapers : kind === 'curtains' ? STRINGS.shop.curtains : STRINGS.shop.furniture)[id] ?? id;
 
-// Today's special, above the tabs: one thing at a lower price, with its
-// usual price under its name. Once it's yours it says so until tomorrow.
-function specialRow(state: GameState, cb: ShopCallbacks): HTMLElement | null {
+// Today's special, at the top of the Today tab: one thing at a lower price,
+// shown big, with its usual price crossed out on the button and how long
+// until the next one. Once it's yours it says so until tomorrow.
+function specialCard(state: GameState, cb: ShopCallbacks): HTMLElement | null {
   const special = dailySpecial(state);
   if (!special) return null;
   const hat = special.kind === 'hat' ? getHat(special.id) : undefined;
@@ -276,20 +291,56 @@ function specialRow(state: GameState, cb: ShopCallbacks): HTMLElement | null {
   const name = hat ? hat.name : decorName(special.kind as DecorKind, special.id);
   const owned = ownsSpecial(state, special);
   const buy = () => (hat ? cb.onBuyHat(special.id) : cb.onBuyDecor(special.kind as DecorKind, special.id));
-  const el = row(icon, `${STRINGS.shop.special}: ${name}`,
-    owned ? STRINGS.shop.specialOwned : STRINGS.shop.specialNote(special.was),
-    owned ? label(STRINGS.shop.owned) : priceButton(special.price, state.gold, buy));
-  el.classList.add('shop-special');
+  const el = document.createElement('div');
+  el.className = 'shop-special';
+  const body = document.createElement('div');
+  body.className = 'shop-special-body';
+  const pic = document.createElement('span');
+  pic.className = 'shop-special-icon';
+  pic.innerHTML = icon;
+  const text = document.createElement('span');
+  text.className = 'shop-row-text';
+  const lines: [string, string][] = [
+    ['small', STRINGS.shop.special],
+    ['b', name],
+    ['small', STRINGS.shop.specialKind[special.kind] ?? ''],
+    ['em', owned ? STRINGS.shop.specialOwned : STRINGS.shop.specialNext(Math.ceil(untilTomorrow(state.lastUpdated) / 3_600_000))],
+  ];
+  for (const [tag, line] of lines) {
+    const t = document.createElement(tag);
+    t.textContent = line;
+    text.append(t);
+  }
+  let action: HTMLElement;
+  if (owned) action = label(STRINGS.shop.owned);
+  else {
+    action = priceButton(special.price, state.gold, buy);
+    const was = document.createElement('s');
+    was.className = 'shop-was';
+    was.textContent = String(special.was);
+    was.title = STRINGS.shop.specialNote(special.was);
+    action.prepend(was);
+  }
+  body.append(pic, text, action);
+  el.append(body);
   return el;
 }
 
+// How long until local midnight, when the special changes. Shown in whole
+// hours (rounded up), so the Shop only needs redrawing once an hour.
+function untilTomorrow(now: number): number {
+  const d = new Date(now);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime() - now;
+}
+
 // The Shop's categories, in order. Other screens can open the Shop at one.
-export type ShopCategory = 'revival' | 'food' | 'garden' | 'fishing' | 'journeys' | 'room' | 'hats';
+export type ShopCategory = 'today' | 'revival' | 'food' | 'garden' | 'fishing' | 'journeys' | 'room' | 'hats';
 
 // Food the Shop sells: only plain ingredients (the energy drink only on its days).
 export const soldInShop = (f: Food) => f.price > 0 && !f.caughtOnly && !f.grownOnly && !f.cookedOnly && !f.foundOnly;
 
-// The Shop: tabs for the categories, then the picked category's rows.
+// The Shop: a grid of tabs for the categories, then the picked category's
+// rows. Today comes first: the daily special and the things in short supply.
 export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, redraw: () => void): HTMLElement[] {
   const now = state.lastUpdated;
   const food: Entry[] = CONFIG.foods
@@ -306,7 +357,7 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
         : STRINGS.shop.have(foodCount(state, f.id));
       const el = row(ITEM_ICONS[f.id], STRINGS.foods[f.id], note, action);
       if (f.limited) el.insertBefore(stockIcon(), action);
-      return { icon: ITEM_ICONS[f.id], count: countBadge(foodCount(state, f.id)), row: el };
+      return { icon: ITEM_ICONS[f.id], count: countBadge(foodCount(state, f.id)), row: el, limited: f.limited };
     });
   // The bigger rice jar, for star fragments, at the top once it's for sale.
   const { bigger } = CONFIG.riceJar;
@@ -437,7 +488,17 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
   ];
   // One category at a time, picked from the tabs at the top. Journeys only
   // shows once it has opened up.
+  const special = specialCard(state, cb);
+  const todays = dailySpecial(state);
+  const specialNew = !!todays && !ownsSpecial(state, todays);
+  const scarce = food.filter((e) => e.limited).map((e) => e.row);
+  const today: Entry[] = [
+    ...(special ? [{ icon: '', row: special }] : []),
+    ...(scarce.length > 0 ? [{ icon: '', row: section(STRINGS.shop.fewLeft) }] : []),
+    ...scarce.map((r) => ({ icon: '', row: r })),
+  ];
   const tabs: ShopTab[] = [
+    { id: 'today', title: STRINGS.shop.todayTab, icon: MENU_ICONS.todayTag, entries: today, dot: specialNew },
     { id: 'revival', title: STRINGS.shop.revivalTab, icon: ITEM_ICONS.revivalStar, entries: revival },
     { id: 'food', title: STRINGS.shop.food, icon: ITEM_ICONS.strawberry, entries: food },
     { id: 'garden', title: STRINGS.shop.garden, icon: ITEM_ICONS.gardenPot, entries: garden },
@@ -451,8 +512,7 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
   const rows = document.createElement('div');
   rows.className = 'shop-cat-rows';
   rows.append(...shown.entries.map((e) => e.row));
-  const special = specialRow(state, cb);
-  return [...(special ? [special] : []), shopTabs(tabs, view, redraw), rows];
+  return [shopTabs(tabs, view, redraw), rows];
 }
 
 interface ShopTab {
@@ -460,6 +520,7 @@ interface ShopTab {
   title: string;
   icon: string;
   entries: Entry[];
+  dot?: boolean; // something new on it (today's special, not yet bought)
 }
 
 // Which category's tab is showing. Kept by the menu, so it stays while the
@@ -468,36 +529,30 @@ export interface ShopView {
   tab: ShopCategory;
 }
 
-// [ Stars | Food | Garden | ... ]: a strip of chips that scrolls sideways
-// when they don't all fit, and stays at the top while the rows scroll.
+// [ Today | Stars | Food | Garden ]
+// [ Fishing | Journeys | Room | Hats ]
+// A grid of tiles, four to a line, so every category is in sight. It stays
+// at the top while the rows scroll.
 function shopTabs(tabs: ShopTab[], view: ShopView, redraw: () => void): HTMLElement {
-  const strip = document.createElement('div');
-  strip.className = 'shop-tabs';
-  strip.setAttribute('role', 'group');
-  strip.setAttribute('aria-label', STRINGS.shop.title);
+  const grid = document.createElement('div');
+  grid.className = 'shop-tabs';
+  grid.setAttribute('role', 'group');
+  grid.setAttribute('aria-label', STRINGS.shop.title);
   for (const t of tabs) {
     const b = document.createElement('button');
     b.className = 'shop-tab';
     b.setAttribute('aria-pressed', String(t.id === view.tab));
-    b.innerHTML = `<span class="shop-tab-icon" aria-hidden="true">${t.icon}</span><span></span>`;
+    b.innerHTML = `<span class="shop-tab-icon" aria-hidden="true">${t.icon}</span><span class="shop-tab-name"></span>`;
     b.lastElementChild!.textContent = t.title;
+    if (t.dot) b.append(Object.assign(document.createElement('span'), { className: 'shop-tab-dot' }));
     b.addEventListener('click', () => {
       if (view.tab === t.id) return;
       view.tab = t.id;
       redraw();
     });
-    strip.append(b);
+    grid.append(b);
   }
-  // Once it's on the page: slide the strip so the picked tab is in view.
-  requestAnimationFrame(() => {
-    const on = strip.querySelector<HTMLElement>('[aria-pressed="true"]');
-    if (!on) return;
-    const left = on.offsetLeft - strip.offsetLeft;
-    if (left < strip.scrollLeft) strip.scrollLeft = left - 8;
-    else if (left + on.offsetWidth > strip.scrollLeft + strip.clientWidth)
-      strip.scrollLeft = left + on.offsetWidth - strip.clientWidth + 8;
-  });
-  return strip;
+  return grid;
 }
 
 // The Wardrobe (hold the pet to open it): the hats you own, to put on or
