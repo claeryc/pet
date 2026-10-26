@@ -3,17 +3,17 @@
 // Guide, Settings) and a page for each, plus the Wardrobe, which opens when you
 // hold the pet. The Journeys tile opens Journeys over the stat bars, as
 // Play > Journeys does.
-// Shop, Collection and Family Tree only appear once they've opened up (see
+// The main page puts Shop and Journeys first and biggest, then the rest as
+// smaller tiles with a line each, then Guide and Settings. Tiles only
+// appear once their part of the game has opened up (see
 // src/game/unlocks.ts), with a "new" dot until you've looked at them.
-// Items for features we haven't built yet are shown greyed out with
-// "Coming soon".
 
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import type { GameState } from '../game/state';
 import { isNew, isUnlocked, type UnlockId } from '../game/unlocks';
 import { LOCK_ICON, MENU_ICONS } from './icons';
-import { fragmentPill, goldPill, shopPage, wardrobePage, type ShopCallbacks, type ShopCategory, type ShopView } from './shop';
+import { goldPill, shopPage, wardrobePage, type ShopCallbacks, type ShopCategory, type ShopView } from './shop';
 import { collectionPage } from './collection';
 import { journalPage } from './journal';
 import { familyTreePage, type FamilyCallbacks, type TreeView } from './family';
@@ -23,10 +23,12 @@ import type { RegularId } from '../game/regulars';
 import { messagesPage, type MessagesTab } from './messages';
 import { unreadMail } from '../game/messages';
 import { canLearnIn, showPickedSkill, skillsPage, type SkillsCallbacks, type SkillsView } from './skills';
-import { TREES, pointsToSpend } from '../game/skills';
+import { TREES, keeperLevel, pointsToSpend } from '../game/skills';
 import { audioSettings, setAudioSettings } from '../audio/audio';
 import type { JourneysCallbacks } from './journeys';
-import { hasBackpack } from '../game/presence';
+import { hasBackpack, isAway } from '../game/presence';
+import { badgeCount } from '../game/achievements';
+import { dailySpecial, getHat, ownsSpecial } from '../game/economy';
 import { GUIDES, guideOpen, type GuideId } from '../game/guides';
 import { GUIDE_ICONS, guideName, guidePageCount } from './guide';
 
@@ -73,50 +75,37 @@ export interface Menu {
   showMeadow: () => void; // the Meadow and its keepsakes
 }
 
-// A row button, or with an `icon`, a square tile for the main grid.
-function item(label: string, onClick?: () => void, isNew = false, icon?: string): HTMLButtonElement {
+// Text for a tile's line, which is set as HTML (for the special's pink
+// "25% off").
+const escapeHtml = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+
+// A row button (Settings' Start over).
+function item(label: string, onClick: () => void): HTMLButtonElement {
   const b = document.createElement('button');
-  if (icon) {
-    b.className = 'menu-tile';
-    const pic = document.createElement('span');
-    pic.className = 'menu-tile-icon';
-    pic.innerHTML = icon;
-    const name = document.createElement('span');
-    name.className = 'menu-tile-label';
-    name.textContent = label;
-    b.append(pic, name);
-  } else {
-    b.className = 'menu-item';
-    b.textContent = label;
-  }
-  if (isNew) {
-    const dot = document.createElement('span');
-    dot.className = 'new-dot';
-    dot.setAttribute('aria-label', STRINGS.menu.new);
-    b.append(dot);
-  }
-  if (onClick) {
-    b.addEventListener('click', onClick);
-  } else {
-    // Not built yet: show it, but disabled.
-    b.disabled = true;
-    const soon = document.createElement('span');
-    soon.className = 'menu-soon';
-    soon.textContent = STRINGS.menu.comingSoon;
-    b.append(soon);
-  }
+  b.className = 'menu-item';
+  b.textContent = label;
+  b.addEventListener('click', onClick);
   return b;
 }
 
+export type MenuPage = 'main' | 'settings' | 'shop' | 'wardrobe' | 'collection' | 'skills' | 'familyTree' | 'meadow' | 'messages' | 'guide' | 'journal';
+
 // `isOpen` says whether the panel is showing; `close` folds it up.
-export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolean, close: () => void): Menu {
+// `onPage` hears which page is showing, each time one is drawn.
+export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolean, close: () => void, onPage?: (page: MenuPage) => void): Menu {
   const panel = document.createElement('div');
   panel.className = 'menu-panel';
 
   // The pages redraw whenever the game changes (after buying something,
   // for example), so we remember which page is showing.
   let state: GameState | null = null;
-  let page: 'main' | 'settings' | 'shop' | 'wardrobe' | 'collection' | 'skills' | 'familyTree' | 'meadow' | 'messages' | 'guide' | 'journal' = 'main';
+  let page: MenuPage = 'main';
+  function setPage(next: MenuPage): void {
+    // Leaving the Shop puts back whatever was being tried on.
+    if (page === 'shop' && next !== 'shop') cb.onTryOn(null);
+    page = next;
+    onPage?.(next);
+  }
   let journalPlace = 'market'; // which page of the travel journal is open
 
   // Live readout for the testing tools, refreshed by update().
@@ -146,86 +135,134 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
   // each newly opened page at the top.
   const toTop = () => panel.parentElement?.scrollTo(0, 0);
 
-  // An entry that only shows once it has opened up. Opening it the first
-  // time clears its "new" dot.
-  function unlockable(id: UnlockId, label: string, onClick?: () => void): HTMLButtonElement[] {
-    if (!state || !isUnlocked(state, id)) return [];
-    return [
-      item(label, onClick && (() => {
-        cb.onSeen(id);
-        onClick();
-      }), !!onClick && isNew(state, id), MENU_ICONS[id]), // no dot on "coming soon" items
-    ];
+  // A tile on the main page. `size` sets its place: big (Shop and
+  // Journeys, two across), medium (with a line under the name) or a quiet
+  // pill at the bottom (Guide, Settings). `badge` is a number in its
+  // corner (new mail, skill points), `dot` a "new" dot, each with what
+  // screen readers say for it.
+  type TileSize = 'big' | 'mid' | 'quiet';
+  function tile(size: TileSize, label: string, icon: string, onClick: () => void, line = '', dot: string | null = null, badge = 0): HTMLButtonElement {
+    const b = document.createElement('button');
+    b.className = `menu-tile is-${size}`;
+    const pic = document.createElement('span');
+    pic.className = 'menu-tile-icon';
+    pic.innerHTML = icon;
+    const text = document.createElement('span');
+    text.className = 'menu-tile-text';
+    const name = document.createElement('span');
+    name.className = 'menu-tile-label';
+    name.textContent = label;
+    text.append(name);
+    if (line && size !== 'quiet') {
+      const small = document.createElement('small');
+      small.className = 'menu-tile-line';
+      small.innerHTML = line;
+      text.append(small);
+    }
+    b.append(pic, text);
+    if (badge > 0) {
+      const n = document.createElement('span');
+      n.className = 'menu-badge';
+      n.textContent = String(badge);
+      if (dot) n.setAttribute('aria-label', dot);
+      b.append(n);
+    } else if (dot) {
+      const d = document.createElement('span');
+      d.className = 'new-dot';
+      d.setAttribute('aria-label', dot);
+      b.append(d);
+    }
+    b.addEventListener('click', onClick);
+    return b;
   }
 
-  // The main list, shown as a grid of icon tiles.
+  // A tile that only shows once it has opened up. Opening it the first
+  // time clears its "new" dot.
+  function unlockable(id: UnlockId, size: TileSize, label: string, onClick: () => void, line = '', dot: string | null = null, badge = 0): HTMLButtonElement[] {
+    if (!state || !isUnlocked(state, id)) return [];
+    const fresh = isNew(state, id);
+    const b = tile(size, label, MENU_ICONS[id], () => {
+      cb.onSeen(id);
+      onClick();
+    }, line, fresh ? STRINGS.menu.new : dot, fresh ? 0 : badge);
+    b.dataset.id = id;
+    return [b];
+  }
+
+  // The main page: Shop and Journeys first and biggest, then the places
+  // you visit now and then, then Guide and Settings, quietly at the bottom.
   function showMain(): void {
-    page = 'main';
+    setPage('main');
     toTop();
-    const grid = document.createElement('div');
-    grid.className = 'menu-grid';
-    grid.append(
-      ...unlockable('shop', STRINGS.menu.shop, () => {
+    const s = state;
+    const M = STRINGS.menu;
+    const big = document.createElement('div');
+    big.className = 'menu-grid is-big';
+    big.append(
+      ...unlockable('shop', 'big', M.shop, () => {
         showShop();
         cb.onGuide('shop');
-      }),
-      ...messagesItem(),
+      }, s ? shopLine(s) : ''),
       ...journeysItem(),
-      ...unlockable('collection', STRINGS.menu.collection, () => {
+    );
+    const mid = document.createElement('div');
+    mid.className = 'menu-grid is-mid';
+    mid.append(
+      ...messagesItem(),
+      ...unlockable('collection', 'mid', M.collection, () => {
         showCollection();
         cb.onGuide('collection');
-      }),
+      }, s ? M.collectionLine(badgeCount(s).earned, badgeCount(s).total) : ''),
       ...skillsItem(),
-      ...unlockable('familyTree', STRINGS.menu.familyTree, () => showFamilyTree()),
+      ...unlockable('familyTree', 'mid', M.familyTree, () => showFamilyTree(), s ? M.familyLine : ''),
       // The Meadow, once a pet has moved there.
-      ...(state && (state.meadow.length > 0 || state.keepsakes.length > 0) ? [item(STRINGS.menu.meadow, () => showMeadow(), false, MENU_ICONS.meadow)] : []),
-      ...(state && guideOpen(state, 'basics') ? [item(STRINGS.menu.guide, () => showGuide(), false, MENU_ICONS.guide)] : []),
-      item(STRINGS.menu.settings, showSettings, false, MENU_ICONS.settings),
+      ...(s && (s.meadow.length > 0 || s.keepsakes.length > 0) ? [tile('mid', M.meadow, MENU_ICONS.meadow, () => showMeadow(), M.meadowLine(s.meadow.length))] : []),
     );
-    panel.replaceChildren(grid);
+    const quiet = document.createElement('div');
+    quiet.className = 'menu-grid is-quiet';
+    quiet.append(
+      ...(s && guideOpen(s, 'basics') ? [tile('quiet', M.guide, MENU_ICONS.guide, () => showGuide())] : []),
+      tile('quiet', M.settings, MENU_ICONS.settings, showSettings),
+    );
+    panel.replaceChildren(...[big, mid, quiet].filter((g) => g.children.length > 0));
   }
 
-  // Messages, with a dot while there's new mail from Percy (or until it's
-  // been looked at once).
+  // Under the Shop's name: today's special while it's still to buy.
+  function shopLine(s: GameState): string {
+    const special = dailySpecial(s);
+    if (!special || ownsSpecial(s, special)) return STRINGS.menu.shopLine;
+    const names = special.kind === 'wallpaper' ? STRINGS.shop.wallpapers : special.kind === 'curtains' ? STRINGS.shop.curtains : STRINGS.shop.furniture;
+    const name = special.kind === 'hat' ? getHat(special.id)?.name ?? special.id : names[special.id] ?? special.id;
+    return STRINGS.menu.shopSpecial(Math.round(CONFIG.dailySpecial.off * 100), escapeHtml(name));
+  }
+
+  // Messages, with the number of new letters from Percy (or a "new" dot
+  // until it's been looked at once).
   function messagesItem(): HTMLButtonElement[] {
-    const entry = unlockable('messages', STRINGS.menu.messages, () => showMessages());
-    if (entry.length && state && unreadMail(state) > 0 && !isNew(state, 'messages')) {
-      const dot = document.createElement('span');
-      dot.className = 'new-dot';
-      dot.setAttribute('aria-label', STRINGS.messages.unread);
-      entry[0].append(dot);
-    }
-    return entry;
+    const unread = state ? unreadMail(state) : 0;
+    return unlockable('messages', 'mid', STRINGS.menu.messages, () => showMessages(),
+      unread > 0 ? STRINGS.menu.messagesNew(unread) : STRINGS.menu.messagesLine, STRINGS.messages.unread, unread);
   }
 
   // Journeys, with a dot while a backpack is waiting to be opened.
   function journeysItem(): HTMLButtonElement[] {
-    const entry = unlockable('journeys', STRINGS.menu.journeys, () => {
+    if (!state) return [];
+    const backpack = [state.pet, ...state.housemates].some(hasBackpack);
+    const line = backpack ? STRINGS.menu.journeysBackpack : isAway(state.pet) ? STRINGS.menu.journeysAway(escapeHtml(state.pet.name)) : STRINGS.menu.journeysLine;
+    return unlockable('journeys', 'big', STRINGS.menu.journeys, () => {
       close();
       cb.onOpenJourneys();
-    });
-    if (entry.length && state && [state.pet, ...state.housemates].some(hasBackpack) && !isNew(state, 'journeys')) {
-      const dot = document.createElement('span');
-      dot.className = 'new-dot';
-      dot.setAttribute('aria-label', STRINGS.journeys.backpackNote);
-      entry[0].append(dot);
-    }
-    return entry;
+    }, line, backpack ? STRINGS.journeys.backpackNote : null);
   }
 
-  // Skills, with a dot while there's a point to spend.
+  // Skills, with the number of points to spend.
   function skillsItem(): HTMLButtonElement[] {
-    const entry = unlockable('skills', STRINGS.menu.skills, () => {
+    if (!state) return [];
+    const points = pointsToSpend(state);
+    return unlockable('skills', 'mid', STRINGS.menu.skills, () => {
       showSkills();
       cb.onGuide('skills');
-    });
-    if (entry.length && state && pointsToSpend(state) > 0 && !isNew(state, 'skills')) {
-      const dot = document.createElement('span');
-      dot.className = 'new-dot';
-      dot.setAttribute('aria-label', STRINGS.skills.points(pointsToSpend(state)));
-      entry[0].append(dot);
-    }
-    return entry;
+    }, points > 0 ? STRINGS.skills.points(points) : STRINGS.menu.skillsLine(keeperLevel(state)), STRINGS.skills.points(points), points);
   }
 
   // Mail or Friends, in Messages. Mail each time you go in.
@@ -237,7 +274,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     }
     // Reading the page counts as reading the mail, new mail included.
     if (state && (fresh || unreadMail(state) > 0)) queueMicrotask(cb.onMessagesSeen);
-    page = 'messages';
+    setPage('messages');
     const list = document.createElement('div');
     list.className = 'shop-list messages';
     if (state) {
@@ -282,18 +319,27 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     if (fresh) {
       openCategories.clear();
       shopView.tab = 'today';
+      shopView.scroll = 0;
+      shopView.open = undefined;
       treeView.focus = null;
       toTop();
     }
-    page = which;
+    setPage(which);
     const list = document.createElement('div');
     list.className = 'shop-list';
     if (state) {
-      if (which === 'shop') list.append(...shopPage(state, cb, shopView, () => {
-        showShop(false);
-        toTop();
-      }));
-      else if (which === 'wardrobe') list.append(...wardrobePage(state, cb));
+      if (which === 'shop') {
+        // The Shop has its own header, under its awning.
+        const tabBefore = shopView.tab;
+        panel.replaceChildren(...shopPage(state, cb, shopView, () => {
+          const scroll = panel.parentElement?.scrollTop ?? 0;
+          showShop(false);
+          // A new tab starts at the top; a sheet opening or closing stays put.
+          if (shopView.tab !== tabBefore) toTop();
+          else panel.parentElement?.scrollTo(0, scroll);
+        }, showMain));
+        return;
+      } else if (which === 'wardrobe') list.append(...wardrobePage(state, cb));
       else if (which === 'collection') list.append(...collectionPage(state, { ...cb, onJournal: (place) => showJournal(place) }, openCategories));
       else if (which === 'skills') list.append(...skillsPage(state, cb, skillsView, () => showSkills(false)));
       else {
@@ -311,14 +357,8 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
       skills: STRINGS.skills.title,
       familyTree: STRINGS.menu.familyTree,
     }[which];
-    // The Shop shows star fragments next to the gold.
     let right: HTMLElement | undefined;
     if (which === 'skills') right = goldPill(state?.gold ?? 0);
-    if (which === 'shop') {
-      right = document.createElement('span');
-      right.className = 'shop-purse';
-      right.append(goldPill(state?.gold ?? 0), fragmentPill(state?.fragments.pieces ?? 0));
-    }
     panel.replaceChildren(header(title, showMain, right), list);
   }
   const showShop = (fresh = true) => showList('shop', fresh);
@@ -338,7 +378,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
   // The travel journal, at a place's page (back goes to the Collection).
   function showJournal(place = journalPlace, fresh = true): void {
     if (fresh) toTop();
-    page = 'journal';
+    setPage('journal');
     journalPlace = place;
     const list = document.createElement('div');
     list.className = 'shop-list journal';
@@ -349,7 +389,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
   // The Meadow: its scene, everyone there, and their keepsakes.
   function showMeadow(fresh = true): void {
     if (fresh) toTop();
-    page = 'meadow';
+    setPage('meadow');
     const list = document.createElement('div');
     list.className = 'shop-list meadow';
     if (state) list.append(...meadowPage(state, cb));
@@ -360,7 +400,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
   // are locked; ones not read yet have a dot.
   function showGuide(fresh = true): void {
     if (fresh) toTop();
-    page = 'guide';
+    setPage('guide');
     const G = STRINGS.guide;
     const intro = document.createElement('p');
     intro.className = 'guide-intro';
@@ -524,7 +564,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
   }
 
   function showSettings(): void {
-    page = 'settings';
+    setPage('settings');
     toTop();
     const reset = item(STRINGS.buttons.reset, () => {
       close();

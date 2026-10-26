@@ -103,6 +103,10 @@ export interface HomeScreen {
   deliveryScene: () => DeliveryScene | null; // ...or Percy's meadow, for his order
   meetScene: () => { friend: Friend; hearts: boolean } | null; // a friend over to play
   tripScene: () => { place: string; pets: Pet[] } | null; // looking at the current trip
+  // Whether the Shop is showing (so the room can show what's tried on),
+  // and the "Trying on · Party Hat" tag over the room, or null to take it off.
+  shopShowing: () => boolean;
+  tryOn: (name: string | null) => void;
   decorateScene: () => { spot: FurnitureSlot | null } | null; // decorating: the spot picked
   shelfScene: () => { picked: number | null } | null; // the keepsake shelf up close
   bathScene: (timeMs: number) => BathScene | null; // the suds, drips and sponge or dryer
@@ -360,7 +364,11 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   door.setAttribute('aria-label', STRINGS.familyHome.door);
   door.hidden = true;
   door.addEventListener('click', () => cb.onRoomDoor());
-  roomWrap.append(canvas, fx.el, bubble, corner, door);
+  // What's being tried on in the Shop, on a tag at the bottom of the room.
+  const tryTag = document.createElement('div');
+  tryTag.className = 'try-tag';
+  tryTag.hidden = true;
+  roomWrap.append(canvas, fx.el, bubble, corner, door, tryTag);
 
   // Warning / sick / recovering / passed away banner, hidden when all is well.
   const banner = document.createElement('div');
@@ -500,10 +508,18 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   // The gear button opens the menu (shop, inventory, settings and more) the
   // same way Feed and Play open. It always opens, even for an egg.
   let menuDrawer: ReturnType<typeof createDrawer> | null = null;
+  // The Shop reaches up over the stat bars as well (nobody needs them while
+  // shopping), so its rows get the room under its tabs.
+  let menuOverStats = false;
   const menu = createMenu(
     { ...cb, onOpenDelivery: () => startDelivery(), onOpenMeet: () => startMeet(), onOpenJourneys: () => openJourneys(), onDecorate: () => openDecorate() },
     () => menuDrawer?.isOpen() ?? false,
     () => menuDrawer?.close(),
+    (page) => {
+      if (menuOverStats === (page === 'shop')) return;
+      menuOverStats = page === 'shop';
+      if (menuDrawer) fitDrawers();
+    },
   );
   menuDrawer = createDrawer({
     ...drawerSetup,
@@ -522,14 +538,18 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   // An open Feed, Play or Menu panel reaches up to just under the stat bars,
   // so taller screens show more rows. Small screens keep the old height
   // (the panel covers the bars there). The panel's button, frame and
-  // padding take about 74px.
+  // padding take about 74px. The Shop goes over the bars, its top edge
+  // lined up with theirs (the frame itself is 58px).
   function fitDrawers(): void {
-    const room = actions.getBoundingClientRect().bottom - statSlot.getBoundingClientRect().bottom - DRAWER_GAP;
-    actions.style.setProperty('--drawer-fit', `${Math.max(DRAWER_MIN, Math.floor(room - 74))}px`);
+    const bottom = actions.getBoundingClientRect().bottom;
+    const slot = statSlot.getBoundingClientRect();
+    const fit = (room: number) => `${Math.max(DRAWER_MIN, Math.floor(room))}px`;
+    const underBars = fit(bottom - slot.bottom - DRAWER_GAP - 74);
+    actions.style.setProperty('--drawer-fit', underBars);
+    menuDrawer?.el.style.setProperty('--drawer-fit', menuOverStats ? fit(bottom - slot.top - 58) : underBars);
     // The travel journal is a book, so it takes the whole screen above the
     // button, over the room too.
-    const all = actions.getBoundingClientRect().bottom - roomWrap.getBoundingClientRect().top;
-    actions.style.setProperty('--drawer-full', `${Math.max(DRAWER_MIN, Math.floor(all - 74))}px`);
+    actions.style.setProperty('--drawer-full', fit(bottom - roomWrap.getBoundingClientRect().top - 74));
   }
   window.addEventListener('resize', fitDrawers);
 
@@ -1305,6 +1325,12 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     deliveryScene: () => delivery.scene(),
     meetScene: () => meet.scene(),
     tripScene: () => trip.scene(),
+    shopShowing: () => (menuDrawer?.isOpen() ?? false) && menuOverStats,
+    tryOn(name) {
+      tryTag.hidden = !name;
+      if (!name) return;
+      tryTag.replaceChildren(Object.assign(document.createElement('span'), { textContent: STRINGS.shop.tryingOn }), Object.assign(document.createElement('b'), { textContent: name }));
+    },
     decorateScene: () => decorate.scene(),
     shelfScene: () => shelf.scene(),
     bathScene: (timeMs) => bath.scene(timeMs),
