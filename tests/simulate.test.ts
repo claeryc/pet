@@ -4,6 +4,7 @@ import { type GameState } from '../src/game/state';
 import { newTeen } from './helpers';
 import { feed, play } from '../src/game/actions';
 import { CONFIG } from '../src/game/config';
+import { foodCount } from '../src/game/economy';
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
@@ -70,10 +71,20 @@ describe('simulate', () => {
 
 describe('actions', () => {
   it('feed raises hunger and never goes above 100', () => {
-    let s = feed(freshGame(), START).state;
+    const g = freshGame();
+    g.pet.stats.hunger = 88;
+    const s = feed(g, START).state;
     expect(s.pet.stats.hunger).toBe(100);
-    s = feed(s, START).state;
-    expect(s.pet.stats.hunger).toBe(100);
+  });
+
+  it("won't feed a pet that's too full", () => {
+    const g = freshGame();
+    g.pet.stats.hunger = CONFIG.tooFullAbove + 1;
+    const r = feed(g, START);
+    expect(r.blocked).toBe('tooFull');
+    expect(foodCount(r.state, 'riceBall')).toBe(CONFIG.riceJar.size);
+    g.pet.stats.hunger = CONFIG.tooFullAbove;
+    expect(feed(g, START).blocked).toBeUndefined();
   });
 
   it('play raises joy and costs a little hunger and energy', () => {

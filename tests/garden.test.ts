@@ -368,7 +368,7 @@ describe('save version 10', () => {
     const out = migrate({ version: 9, state: { pet: { stage: 'teen' }, inventory: { food: { cookie: 2 }, hats: [] } } });
     expect(out.version).toBe(SAVE_VERSION);
     expect(out.state.garden).toHaveLength(G.plots);
-    expect(out.state.inventory).toEqual({ food: { cookie: 2 }, hats: [], seeds: {}, supplies: {}, decor: [], bags: [] });
+    expect(out.state.inventory).toEqual({ food: { cookie: 2, riceBall: 3 }, hats: [], seeds: {}, supplies: {}, decor: [], bags: [] });
   });
 });
 

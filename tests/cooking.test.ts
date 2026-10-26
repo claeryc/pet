@@ -72,11 +72,11 @@ describe('cooking', () => {
     expect(out.state.inventory.food.fishSoup).toBe(1);
   });
 
-  it('never runs out of free rice balls', () => {
-    const out = cook(withFood({ shrimp: 1 }), ['riceBall', 'shrimp']);
+  it('uses rice balls from the pantry like any other food', () => {
+    const out = cook(withFood({ riceBall: 1, shrimp: 1 }), ['riceBall', 'shrimp']);
     if (out.blocked) throw new Error(out.blocked);
     expect(out.dish).toBe('shrimpOnigiri');
-    expect(foodCount(out.state, 'riceBall')).toBe(Infinity);
+    expect(foodCount(out.state, 'riceBall')).toBe(0);
   });
 
   it('learns a recipe the first time, and only once', () => {
@@ -123,6 +123,7 @@ describe('cooking', () => {
       { id: 'warmMilk', need: 1, have: 0 },
     ]);
     expect(haveAll(s, shortcake.ingredients)).toBe(false);
-    expect(haveAll(s, ['cookie', 'riceBall'])).toBe(true);
+    expect(haveAll(s, ['cookie'])).toBe(true);
+    expect(haveAll(s, ['cookie', 'riceBall'])).toBe(false);
   });
 });

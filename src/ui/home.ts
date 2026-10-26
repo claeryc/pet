@@ -1075,7 +1075,9 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       CONFIG.foods.forEach((f: Food, i) => {
         const count = foodCount(state, f.id);
         const stars = f.stars ? `${STRINGS.stars(f.stars)}  ` : '';
-        feedDrawer.setNote(foodRow(i), count === Infinity ? STRINGS.shop.free : `${stars}× ${count}`);
+        // The rice ball also says when the jar adds its next free one.
+        const refill = f.id === 'riceBall' && state.riceJarAt ? `  ${STRINGS.shop.riceJar(formatDuration(state.riceJarAt - now))}` : '';
+        feedDrawer.setNote(foodRow(i), count === Infinity ? STRINGS.shop.free : `${stars}× ${count}${refill}`);
         feedDrawer.setHidden(foodRow(i), count === 0);
         // A heart on what the pet is craving.
         const craved = state.craving.food === f.id;

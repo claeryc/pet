@@ -178,8 +178,12 @@ export const CONFIG = {
   // What's inside the Feed panel. Each food changes stats by these amounts.
   // A food can also have a timed effect: `slowHunger` makes the tummy empty
   // more slowly (by `percent`) for a number of `hours`.
-  // `price` is the cost in gold in the Shop. Food with price 0 is free and
-  // never runs out; other food comes from your inventory, one per meal.
+  // `price` is the cost in gold in the Shop. Food comes from your
+  // inventory, one per meal (food with price 0 would be free and never run
+  // out, but none is today).
+  // `staple` food is the everyday fallback: the rice jar refills it for
+  // free (see `riceJar` below), so it's never a favourite, a craving or a
+  // gift.
   // `caughtOnly` food isn't sold in the Shop: you get it by fishing. Its
   // `stars` (1-3) say how rare and good it is.
   // `grownOnly` food isn't sold either: you grow it in the garden (see
@@ -188,7 +192,7 @@ export const CONFIG = {
   // (see `cooking` below). Cooked dishes are worth more than eating their
   // ingredients one by one.
   foods: [
-    { id: 'riceBall', price: 0, hunger: 20, happiness: 0, health: 0 },
+    { id: 'riceBall', price: 3, hunger: 15, happiness: 0, health: 0, staple: true },
     { id: 'strawberry', price: 10, hunger: 10, happiness: 6, health: 0 },
     { id: 'warmMilk', price: 12, hunger: 12, happiness: 0, health: 3 },
     { id: 'cookie', price: 8, hunger: 6, happiness: 12, health: -2 },
@@ -331,6 +335,13 @@ export const CONFIG = {
       },
     },
   },
+
+  // The rice jar: free rice balls, up to `size` in the pantry. While you
+  // have fewer, one more appears every `refillHours`. Rice bought in the
+  // Shop goes on top and doesn't count against the jar.
+  riceJar: { size: 3, refillHours: 4 },
+  // A pet whose tummy is above this won't eat anything.
+  tooFullAbove: 90,
 
   // Cooking (the last row of the Feed panel). Put up to `slots` foods from
   // your inventory in the pot and tap Cook. If they match a recipe (in any
@@ -749,7 +760,7 @@ export const CONFIG = {
   economy: {
     startingGold: 50,
     // Food in a brand new pet's pantry.
-    startingFood: { strawberry: 2, cookie: 1 },
+    startingFood: { riceBall: 3, strawberry: 2, cookie: 1 },
     // Coming back to check on your pet earns a little gold: more for the
     // first visit of the day, a bit for later visits at least
     // `minHoursBetween` apart, up to `maxPerDay` rewards a day.

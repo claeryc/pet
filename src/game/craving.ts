@@ -31,7 +31,7 @@ const fromShop = (f: Food) => !f.caughtOnly && !f.grownOnly && !f.cookedOnly && 
 // fish, crops and dishes. Never the free rice ball, a Mushy mess, or the
 // same thing twice in a row.
 export function cravingPool(state: GameState): string[][] {
-  const ok = (f: Food) => f.price > 0 && f.id !== CONFIG.cooking.mess && f.id !== state.craving.last;
+  const ok = (f: Food) => f.price > 0 && !f.staple && f.id !== CONFIG.cooking.mess && f.id !== state.craving.last;
   return [
     FOODS.filter((f) => fromShop(f) && ok(f)),
     FOODS.filter((f) => f.caughtOnly && ok(f) && state.caught.includes(f.id)),
