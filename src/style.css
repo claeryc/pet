@@ -7290,3 +7290,87 @@ body {
   border-radius: 50%;
   background: var(--low);
 }
+
+/* The Meadow page (Menu > Meadow): the scene on top, then everyone there
+   and their keepsakes. The scene is wider than the room, at the same
+   pixels, and fills the page's width. */
+.meadow-scene {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.meadow-canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 96 / 64;
+  border-radius: 14px;
+  image-rendering: pixelated;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.meadow-hint,
+.meadow-intro {
+  opacity: 0.75;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.meadow-intro {
+  margin: 4px 2px;
+}
+
+.meadow-row {
+  flex-wrap: wrap;
+}
+
+/* The buttons go under the name when there's no room beside it. */
+.meadow-row .shop-row-text {
+  min-width: 140px;
+}
+
+.meadow-pic .portrait {
+  display: block;
+}
+
+.meadow-pic svg {
+  width: 100%;
+  height: 100%;
+}
+
+.meadow-buttons {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.meadow-buttons .shop-btn {
+  white-space: nowrap;
+}
+
+/* The goodbye card's picture: the pet, with the keepsake it left. */
+.goodbye-art {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.goodbye-portrait {
+  display: block;
+  width: 96px;
+  height: 96px;
+}
+
+.goodbye-thing {
+  display: flex;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 10px;
+}
+
+.goodbye-thing svg {
+  width: 100%;
+  height: 100%;
+}

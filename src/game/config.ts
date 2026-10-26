@@ -162,6 +162,25 @@ export const CONFIG = {
   // stand-in for now, see src/payments.ts).
   familyHome: { needsSpeed: 0.5, fragments: 300, price: '€2.99' },
 
+  // The Meadow (see src/game/meadow.ts), where your pets go when they move
+  // out. Nobody there gets hungry or sick. One of them drops by about every
+  // `visitEveryHours` (the first one `firstVisitHours` after a pet moves
+  // there), and only while it's visiting can it move back home. A pet you
+  // said hi to in the last `hiDays` days is the next to come. `out` of them
+  // are out in the Meadow scene at once. A pet coming home has `backStats`.
+  // The keepsake a pet leaves depends on its good care days: `keepsakeDays`
+  // for a keepsake from its world besides its portrait, `goldenDays` for a
+  // golden one. The room has a frame and `shelf` spots to show them.
+  meadow: {
+    firstVisitHours: 48,
+    visitEveryHours: 168,
+    hiDays: 3,
+    out: 4,
+    backStats: { hunger: 80, happiness: 90, health: 100, energy: 80 },
+    gift: { keepsakeDays: 7, goldenDays: 30 },
+    shelf: 3,
+  },
+
   // Star fragment packs, sold calmly in the Shop (never next to the dying
   // countdown). Only the biggest pack has a bonus. `price` is shown as it
   // is; buying is only a stand-in for now (see src/payments.ts).

@@ -39,6 +39,7 @@ import { carriedOf } from './genes';
 import { traitOf } from './traits';
 import { backHomeAt, isAway } from './presence';
 import { logMessage } from './messages';
+import { addToMeadow, canMoveToMeadow, meadowVisitor, nextMeadowVisitor } from './meadow';
 import { newPet, type FamilyMember, type Friend, type GameState, type Pet } from './state';
 import type { Food, FoodId } from './actions';
 import { STRINGS } from '../strings';
@@ -158,7 +159,10 @@ export function stepVisits(state: GameState, t: number): GameState {
       if (t < v.until) break;
       // (Nobody's fault if every pet was out on a journey.)
       if (v.friendId && !v.met && backHomeAt(s, v.until) === null) s = missedVisit(s, v.friendId);
-      v = { ...v, guest: null, friendId: null, met: false, until: 0, nextAt: v.until + gapAfter(v.until) };
+      // A pet from the Meadow you didn't see leaves a note.
+      const fromMeadow = meadowVisitor({ ...s, visit: v });
+      if (fromMeadow && !v.met) s = logMessage(s, { kind: 'meadowVisit', at: v.until, ...lookOf(fromMeadow.pet), missed: true });
+      v = { ...v, guest: null, friendId: null, meadowId: null, met: false, until: 0, nextAt: v.until + gapAfter(v.until) };
       continue;
     }
     if (v.nextAt === 0) {
@@ -172,26 +176,38 @@ export function stepVisits(state: GameState, t: number): GameState {
     if (t < v.nextAt) break;
     const arrive = v.nextAt;
     const until = arrive + F.stayHours * HOUR;
-    let who: Friend;
+    // A pet from the Meadow, when one is due (and no wanderer is).
+    const home = arrive < v.wildAt && v.meadowAt > 0 && arrive >= v.meadowAt ? nextMeadowVisitor(s.meadow, arrive) : null;
+    let who: Friend | null = null;
     if (arrive >= v.wildAt) {
       const taken = [...allPets(s).map((p) => p.name), ...s.friends.map((f) => f.name)];
       who = makeWanderer(arrive, taken, seenCharacters(s));
       v = { ...v, guest: who, until, met: false, wildAt: arrive + F.wildEveryHours * HOUR };
+    } else if (home) {
+      s = { ...s, meadow: s.meadow.map((m) => (m === home ? { ...m, seenAt: arrive } : m)) };
+      v = { ...v, meadowId: home.pet.id, until, met: false, meadowAt: arrive + CONFIG.meadow.visitEveryHours * HOUR };
     } else if (s.friends.length > 0) {
       who = s.friends[Math.floor(seededRoll(`visit-${arrive}`, 'who') * s.friends.length)];
       v = { ...v, friendId: who.id, until, met: false };
     } else {
-      // No friends yet: nobody comes until the next wanderer.
-      v = { ...v, nextAt: v.wildAt };
+      // No friends yet: nobody comes until the next wanderer (or Meadow pet).
+      const meadowNext = s.meadow.length > 0 && v.meadowAt > arrive ? v.meadowAt : Infinity;
+      v = { ...v, nextAt: Math.min(v.wildAt, meadowNext) };
       continue;
     }
     if (t < until) {
-      const friend = isFriend(s, who.id);
-      s = logMessage(s, { kind: 'visitor', at: arrive, name: who.name, character: who.character, variant: who.variant, friend });
+      if (who) {
+        const friend = isFriend(s, who.id);
+        s = logMessage(s, { kind: 'visitor', at: arrive, name: who.name, character: who.character, variant: who.variant, friend });
+      } else if (home) {
+        s = logMessage(s, { kind: 'meadowVisit', at: arrive, ...lookOf(home.pet) });
+      }
     }
   }
   return v === state.visit && s === state ? state : { ...s, visit: v };
 }
+
+const lookOf = (p: Pet) => ({ name: p.name, character: p.character, variant: p.variant });
 
 // A friend came over and left without meeting your pet. It costs
 // `missedVisit` points, but never a whole heart.
@@ -451,16 +467,18 @@ export function switchPet(state: GameState, id: string): GameState {
 // is remembered in the Family Tree. There's always at least one pet left;
 // if it was the one you were looking after, the next one takes its place.
 // An egg waiting in the nest moves into the spot it left, and starts its
-// time to hatch from `now`.
+// time to hatch from `now`. Only a pet that's well and home can move to
+// the Meadow (see src/game/meadow.ts).
 export function retire(state: GameState, id: string, now = state.lastUpdated): GameState {
   const pets = allPets(state);
   const leaving = pets.find((p) => p.id === id);
   if (!leaving || pets.length < 2) return state;
-  const rest = pets.filter((p) => p.id !== id);
   // Moving to the Meadow counts for the milestone; saying goodbye to a pet
   // that passed away doesn't.
   const passed = leaving.condition === 'passed';
-  const s = passed ? state : countUp(state, 'retired');
+  if (!passed && !canMoveToMeadow(leaving)) return state;
+  const rest = pets.filter((p) => p.id !== id);
+  const s = passed ? state : addToMeadow(countUp(state, 'retired'), leaving, now);
   const egg = s.nest ? [{ ...s.nest, stageStartedAt: now, room: roomOf(leaving) }] : [];
   // Stay in the same room if someone else is there.
   const next = rest.find((p) => roomOf(p) === roomOf(leaving)) ?? rest[0];

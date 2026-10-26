@@ -16,6 +16,7 @@ import { LOCK_ICON, MENU_ICONS } from './icons';
 import { fragmentPill, goldPill, shopPage, wardrobePage, type ShopCallbacks, type ShopCategory, type ShopView } from './shop';
 import { collectionPage } from './collection';
 import { familyTreePage, type FamilyCallbacks, type TreeView } from './family';
+import { meadowPage, type MeadowCallbacks } from './meadow';
 import { OWNER_MAX } from '../game/family';
 import type { RegularId } from '../game/regulars';
 import { messagesPage, type MessagesTab } from './messages';
@@ -36,12 +37,13 @@ export interface DebugCallbacks {
   onSetCare: (score: number) => void;
   onShowAllMenus: (on: boolean) => void;
   onVisitorNow: () => void;
+  onMeadowVisitNow: () => void;
   onFriendScore: () => void;
   onPoopNow: () => void;
   onSmellNow: () => void;
 }
 
-export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks, FamilyCallbacks, SkillsCallbacks, JourneysCallbacks {
+export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks, FamilyCallbacks, SkillsCallbacks, JourneysCallbacks, MeadowCallbacks {
   onReset: () => void;
   onOwner: (name: string) => void; // the player typed their name in Settings
   onSeen: (id: UnlockId) => void; // the player has looked at something new
@@ -111,7 +113,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
   // The pages redraw whenever the game changes (after buying something,
   // for example), so we remember which page is showing.
   let state: GameState | null = null;
-  let page: 'main' | 'settings' | 'shop' | 'wardrobe' | 'collection' | 'skills' | 'familyTree' | 'messages' | 'guide' = 'main';
+  let page: 'main' | 'settings' | 'shop' | 'wardrobe' | 'collection' | 'skills' | 'familyTree' | 'meadow' | 'messages' | 'guide' = 'main';
 
   // Live readout for the testing tools, refreshed by update().
   const debugInfo = document.createElement('p');
@@ -171,6 +173,8 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
       }),
       ...skillsItem(),
       ...unlockable('familyTree', STRINGS.menu.familyTree, () => showFamilyTree()),
+      // The Meadow, once a pet has moved there.
+      ...(state && (state.meadow.length > 0 || state.keepsakes.length > 0) ? [item(STRINGS.menu.meadow, () => showMeadow(), false, MENU_ICONS.meadow)] : []),
       ...(state && guideOpen(state, 'basics') ? [item(STRINGS.menu.guide, () => showGuide(), false, MENU_ICONS.guide)] : []),
       item(STRINGS.menu.settings, showSettings, false, MENU_ICONS.settings),
     );
@@ -327,6 +331,16 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
   };
   const showFamilyTree = (fresh = true) => showList('familyTree', fresh);
 
+  // The Meadow: its scene, everyone there, and their keepsakes.
+  function showMeadow(fresh = true): void {
+    if (fresh) toTop();
+    page = 'meadow';
+    const list = document.createElement('div');
+    list.className = 'shop-list meadow';
+    if (state) list.append(...meadowPage(state, cb));
+    panel.replaceChildren(header(STRINGS.meadow.title, showMain), list);
+  }
+
   // The Guide: every "How it works" card, to read again. Ones not open yet
   // are locked; ones not read yet have a dot.
   function showGuide(fresh = true): void {
@@ -406,6 +420,10 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     visitor.className = 'chip';
     visitor.textContent = STRINGS.debug.visitorNow;
     visitor.addEventListener('click', cb.onVisitorNow);
+    const meadowVisit = document.createElement('button');
+    meadowVisit.className = 'chip';
+    meadowVisit.textContent = STRINGS.meadow.debugVisit;
+    meadowVisit.addEventListener('click', cb.onMeadowVisitNow);
     const friendship = document.createElement('button');
     friendship.className = 'chip';
     friendship.textContent = STRINGS.debug.friendScore(CONFIG.debug.friendScore);
@@ -418,7 +436,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     smell.className = 'chip';
     smell.textContent = STRINGS.debug.smellNow;
     smell.addEventListener('click', cb.onSmellNow);
-    row.append(back, grow, gold, visitor, friendship, poop, smell);
+    row.append(back, grow, gold, visitor, meadowVisit, friendship, poop, smell);
     // Care Score presets, to try out which characters appear.
     const careLabel = document.createElement('p');
     careLabel.textContent = STRINGS.debug.setCare;
@@ -530,6 +548,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
           page === 'messages' && Math.floor(s.lastUpdated / 60_000),
           page === 'shop' && Math.floor(s.lastUpdated / 3_600_000), // the special's countdown
           page === 'familyTree' && [Object.values(s.pet.stats).map(Math.round), Math.floor(s.lastUpdated / 3_600_000)],
+          page === 'meadow' && [s.meadow, s.keepsakes, s.room, s.familyHome.room, s.visit.meadowId, s.pet.room, Math.floor(s.lastUpdated / 3_600_000)],
         ]);
       const changed = key(state) !== key(next);
       state = next;
@@ -540,6 +559,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
         else if (isOpen() && page === 'collection') showCollection(false);
         else if (isOpen() && page === 'skills') showSkills(false);
         else if (isOpen() && page === 'familyTree') showFamilyTree(false);
+        else if (isOpen() && page === 'meadow') showMeadow(false);
         else if (isOpen() && page === 'messages') showMessages(false);
         else if (isOpen() && page === 'guide') showGuide(false);
       }

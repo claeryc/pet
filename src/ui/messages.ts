@@ -21,7 +21,7 @@ import { isFull, orderTier } from '../game/delivery';
 import { isUnlocked, type UnlockId } from '../game/unlocks';
 import type { Find, GameState, Message } from '../game/state';
 import type { FoodId } from '../game/actions';
-import { ACHIEVEMENT_ICONS, ITEM_ICONS, MILESTONE_ICONS, SKILL_POINT_ICON, STAT_ICONS, UNKNOWN_ICON } from './icons';
+import { ACHIEVEMENT_ICONS, ITEM_ICONS, MENU_ICONS, MILESTONE_ICONS, SKILL_POINT_ICON, STAT_ICONS, UNKNOWN_ICON } from './icons';
 import type { AchievementId } from '../game/achievements';
 import type { MilestoneId } from '../game/milestones';
 import { formatDuration, formatWhen } from './time';
@@ -82,6 +82,8 @@ function text(m: Message): string {
       const c = getCharacter(m.character);
       return STRINGS.messages.visitor(m.name, STRINGS.characterName(c?.name ?? '?', getVariant(c, m.variant)?.name));
     }
+    case 'meadowVisit':
+      return m.missed ? STRINGS.meadow.missed(m.name) : STRINGS.meadow.arrived(m.name);
     case 'littleOne':
       return STRINGS.messages.littleOne(m.name, m.friend);
     case 'badge': {
@@ -155,6 +157,7 @@ function messageRow(m: Message, now: number): HTMLElement {
   icon.innerHTML =
     m.kind === 'order' || m.kind === 'pickup' ? ITEM_ICONS.parcel
     : m.kind === 'visitor' || m.kind === 'littleOne' ? ITEM_ICONS.meet
+    : m.kind === 'meadowVisit' ? MENU_ICONS.meadow
     : m.kind === 'badge' ? ACHIEVEMENT_ICONS[m.id] ?? ITEM_ICONS.letter
     : m.kind === 'milestone' ? MILESTONE_ICONS[m.id] ?? ITEM_ICONS.letter
     : m.kind === 'level' ? SKILL_POINT_ICON

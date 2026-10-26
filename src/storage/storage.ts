@@ -15,12 +15,13 @@ import { fitTrait, rollTrait } from '../game/traits';
 import { carriedOf, genesAtGrowUp } from '../game/genes';
 import { rollLikes } from '../game/likes';
 import { newHygiene } from '../game/hygiene';
+import { petFromMember } from '../game/meadow';
 
 const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 35;
+export const SAVE_VERSION = 36;
 
 export interface SaveFile {
   version: number;
@@ -425,6 +426,21 @@ export function migrate(save: SaveFile): SaveFile {
     const fr = save.state.fragments;
     if (fr) fr.pieces = (fr.pieces ?? 0) * 30 + (fr.careDays ?? 0) * CONFIG.fragments.perGoodDay;
     save.version = 35;
+  }
+  // Version 35 -> 36: the Meadow keeps whole pets, which visit and can
+  // come back, and leave keepsakes. Pets that moved there before are made
+  // again from the Family Tree, and each leaves its framed portrait.
+  if (save.version === 35) {
+    const st = save.state;
+    const now = st.lastUpdated ?? Date.now();
+    const moved = (st.family ?? []).filter((m: any) => m.meadow);
+    st.meadow = moved.map((m: any) => ({ pet: petFromMember(m, now), movedAt: now, hiDay: '', hiAt: 0, seenAt: now }));
+    st.keepsakes = moved.map((m: any) => ({ id: m.id, name: m.name, character: m.character, variant: m.variant, tier: 'portrait', at: now }));
+    if (st.visit) {
+      st.visit.meadowId = null;
+      st.visit.meadowAt = moved.length > 0 ? now + CONFIG.meadow.firstVisitHours * 3_600_000 : 0;
+    }
+    save.version = 36;
   }
   return save;
 }

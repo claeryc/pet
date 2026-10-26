@@ -15,6 +15,7 @@ import { drawGardenBackground, drawGardenPots, type GardenScene } from './garden
 import { drawDelivery, type DeliveryScene } from './delivery';
 import { drawPlace } from './places';
 import { drawBath, drawMess, type BathScene, type PetMess } from './hygiene';
+import { drawKeepsakes, type RoomKeepsakes } from './keepsakes';
 
 export const ROOM_WIDTH = 64;
 export const ROOM_HEIGHT = 48;
@@ -58,6 +59,9 @@ export interface Scene {
   // Looking at the current trip (tap the note): the place, with the pets
   // that went there, left to right.
   trip?: TripScene | null;
+  // Keepsakes from pets in the Meadow (see src/game/meadow.ts): a framed
+  // portrait on the wall, and a little shelf.
+  keepsakes?: RoomKeepsakes | null;
 }
 
 export interface TripScene {
@@ -207,6 +211,17 @@ function drawPetAt(
   }
 }
 
+// Draws another pet standing with its feet at `floor` (the room's floor is
+// at 40), its left edge at `x`. For scenes other than the room, like the
+// Meadow.
+export function drawPetStanding(ctx: CanvasRenderingContext2D, p: OtherPet, x: number, floor: number, timeMs: number): void {
+  ctx.save();
+  ctx.translate(0, floor - 40);
+  drawPetAt(ctx, p.sheet, p.animation, x, timeMs, p.hat, p);
+  if (p.glow) drawGlow(ctx, x, timeMs);
+  ctx.restore();
+}
+
 // A revived pet's faint star-glow: a few tiny sparkles that twinkle in
 // and out around it, two at a time. `x` is the pet's left edge.
 const GLOW_SPOTS = [[5, 14], [27, 18], [3, 30], [29, 31], [16, 8]];
@@ -232,12 +247,13 @@ function drawHalo(ctx: CanvasRenderingContext2D, cx: number, y: number, timeMs: 
   ctx.fillRect(cx - 3, top + 2, 6, 1);
 }
 
-// Little hearts floating up between two pets that are playing together.
-function drawHearts(ctx: CanvasRenderingContext2D, timeMs: number): void {
+// Little hearts floating up between two pets that are playing together
+// (or, with `cx` and `bottom`, over one pet in the Meadow).
+export function drawHearts(ctx: CanvasRenderingContext2D, timeMs: number, cx = 29, bottom = 26): void {
   for (let i = 0; i < 3; i++) {
     const t = ((timeMs / 1400 + i / 3) % 1);
-    const x = 29 + [0, 4, -3][i] + Math.round(Math.sin(t * 6 + i) * 1.5);
-    const y = Math.round(26 - t * 20);
+    const x = cx + [0, 4, -3][i] + Math.round(Math.sin(t * 6 + i) * 1.5);
+    const y = Math.round(bottom - t * 20);
     ctx.globalAlpha = 1 - t;
     ctx.fillStyle = PALETTE.rose;
     ctx.fillRect(x, y, 1, 1);
@@ -342,6 +358,7 @@ export function drawRoom(
     drawWindow(ctx, scene.night, timeMs);
     if (scene.room?.curtains) drawCurtains(ctx, scene.room.curtains, WINDOW.x, WINDOW.y, WINDOW.w, WINDOW.h);
     if (scene.room?.furniture && (!scene.fishing || scene.fishing === 'off')) drawFurniture(ctx, scene.room.furniture);
+    if (scene.keepsakes) drawKeepsakes(ctx, scene.keepsakes, timeMs);
     if (scene.fishing && scene.fishing !== 'off') drawFishing(ctx, scene.fishing, timeMs);
   }
 

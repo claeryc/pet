@@ -318,6 +318,7 @@ export const STRINGS = {
     shop: 'Shop',
     collection: 'Collection',
     familyTree: 'Family Tree',
+    meadow: 'Meadow',
     messages: 'Messages',
     journeys: 'Journeys',
     guide: 'Guide',
@@ -605,7 +606,7 @@ export const STRINGS = {
     retire: (name: string) => `Move ${name} to the Meadow`,
     nestTitle: 'An egg in the nest',
     nestAsk:
-      "A little one's egg is waiting in the nest. A room fits two pets, so it moves in once one of them moves to the Meadow. Pets in the Meadow stay in your Family Tree. There's no hurry.",
+      "A little one's egg is waiting in the nest. A room fits two pets, so it moves in once one of them moves to the Meadow. Pets in the Meadow drop by now and then, and can move back home when there's room. There's no hurry.",
     notYet: 'Not yet',
     nestBanner: 'An egg is waiting in the nest.',
     makeRoom: 'Make room',
@@ -765,6 +766,67 @@ export const STRINGS = {
       away: (name: string) => `${name} is out on a journey.`,
     } as Record<string, (name: string) => string>,
     notNow: 'Not now',
+  },
+  // The Meadow, where pets go when they move out (see src/game/meadow.ts).
+  meadow: {
+    title: 'The Meadow',
+    intro:
+      "Pets who moved out live here. Nobody gets hungry or sick in the Meadow. Say hi once a day, and that pet is the next to drop by. Only while it's visiting can it move back home.",
+    tapHint: 'Tap a pet to say hi.',
+    unwell: "Pets who aren't feeling well can't move to the Meadow.",
+    // The goodbye card.
+    movedTitle: (name: string) => `${name} moved to the Meadow`,
+    days: (days: number, good: number) =>
+      `You had ${days === 1 ? '1 day' : `${days} days`} together, ${good === 1 ? '1 good care day' : `${good} good care days`}.`,
+    grewInto: (name: string, character: string) => `${name} grew into ${character}.`,
+    loved: (name: string, food: string) => `${name} loved ${food}.`,
+    journeys: (n: number) => (n === 1 ? 'Went on 1 journey.' : `Went on ${n} journeys.`),
+    littleOnes: (n: number) => (n === 1 ? 'Had 1 little one.' : `Had ${n} little ones.`),
+    left: (name: string, tier: string, thing: string) =>
+      tier === 'portrait' ? `${name} left you a framed portrait. Find it in Menu > Meadow.`
+      : tier === 'keepsake' ? `${name} left you a framed portrait and a ${thing}. Find them in Menu > Meadow.`
+      : `${name} left you a framed portrait and a golden ${thing}. Find them in Menu > Meadow.`,
+    lovely: 'Lovely',
+    close: 'Close',
+    // What a pet from each world leaves.
+    things: {
+      nature: 'mushroom lamp', ocean: 'seashell', bakery: 'little cake', starry: 'star jar', cave: 'crystal', egg: 'bit of eggshell',
+    } as Record<string, string>,
+    // A Meadow pet visiting.
+    visitBanner: (name: string) => `${name} dropped by from the Meadow.`,
+    sayHello: 'Say hello',
+    visitTitle: (name: string) => `${name} dropped by!`,
+    brought: (name: string, food: string) => `${name} brought you ${food}.`,
+    canStay: (name: string) => `There's a free spot, so ${name} could move back home.`,
+    noSpot: (name: string) => `There's no free spot at home right now, so ${name} heads back to the Meadow later.`,
+    welcome: (name: string) => `Welcome ${name} home`,
+    byeForNow: 'Bye for now',
+    cameHome: (name: string) => `${name} moved back home!`,
+    arrived: (name: string) => `${name} dropped by from the Meadow!`,
+    missed: (name: string) => `${name} dropped by from the Meadow while you were out.`,
+    blocked: {
+      gone: (name: string) => `${name} already headed back to the Meadow.`,
+      full: (_name: string) => 'There is no free spot at home.',
+    } as Record<string, (name: string) => string>,
+    // The Meadow page.
+    everyone: (n: number) => `Everyone in the Meadow  ${n}`,
+    since: (date: string) => `In the Meadow since ${date}`,
+    visitingNow: 'Visiting you now',
+    hiToday: 'Said hi today',
+    sayHi: 'Say hi',
+    card: 'Goodbye card',
+    hi: (name: string) => `You said hi to ${name}. ${name} will drop by soon.`,
+    already: (name: string) => `You've said hi to ${name} today.`,
+    keepsakes: (room: string) => `Keepsakes in the ${room}`,
+    keepsakesEmpty: 'Pets leave keepsakes when they move to the Meadow.',
+    portrait: 'Framed portrait',
+    thing: (tier: string, thing: string) => (tier === 'golden' ? `Golden ${thing}` : thing[0].toUpperCase() + thing.slice(1)),
+    hang: 'Hang',
+    takeDown: 'Take down',
+    onShelf: 'On the shelf',
+    takeOff: 'Take off',
+    shelfFull: 'The shelf is full. Take something off first.',
+    debugVisit: 'Meadow visit now',
   },
   revival: {
     title: (name: string) => `Bring ${name} back?`,
