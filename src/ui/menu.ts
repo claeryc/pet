@@ -105,15 +105,22 @@ function item(label: string, onClick?: () => void, isNew = false, icon?: string)
   return b;
 }
 
+export type MenuPage = 'main' | 'settings' | 'shop' | 'wardrobe' | 'collection' | 'skills' | 'familyTree' | 'meadow' | 'messages' | 'guide';
+
 // `isOpen` says whether the panel is showing; `close` folds it up.
-export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolean, close: () => void): Menu {
+// `onPage` hears which page is showing, each time one is drawn.
+export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolean, close: () => void, onPage?: (page: MenuPage) => void): Menu {
   const panel = document.createElement('div');
   panel.className = 'menu-panel';
 
   // The pages redraw whenever the game changes (after buying something,
   // for example), so we remember which page is showing.
   let state: GameState | null = null;
-  let page: 'main' | 'settings' | 'shop' | 'wardrobe' | 'collection' | 'skills' | 'familyTree' | 'meadow' | 'messages' | 'guide' = 'main';
+  let page: MenuPage = 'main';
+  function setPage(next: MenuPage): void {
+    page = next;
+    onPage?.(next);
+  }
 
   // Live readout for the testing tools, refreshed by update().
   const debugInfo = document.createElement('p');
@@ -156,7 +163,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
 
   // The main list, shown as a grid of icon tiles.
   function showMain(): void {
-    page = 'main';
+    setPage('main');
     toTop();
     const grid = document.createElement('div');
     grid.className = 'menu-grid';
@@ -233,7 +240,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     }
     // Reading the page counts as reading the mail, new mail included.
     if (state && (fresh || unreadMail(state) > 0)) queueMicrotask(cb.onMessagesSeen);
-    page = 'messages';
+    setPage('messages');
     const list = document.createElement('div');
     list.className = 'shop-list messages';
     if (state) {
@@ -278,10 +285,11 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     if (fresh) {
       openCategories.clear();
       shopView.tab = 'today';
+      shopView.scroll = 0;
       treeView.focus = null;
       toTop();
     }
-    page = which;
+    setPage(which);
     const list = document.createElement('div');
     list.className = 'shop-list';
     if (state) {
@@ -334,7 +342,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
   // The Meadow: its scene, everyone there, and their keepsakes.
   function showMeadow(fresh = true): void {
     if (fresh) toTop();
-    page = 'meadow';
+    setPage('meadow');
     const list = document.createElement('div');
     list.className = 'shop-list meadow';
     if (state) list.append(...meadowPage(state, cb));
@@ -345,7 +353,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
   // are locked; ones not read yet have a dot.
   function showGuide(fresh = true): void {
     if (fresh) toTop();
-    page = 'guide';
+    setPage('guide');
     const G = STRINGS.guide;
     const intro = document.createElement('p');
     intro.className = 'guide-intro';
@@ -509,7 +517,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
   }
 
   function showSettings(): void {
-    page = 'settings';
+    setPage('settings');
     toTop();
     const reset = item(STRINGS.buttons.reset, () => {
       close();

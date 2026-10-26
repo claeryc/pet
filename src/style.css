@@ -1190,13 +1190,16 @@ body {
   display: none;
 }
 
-/* The Shop's tabs: a strip of chips, each with a picture of something
-   from that category. It scrolls sideways when they don't all fit, and
-   stays under the header while the rows scroll. */
+/* The Shop's tabs: one row of pictures, the picked one filled in. They
+   share the width, but never get narrower than 36px (easy to tap): past
+   that the row scrolls sideways. It stays under the header while the
+   rows scroll. */
 .shop-tabs {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
   /* Up into the gap below the header, so no rows show through it. */
   margin: -8px -8px 6px;
   padding: 8px 8px 4px;
@@ -1206,36 +1209,29 @@ body {
   background: #fff5f8;
 }
 
-.shop-tab {
-  font: inherit;
-  font-weight: 700;
-  font-size: 0.72rem;
-  position: relative;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 7px 2px 5px;
-  border: 2px solid var(--lavender);
-  border-radius: 14px;
-  background: white;
-  color: var(--ink);
-  cursor: pointer;
-  touch-action: manipulation;
+.shop-tabs::-webkit-scrollbar {
+  display: none;
 }
 
-.shop-tab-name {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.shop-tab {
+  font: inherit;
+  position: relative;
+  flex: 1 0 36px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 2px solid var(--lavender);
+  border-radius: 12px;
+  background: white;
+  cursor: pointer;
+  touch-action: manipulation;
 }
 
 .shop-tab[aria-pressed='true'] {
   background: var(--lilac);
   border-color: var(--lilac);
-  color: white;
 }
 
 .shop-tab:active {
@@ -1257,10 +1253,10 @@ body {
 /* Something new on a tab (today's special, not yet bought). */
 .shop-tab-dot {
   position: absolute;
-  top: 4px;
-  right: 6px;
-  width: 9px;
-  height: 9px;
+  top: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--accent-dark);
   border: 2px solid white;

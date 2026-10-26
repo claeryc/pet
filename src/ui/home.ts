@@ -492,10 +492,18 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   // The gear button opens the menu (shop, inventory, settings and more) the
   // same way Feed and Play open. It always opens, even for an egg.
   let menuDrawer: ReturnType<typeof createDrawer> | null = null;
+  // The Shop reaches up over the stat bars as well (nobody needs them while
+  // shopping), so its rows get the room under its tabs.
+  let menuOverStats = false;
   const menu = createMenu(
     { ...cb, onOpenDelivery: () => startDelivery(), onOpenMeet: () => startMeet(), onOpenJourneys: () => openJourneys() },
     () => menuDrawer?.isOpen() ?? false,
     () => menuDrawer?.close(),
+    (page) => {
+      if (menuOverStats === (page === 'shop')) return;
+      menuOverStats = page === 'shop';
+      if (menuDrawer) fitDrawers();
+    },
   );
   menuDrawer = createDrawer({
     ...drawerSetup,
@@ -514,10 +522,15 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   // An open Feed, Play or Menu panel reaches up to just under the stat bars,
   // so taller screens show more rows. Small screens keep the old height
   // (the panel covers the bars there). The panel's button, frame and
-  // padding take about 74px.
+  // padding take about 74px. The Shop goes over the bars, its top edge
+  // lined up with theirs (the frame itself is 58px).
   function fitDrawers(): void {
-    const room = actions.getBoundingClientRect().bottom - statSlot.getBoundingClientRect().bottom - DRAWER_GAP;
-    actions.style.setProperty('--drawer-fit', `${Math.max(DRAWER_MIN, Math.floor(room - 74))}px`);
+    const bottom = actions.getBoundingClientRect().bottom;
+    const slot = statSlot.getBoundingClientRect();
+    const fit = (room: number) => `${Math.max(DRAWER_MIN, Math.floor(room))}px`;
+    const underBars = fit(bottom - slot.bottom - DRAWER_GAP - 74);
+    actions.style.setProperty('--drawer-fit', underBars);
+    menuDrawer?.el.style.setProperty('--drawer-fit', menuOverStats ? fit(bottom - slot.top - 58) : underBars);
   }
   window.addEventListener('resize', fitDrawers);
 

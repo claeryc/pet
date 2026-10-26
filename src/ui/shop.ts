@@ -339,7 +339,7 @@ export type ShopCategory = 'today' | 'revival' | 'food' | 'garden' | 'fishing' |
 // Food the Shop sells: only plain ingredients (the energy drink only on its days).
 export const soldInShop = (f: Food) => f.price > 0 && !f.caughtOnly && !f.grownOnly && !f.cookedOnly && !f.foundOnly;
 
-// The Shop: a grid of tabs for the categories, then the picked category's
+// The Shop: a row of tabs for the categories, then the picked category's
 // rows. Today comes first: the daily special and the things in short supply.
 export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, redraw: () => void): HTMLElement[] {
   const now = state.lastUpdated;
@@ -523,36 +523,53 @@ interface ShopTab {
   dot?: boolean; // something new on it (today's special, not yet bought)
 }
 
-// Which category's tab is showing. Kept by the menu, so it stays while the
-// page redraws after buying something.
+// Which category's tab is showing, and how far the tabs are scrolled
+// sideways. Kept by the menu, so both stay while the page redraws after
+// buying something.
 export interface ShopView {
   tab: ShopCategory;
+  scroll?: number;
 }
 
-// [ Today | Stars | Food | Garden ]
-// [ Fishing | Journeys | Room | Hats ]
-// A grid of tiles, four to a line, so every category is in sight. It stays
-// at the top while the rows scroll.
+// [today][stars][FOOD][garden][fishing][journeys][room][hats]
+// One row of picture tabs, so the rows below get most of the room. They
+// share the width while each can stay at least 36px wide (set in the
+// CSS); past that (a small phone, or more categories) the row scrolls
+// sideways instead of the tabs getting too small to tap. It stays at the
+// top while the rows scroll.
 function shopTabs(tabs: ShopTab[], view: ShopView, redraw: () => void): HTMLElement {
-  const grid = document.createElement('div');
-  grid.className = 'shop-tabs';
-  grid.setAttribute('role', 'group');
-  grid.setAttribute('aria-label', STRINGS.shop.title);
+  const strip = document.createElement('div');
+  strip.className = 'shop-tabs';
+  strip.setAttribute('role', 'group');
+  strip.setAttribute('aria-label', STRINGS.shop.title);
+  let picked: HTMLElement | null = null;
   for (const t of tabs) {
     const b = document.createElement('button');
     b.className = 'shop-tab';
+    b.title = t.title;
+    b.setAttribute('aria-label', t.title);
     b.setAttribute('aria-pressed', String(t.id === view.tab));
-    b.innerHTML = `<span class="shop-tab-icon" aria-hidden="true">${t.icon}</span><span class="shop-tab-name"></span>`;
-    b.lastElementChild!.textContent = t.title;
+    b.innerHTML = `<span class="shop-tab-icon" aria-hidden="true">${t.icon}</span>`;
     if (t.dot) b.append(Object.assign(document.createElement('span'), { className: 'shop-tab-dot' }));
+    if (t.id === view.tab) picked = b;
     b.addEventListener('click', () => {
       if (view.tab === t.id) return;
       view.tab = t.id;
       redraw();
     });
-    grid.append(b);
+    strip.append(b);
   }
-  return grid;
+  strip.addEventListener('scroll', () => (view.scroll = strip.scrollLeft), { passive: true });
+  // Once it's on the page: back to where it was scrolled, with the picked
+  // tab in sight (other screens can open the Shop at any category).
+  requestAnimationFrame(() => {
+    strip.scrollLeft = view.scroll ?? 0;
+    if (!picked) return;
+    const left = picked.offsetLeft; // the strip is sticky, so it's the tabs' offsetParent
+    if (left < strip.scrollLeft) strip.scrollLeft = left;
+    else if (left + picked.offsetWidth > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = left + picked.offsetWidth - strip.clientWidth;
+  });
+  return strip;
 }
 
 // The Wardrobe (hold the pet to open it): the hats you own, to put on or
