@@ -203,12 +203,14 @@ export interface Room {
   // left to right (pet ids). None at first.
   frame?: string | null;
   shelf?: (string | null)[];
-  furniture?: Partial<Record<FurnitureSlot, string>>; // the piece in each spot (none to start with)
+  // The piece in each spot (none to start with). The Meadow's frame and
+  // shelf are pieces too: 'keepsakeFrame' and 'keepsakeShelf'.
+  furniture?: Partial<Record<FurnitureSlot, string>>;
 }
 
-// Where a piece of furniture goes: on the wall, or on the floor at the left
-// or right side of the room (see CONFIG.room.furniture).
-export type FurnitureSlot = 'wall' | 'left' | 'right';
+// The spots in a room for furniture: two on the wall, the windowsill, and
+// the floor at the left and right side (see CONFIG.room.furniture).
+export type FurnitureSlot = 'wall' | 'wallMid' | 'sill' | 'left' | 'right';
 
 // What's been bought today of the Shop's limited stock (the energy drink).
 export interface Stock {

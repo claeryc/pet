@@ -865,6 +865,22 @@ export const STRINGS = {
     notNow: 'Not now',
   },
   // The Meadow, where pets go when they move out (see src/game/meadow.ts).
+  // Decorating the room (src/ui/decorate.ts), and the keepsake shelf up close.
+  decorate: {
+    spots: { wallMid: 'Small wall', wall: 'Wall', sill: 'Windowsill', left: 'Floor, left', right: 'Floor, right' } as Record<string, string>,
+    hint: 'Tap a spot in the room',
+    empty: 'Nothing',
+    nothingFits: 'Nothing for this spot yet.',
+    shop: 'Shop',
+    done: 'Done',
+    // The shelf up close.
+    back: 'Back',
+    change: 'Change',
+    thing: (name: string, thing: string) => `${name}'s ${thing}`,
+    golden: 'Golden',
+    emptySpot: 'An empty spot',
+    shelfLabel: 'The keepsake shelf, up close',
+  },
   meadow: {
     title: 'The Meadow',
     intro:
@@ -1016,9 +1032,14 @@ export const STRINGS = {
       lamp: 'Floor lamp',
       toyBox: 'Toy box',
       bookshelf: 'Bookshelf',
+      cactus: 'Windowsill cactus',
+      candle: 'Windowsill candle',
+      keepsakeFrame: 'Keepsake frame',
+      keepsakeShelf: 'Keepsake shelf',
     } as Record<string, string>,
-    // Where a piece of furniture goes.
-    furnitureSlot: { wall: 'On the wall', left: 'Floor, left side', right: 'Floor, right side' } as Record<string, string>,
+    // Where a piece of furniture goes (its usual spot).
+    furnitureSlot: { wall: 'On the wall', wallMid: 'On the wall', sill: 'Windowsill', left: 'Floor, left side', right: 'Floor, right side' } as Record<string, string>,
+    decorate: 'Decorate',
     place: 'Place',
     // The Today tab: the daily special, then things in short supply.
     todayTab: 'Today',

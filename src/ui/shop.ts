@@ -15,7 +15,7 @@ import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import { HATS, baitCount, fortuneCookies, revivalStars, canBuyPot, foodCount, limitedInStock, limitedLeft, localDay, dailySpecial, ownsSpecial, priceToday, hasBigJar, riceJarSize, getHat } from '../game/economy';
 import { earnedFrom } from '../game/regulars';
-import { CURTAINS, FURNITURE, WALLPAPERS, getDecor, inUse, ownsDecor, type Decor, type DecorKind } from '../game/decor';
+import { CURTAINS, FURNITURE, SPOTS, WALLPAPERS, getDecor, inUse, ownsDecor, piecesFor, type Decor, type DecorKind } from '../game/decor';
 import type { GameState } from '../game/state';
 import type { Food, FoodId } from '../game/actions';
 import { FRAGMENT_ICON, ITEM_ICONS, MENU_ICONS, STAT_ICONS } from './icons';
@@ -48,6 +48,7 @@ export interface ShopCallbacks {
   onBuyDecor: (kind: DecorKind, id: string) => void;
   onUseDecor: (kind: DecorKind, id: string | null) => void;
   onTakeDownFurniture: (id: string) => void; // out of the room you're looking at
+  onDecorate?: () => void; // pick where each piece goes, in the room
   onBuyBigJar: () => void; // the bigger rice jar, for star fragments
   onBuyPack: (productId: string) => void; // star fragments, with real money
   onBuyFamilyHome: () => void; // the second room, for star fragments
@@ -732,6 +733,12 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
     return c;
   };
 
+  const decorateButton = () => {
+    const b = ghostButton(S.decorate, () => cb.onDecorate?.(), true);
+    b.classList.add('shop-decorate');
+    return b;
+  };
+
   // Today: the special, a craving the Shop can help with, and the things
   // in short supply.
   const special = dailySpecial(state);
@@ -842,6 +849,8 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
     {
       id: 'room', title: S.room, icon: ITEM_ICONS[`wallpaper_${WALLPAPERS[1]?.id}`] ?? '', items: [...walls, ...furniture, ...curtains],
       body: () => [
+        // Decorate: once there's a piece to put somewhere.
+        ...(cb.onDecorate && SPOTS.some((spot) => piecesFor(state, spot).length > 0) ? [decorateButton()] : []),
         familyHome(),
         section(S.wallpaper, S.ofAll(ownedOf(WALLPAPERS), WALLPAPERS.length)), grid('two', walls.map((w) => swatchCard(w, state, open))),
         section(S.furnitureTitle, S.ofAll(ownedOf(FURNITURE), FURNITURE.length)), grid('', furniture.map((f) => card(f, state, open))),

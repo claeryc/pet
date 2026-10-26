@@ -6,7 +6,7 @@ import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import { canPlayMinigames, getLook, hasPassed, isCritical, isNeglected, isRecovering, timeLeftToTreat } from '../game/stats';
 import { sheetFor, stageLengthMs } from '../game/growth';
-import type { GameState, PetStats } from '../game/state';
+import type { FurnitureSlot, GameState, PetStats } from '../game/state';
 import { meadowVisitor } from '../game/meadow';
 import { createMenu, type MenuCallbacks } from './menu';
 import { baitCount, foodCount, revivalStars } from '../game/economy';
@@ -39,6 +39,10 @@ import { hasBackpack, isAway, nobodyHome } from '../game/presence';
 import { formatClock } from './time';
 import { createJourneys, JOURNEYS_OUT_MS } from './journeys';
 import { createTripView, tripNotes } from './trip';
+import { createDecorateView, createShelfView } from './decorate';
+import { spotAt } from '../render/furniture';
+import { closeupSpotAt, shelfHit } from '../render/keepsakes';
+import { roomDecor } from '../game/rooms';
 import type { Pet } from '../game/state';
 import { createBath, BATH_OUT_MS } from './bath';
 import { bodyBox, poopAt, type BathScene } from '../render/hygiene';
@@ -46,6 +50,7 @@ import { SPOTS } from '../render/canvas';
 import type { SpriteSheet } from '../render/sprites';
 
 export interface HomeCallbacks extends MenuCallbacks {
+  onPlaceFurniture: (spot: FurnitureSlot, id: string | null) => void; // decorating
   onFeed: (food: FoodId) => void;
   onPlay: (activity: ActivityId) => void;
   onLights: () => void;
@@ -102,6 +107,8 @@ export interface HomeScreen {
   // and the "Trying on · Party Hat" tag over the room, or null to take it off.
   shopShowing: () => boolean;
   tryOn: (name: string | null) => void;
+  decorateScene: () => { spot: FurnitureSlot | null } | null; // decorating: the spot picked
+  shelfScene: () => { picked: number | null } | null; // the keepsake shelf up close
   bathScene: (timeMs: number) => BathScene | null; // the suds, drips and sponge or dryer
   hidesSmell: () => boolean; // soapy, wet or just washed: no smell lines
   // With every pet out on a journey, shows the trip instead of the empty room.
@@ -505,7 +512,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   // shopping), so its rows get the room under its tabs.
   let menuOverStats = false;
   const menu = createMenu(
-    { ...cb, onOpenDelivery: () => startDelivery(), onOpenMeet: () => startMeet(), onOpenJourneys: () => openJourneys() },
+    { ...cb, onOpenDelivery: () => startDelivery(), onOpenMeet: () => startMeet(), onOpenJourneys: () => openJourneys(), onDecorate: () => openDecorate() },
     () => menuDrawer?.isOpen() ?? false,
     () => menuDrawer?.close(),
     (page) => {
@@ -614,9 +621,26 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       bath.down(x, y, petBody());
       return;
     }
+    // Decorating: tapping a spot picks it. Up close: a thing on the shelf.
+    if (decorate.active()) {
+      const { x, y } = roomPoint(e);
+      const spot = spotAt(x, y);
+      if (spot) decorate.pick(spot);
+      return;
+    }
+    if (shelf.active()) {
+      const i = closeupSpotAt(roomPoint(e).x);
+      if (i !== null) shelf.pick(i);
+      return;
+    }
     if (actions.hidden) return;
     // A poop on the floor: pick it up.
     if (tapPoop(e)) return;
+    // The keepsake shelf: see it up close.
+    if (latest) {
+      const { x, y } = roomPoint(e);
+      if (shelfHit(roomDecor(latest.state).furniture ?? {}, x, y)) return openShelf();
+    }
     const which = tappedPet(e);
     if (!which) return;
     // Tapping the other pet looks after it instead.
@@ -881,6 +905,49 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     },
     onCallHome: cb.onCallHome,
   });
+  // Decorating, and the keepsake shelf up close: each in place of the bars
+  // and the buttons, like a trip.
+  const backToRoom = () => {
+    stats.hidden = latest?.state.pet.stage === 'egg';
+    showActions(0);
+  };
+  const decorate = createDecorateView({
+    onPlace: cb.onPlaceFurniture,
+    onShop: () => {
+      backToRoom();
+      goShop('room');
+    },
+    onClose: backToRoom,
+  });
+  const shelf = createShelfView({
+    onChange: () => {
+      backToRoom();
+      if (actions.hidden) return;
+      feedDrawer.close();
+      playDrawer.close();
+      if (!menuDrawer!.isOpen()) menuDrawer!.open();
+      menu.showMeadow();
+    },
+    onClose: backToRoom,
+  });
+  function takeOver(): void {
+    feedDrawer.close();
+    playDrawer.close();
+    menuDrawer!.close();
+    hideActions();
+    stats.hidden = true;
+  }
+  function openDecorate(): void {
+    if (decorate.active()) return;
+    if (trip.active()) trip.close();
+    takeOver();
+    decorate.open();
+  }
+  function openShelf(): void {
+    if (actions.hidden) return;
+    takeOver();
+    shelf.open();
+  }
   // Tapping a note opens that trip, in place of the bars and the buttons;
   // tapping it again (or Close) goes back.
   let tripFor = '';
@@ -988,7 +1055,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const reveal = createReveal();
   const craft = createCraft();
   const backpack = createBackpack();
-  statSlot.append(stats, bath.panel, journeys.panel, trip.panel, fishing.pond, cooking.kitchen, garden.beds, delivery.panel, meet.panel, backpack.el, reveal.el, craft.el);
+  statSlot.append(stats, bath.panel, journeys.panel, trip.panel, decorate.panel, shelf.panel, fishing.pond, cooking.kitchen, garden.beds, delivery.panel, meet.panel, backpack.el, reveal.el, craft.el);
 
   // A short message that pops up and fades, e.g. "Mochi is asleep". When
   // you've run out of something the Shop sells, it has a Shop button too.
@@ -1066,7 +1133,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     else showToast(message);
   }
 
-  root.append(roomWrap, banner, statSlot, garden.pour, actions, bath.row, trip.row, fishing.row, cooking.row, garden.row, delivery.row, meet.row, journeys.sheet, journeys.row, toastEl);
+  root.append(roomWrap, banner, statSlot, garden.pour, actions, bath.row, trip.row, decorate.row, shelf.row, fishing.row, cooking.row, garden.row, delivery.row, meet.row, journeys.sheet, journeys.row, toastEl);
 
   // Which pet the bars were showing, so switching pets can slide them.
   let barsFor: string | null = null;
@@ -1154,6 +1221,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       meet.update(state, now);
       journeys.update(state, now);
       trip.update(state, now);
+      decorate.update(state);
+      shelf.update(state);
       refreshNotes(state);
       refreshParcel();
       parcel.classList.toggle('all-full', !!state.delivery.order?.boxes.every((b) => b.have >= b.want));
@@ -1170,7 +1239,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       // A drop on Play when a pot is dry, sick or ready to harvest.
       const tend = isUnlocked(state, 'garden') && needsTending(state.garden, now);
       playDrawer.setBadge(tend ? STAT_ICONS.drop : null, STRINGS.garden.needsYou);
-      stats.hidden = isEgg || journeys.active() || trip.active(); // an egg has no needs yet
+      stats.hidden = isEgg || journeys.active() || trip.active() || decorate.active() || shelf.active(); // an egg has no needs yet
       const mood = petAway ? STRINGS.blocked.away(pet.name) : isEgg ? STRINGS.mood.egg : STRINGS.mood[getLook(pet)](pet.name);
       const mess = [
         ...(!petAway && pet.hygiene.smelly ? [STRINGS.bath.smelly(pet.name)] : []),
@@ -1262,6 +1331,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       if (!name) return;
       tryTag.replaceChildren(Object.assign(document.createElement('span'), { textContent: STRINGS.shop.tryingOn }), Object.assign(document.createElement('b'), { textContent: name }));
     },
+    decorateScene: () => decorate.scene(),
+    shelfScene: () => shelf.scene(),
     bathScene: (timeMs) => bath.scene(timeMs),
     hidesSmell: () => bath.hidesSmell(),
     showTripIfEmpty,

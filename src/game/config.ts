@@ -745,18 +745,22 @@ export const CONFIG = {
       { id: 'mint', price: 100 },
       { id: 'plum', price: 150 },
     ],
-    // Furniture: bought once, then placed in any room. Each piece has its
-    // own spot (`slot`): on the wall, or on the floor at the left or right
-    // side. A spot holds one piece at a time. How each looks lives in
-    // src/render/furniture.ts. Only for looks.
+    // Furniture: bought once, then placed in any room. A room has five
+    // spots: two on the wall (`wall` to the right, the smaller `wallMid`
+    // beside the window), the windowsill (`sill`) and the floor at the
+    // left and right side. Each spot holds one piece. `spots` lists where a
+    // piece fits, its usual spot first (where it goes when bought). How
+    // each looks lives in src/render/furniture.ts. Only for looks.
     furniture: [
-      { id: 'garland', slot: 'wall', price: 100 },
-      { id: 'portrait', slot: 'wall', price: 120 },
-      { id: 'shelf', slot: 'wall', price: 160 },
-      { id: 'plant', slot: 'left', price: 120 },
-      { id: 'lamp', slot: 'left', price: 180 },
-      { id: 'toyBox', slot: 'right', price: 140 },
-      { id: 'bookshelf', slot: 'right', price: 220 },
+      { id: 'garland', spots: ['wall'], price: 100 },
+      { id: 'portrait', spots: ['wall', 'wallMid'], price: 120 },
+      { id: 'shelf', spots: ['wall'], price: 160 },
+      { id: 'cactus', spots: ['sill'], price: 60 },
+      { id: 'candle', spots: ['sill'], price: 70 },
+      { id: 'plant', spots: ['left', 'right'], price: 120 },
+      { id: 'lamp', spots: ['left', 'right'], price: 180 },
+      { id: 'toyBox', spots: ['right', 'left'], price: 140 },
+      { id: 'bookshelf', spots: ['right', 'left'], price: 220 },
     ],
   },
 
