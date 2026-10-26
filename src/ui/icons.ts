@@ -1306,6 +1306,21 @@ export const MENU_ICONS: Record<string, string> = {
     '..kkkcckkk..',
     '............',
   ]),
+  // A green hill with flowers under the sun, for the Meadow.
+  meadow: pixelIcon([
+    '........kkk.',
+    '.......kyyyk',
+    '.......kyyyk',
+    '........kkk.',
+    '............',
+    '...kkkkkk...',
+    '.kkmmmmmmkk.',
+    'kmmmmmmmmmmk',
+    'kggpgggggygk',
+    'kgpwpgggyeyk',
+    'kggpgggggygk',
+    'kkkkkkkkkkkk',
+  ]),
   // A pink book, for the Guide.
   guide: pixelIcon([
     '.kkkkkkkkkk.',

@@ -81,6 +81,9 @@ export interface Pet {
   // Which room it lives in: the main room, or the Family Home once you
   // have it (see src/game/rooms.ts). Unset means the main room.
   room?: 'main' | 'family';
+  // Good care days it was home for (see src/game/fragments.ts). Decides
+  // the keepsake it leaves when it moves to the Meadow (see meadow.ts).
+  goodDays?: number;
 }
 
 // Which character a parent grew into, and its colour variant.
@@ -155,6 +158,11 @@ export interface Inventory {
 export interface Room {
   wallpaper: string; // a wallpaper id ('plain' to start with)
   curtains: string | null; // a curtains id, or none
+  // Keepsakes from pets in the Meadow (see src/game/meadow.ts): whose
+  // portrait hangs in the frame, and whose keepsakes stand on the shelf,
+  // left to right (pet ids). None at first.
+  frame?: string | null;
+  shelf?: (string | null)[];
 }
 
 // What's been bought today of the Shop's limited stock (the energy drink).
@@ -223,6 +231,30 @@ export interface Friend {
   carried?: Genes; // the genes it carries (rolled from its id if it has none, see genes.ts)
 }
 
+// A pet of yours living in the Meadow (see src/game/meadow.ts). The whole
+// pet is kept, as it was when it moved, so it can come back home.
+export interface MeadowPet {
+  pet: Pet;
+  movedAt: number;
+  hiDay: string; // the local date you last said hi ('' = never)
+  hiAt: number; // when (0 = never)
+  seenAt: number; // when it last dropped by (or moved to the Meadow)
+}
+
+// What a pet leaves when it moves to the Meadow, by its good care days:
+// its framed portrait, plus a keepsake from its world, plus that keepsake
+// in gold (see CONFIG.meadow.gift).
+export type KeepsakeTier = 'portrait' | 'keepsake' | 'golden';
+
+export interface Keepsake {
+  id: string; // the pet's id (each pet leaves one, ever)
+  name: string;
+  character: string | null;
+  variant: string | null;
+  tier: KeepsakeTier;
+  at: number;
+}
+
 // Who's over right now, one at a time: a new wanderer (`guest`) or one of
 // your friends (`friendId`), and when the next one comes.
 export interface Visit {
@@ -233,6 +265,10 @@ export interface Visit {
   nextAt: number; // when the next one drops by (0 = not planned yet)
   wildAt: number; // when the next new wanderer is due
   invitedDay: string; // the local date you last invited a friend over
+  // Or a pet of yours from the Meadow (its pet id), and when the next one
+  // is due (0 = not planned yet). See src/game/meadow.ts.
+  meadowId: string | null;
+  meadowAt: number;
 }
 
 // Keeps track of the daily check-in bonus.
@@ -283,6 +319,8 @@ export type Message =
   | { kind: 'unlocked'; at: number; id: string }
   | { kind: 'growth'; at: number; stage: string; name: string; character: string | null; variant: string | null }
   | { kind: 'visitor'; at: number; name: string; character: string; variant: string | null; friend?: boolean }
+  // A pet from the Meadow dropped by (`missed`: and left before you saw it).
+  | { kind: 'meadowVisit'; at: number; name: string; character: string | null; variant: string | null; missed?: boolean }
   | { kind: 'littleOne'; at: number; name: string; friend: string }
   | { kind: 'badge'; at: number; id: string; tier: 'bronze' | 'silver' | 'gold' }
   | { kind: 'milestone'; at: number; id: string }
@@ -378,6 +416,10 @@ export interface GameState {
   craving: Craving;
   // Pets to meet: your friends, and the wanderer visiting now.
   friends: Friend[];
+  // Your pets in the Meadow, in the order they moved there, and the
+  // keepsakes they left (see src/game/meadow.ts).
+  meadow: MeadowPet[];
+  keepsakes: Keepsake[];
   visit: Visit;
   // How the room is decorated, and today's limited Shop stock.
   room: Room;
@@ -497,7 +539,9 @@ export function createNewGame(now: number): GameState {
     messagesSeenAt: 0,
     craving: { food: null, until: 0, nextAt: 0, last: null },
     friends: [],
-    visit: { guest: null, friendId: null, until: 0, met: false, nextAt: 0, wildAt: 0, invitedDay: '' },
+    meadow: [],
+    keepsakes: [],
+    visit: { guest: null, friendId: null, until: 0, met: false, nextAt: 0, wildAt: 0, invitedDay: '', meadowId: null, meadowAt: 0 },
     room: { wallpaper: 'plain', curtains: null },
     familyHome: { owned: false, room: { wallpaper: 'plain', curtains: null } },
     stock: { day: '', bought: 0 },

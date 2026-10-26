@@ -13,7 +13,7 @@ import { CONFIG } from './config';
 import { countUp } from './achievements';
 import { localDay } from './economy';
 import { allPets } from './friends';
-import type { GameState } from './state';
+import type { GameState, Pet } from './state';
 import { nobodyHome } from './presence';
 
 const F = CONFIG.revival.fragments;
@@ -25,11 +25,13 @@ export function stepFragments(state: GameState): { state: GameState; pieces: num
   let { careDays, day, dayGood } = fr;
   let home = fr.home ?? true; // someone was home that day
   let earned = 0;
+  let counted = false;
 
   // A new day: the one before counts if it went well.
   const today = localDay(state.lastUpdated);
   if (day !== today) {
-    if (day !== '' && dayGood && home) careDays += 1;
+    counted = day !== '' && dayGood && home;
+    if (counted) careDays += 1;
     if (careDays >= F.careDaysPerFragment) {
       careDays -= F.careDaysPerFragment;
       earned = 1;
@@ -47,8 +49,16 @@ export function stepFragments(state: GameState): { state: GameState; pieces: num
   if (earned === 0 && careDays === fr.careDays && day === fr.day && dayGood === fr.dayGood && home === (fr.home ?? true)) {
     return { state, pieces: 0 };
   }
+  // Each pet keeps count of its own good care days too: they decide the
+  // keepsake it leaves when it moves to the Meadow (see meadow.ts).
+  const goodDay = (p: Pet): Pet => (counted && p.stage !== 'egg' ? { ...p, goodDays: (p.goodDays ?? 0) + 1 } : p);
   return {
-    state: { ...state, fragments: { pieces: fr.pieces + earned, careDays, day, dayGood, home } },
+    state: {
+      ...state,
+      pet: goodDay(state.pet),
+      housemates: counted ? state.housemates.map(goodDay) : state.housemates,
+      fragments: { pieces: fr.pieces + earned, careDays, day, dayGood, home },
+    },
     pieces: earned,
   };
 }

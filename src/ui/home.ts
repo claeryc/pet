@@ -7,6 +7,7 @@ import { CONFIG } from '../game/config';
 import { canPlayMinigames, getLook, hasPassed, isCritical, isNeglected, isRecovering, timeLeftToTreat } from '../game/stats';
 import { sheetFor, stageLengthMs } from '../game/growth';
 import type { GameState, PetStats } from '../game/state';
+import { meadowVisitor } from '../game/meadow';
 import { createMenu, type MenuCallbacks } from './menu';
 import { baitCount, foodCount, revivalStars } from '../game/economy';
 import { createDrawer, type DrawerOption, type Effect } from './drawer';
@@ -71,6 +72,7 @@ export interface HomeCallbacks extends MenuCallbacks {
   onAddFriend: () => void;
   onSwitchPet: (id: string) => void; // tapped the other pet in the room
   onMakeRoom: () => void; // an egg is waiting in the nest
+  onMeadowVisitor: () => void; // a pet from the Meadow dropped by
   onRoomDoor: () => void; // the door to the other room (with the Family Home)
   onCollectPoop: (petId: string, slot: number) => void;
   onBathe: () => boolean; // the bath is done and it's dry; false if refused
@@ -366,7 +368,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   // backpack to open.
   const openBackpack = button(STRINGS.journeys.openBackpack, 'btn', () => latest && cb.onOpenBackpack(latest.state.pet.id));
   const makeRoom = button(STRINGS.friends.makeRoom, 'btn', () => cb.onMakeRoom());
-  banner.append(bannerText, medicine, passedButtons, openBackpack, makeRoom);
+  const sayHello = button(STRINGS.meadow.sayHello, 'btn', () => cb.onMeadowVisitor());
+  banner.append(bannerText, medicine, passedButtons, openBackpack, makeRoom, sayHello);
 
   const bars: Record<keyof PetStats, StatBar> = {
     hunger: statBar(STRINGS.stats.hunger, STAT_ICONS.hunger),
@@ -1164,7 +1167,10 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
         text = STRINGS.status.recovering(pet.name, formatDuration(pet.recoveryUntil! - now));
       else if (pet.condition === 'warning')
         text = pet.hygiene.germs && !isNeglected(pet.stats) ? STRINGS.status.germs(pet.name) : STRINGS.status.warning(pet.name);
-      // Nothing else to say: an egg waiting in the nest for room.
+      // Nothing else to say: a pet from the Meadow dropping by, or an egg
+      // waiting in the nest for room.
+      const fromMeadow = text === '' && !petAway ? meadowVisitor(state) : null;
+      if (fromMeadow) text = STRINGS.meadow.visitBanner(fromMeadow.pet.name);
       const nestWaits = text === '' && !petAway && !!state.nest;
       if (nestWaits) text = STRINGS.friends.nestBanner;
       banner.hidden = text === '';
@@ -1174,6 +1180,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       passedButtons.hidden = !passed || !!pet.trip;
       openBackpack.hidden = !hasBackpack(pet);
       makeRoom.hidden = !nestWaits;
+      sayHello.hidden = !fromMeadow;
 
       // Lights button shows what pressing it will do.
       const label = pet.asleep ? STRINGS.buttons.lightsOn : STRINGS.buttons.lightsOff;

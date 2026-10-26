@@ -77,6 +77,9 @@ import {
   type MingleBlock,
 } from './game/friends';
 import { createChoiceBox } from './ui/choice';
+import { canMoveToMeadow, getMeadowPet, greetVisitor, hangPortrait, keepsakeKind, keepsakeOf, meadowVisitor, memoriesOf, roomKeepsakes, sayHi, toggleShelf, welcomeHome } from './game/meadow';
+import { goodbyeArt } from './ui/meadow';
+import { roomWithSpace } from './game/rooms';
 import { forecast } from './game/forecast';
 import { fortuneOf, useFortuneCookie } from './game/fortune';
 import { fortuneArt, skipFortuneOnTap } from './ui/fortune';
@@ -250,6 +253,9 @@ function announceMail(old: Message[]): void {
       showFind(m.find, STRINGS.journeys.fromPercy);
     } else if (m.kind === 'regular') {
       showRegularReward(m.id as RegularId, m.hearts);
+    } else if (m.kind === 'meadowVisit') {
+      home.notice(m.missed ? STRINGS.meadow.missed(m.name) : STRINGS.meadow.arrived(m.name));
+      if (!m.missed) pullFace('surprised');
     } else if (m.kind === 'visitor' && m.friend) {
       home.notice(STRINGS.messages.friendVisit(m.name));
       pullFace('surprised');
@@ -569,22 +575,94 @@ function askToMakeRoom(): void {
   // Without a Family Home, one quiet line says it would fit everyone. Never
   // while a pet isn't well (nothing paid shows up then).
   const hint = !ownsFamilyHome(state) && allPets(state).every((p) => p.condition === 'healthy');
+  // Only a pet that's well (and home) can move to the Meadow.
+  const inRoom = allPets(state).filter((p) => !isAway(p));
+  const can = inRoom.filter(canMoveToMeadow);
+  const text = [
+    STRINGS.friends.nestAsk,
+    ...(can.length < inRoom.length ? [STRINGS.meadow.unwell] : []),
+    ...(hint ? [STRINGS.familyHome.nestHint] : []),
+  ].join(' ');
   choice.open({
     title: STRINGS.friends.nestTitle,
-    text: hint ? `${STRINGS.friends.nestAsk} ${STRINGS.familyHome.nestHint}` : STRINGS.friends.nestAsk,
+    text,
     options: [
       // (A pet out on a journey isn't in the room to ask.)
-      ...allPets(state).filter((p) => !isAway(p)).map((p) => ({
+      ...can.map((p) => ({
         label: STRINGS.friends.retire(p.name),
         picture: portraitOf(p),
         soft: true,
         onPick: () => {
-          setState(retire(simulate(state, gameNow()), p.id, gameNow()));
+          const next = retire(simulate(state, gameNow()), p.id, gameNow());
+          if (!getMeadowPet(next, p.id)) return;
+          setState(next);
           home.toast(STRINGS.friends.retired(p.name));
+          showGoodbyeCard(p.id, true);
         },
       })),
       ...(hint ? [{ label: STRINGS.familyHome.seeShop, soft: true, onPick: () => home.toast(STRINGS.familyHome.shopNote, 'room') }] : []),
       { label: STRINGS.friends.notYet, onPick: () => {} },
+    ],
+  });
+}
+
+// The goodbye card of a pet in the Meadow: your days together, what it
+// loved and did, and (when it just moved) the keepsake it left.
+function showGoodbyeCard(id: string, justMoved = false): void {
+  const m = getMeadowPet(state, id);
+  if (!m) return;
+  const M = STRINGS.meadow;
+  const name = m.pet.name;
+  const mem = memoriesOf(state, m);
+  const c = getCharacter(mem.character);
+  const k = keepsakeOf(state, id);
+  const lines = [
+    M.days(mem.days, mem.goodDays),
+    ...(c ? [M.grewInto(name, STRINGS.characterName(c.name, getVariant(c, m.pet.variant)?.name))] : []),
+    ...(mem.food ? [M.loved(name, STRINGS.foods[mem.food as FoodId] ?? mem.food)] : []),
+    ...(mem.journeys > 0 ? [M.journeys(mem.journeys)] : []),
+    ...(mem.littleOnes > 0 ? [M.littleOnes(mem.littleOnes)] : []),
+    ...(justMoved && k ? [M.left(name, k.tier, M.things[keepsakeKind(k)] ?? M.things.egg)] : []),
+  ];
+  choice.open({
+    art: goodbyeArt(state, id, characterImage),
+    title: M.movedTitle(name),
+    text: lines.join(' '),
+    options: [{ label: justMoved ? M.lovely : M.close, onPick: () => {} }],
+  });
+}
+
+// A pet from the Meadow dropped by: say hello (the first time, it hands
+// over its favourite food), and it can move back home if there's a spot.
+function greetMeadowVisitor(): void {
+  const greeted = greetVisitor(simulate(state, gameNow()));
+  const m = meadowVisitor(greeted.state);
+  if (!m) return;
+  setState(greeted.state);
+  const M = STRINGS.meadow;
+  const name = m.pet.name;
+  if (greeted.food) {
+    sound('got');
+    pullFace('happy');
+  }
+  const spot = !!roomWithSpace(state);
+  const text = [
+    ...(greeted.food ? [M.brought(name, STRINGS.foods[greeted.food as FoodId] ?? greeted.food)] : []),
+    spot ? M.canStay(name) : M.noSpot(name),
+  ].join(' ');
+  choice.open({
+    art: goodbyeArt(state, m.pet.id, characterImage, false),
+    title: M.visitTitle(name),
+    text,
+    options: [
+      ...(spot ? [{ label: M.welcome(name), onPick: () => {
+        const result = welcomeHome(simulate(state, gameNow()), gameNow());
+        setState(result.state);
+        if (result.blocked) return blocked(M.blocked[result.blocked](name));
+        sound('grewUp');
+        home.toast(M.cameHome(name));
+      } }] : []),
+      { label: M.byeForNow, soft: spot, onPick: () => {} },
     ],
   });
 }
@@ -1002,6 +1080,14 @@ const home = createHomeScreen(root, {
     home.toast(STRINGS.messages.visitor(guest.name, STRINGS.characterName(c?.name ?? '?', getVariant(c, guest.variant)?.name)));
     pullFace('surprised');
   },
+  onMeadowVisitNow: () => {
+    const now = gameNow();
+    const m = state.meadow.reduce<typeof state.meadow[number] | null>((a, b) => (!a || b.seenAt < a.seenAt ? b : a), null);
+    if (!m) return;
+    const visit = { ...state.visit, guest: null, friendId: null, meadowId: m.pet.id, met: false, until: now + CONFIG.friends.stayHours * 3_600_000 };
+    const meadow = state.meadow.map((x) => (x === m ? { ...x, seenAt: now } : x));
+    setState(logMessage({ ...state, visit, meadow }, { kind: 'meadowVisit', at: now, name: m.pet.name, character: m.pet.character, variant: m.pet.variant }));
+  },
   onFriendScore: () => {
     const up = <T extends { score: number }>(f: T): T => ({ ...f, score: Math.min(100, f.score + CONFIG.debug.friendScore) });
     const guest = state.visit.guest && up(state.visit.guest);
@@ -1090,6 +1176,39 @@ const home = createHomeScreen(root, {
     });
   },
   onMakeRoom: askToMakeRoom,
+  onMeadowVisitor: greetMeadowVisitor,
+  onSayHi: (id) => {
+    const result = sayHi(simulate(state, gameNow()), id, gameNow());
+    const name = getMeadowPet(state, id)?.pet.name ?? '';
+    if (result.blocked) {
+      if (result.blocked === 'already') home.toast(STRINGS.meadow.already(name));
+      return false;
+    }
+    setState(result.state);
+    sound('cuddle');
+    home.toast(STRINGS.meadow.hi(name));
+    return true;
+  },
+  onGoodbyeCard: (id) => showGoodbyeCard(id),
+  onHang: (id) => {
+    setState(hangPortrait(state, id));
+    sound('place');
+  },
+  onShelf: (id) => {
+    const result = toggleShelf(state, id);
+    if (result.blocked) return blocked(STRINGS.meadow.shelfFull);
+    setState(result.state);
+    sound('place');
+  },
+  meadowLook: (m) => ({
+    sheet: sprites.get(sheetFor(m.pet)),
+    hat: sprites.get(getHat(m.pet.hat)?.sheet ?? ''),
+    animation: 'idle',
+    face: 'content',
+    idleEveryMs: idleEveryMs(getTrait(m.pet.trait)),
+    glow: m.pet.starGlow,
+  }),
+  isNight: () => isNight(gameNow()),
   onOpenBackpack: (id) => {
     const pet = allPets(state).find((p) => p.id === id);
     if (!pet) return;
@@ -1236,6 +1355,24 @@ function smellyBody(animation: string, smelly: boolean, sheet: { face?: unknown 
   return animation === 'idle' || animation === 'cheerful' || animation === 'happy' ? 'sad' : animation;
 }
 
+// The keepsakes up in the room you're looking at.
+function keepsakesView() {
+  const here = roomKeepsakes(roomDecor(state));
+  const frameOf = here.frame ? keepsakeOf(state, here.frame) : undefined;
+  const frameSheet = (id: string) => {
+    const pet = getMeadowPet(state, id)?.pet ?? allPets(state).find((p) => p.id === id);
+    const k = keepsakeOf(state, id);
+    return sprites.get(pet ? sheetFor(pet) : characterSheet(k?.character ?? null, k?.variant ?? null));
+  };
+  return {
+    frame: frameOf ? { sheet: frameSheet(frameOf.id) } : null,
+    shelf: here.shelf.map((id) => {
+      const k = id ? keepsakeOf(state, id) : undefined;
+      return k ? { kind: keepsakeKind(k), golden: k.tier === 'golden' } : null;
+    }),
+  };
+}
+
 function render(timeMs: number): void {
   const pet = state.pet;
   // A pet out on a journey isn't in the room.
@@ -1296,6 +1433,7 @@ function render(timeMs: number): void {
       },
       petOnLeft: petStandsLeft(state),
       room: roomDecor(state),
+      keepsakes: keepsakesView(),
       trip: trip && {
         place: trip.place,
         bag: (state.inventory.bags ?? []).includes('courier') ? 'courier' : 'sack',
