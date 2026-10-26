@@ -20,7 +20,7 @@ const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 33;
+export const SAVE_VERSION = 34;
 
 export interface SaveFile {
   version: number;
@@ -406,6 +406,15 @@ export function migrate(save: SaveFile): SaveFile {
     st.charactersFound = [...new Set((st.charactersFound ?? []).map(key))];
     st.charactersMet = [...new Set((st.charactersMet ?? []).map(key))];
     save.version = 33;
+  }
+  // Version 33 -> 34: the rice jar. Rice balls aren't free and endless any
+  // more: the pantry starts with a full jar of them.
+  if (save.version === 33) {
+    const st = save.state;
+    const food = st.inventory?.food;
+    if (food) food.riceBall = Math.max(food.riceBall ?? 0, CONFIG.riceJar.size);
+    st.riceJarAt = null;
+    save.version = 34;
   }
   return save;
 }

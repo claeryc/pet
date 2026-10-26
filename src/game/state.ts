@@ -337,6 +337,9 @@ export interface GameState {
   clockOffsetMs: number;
   gold: number;
   inventory: Inventory;
+  // When the rice jar adds its next free rice ball (null while it's full;
+  // see stepRiceJar in src/game/economy.ts).
+  riceJarAt: number | null;
   checkIn: CheckIn;
   // Dishes you've cooked at least once (food ids). They show up by name in
   // the recipe book; the rest stay "???".
@@ -473,6 +476,7 @@ export function createNewGame(now: number): GameState {
     nest: null,
     lastUpdated: now,
     clockOffsetMs: 0,
+    riceJarAt: null,
     gold: CONFIG.economy.startingGold,
     inventory: { food: { ...CONFIG.economy.startingFood }, hats: [], seeds: {}, supplies: {}, decor: [], bags: [] },
     checkIn: { day: '', count: 0, lastAt: 0 },

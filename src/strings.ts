@@ -584,7 +584,7 @@ export const STRINGS = {
       resting: (name: string) => `${name} needs to rest first.`,
       gone: (_name: string) => 'They have moved on.',
       noFood: (_name: string) => "You're out of that.",
-      freeFood: (_name: string) => 'Rice balls are free, so they don\'t make much of a gift.',
+      freeFood: (_name: string) => 'Rice balls are everyday food, so they don\'t make much of a gift.',
       full: (_name: string) => 'Your friends list is full. Say goodbye to someone first.',
       known: (_name: string) => 'Already a friend!',
       notAdult: (name: string) => `Only grown-ups can mingle. ${name} isn't grown up yet.`,
@@ -730,6 +730,7 @@ export const STRINGS = {
   blocked: {
     egg: (_name: string) => `It's still an egg. Keep it cozy and wait for it to hatch!`,
     asleep: (name: string) => `${name} is asleep. Turn the lights on first.`,
+    tooFull: (name: string) => `${name} is too full to eat. Try again a bit later.`,
     tooTired: (name: string) => `${name} is too sleepy to play. Try a nap with the lights off.`,
     notSick: (name: string) => `${name} isn't sick, no medicine needed.`,
     noFood: (_name: string) => `You're out of that. Get more in the Shop.`,
@@ -806,6 +807,8 @@ export const STRINGS = {
     owned: 'Owned',
     have: (count: number) => `You have ${count}`,
     free: 'Free',
+    // Next to the rice ball in the Feed panel while the jar is refilling.
+    riceJar: (time: string) => `+1 free in ${time}`,
     bought: (item: string) => `You bought ${item}!`,
     boughtHat: (item: string, name: string) => `You bought ${item}! Hold ${name} to try it on.`,
     notEnoughGold: 'Not enough gold yet.',

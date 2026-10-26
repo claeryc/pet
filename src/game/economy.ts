@@ -51,7 +51,24 @@ export function earn(state: GameState, amount: number): GameState {
 
 // How many of a food the player has. Free food never runs out.
 export function foodCount(state: GameState, id: FoodId): number {
-  return getFood(id).price === 0 ? Infinity : (state.inventory.food[id] ?? 0);
+  return (getFood(id).price as number) === 0 ? Infinity : (state.inventory.food[id] ?? 0);
+}
+
+// The rice jar: while you have fewer than CONFIG.riceJar.size rice balls,
+// one more appears every refillHours. `riceJarAt` is when the next one
+// comes (null while the jar is full). Runs as part of simulate().
+export function stepRiceJar(state: GameState, now: number): GameState {
+  const { size, refillHours } = CONFIG.riceJar;
+  const gap = refillHours * 3_600_000;
+  let count = state.inventory.food.riceBall ?? 0;
+  let at = count >= size ? null : (state.riceJarAt ?? now + gap);
+  while (at !== null && at <= now) {
+    count++;
+    at = count >= size ? null : at + gap;
+  }
+  if (count === (state.inventory.food.riceBall ?? 0) && at === state.riceJarAt) return state;
+  const food = { ...state.inventory.food, riceBall: count };
+  return { ...state, riceJarAt: at, inventory: { ...state.inventory, food } };
 }
 
 // Takes one of a food out of the inventory (free food isn't counted).

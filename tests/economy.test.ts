@@ -4,6 +4,8 @@ import { feed } from '../src/game/actions';
 import { buyFood, buyHat, checkIn, earn, foodCount, HATS, wearHat } from '../src/game/economy';
 import { createNewGame } from '../src/game/state';
 import { newTeen } from './helpers';
+import { simulate } from '../src/game/simulate';
+import { migrate } from '../src/storage/storage';
 
 const HOUR = 3_600_000;
 const START = new Date(2026, 0, 1, 10, 0).getTime();
@@ -14,7 +16,7 @@ describe('gold and the shop', () => {
     const s = createNewGame(START);
     expect(s.gold).toBe(CONFIG.economy.startingGold);
     expect(foodCount(s, 'strawberry')).toBe(CONFIG.economy.startingFood.strawberry);
-    expect(foodCount(s, 'riceBall')).toBe(Infinity);
+    expect(foodCount(s, 'riceBall')).toBe(CONFIG.riceJar.size);
   });
 
   it('buying food costs gold and adds it to the inventory', () => {
@@ -31,13 +33,15 @@ describe('gold and the shop', () => {
     expect(buyFood(s, 'warmMilk').state.gold).toBe(5);
   });
 
-  it('feeding uses up stocked food, but rice balls are always free', () => {
+  it('feeding uses up stocked food, rice balls too', () => {
     let s = newTeen(START);
-    s.inventory.food = { cookie: 1 };
+    s.pet.stats.hunger = 20;
+    s.inventory.food = { cookie: 1, riceBall: 1 };
     s = feed(s, START, 'cookie').state;
     expect(foodCount(s, 'cookie')).toBe(0);
     expect(feed(s, START, 'cookie').blocked).toBe('noFood');
-    expect(feed(s, START, 'riceBall').blocked).toBeUndefined();
+    s = feed(s, START, 'riceBall').state;
+    expect(feed(s, START, 'riceBall').blocked).toBe('noFood');
   });
 
   it('a hat is bought once, then can be worn and taken off', () => {
@@ -83,5 +87,47 @@ describe('check-in bonus', () => {
     for (let i = 0; i < rules.maxPerDay; i++) s = checkIn(s, START + i * rules.minHoursBetween * HOUR).state;
     expect(checkIn(s, START + 13 * HOUR).reward).toBe(0);
     expect(checkIn(s, START + 24 * HOUR).reward).toBe(rules.firstOfDay);
+  });
+});
+
+describe('the rice jar', () => {
+  const HOUR = 3_600_000;
+  const J = CONFIG.riceJar;
+
+  it('adds a free rice ball every few hours until the jar is full', () => {
+    let s = newTeen(START);
+    s.inventory.food = { riceBall: 0 };
+    s = simulate(s, START + 60_000);
+    expect(foodCount(s, 'riceBall')).toBe(0);
+    expect(s.riceJarAt).not.toBeNull();
+    s = simulate(s, START + J.refillHours * HOUR + 60_000);
+    expect(foodCount(s, 'riceBall')).toBe(1);
+    s = simulate(s, START + 10 * J.refillHours * HOUR);
+    expect(foodCount(s, 'riceBall')).toBe(J.size);
+    expect(s.riceJarAt).toBeNull();
+  });
+
+  it("doesn't refill on top of rice bought in the Shop", () => {
+    let s = newTeen(START);
+    s.inventory.food = { riceBall: J.size + 2 };
+    s = simulate(s, START + 10 * J.refillHours * HOUR);
+    expect(foodCount(s, 'riceBall')).toBe(J.size + 2);
+    expect(s.riceJarAt).toBeNull();
+  });
+
+  it('sells extra rice balls cheaply', () => {
+    const r = buyFood(createNewGame(START), 'riceBall');
+    expect(r.blocked).toBeUndefined();
+    expect(foodCount(r.state, 'riceBall')).toBe(J.size + 1);
+  });
+
+  it('gives older saves a full jar', () => {
+    const s = createNewGame(START) as any;
+    s.inventory.food = { cookie: 1 };
+    delete s.riceJarAt;
+    const out = migrate({ version: 33, state: s });
+    expect(out.version).toBe(34);
+    expect(out.state.inventory.food).toEqual({ cookie: 1, riceBall: J.size });
+    expect(out.state.riceJarAt).toBeNull();
   });
 });

@@ -1201,7 +1201,8 @@ const home = createHomeScreen(root, {
       percyFreeAt: state.journeys.percyFreeAt && state.journeys.percyFreeAt - off,
     };
     setState({
-      ...state, pet, housemates, visit, friends, garden, delivery, craving, journeys, clockOffsetMs: 0, lastUpdated: Date.now(),
+      ...state, pet, housemates, visit, friends, garden, delivery, craving, journeys,
+      riceJarAt: state.riceJarAt && state.riceJarAt - off, clockOffsetMs: 0, lastUpdated: Date.now(),
     });
   },
 });

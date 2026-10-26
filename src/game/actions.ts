@@ -15,7 +15,7 @@ import { retire } from './friends';
 import { isAway } from './presence';
 import { feeling, noticeFeeling } from './likes';
 
-export type BlockReason = 'egg' | 'asleep' | 'tooTired' | 'notSick' | 'noFood' | 'resting' | 'passed' | 'noRevival' | 'away';
+export type BlockReason = 'egg' | 'asleep' | 'tooFull' | 'tooTired' | 'notSick' | 'noFood' | 'resting' | 'passed' | 'noRevival' | 'away';
 
 export interface ActionResult {
   state: GameState;
@@ -41,6 +41,7 @@ export type Food = (typeof CONFIG.foods)[number] & {
   grownOnly?: boolean;
   cookedOnly?: boolean;
   foundOnly?: boolean;
+  staple?: boolean;
   stars?: number;
 };
 export type FoodId = Food['id'];
@@ -52,6 +53,7 @@ export function feed(state: GameState, now: number, foodId: FoodId = 'riceBall')
   if (s.pet.condition === 'passed') return { state: s, blocked: 'passed' };
   if (s.pet.stage === 'egg') return { state: s, blocked: 'egg' };
   if (s.pet.asleep) return { state: s, blocked: 'asleep' };
+  if (s.pet.stats.hunger > CONFIG.tooFullAbove) return { state: s, blocked: 'tooFull' };
   const food: Food = CONFIG.foods.find((f) => f.id === foodId)!;
   const stocked = useFood(s, foodId); // one fewer in the inventory
   if (!stocked) return { state: s, blocked: 'noFood' };

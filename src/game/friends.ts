@@ -267,12 +267,13 @@ export function giftTenths(price: number): number {
 
 // Gives one food to a friend. Its Shop price is its value: a tenth of a
 // heart per `goldPerTenth` (at least one), counting up to `tenthsPerDay` a
-// day. Free food (the rice ball) can't be given.
+// day. Everyday food (the rice ball) can't be given.
 export function giveGift(state: GameState, friendId: string, food: FoodId, now: number): FriendResult {
   if (!getFriend(state, friendId)) return { state, blocked: 'gone' };
   if (!isVisiting(state, friendId)) return { state, blocked: 'away' };
-  const value = FOODS.find((f) => f.id === food)?.price ?? 0;
-  if (value <= 0) return { state, blocked: 'freeFood' };
+  const gift = FOODS.find((f) => f.id === food);
+  const value = gift?.price ?? 0;
+  if (value <= 0 || gift?.staple) return { state, blocked: 'freeFood' };
   const stocked = useFood(state, food);
   if (!stocked) return { state, blocked: 'noFood' };
   const day = localDay(now);

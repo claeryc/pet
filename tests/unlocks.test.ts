@@ -52,6 +52,7 @@ describe('menus that open up as you play', () => {
 describe('progress the menus use', () => {
   it('remembers foods fed, most recent first', () => {
     let s = newTeen(START);
+    s.pet.stats.hunger = 20;
     s = feed(s, START, 'riceBall').state;
     s = feed(s, START, 'strawberry').state;
     s = feed(s, START, 'riceBall').state;

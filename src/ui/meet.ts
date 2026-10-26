@@ -114,7 +114,7 @@ export function createMeet(cb: MeetCallbacks): MeetPanel {
 
   // Gift: the food you have (anything that isn't free), like the Feed list.
   // Each row shows how many you have and the friendship it's worth.
-  const giftable = (CONFIG.foods as readonly Food[]).filter((food) => food.price > 0);
+  const giftable = (CONFIG.foods as readonly Food[]).filter((food) => food.price > 0 && !food.staple);
   const hasGifts = () => !!state && giftable.some((food) => foodCount(state!, food.id) > 0);
   const giftOptions: DrawerOption[] = giftable.map((food) => {
     // What it's worth in hearts, e.g. "+0.2".
