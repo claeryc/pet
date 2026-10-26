@@ -121,17 +121,6 @@
         "y": 14
       }
     },
-    "crest": {
-      "head": {
-        "x": 16,
-        "y": 12,
-        "width": 14
-      },
-      "face": {
-        "x": 16,
-        "y": 17
-      }
-    },
     "lobster": {
       "head": {
         "x": 16,
@@ -281,15 +270,8 @@
         "sick": [0, -1, 0, 1]
       }
     },
-    "tidecrest": {
-      "file": "characters/ocean/tidecrest.png",
-      "shape": "crest",
-      "headShifts": {
-        "sick": [0, -1, 0, 1]
-      }
-    },
-    "tidecrest-lobster": {
-      "file": "characters/ocean/tidecrest-lobster.png",
+    "pinchy": {
+      "file": "characters/ocean/pinchy.png",
       "shape": "lobster",
       "headShifts": {
         "sick": [0, -1, 0, 1]

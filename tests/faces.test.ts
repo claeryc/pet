@@ -93,7 +93,7 @@ describe('traits', () => {
   });
 
   it('gives each 3-star starter pet one or two traits, and the others any', () => {
-    const locked = { ribbit: ['playful', 'greedy'], tidecrest: ['playful', 'cheery'], cuppie: ['greedy', 'cheery'], starhoot: ['sleepy'] };
+    const locked = { ribbit: ['playful', 'greedy'], pinchy: ['playful', 'cheery'], cuppie: ['greedy', 'cheery'], starhoot: ['sleepy'] };
     for (const [id, traits] of Object.entries(locked)) expect(allowedTraits(getCharacter(id))).toEqual(traits);
     for (const id of ['sprig', 'acornet', 'bubbit', 'jellop', 'dumpling', 'puddling', 'cloudlet', 'moonpip']) {
       expect(allowedTraits(getCharacter(id))).toEqual(allowedTraits(undefined));
