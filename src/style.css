@@ -910,6 +910,11 @@ body {
   max-height: none;
 }
 
+/* The travel journal fills the screen above the button (see home.ts). */
+.drawer-content:has(.shop-list.journal) {
+  height: var(--drawer-full, var(--drawer-fit, 268px));
+}
+
 .drawer .menu-panel {
   width: auto;
   max-width: none;
@@ -6838,6 +6843,10 @@ body {
   display: none;
 }
 
+.choice-art .jr-reveal {
+  width: 100%;
+}
+
 .choice-art svg {
   display: block;
   width: 100%;
@@ -7373,4 +7382,571 @@ body {
 .goodbye-thing svg {
   width: 100%;
   height: 100%;
+}
+
+/* ---- Journeys: the night ticket, the Holiday ticket, favourite places ---- */
+
+/* The night ticket: a night sky with a moon, only from evening to morning. */
+.trip-ticket.is-night {
+  --r-light: #2e2a5a;
+  border-color: #1d1940;
+  background: linear-gradient(90deg, #2e2a5a, #4b4380);
+  color: white;
+}
+
+.trip-ticket.is-night .trip-ticket-text span,
+.trip-ticket.is-night .trip-stub small {
+  color: var(--butter);
+}
+
+.trip-ticket.is-night .trip-stub {
+  border-left-color: rgba(255, 255, 255, 0.3);
+}
+
+.trip-ticket.is-night::after {
+  content: '✦ · ✧';
+  position: absolute;
+  top: 2px;
+  left: 46%;
+  font-size: 9px;
+  letter-spacing: 4px;
+  color: var(--butter);
+  opacity: 0.8;
+}
+
+.trip-moon {
+  position: absolute;
+  right: 70px;
+  top: 6px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: -3px 1px 0 0 var(--butter);
+  z-index: 1;
+}
+
+/* The board turns a little darker while the night ticket is up. */
+.trip-board.is-night {
+  background: linear-gradient(#efeaf8, var(--card) 40%);
+}
+
+/* A heart on a ticket to a pet's favourite place. */
+.trip-fav {
+  position: absolute;
+  top: 2px;
+  left: 40px;
+  width: 12px;
+  height: 12px;
+  z-index: 2;
+}
+
+.trip-fav svg,
+.trip-holiday-heart svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* The Holiday ticket: soft green, faded while you have none. */
+.trip-ticket.is-holiday {
+  --r-light: #f3fbef;
+  --r-dark: #8fc77a;
+  --r-band: #a8d8a0;
+  border-style: dashed;
+}
+
+.trip-ticket.is-holiday.is-none {
+  opacity: 0.7;
+}
+
+.trip-holiday-heart {
+  width: 16px;
+  height: 16px;
+}
+
+.trip-card.is-night {
+  background: linear-gradient(#ecebfb, white 60%);
+}
+
+.trip-card-note {
+  margin: 6px 0;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  color: #5b4a6e;
+}
+
+/* 1 day · 2 days · 3 days */
+.trip-days {
+  display: flex;
+  gap: 6px;
+}
+
+.trip-day {
+  flex: 1;
+  padding: 8px 4px;
+  border: 2px solid var(--lavender);
+  border-radius: 10px;
+  background: white;
+  font: inherit;
+  font-weight: 800;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.trip-day.is-on {
+  border-color: var(--good-dark);
+  background: var(--good-light);
+}
+
+/* ---- The travel journal: a book with a page per place ---- */
+
+.journal-cat button.postcard {
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  border: 0;
+  cursor: pointer;
+}
+
+.jr-book {
+  position: relative;
+  background: #fffaf0;
+  border-radius: 18px;
+  box-shadow: 0 3px 0 #e6cbb8, inset 0 0 0 3px #f0dcc8;
+  padding: 12px 12px 16px 18px;
+}
+
+/* The book's spine, stitched. */
+.jr-book::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 14px;
+  bottom: 14px;
+  width: 7px;
+  border-radius: 0 6px 6px 0;
+  background: repeating-linear-gradient(#d8b9a2 0 6px, transparent 6px 12px);
+}
+
+.jr-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.jr-tab {
+  position: relative;
+  flex: 1;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 12px 12px 4px 4px;
+  background: var(--lavender);
+  cursor: pointer;
+}
+
+.jr-tab.is-on {
+  background: #cbe7d6;
+  box-shadow: inset 0 0 0 3px var(--good);
+}
+
+.jr-tab.is-new {
+  background: #efe6f7;
+  opacity: 0.6;
+  cursor: default;
+}
+
+.jr-tab-icon {
+  width: 26px;
+  height: 26px;
+}
+
+.jr-tab-heart {
+  position: absolute;
+  top: -5px;
+  right: -3px;
+  width: 15px;
+  height: 15px;
+}
+
+.jr-tab-icon svg,
+.jr-tab-heart svg,
+.jr-hero-place svg,
+.jr-loved-icon svg,
+.jr-find-icon svg,
+.jr-pic-place svg,
+.jr-pic-thing svg,
+.jr-new-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+}
+
+/* The place's own colours: its sky and its ground. */
+[data-place='market'] { --sky: #e2cff8; --ground: #f6c9a8; }
+[data-place='woods'] { --sky: #bfe7d0; --ground: #8fd0a6; }
+[data-place='caves'] { --sky: #c9d4f5; --ground: #a9b3db; }
+[data-place='hill'] { --sky: #d6c8f2; --ground: #b5a4e4; }
+
+.jr-hero {
+  position: relative;
+  height: 112px;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  overflow: hidden;
+  background: linear-gradient(var(--sky) 0 62%, var(--ground) 62%);
+}
+
+.jr-hero-place {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  width: 64px;
+  height: 64px;
+}
+
+.jr-hero-name {
+  position: absolute;
+  left: 88px;
+  right: 12px;
+  top: 12px;
+  z-index: 1;
+  font-size: clamp(1rem, 5vw, 1.25rem);
+  font-weight: 900;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jr-hero-level {
+  position: absolute;
+  left: 88px;
+  top: 42px;
+  z-index: 1;
+  padding: 1px 8px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--butter);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.jr-hero-pet,
+.jr-pic-pet {
+  position: absolute;
+  bottom: 4px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+
+.jr-hero-pet {
+  right: 12px;
+  width: 60px;
+  height: 60px;
+}
+
+.jr-prog {
+  margin: 10px 2px 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--plum);
+}
+
+.jr-bar {
+  display: block;
+  height: 11px;
+  margin-top: 4px;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  background: #efe6f7;
+  overflow: hidden;
+}
+
+.jr-bar i {
+  display: block;
+  height: 100%;
+  background: var(--good);
+}
+
+.jr-loved {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 2px 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.jr-loved-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.jr-head {
+  display: flex;
+  justify-content: space-between;
+  margin: 14px 2px 6px;
+  font-size: 0.88rem;
+  color: var(--plum);
+}
+
+.jr-head small {
+  font-weight: 700;
+  color: #9b86b5;
+}
+
+/* Stamps: a dashed edge, a coloured frame, tilted a little. */
+.jr-stamps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)); /* long names wrap, not widen */
+  gap: 8px;
+}
+
+.jr-stamp {
+  aspect-ratio: 1;
+  min-width: 0;
+  display: grid;
+  place-items: center;
+  padding: 2px;
+  border: 3px dashed var(--st, #6cc19a);
+  outline: 4px solid var(--st-light, #cbe7d6);
+  outline-offset: -10px;
+  background: white;
+  font-size: clamp(0.45rem, 2.1vw, 0.66rem); /* "Adventure" fits at 320px */
+  font-weight: 900;
+  text-align: center;
+  line-height: 1.1;
+  transform: rotate(-3deg);
+}
+
+.jr-stamp:nth-child(even) { transform: rotate(3deg); }
+.jr-stamp[data-kind='rare'] { --st: #7aa7e8; --st-light: #cfe0fb; }
+.jr-stamp[data-kind='epic'] { --st: #8a4fd8; --st-light: #e6ccff; }
+.jr-stamp[data-kind='night'] { --st: #4b4380; --st-light: #d6d2f2; }
+
+/* On a small phone the inner frame would cover the longer names. */
+@media (max-width: 360px) {
+  .jr-stamp { outline-width: 2px; outline-offset: -5px; }
+}
+
+.jr-stamp.is-none {
+  --st: #e2d6ee;
+  --st-light: #f3edf8;
+  background: #faf7fc;
+  color: #b9a8cc;
+}
+
+/* Found here: everything the place gives, the ones not found yet faded. */
+.jr-finds {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+
+.jr-find {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  padding: 6px;
+  border: 2px solid var(--lavender);
+  border-radius: 10px;
+  background: white;
+}
+
+.jr-find.is-none {
+  border-style: dashed;
+  background: #f6f0fa;
+  opacity: 0.55;
+}
+
+.jr-find.is-star3:not(.is-none) {
+  border-color: #f2c14e;
+  background: #fff6d6;
+}
+
+.jr-find-icon {
+  width: 100%;
+  height: 100%;
+}
+
+.jr-empty {
+  margin: 4px 2px;
+  font-size: 0.85rem;
+  color: #9b86b5;
+}
+
+/* Postcards: little photos, two to a row, each a bit crooked. */
+.jr-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.jr-card {
+  --frame: #eadccb;
+  padding: 6px 6px 8px;
+  border-radius: 4px;
+  background: white;
+  box-shadow: 0 2px 0 #e6d6c3, 0 0 0 2px var(--frame);
+  transform: rotate(-2deg);
+}
+
+.jr-cards .jr-card:nth-child(even) { transform: rotate(2deg); }
+
+/* A Regular's postcards get a ribbon frame, a Local's lace, a Legend's gold. */
+.jr-card[data-level='2'] { --frame: #f4a7c0; }
+.jr-card[data-level='3'] { --frame: #b9a8e6; box-shadow: 0 2px 0 #e6d6c3, 0 0 0 2px var(--frame), 0 0 0 5px white, 0 0 0 6px var(--frame); }
+.jr-card[data-level='4'] { --frame: #f2c14e; box-shadow: 0 2px 0 #d9a93a, 0 0 0 3px var(--frame), 0 0 0 6px #fff6d6; }
+.jr-card.is-gold { --frame: #f2c14e; box-shadow: 0 2px 0 #d9a93a, 0 0 0 3px var(--frame); }
+
+.jr-card p {
+  margin: 6px 2px 2px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.jr-card small {
+  display: block;
+  margin: 2px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #9b86b5;
+}
+
+.jr-card.is-gold small { color: #b07d10; }
+
+.jr-pic {
+  position: relative;
+  height: 78px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: linear-gradient(var(--sky, #cbe7fb) 0 60%, var(--ground, #a8d8a0) 60%);
+}
+
+.jr-card.is-night .jr-pic {
+  background: linear-gradient(#2e2a5a 0 60%, #4b4380 60%);
+}
+
+.jr-card.is-night .jr-pic::before {
+  content: '✦ · ✧ · ✦';
+  position: absolute;
+  top: 5px;
+  left: 10px;
+  font-size: 9px;
+  letter-spacing: 4px;
+  color: var(--butter);
+}
+
+.jr-pic-pet {
+  left: 50%;
+  width: 52px;
+  height: 52px;
+  transform: translateX(-50%);
+}
+
+.jr-pic-thing {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 20px;
+  height: 20px;
+}
+
+/* The big postcard after a backpack, with what's new under it. */
+.jr-reveal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.jr-card.is-big {
+  width: 100%;
+  padding: 10px 10px 14px;
+  transform: rotate(-1.5deg);
+  text-align: left;
+}
+
+.jr-card.is-big .jr-pic {
+  height: 150px;
+}
+
+.jr-card.is-big .jr-pic-pet {
+  width: 104px;
+  height: 104px;
+}
+
+.jr-card.is-big .jr-pic-thing {
+  width: 32px;
+  height: 32px;
+  right: 16px;
+  bottom: 14px;
+}
+
+.jr-pic-place {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  width: 42px;
+  height: 42px;
+}
+
+.jr-card.is-big p {
+  margin: 10px 4px 4px;
+  font-size: 0.98rem;
+  font-weight: 800;
+}
+
+.jr-card.is-big small {
+  font-size: 0.75rem;
+  margin: 0 4px;
+}
+
+.jr-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #ffe3ec;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--low-dark);
+}
+
+.jr-new.is-friend {
+  background: var(--good-light);
+  color: var(--good-dark);
+}
+
+.jr-new-icon {
+  width: 13px;
+  height: 13px;
+}
+
+.jr-levelup {
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid #f2c14e;
+  border-radius: 14px;
+  background: #fff6d6;
+  text-align: left;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.jr-levelup b {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.trip-card.is-holiday {
+  --r-light: #f3fbef;
+  --r-mid: #a8d8a0;
+  --r-dark: #6cb07a;
+  --r-band: #a8d8a0;
 }

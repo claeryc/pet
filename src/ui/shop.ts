@@ -12,7 +12,7 @@ import type { Food, FoodId } from '../game/actions';
 import { FRAGMENT_ICON, ITEM_ICONS, MENU_ICONS, STAT_ICONS } from './icons';
 import { SEEDS_FOR_SALE, SUPPLIES, canCompost, priceOf, seedCount, supplyCount, type ShopItem } from '../game/garden';
 import { poopCount } from '../game/hygiene';
-import { CHARMS, charmCount, percyFree } from '../game/journeys';
+import { CHARMS, charmCount, holidayTickets, percyFree } from '../game/journeys';
 import { isUnlocked } from '../game/unlocks';
 import { formatDuration } from './time';
 import { ownsFamilyHome } from '../game/rooms';
@@ -25,6 +25,7 @@ export interface ShopCallbacks {
   onBuyBait: () => void;
   onBuyFortuneCookie: () => void;
   onBuyCharm: (charm: string) => void; // a charm for the journey lunchbox
+  onBuyHolidayTicket: () => void; // a Holiday ticket, for star fragments
   onBuyPot: () => void;
   onBuyDecor: (kind: DecorKind, id: string) => void;
   onUseDecor: (kind: DecorKind, id: string | null) => void;
@@ -479,6 +480,13 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
       count: countBadge(revivalStars(state)),
       row: row(ITEM_ICONS.revivalStar, STRINGS.shop.revivalStar, STRINGS.shop.revivalNote(revivalStars(state), perStar), label('')),
     },
+    // A Holiday ticket, for going away (once there are journeys).
+    ...(journeys.length > 0 ? [{
+      icon: MENU_ICONS.meadow,
+      count: countBadge(holidayTickets(state)),
+      row: row(MENU_ICONS.meadow, STRINGS.journeys.holidayTicket, STRINGS.journeys.holidayShopNote(holidayTickets(state)),
+        fragmentButton(CONFIG.journeys.holiday.fragments, pieces, cb.onBuyHolidayTicket)),
+    }] : []),
     ...CONFIG.store.map((p, i) => ({
       icon: FRAGMENT_ICON,
       row: row(FRAGMENT_ICON, STRINGS.shop.fragmentPack(p.fragments),

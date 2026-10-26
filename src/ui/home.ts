@@ -87,6 +87,7 @@ export interface HomeScreen {
   notice: (message: string) => void;
   // Shows off something you just got, over the stat bars.
   reveal: (item: RevealItem) => void;
+  showJournal: (place: string) => void; // the travel journal, open at a place
   craft: Craft['play']; // fragments coming together into a Revival Star
   // A pet's backpack over the stat bars, waiting to be tapped open.
   backpack: (name: string, onOpen: () => void) => void;
@@ -518,6 +519,10 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   function fitDrawers(): void {
     const room = actions.getBoundingClientRect().bottom - statSlot.getBoundingClientRect().bottom - DRAWER_GAP;
     actions.style.setProperty('--drawer-fit', `${Math.max(DRAWER_MIN, Math.floor(room - 74))}px`);
+    // The travel journal is a book, so it takes the whole screen above the
+    // button, over the room too.
+    const all = actions.getBoundingClientRect().bottom - roomWrap.getBoundingClientRect().top;
+    actions.style.setProperty('--drawer-full', `${Math.max(DRAWER_MIN, Math.floor(all - 74))}px`);
   }
   window.addEventListener('resize', fitDrawers);
 
@@ -831,6 +836,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     onSetOff: cb.onSetOff,
     onCallHome: cb.onCallHome,
     onOpenBackpack: cb.onOpenBackpack,
+    onHoliday: cb.onHoliday,
     onExit: () => {
       stats.hidden = latest?.state.pet.stage === 'egg';
       showActions(JOURNEYS_OUT_MS);
@@ -1027,6 +1033,14 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     if (!menuDrawer!.isOpen()) menuDrawer!.open();
     menu.showShop(category);
   }
+  // Opens the travel journal at `place` (after a postcard).
+  function goJournal(place: string): void {
+    if (actions.hidden) return; // busy with something else
+    feedDrawer.close();
+    playDrawer.close();
+    if (!menuDrawer!.isOpen()) menuDrawer!.open();
+    menu.showJournal(place);
+  }
   function showNotice(message: string): void {
     if (toastEl.classList.contains('show')) waiting.push(message);
     else showToast(message);
@@ -1213,6 +1227,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     toast: showToast,
     notice: showNotice,
     reveal: reveal.show,
+    showJournal: goJournal,
     craft: craft.play,
     backpack: backpack.show,
     gains: fx.gains,

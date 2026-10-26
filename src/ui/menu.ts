@@ -15,6 +15,7 @@ import { isNew, isUnlocked, type UnlockId } from '../game/unlocks';
 import { LOCK_ICON, MENU_ICONS } from './icons';
 import { fragmentPill, goldPill, shopPage, wardrobePage, type ShopCallbacks, type ShopCategory, type ShopView } from './shop';
 import { collectionPage } from './collection';
+import { journalPage } from './journal';
 import { familyTreePage, type FamilyCallbacks, type TreeView } from './family';
 import { meadowPage, type MeadowCallbacks } from './meadow';
 import { OWNER_MAX } from '../game/family';
@@ -68,6 +69,7 @@ export interface Menu {
   update: (state: GameState) => void;
   showWardrobe: () => void;
   showShop: (category?: ShopCategory) => void; // open the Shop, at `category`'s tab
+  showJournal: (place: string) => void; // the travel journal, at a place
 }
 
 // A row button, or with an `icon`, a square tile for the main grid.
@@ -113,7 +115,8 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
   // The pages redraw whenever the game changes (after buying something,
   // for example), so we remember which page is showing.
   let state: GameState | null = null;
-  let page: 'main' | 'settings' | 'shop' | 'wardrobe' | 'collection' | 'skills' | 'familyTree' | 'meadow' | 'messages' | 'guide' = 'main';
+  let page: 'main' | 'settings' | 'shop' | 'wardrobe' | 'collection' | 'skills' | 'familyTree' | 'meadow' | 'messages' | 'guide' | 'journal' = 'main';
+  let journalPlace = 'market'; // which page of the travel journal is open
 
   // Live readout for the testing tools, refreshed by update().
   const debugInfo = document.createElement('p');
@@ -290,7 +293,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
         toTop();
       }));
       else if (which === 'wardrobe') list.append(...wardrobePage(state, cb));
-      else if (which === 'collection') list.append(...collectionPage(state, cb, openCategories));
+      else if (which === 'collection') list.append(...collectionPage(state, { ...cb, onJournal: (place) => showJournal(place) }, openCategories));
       else if (which === 'skills') list.append(...skillsPage(state, cb, skillsView, () => showSkills(false)));
       else {
         list.classList.add('tree');
@@ -330,6 +333,17 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     if (fresh) showPickedSkill(false, false);
   };
   const showFamilyTree = (fresh = true) => showList('familyTree', fresh);
+
+  // The travel journal, at a place's page (back goes to the Collection).
+  function showJournal(place = journalPlace, fresh = true): void {
+    if (fresh) toTop();
+    page = 'journal';
+    journalPlace = place;
+    const list = document.createElement('div');
+    list.className = 'shop-list journal';
+    if (state) list.append(...journalPage(state, place, { characterImage: cb.characterImage, onPlace: (p) => showJournal(p) }));
+    panel.replaceChildren(header(STRINGS.journeys.journal, () => showCollection()), list);
+  }
 
   // The Meadow: its scene, everyone there, and their keepsakes.
   function showMeadow(fresh = true): void {
@@ -532,6 +546,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
         showShop(false);
       }
     },
+    showJournal: (place) => showJournal(place),
     update(next) {
       // Only redraw a page when something on it changed, so the list
       // doesn't jump while you scroll.
@@ -560,6 +575,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
         else if (isOpen() && page === 'skills') showSkills(false);
         else if (isOpen() && page === 'familyTree') showFamilyTree(false);
         else if (isOpen() && page === 'meadow') showMeadow(false);
+        else if (isOpen() && page === 'journal') showJournal(journalPlace, false);
         else if (isOpen() && page === 'messages') showMessages(false);
         else if (isOpen() && page === 'guide') showGuide(false);
       }

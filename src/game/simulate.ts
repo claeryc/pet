@@ -13,7 +13,7 @@ import { stepRiceJar } from './economy';
 import { CONFIG } from './config';
 import { clampStat, isNeglected, isNight, isWellFed } from './stats';
 import { growUp, stageLengthMs } from './growth';
-import { growGarden } from './garden';
+import { growGardenAround } from './garden';
 import { stepDelivery } from './delivery';
 import { stepCraving } from './craving';
 import { stepVisits } from './friends';
@@ -57,7 +57,8 @@ export function simulate(state: GameState, now: number): GameState {
   }
 
   // The garden grows on its own clock, so it catches up in one go.
-  const garden = growGarden(state.garden, state.lastUpdated, t, gardenPerks(state));
+  // (It waits while everyone's on a Holiday.)
+  const garden = growGardenAround(state.garden, state.lastUpdated, t, state.journeys.holiday, gardenPerks(state));
   // So do the journey board and Percy flying home from a trip, his orders
   // (a pickup that came due, or a new order), the pet's cravings, and
   // visitors dropping by.

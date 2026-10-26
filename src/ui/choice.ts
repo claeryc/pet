@@ -54,6 +54,7 @@ export function createChoiceBox(root: HTMLElement): ChoiceBox {
       art.setAttribute('aria-hidden', String(!request.artReadable));
       title.textContent = request.title;
       text.textContent = request.text;
+      text.hidden = !request.text;
       buttons.replaceChildren(
         ...request.options.map((o) => {
           const b = document.createElement('button');

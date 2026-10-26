@@ -33,20 +33,21 @@ import type { GameState, Offer, Pet, Rarity } from '../game/state';
 import { sheetFor } from '../game/growth';
 import { foodCount } from '../game/economy';
 import {
-  CHARMS, cantGo, charmCount, getPlace, isDrink, percyFree, planTrip, PLACES, potsDryingBy, tripHours, tripPreview,
-  type Packed,
+  CHARMS, NIGHT, cantGo, cantHoliday, charmCount, getPlace, holidayTickets, isDrink, offerAt, offerHours, percyFree, planTrip,
+  placeLevel, PLACES, potsDryingBy, tripPreview, type Packed,
 } from '../game/journeys';
 import { hasBackpack, isAway } from '../game/presence';
-import { ITEM_ICONS, STAT_ICONS } from './icons';
+import { HEART_ICONS, ITEM_ICONS, MENU_ICONS, STAT_ICONS } from './icons';
 import { BENTO_HEIGHT, BENTO_WIDTH, drawBento, LID_FRAMES, lidCover } from './bento';
 import { category, type Entry } from './shop';
-import { formatClock, formatDuration } from './time';
+import { formatClock, formatDayClock, formatDuration } from './time';
 
 export interface JourneysCallbacks {
   // The pets in the line-up set off, each with its lunch; true if they went.
   onSetOff: (slot: number, party: Packed[], percy: boolean) => boolean;
   onCallHome: (pet: string) => void;
   onOpenBackpack: (pet: string) => void;
+  onHoliday: (days: number) => boolean; // everyone goes on a Holiday; true if they went
 }
 
 export interface JourneysSetup extends JourneysCallbacks {
@@ -82,6 +83,10 @@ const FOODS = CONFIG.foods as readonly Food[];
 const GEMS: Record<Rarity, number> = { common: 1, rare: 2, epic: 3 };
 const placeName = (id: string) => STRINGS.journeys.places[id] ?? id;
 const placeIcon = (id: string) => ITEM_ICONS[`place_${id}`] ?? ITEM_ICONS.journey;
+// The Holiday ticket's spot on the board (after the night ticket).
+const HOLIDAY = 4;
+// "Stroll", or "Night trip" for the night ticket.
+const tripName = (o: Offer) => (o.night ? STRINGS.journeys.night : STRINGS.journeys.trips[o.rarity]);
 
 // How long until a pet is back, short enough for the line-up: whole and
 // half hours ("1h", "1.5h", "0.5h"), and minutes under half an hour.
@@ -118,20 +123,27 @@ function shine(): HTMLElement[] {
 }
 
 // One ticket on the board: [gems] [place] Stroll Mossy Woods | 1h COMMON
-function ticket(offer: Offer, picked: boolean, onPick: () => void): HTMLButtonElement {
+// A heart on it if it's the favourite place of `fan` (a pet's name).
+function ticket(offer: Offer, picked: boolean, onPick: () => void, fan: string | null = null): HTMLButtonElement {
   const T = STRINGS.journeys;
-  const b = el('button', `trip-ticket${picked ? ' is-picked' : ''}`);
+  const b = el('button', `trip-ticket${picked ? ' is-picked' : ''}${offer.night ? ' is-night' : ''}`);
   b.dataset.rarity = offer.rarity;
   b.setAttribute('aria-pressed', String(picked));
   const band = el('span', 'trip-band');
   band.append(gems(offer.rarity));
   const text = el('span', 'trip-ticket-text');
-  text.append(el('b', '', T.trips[offer.rarity]), el('span', '', placeName(offer.place)));
+  text.append(el('b', '', tripName(offer)), el('span', '', placeName(offer.place)));
   const stub = el('span', 'trip-stub');
-  stub.append(el('b', '', `${tripHours(offer.rarity)}h`), el('small', '', T.rarities[offer.rarity]));
+  stub.append(el('b', '', `${offerHours(offer)}h`), el('small', '', offer.night ? T.nightBoard : T.rarities[offer.rarity]));
   if (offer.rarity === 'epic') b.append(...shine());
   b.append(band, icon(placeIcon(offer.place), 'trip-ticket-icon'), text, stub);
-  b.setAttribute('aria-label', `${T.offer(T.trips[offer.rarity], placeName(offer.place))}, ${T.rarities[offer.rarity]}, ${T.hours(tripHours(offer.rarity))}`);
+  if (offer.night) b.append(el('i', 'trip-moon'));
+  if (fan) {
+    const heart = icon(HEART_ICONS.full, 'trip-fav');
+    heart.title = T.favourite(fan);
+    b.append(heart);
+  }
+  b.setAttribute('aria-label', `${T.offer(tripName(offer), placeName(offer.place))}, ${T.rarities[offer.rarity]}, ${T.hours(offerHours(offer))}${fan ? `, ${T.favourite(fan)}` : ''}`);
   b.addEventListener('click', onPick);
   return b;
 }
@@ -202,13 +214,15 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
   const openLid = el('button', 'btn btn-soft', T.openLid);
   const go = el('button', 'btn', T.go);
   const nextBox = el('button', 'btn', T.nextBox);
-  row.append(back, openLid, lineUp, pack, closeLid, nextBox, go);
+  const holiday = el('button', 'btn', T.holidayGo);
+  row.append(back, openLid, lineUp, holiday, pack, closeLid, nextBox, go);
 
   const allPets = (s: GameState): Pet[] => [s.pet, ...s.housemates];
   // Pets at home, who could be in the line-up.
   const homePets = (s: GameState): Pet[] => allPets(s).filter((p) => !isAway(p) && p.condition !== 'passed');
   const pet = (): Pet | null => (state && allPets(state).find((p) => p.id === who)) ?? null;
-  const offer = (): Offer | null => (state && slot !== null ? state.journeys.offers[slot] ?? null : null);
+  const offer = (): Offer | null => (state && slot !== null && slot !== HOLIDAY ? offerAt(state, slot) : null);
+  let days = J.holiday.days[0] as number; // how long a Holiday is, as picked
 
   back.addEventListener('click', () => {
     if (stage === 'board') {
@@ -259,13 +273,22 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     const p = pet();
     const o = offer();
     if (!p || !o) return;
-    const result = planTrip(p, o.rarity, lunch());
+    const result = planTrip(p, o, lunch());
     if (!result.enoughFood) return cb.toast(T.blocked.notEnoughFood(p.name));
     if (!result.enoughEnergy) return cb.toast(T.blocked.notEnoughEnergy(p.name));
     moveLid(true);
   };
   closeLid.addEventListener('click', tryClose);
   openLid.addEventListener('click', () => moveLid(false));
+  holiday.addEventListener('click', () => {
+    if (!state) return;
+    const why = cantHoliday(state);
+    if (why) return cb.toast(T.blocked[why.blocked](allPets(state).find((p) => p.id === why.pet)?.name ?? state.pet.name));
+    if (cb.onHoliday(days)) {
+      stop();
+      cb.onExit();
+    }
+  });
   go.addEventListener('click', () => {
     if (slot === null) return;
     const party = going.map((id) => {
@@ -314,8 +337,15 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
 
   // ---- 1. The board and the trip's info card ----
 
+  // The name of a pet at home whose favourite place this is, if any.
+  const fanOf = (s: GameState, place: string): string | null => homePets(s).find((p) => p.favouritePlace === place)?.name ?? null;
+
   function board(s: GameState): HTMLElement {
     const list = el('div', 'trip-board');
+    const pick = (i: number) => () => {
+      slot = slot === i ? null : i;
+      render(true);
+    };
     s.journeys.offers.forEach((o, i) => {
       if (!o) {
         const empty = el('div', 'trip-ticket is-empty');
@@ -323,12 +353,59 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
         list.append(empty);
         return;
       }
-      list.append(ticket(o, i === slot, () => {
-        slot = slot === i ? null : i;
-        render(true);
-      }));
+      list.append(ticket(o, i === slot, pick(i), fanOf(s, o.place)));
     });
+    // Tonight's ticket, from the evening to the morning.
+    const night = s.journeys.night;
+    if (night) list.append(ticket(night, slot === NIGHT, pick(NIGHT), fanOf(s, night.place)));
+    list.classList.toggle('is-night', !!night);
+    list.append(holidayTicket(s, slot === HOLIDAY, pick(HOLIDAY)));
     return list;
+  }
+
+  // The Holiday ticket: always on the board, with how many you have.
+  function holidayTicket(s: GameState, picked: boolean, onPick: () => void): HTMLButtonElement {
+    const have = holidayTickets(s);
+    const b = el('button', `trip-ticket is-holiday${picked ? ' is-picked' : ''}${have ? '' : ' is-none'}`);
+    b.setAttribute('aria-pressed', String(picked));
+    const band = el('span', 'trip-band');
+    band.append(icon(HEART_ICONS.full, 'trip-holiday-heart'));
+    const text = el('span', 'trip-ticket-text');
+    text.append(el('b', '', T.holiday), el('span', '', placeName('meadow')));
+    const stub = el('span', 'trip-stub');
+    stub.append(el('b', '', `${J.holiday.days[0]}–${J.holiday.days[J.holiday.days.length - 1]}d`), el('small', '', T.holidayTickets(have)));
+    b.append(band, icon(MENU_ICONS.meadow, 'trip-ticket-icon'), text, stub);
+    b.addEventListener('click', onPick);
+    return b;
+  }
+
+  // What a Holiday is, how long, and who goes.
+  function holidayCard(s: GameState): HTMLElement {
+    const card = el('div', 'trip-card is-holiday');
+    const top = el('div', 'trip-card-top');
+    const tile = el('span', 'trip-card-tile');
+    tile.append(icon(MENU_ICONS.meadow, 'trip-card-place'));
+    const name = el('div', 'trip-card-name');
+    name.append(el('b', '', T.holiday), el('span', '', T.holidayTicketsLeft(holidayTickets(s))),
+      el('span', '', T.backAt(formatDayClock(now + days * 24 * HOUR, now))));
+    top.append(tile, name);
+    const picker = el('div', 'trip-days');
+    for (const d of J.holiday.days) {
+      const b = el('button', `trip-day${d === days ? ' is-on' : ''}`, T.holidayDays(d));
+      b.setAttribute('aria-pressed', String(d === days));
+      b.addEventListener('click', () => {
+        days = d;
+        render(true);
+      });
+      picker.append(b);
+    }
+    card.append(top, el('p', 'trip-card-note', T.holidayNote), picker);
+    const why = cantHoliday(s);
+    if (why) {
+      const who = allPets(s).find((p) => p.id === why.pet)?.name ?? s.pet.name;
+      card.append(el('p', 'trip-card-warn', T.blocked[why.blocked](who)));
+    }
+    return card;
   }
 
   function loot(svg: string, text: string, className = ''): HTMLElement {
@@ -342,15 +419,16 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     const p = s.pet;
     const card = el('div', 'trip-card');
     card.dataset.rarity = o.rarity;
-    const hours = tripHours(o.rarity);
+    card.classList.toggle('is-night', !!o.night);
+    const hours = offerHours(o);
 
     const top = el('div', 'trip-card-top');
     const tile = el('span', 'trip-card-tile');
     if (o.rarity === 'epic') tile.append(...shine());
     tile.append(icon(placeIcon(o.place), 'trip-card-place'), gems(o.rarity));
     const name = el('div', 'trip-card-name');
-    name.append(el('b', '', placeName(o.place)), el('span', '', T.tripLine(T.trips[o.rarity], T.hours(hours))),
-      el('span', '', T.backAt(formatClock(now + hours * HOUR))));
+    name.append(el('b', '', placeName(o.place)), el('span', '', T.tripLine(tripName(o), T.hours(hours))),
+      el('span', '', T.backAt(formatDayClock(now + hours * HOUR, now))));
     top.append(tile, name);
 
     // What it can bring home.
@@ -368,7 +446,7 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     }
 
     // What it uses up on the way.
-    const cost = J.cost[o.rarity];
+    const cost = o.night ? J.cost.epic : J.cost[o.rarity];
     const costs = el('div', 'trip-card-sec');
     costs.append(el('span', '', T.onTheWay));
     for (const [svg, v] of [[STAT_ICONS.hunger, cost.hunger], [STAT_ICONS.energy, cost.energy]] as const) {
@@ -474,7 +552,7 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
   function tripChip(o: Offer): HTMLElement {
     const chip = el('span', 'trip-chip');
     chip.dataset.rarity = o.rarity;
-    chip.append(icon(placeIcon(o.place), 'trip-cost-icon'), T.tripLine(T.trips[o.rarity], `${tripHours(o.rarity)}h`));
+    chip.append(icon(placeIcon(o.place), 'trip-cost-icon'), T.tripLine(tripName(o), `${offerHours(o)}h`));
     return chip;
   }
 
@@ -493,7 +571,7 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
       label.dataset.rarity = o.rarity;
       const head = el('span', 'bento-label-top');
       head.append(icon(placeIcon(o.place), 'bento-label-icon'));
-      label.append(head, el('b', '', placeName(o.place)), el('small', '', `${tripHours(o.rarity)}h`));
+      label.append(head, el('b', '', placeName(o.place)), el('small', '', `${offerHours(o)}h`));
       const reopen = el('button', 'bento-tap');
       reopen.setAttribute('aria-label', T.openLid);
       reopen.addEventListener('click', () => moveLid(false));
@@ -677,7 +755,7 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     if (!s) return;
     const p = s.pet;
     // The offer picked went (another pet took it): back to the board.
-    if (slot !== null && !s.journeys.offers[slot]) {
+    if (slot !== null && slot !== HOLIDAY && !offerAt(s, slot)) {
       slot = null;
       if (stage !== 'board') stage = 'board';
     }
@@ -710,9 +788,9 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     panel.dataset.stage = stage;
     if (stage === 'board') {
       panel.replaceChildren(...others(s), board(s));
-      if (!o) panel.append(el('p', 'trip-note trip-pick-hint', T.pickHint));
+      if (!o && slot !== HOLIDAY) panel.append(el('p', 'trip-note trip-pick-hint', T.pickHint));
       const shown = sheet.firstElementChild as HTMLElement | null;
-      const card = o ? infoCard(s, o) : null;
+      const card = o ? infoCard(s, o) : slot === HOLIDAY ? holidayCard(s) : null;
       // A newly picked trip slides up; the same one just refreshes.
       if (card && shown?.dataset.slot !== String(slot)) card.classList.add('is-new');
       if (card) card.dataset.slot = String(slot);
@@ -735,7 +813,9 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     sheet.hidden = !sheet.childElementCount;
     // The buttons for this step.
     back.hidden = stage === 'closed';
-    lineUp.hidden = stage !== 'board';
+    lineUp.hidden = stage !== 'board' || slot === HOLIDAY;
+    holiday.hidden = stage !== 'board' || slot !== HOLIDAY;
+    holiday.classList.toggle('is-waiting', !!cantHoliday(s));
     pack.hidden = stage !== 'lineup';
     closeLid.hidden = stage !== 'pack';
     openLid.hidden = stage !== 'closed';
@@ -798,14 +878,15 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
 // ---- The travel journal (in the Collection) ----
 
 // A postcard per place: a little picture of it with a stamp for the
-// longest trip taken there (1, 2 or 3 gems), its name and how many trips.
-// Places nobody has been to yet are a faded "?".
-export function journalCategory(state: GameState, open: Set<string>): HTMLElement {
+// longest trip taken there (1, 2 or 3 gems), its name, its level and how
+// many trips. Tap one to open its page in the travel journal. Places nobody
+// has been to yet are a faded "?".
+export function journalCategory(state: GameState, open: Set<string>, onJournal?: (place: string) => void): HTMLElement {
   const T = STRINGS.journeys;
   const entries: Entry[] = PLACES.map((p) => {
     const page = state.journeys.journal[p.id];
     const visited = !!page && page.trips > 0;
-    const card = el('div', `postcard${visited ? '' : ' is-new'}`);
+    const card = el(visited && onJournal ? 'button' : 'div', `postcard${visited ? '' : ' is-new'}`);
     card.dataset.place = p.id;
     const pic = el('span', 'postcard-pic');
     if (visited) {
@@ -815,10 +896,12 @@ export function journalCategory(state: GameState, open: Set<string>): HTMLElemen
       stamp.append(gems(best));
       stamp.title = T.rarities[best];
       pic.append(el('span', 'postcard-ground'), icon(placeIcon(p.id), 'postcard-place'), stamp);
+      if (onJournal) card.addEventListener('click', () => onJournal(p.id));
     } else {
       pic.textContent = '?';
     }
-    card.append(pic, el('b', '', placeName(p.id)), el('small', '', visited ? T.tripCount(page.trips) : T.notVisited));
+    const note = visited ? T.levelLine(T.levels[placeLevel(page.trips)], T.tripCount(page.trips)) : T.notVisited;
+    card.append(pic, el('b', '', placeName(p.id)), el('small', '', note));
     return { icon: visited ? placeIcon(p.id) : ITEM_ICONS.unknown, row: card, faded: !visited };
   });
   const count = entries.filter((e) => !e.faded).length;
@@ -826,4 +909,3 @@ export function journalCategory(state: GameState, open: Set<string>): HTMLElemen
   section.classList.add('journal-cat');
   return section;
 }
-

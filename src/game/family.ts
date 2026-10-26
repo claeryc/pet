@@ -78,6 +78,7 @@ export function rememberPet(pet: Pet, owner: string): FamilyMember {
     parents: [...pet.parents],
     trait: pet.trait,
     likes: pet.likes,
+    ...(pet.favouritePlace ? { favouritePlace: pet.favouritePlace } : {}),
     // Only a grown-up shows what it carries (it's set when it grows up).
     ...(pet.stage === 'adult' ? { carried: carriedOf(pet) } : {}),
   };

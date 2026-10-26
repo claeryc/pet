@@ -86,6 +86,7 @@ function likesLine(m: TreeMember): HTMLElement | null {
     t.food(shown('food', foodName(likes.food))),
     t.play(shown('play', STRINGS.activities[likes.play as keyof typeof STRINGS.activities] ?? likes.play)),
     t.dislike(shown('dislike', dislike)),
+    ...(m.favouritePlace ? [t.place(STRINGS.journeys.places[m.favouritePlace] ?? m.favouritePlace)] : []),
   ].join(' · '));
   line.title = t.title;
   return line;
