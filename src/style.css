@@ -910,6 +910,11 @@ body {
   max-height: none;
 }
 
+/* The travel journal fills the screen above the button (see home.ts). */
+.drawer-content:has(.shop-list.journal) {
+  height: var(--drawer-full, var(--drawer-fit, 268px));
+}
+
 .drawer .menu-panel {
   width: auto;
   max-width: none;
@@ -7605,15 +7610,21 @@ body {
 .jr-hero-name {
   position: absolute;
   left: 88px;
+  right: 12px;
   top: 12px;
-  font-size: 1.25rem;
+  z-index: 1;
+  font-size: clamp(1rem, 5vw, 1.25rem);
   font-weight: 900;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .jr-hero-level {
   position: absolute;
   left: 88px;
   top: 42px;
+  z-index: 1;
   padding: 1px 8px;
   border: 2px solid var(--ink);
   border-radius: 999px;
@@ -7690,20 +7701,21 @@ body {
 /* Stamps: a dashed edge, a coloured frame, tilted a little. */
 .jr-stamps {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr)); /* long names wrap, not widen */
   gap: 8px;
 }
 
 .jr-stamp {
   aspect-ratio: 1;
+  min-width: 0;
   display: grid;
   place-items: center;
-  padding: 6px;
+  padding: 2px;
   border: 3px dashed var(--st, #6cc19a);
   outline: 4px solid var(--st-light, #cbe7d6);
   outline-offset: -10px;
   background: white;
-  font-size: 0.66rem;
+  font-size: clamp(0.45rem, 2.1vw, 0.66rem); /* "Adventure" fits at 320px */
   font-weight: 900;
   text-align: center;
   line-height: 1.1;
@@ -7714,6 +7726,11 @@ body {
 .jr-stamp[data-kind='rare'] { --st: #7aa7e8; --st-light: #cfe0fb; }
 .jr-stamp[data-kind='epic'] { --st: #8a4fd8; --st-light: #e6ccff; }
 .jr-stamp[data-kind='night'] { --st: #4b4380; --st-light: #d6d2f2; }
+
+/* On a small phone the inner frame would cover the longer names. */
+@media (max-width: 360px) {
+  .jr-stamp { outline-width: 2px; outline-offset: -5px; }
+}
 
 .jr-stamp.is-none {
   --st: #e2d6ee;

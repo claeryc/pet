@@ -519,6 +519,10 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   function fitDrawers(): void {
     const room = actions.getBoundingClientRect().bottom - statSlot.getBoundingClientRect().bottom - DRAWER_GAP;
     actions.style.setProperty('--drawer-fit', `${Math.max(DRAWER_MIN, Math.floor(room - 74))}px`);
+    // The travel journal is a book, so it takes the whole screen above the
+    // button, over the room too.
+    const all = actions.getBoundingClientRect().bottom - roomWrap.getBoundingClientRect().top;
+    actions.style.setProperty('--drawer-full', `${Math.max(DRAWER_MIN, Math.floor(all - 74))}px`);
   }
   window.addEventListener('resize', fitDrawers);
 
