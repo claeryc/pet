@@ -658,6 +658,32 @@ export const CONFIG = {
     // when the trip is called off early) he flies home with the best find.
     // Then he rests for `restHours`, which the Shop can cut short for gold.
     percy: { restHours: 60, resetPrice: 150 },
+    // After `afterTrips` finished journeys, a pet picks a favourite place
+    // (where it has been most, its own theme breaking a tie). It finds
+    // `extraFinds` more there, and its ticket shows a heart.
+    favourite: { afterTrips: 3, extraFinds: 1 },
+    // How often a postcard's story is about something the pet loves or
+    // dislikes, when the trip gives it one (see storyOf in journeys.ts).
+    storyLikeChance: 0.6,
+    // A place's page in the travel journal goes up a level at these many
+    // finished trips there: Visitor, Regular, Local and Legend.
+    levels: [1, 5, 15, 40],
+    // An Adventure (or a night trip of epic rarity) makes a friend there
+    // `chance` of the time: a pet of the place's theme with these star odds
+    // (percent), who joins your friends at `score` once the backpack's open.
+    friend: { chance: 0.2, stars: { 1: 20, 2: 60, 3: 20 }, score: 10 },
+    // The night ticket: from `fromHour` in the evening to the morning
+    // (`CONFIG.sleep.wakeHour`), one extra ticket that lasts `hours`, so
+    // there's always a trip for the night.
+    // Its finds are rare or epic by `odds` (percent); it uses what an
+    // Adventure uses. Not taken by morning, it's gone until the next night.
+    night: { fromHour: 20, hours: 10, odds: { rare: 75, epic: 25 } },
+    // A Holiday in the Meadow, for a ticket from the Star Shop
+    // (`fragments` star fragments): every pet goes for one of `days`, and
+    // everything waits while they're away. Hunger, energy and health stay
+    // as they were, the garden stops, growing up pauses, nothing is found
+    // and no good care days are counted. They come home `joy` happier.
+    holiday: { fragments: 50, days: [1, 2, 3], joy: 10 },
     // The places, one per theme. Each opens with `opens` (see journeys.ts)
     // and has finds by stars: a food, a seed ("seed:pumpkin") or gold
     // ("gold:12").

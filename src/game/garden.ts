@@ -168,6 +168,28 @@ export function growGarden(garden: Plot[], from: number, to: number, perks: Gard
   return garden.map((p) => (p.crop && !p.dead ? growPlot(p, from, to, perks) : p));
 }
 
+// Catches the garden up from `from` to `to` with time stopped while
+// everyone was on a Holiday (`paused`): it grows up to the start, all its
+// clocks move on by however long it lasted, and it grows on after.
+export function growGardenAround(
+  garden: Plot[], from: number, to: number, paused: { from: number; until: number } | null | undefined, perks: GardenPerks = PLAIN,
+): Plot[] {
+  if (!paused || paused.until <= from || paused.from >= to) return growGarden(garden, from, to, perks);
+  const stop = Math.max(from, paused.from);
+  const go = Math.min(to, paused.until);
+  const shift = go - stop;
+  // Every clock moves on, as if the time away never happened.
+  const later = (t: number) => t + shift;
+  const moved = growGarden(garden, from, stop, perks).map((p) => ({
+    ...p,
+    moistUntil: later(p.moistUntil),
+    rollsFrom: later(p.rollsFrom),
+    fertilizedUntil: later(p.fertilizedUntil),
+    sickSince: p.sickSince === null ? null : later(p.sickSince),
+  }));
+  return growGarden(moved, go, to, perks);
+}
+
 export type GardenBlock =
   | 'noPlot'
   | 'notEmpty'

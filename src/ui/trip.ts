@@ -11,8 +11,8 @@ import type { GameState, Pet } from '../game/state';
 import { sheetFor } from '../game/growth';
 import { isAway } from '../game/presence';
 import { PALETTE } from '../render/palette';
-import { ITEM_ICONS, SKILL_ICONS } from './icons';
-import { formatClock, formatDuration } from './time';
+import { ITEM_ICONS, MENU_ICONS, SKILL_ICONS } from './icons';
+import { formatDayClock, formatDuration } from './time';
 
 export interface TripView {
   panel: HTMLElement; // shown in place of the stat bars
@@ -33,10 +33,10 @@ const TO = { x: 108, y: 14 };
 
 // The notes in the corner of the room, one for each trip that's on (two
 // pets that went together share one), by the pet it's for, in id order so
-// they keep their places.
+// they keep their places. Everyone on a Holiday shares one too.
 export function tripNotes(state: GameState): Pet[] {
   const away = [state.pet, ...state.housemates].filter(isAway).sort((a, b) => (a.id < b.id ? -1 : 1));
-  return away.filter((p, i) => !away.slice(0, i).some((q) => q.id === p.trip!.with));
+  return away.filter((p, i) => !away.slice(0, i).some((q) => q.id === p.trip!.with || (q.trip!.holiday && p.trip!.holiday)));
 }
 
 // How far along a trip is, 0 to 1.
@@ -177,11 +177,13 @@ export function createTripView({ characterImage, onClose, onCallHome }: TripSetu
   let drawnFaces = '';
   let showing = ''; // the id of the pet whose trip is on show
 
-  // The pets on the trip: that pet, and the one it went with, if any.
+  // The pets on the trip: that pet, and the one it went with, if any (or
+  // everyone, on a Holiday).
   const travellers = (s: GameState): Pet[] => {
     const all = [s.pet, ...s.housemates];
     const pet = all.find((p) => p.id === showing && isAway(p));
     if (!pet) return [];
+    if (pet.trip!.holiday) return [pet, ...all.filter((p) => p !== pet && isAway(p) && p.trip!.holiday)];
     const mate = all.find((h) => h !== pet && h.id === pet.trip!.with && isAway(h));
     return mate ? [pet, mate] : [pet];
   };
@@ -193,11 +195,12 @@ export function createTripView({ characterImage, onClose, onCallHome }: TripSetu
     const trip = pets[0]?.trip;
     if (!trip) return;
     const place = T.places[trip.place] ?? trip.place;
-    placeIcon.innerHTML = ITEM_ICONS[`place_${trip.place}`] ?? ITEM_ICONS.journey;
+    placeIcon.innerHTML = ITEM_ICONS[`place_${trip.place}`] ?? (trip.holiday ? MENU_ICONS.meadow : ITEM_ICONS.journey);
     there.innerHTML = placeIcon.innerHTML;
-    title.textContent = T.offer(T.trips[trip.rarity], place);
-    who.textContent = pets.length > 1 ? T.tripWho2(pets[0].name, pets[1].name) : T.tripWho(pets[0].name);
-    back.textContent = T.tripBack(formatClock(trip.endsAt));
+    title.textContent = T.offer(trip.holiday ? T.holiday : trip.night ? T.night : T.trips[trip.rarity], place);
+    who.textContent = trip.holiday ? T.onHoliday(STRINGS.list(pets.map((p) => p.name)), pets.length)
+      : pets.length > 1 ? T.tripWho2(pets[0].name, pets[1].name) : T.tripWho(pets[0].name);
+    back.textContent = T.tripBack(formatDayClock(trip.endsAt, now));
     const share = tripProgress(pets[0], now);
     left.textContent = share >= 1 ? T.tripAlmost : T.tripLeft(formatDuration(trip.endsAt - now));
     // The trail only changes a pixel at a time, so it's redrawn only then.

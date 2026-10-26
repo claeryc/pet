@@ -98,6 +98,10 @@ function text(m: Message): string {
       return STRINGS.journeys.tripHome(m.name, STRINGS.journeys.places[m.place] ?? m.place);
     case 'courier':
       return STRINGS.journeys.courier(m.name, STRINGS.journeys.places[m.place] ?? m.place, findName(m.find));
+    case 'tripFriend':
+      return STRINGS.journeys.tripFriend(m.name, m.friend, STRINGS.journeys.places[m.place] ?? m.place);
+    case 'holidayHome':
+      return STRINGS.journeys.holidayHome(STRINGS.list(m.names));
   }
 }
 
@@ -162,6 +166,8 @@ function messageRow(m: Message, now: number): HTMLElement {
     : m.kind === 'milestone' ? MILESTONE_ICONS[m.id] ?? ITEM_ICONS.letter
     : m.kind === 'level' ? SKILL_POINT_ICON
     : m.kind === 'tripHome' ? ITEM_ICONS.journey
+    : m.kind === 'tripFriend' ? ITEM_ICONS.meet
+    : m.kind === 'holidayHome' ? MENU_ICONS.meadow
     : m.kind === 'courier' || m.kind === 'regular' ? ITEM_ICONS.percy
     : ITEM_ICONS.letter;
   const body = el('span', 'shop-row-text');

@@ -23,6 +23,7 @@ import { journalCategory } from './journeys';
 export interface CollectionCallbacks {
   // A character's picture (its first idle frame) as a URL, if loaded.
   characterImage: (sheet: string) => string | undefined;
+  onJournal?: (place: string) => void; // open the travel journal at a place
 }
 
 function portrait(url: string | undefined): string {
@@ -127,6 +128,6 @@ export function collectionPage(state: GameState, cb: CollectionCallbacks, open: 
     category('recipes', title(STRINGS.collection.recipes, recipes), recipes, open),
     category('catches', title(STRINGS.collection.catches, fish), fish, open),
     // The travel journal: a postcard per place.
-    ...(isUnlocked(state, 'journeys') ? [journalCategory(state, open)] : []),
+    ...(isUnlocked(state, 'journeys') ? [journalCategory(state, open, cb.onJournal)] : []),
   ];
 }

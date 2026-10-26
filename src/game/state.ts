@@ -84,6 +84,10 @@ export interface Pet {
   // Good care days it was home for (see src/game/fragments.ts). Decides
   // the keepsake it leaves when it moves to the Meadow (see meadow.ts).
   goodDays?: number;
+  // Journeys it finished at each place, and the place it loves most once
+  // it has been on a few (see src/game/journeys.ts). Unset before then.
+  travels?: Record<string, number>;
+  favouritePlace?: string | null;
 }
 
 // Which character a parent grew into, and its colour variant.
@@ -120,20 +124,49 @@ export interface Trip {
   with?: string | null; // the other pet's id, if both went together
   backAt: number | null; // when it got home (null while it's away)
   early: boolean; // called home before the end
+  night?: boolean; // a night trip (see CONFIG.journeys.night)
+  holiday?: boolean; // a Holiday in the Meadow: no finds, everything waits
+  // A friend it makes on the way (an Adventure, sometimes), who joins your
+  // friends once the backpack is opened.
+  friend?: Friend | null;
 }
 
-// One offer on the journey board.
+// One offer on the journey board. A night offer is the one ticket that
+// comes in the evening and goes in the morning (see journeys.ts).
 export interface Offer {
   place: string;
   rarity: Rarity;
+  night?: boolean;
+}
+
+// What a postcard's line is about (see storyOf in journeys.ts): which line,
+// and the food or friend it names.
+export interface Story {
+  id: string;
+  food?: string;
+  friend?: string;
+  character?: string | null; // the friend's character
+}
+
+// A postcard in the travel journal. Older ones only have a name and time.
+export interface Postcard {
+  name: string;
+  at: number;
+  pet?: string; // the pet's id
+  look?: string; // the pet's sprite sheet then
+  rarity?: Rarity;
+  night?: boolean;
+  star3?: boolean; // it found a 3-star thing
+  story?: Story;
 }
 
 // One place's page in the travel journal.
 export interface JournalPage {
   trips: number; // journeys finished there
-  postcards: { name: string; at: number }[]; // who went, newest first
-  found: string[]; // food ids found there
+  postcards: Postcard[]; // newest first
+  found: string[]; // food ids found there, and seeds as "seed:carrot"
   best?: Rarity; // the longest trip finished there (its stamp in the journal)
+  stamps?: string[]; // the kinds of trip finished there: rarities and 'night'
 }
 
 export interface Journeys {
@@ -142,6 +175,13 @@ export interface Journeys {
   refillAt: number[];
   percyFreeAt: number; // Percy can come along again from this time
   journal: Record<string, JournalPage>;
+  // Tonight's night ticket, and which night it was for ('' before the
+  // first), so a taken one doesn't come back the same night.
+  night?: Offer | null;
+  nightOf?: string;
+  // A Holiday everyone is on (or was on, until the garden has caught up):
+  // the garden waits from `from` to `until`.
+  holiday?: { from: number; until: number } | null;
 }
 
 // Everything the player owns.
@@ -208,6 +248,7 @@ export interface FamilyMember {
   trait?: string; // its trait, if it had one (see src/game/traits.ts)
   carried?: Genes; // the genes it carries (rolled from its id if it has none, see genes.ts)
   likes?: Likes; // its likes and dislikes, and which were found (see src/game/likes.ts)
+  favouritePlace?: string | null; // the journey place it loved most (see journeys.ts)
   meadow?: boolean; // one of yours that moved to the Meadow (not one that passed away)
 }
 
@@ -332,6 +373,10 @@ export type Message =
   | { kind: 'level'; at: number; level: number }
   | { kind: 'tripHome'; at: number; name: string; place: string }
   | { kind: 'courier'; at: number; name: string; place: string; find: Find }
+  // A pet made a friend on a journey, who joined your friends.
+  | { kind: 'tripFriend'; at: number; name: string; friend: string; place: string }
+  // Everyone came home from a Holiday in the Meadow.
+  | { kind: 'holidayHome'; at: number; names: string[] }
   // A regular (Percy) reached a new heart and gave its reward.
   | { kind: 'regular'; at: number; id: string; hearts: number };
 

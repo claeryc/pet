@@ -95,7 +95,9 @@ import { STRINGS } from './strings';
 import { FRAGMENT_ICON, ITEM_ICONS } from './ui/icons';
 import { DISH_MS, DONE_MS as COOKED_MS } from './ui/cooking';
 import { music, sound, startAudio } from './audio/audio';
-import { buyCharm, callHome, goTogether, openBackpack, restPercy } from './game/journeys';
+import { buyCharm, buyHolidayTicket, callHome, goHoliday, goTogether, offerAt, openBackpack, placeLevel, restPercy } from './game/journeys';
+import { postcardArt } from './ui/journal';
+import { REVEAL_MS } from './ui/reveal';
 import { isAway } from './game/presence';
 import { STAT_ICONS } from './ui/icons';
 import type { Find } from './game/state';
@@ -603,6 +605,16 @@ function askToMakeRoom(): void {
       { label: STRINGS.friends.notYet, onPick: () => {} },
     ],
   });
+}
+
+// "New: Pip loves Honey": a like a postcard showed for the first time.
+function likeNote(pet: Pet, kind: string): string {
+  const L = STRINGS.journeys.likeNews;
+  const food = (id: string) => STRINGS.foods[id as FoodId] ?? id;
+  if (kind === 'food') return L.food(pet.name, food(pet.likes.food));
+  if (kind === 'play') return L.play(pet.name, STRINGS.activities[pet.likes.play as keyof typeof STRINGS.activities] ?? pet.likes.play);
+  const d = pet.likes.dislike;
+  return L.dislike(pet.name, d === 'bath' ? STRINGS.family.likes.bath : d === 'woken' ? STRINGS.family.likes.woken : food(d));
 }
 
 // The goodbye card of a pet in the Meadow: your days together, what it
@@ -1114,6 +1126,7 @@ const home = createHomeScreen(root, {
   onBuyFood: (food) => runShop(buyFood(state, food, gameNow()), STRINGS.shop.bought(STRINGS.foods[food])),
   onBuyBait: () => runShop(buyBait(state), STRINGS.shop.bought(STRINGS.shop.bait)),
   onBuyFortuneCookie: () => runShop(buyFortuneCookie(state), STRINGS.shop.bought(STRINGS.shop.fortuneCookie)),
+  onBuyHolidayTicket: () => runShop(buyHolidayTicket(state), STRINGS.shop.bought(STRINGS.journeys.holidayTicket)),
   onBuyCharm: (id) => runShop(buyCharm(state, id), STRINGS.shop.bought(STRINGS.journeys.charms[id]?.name ?? id)),
   onBuyPot: () => runShop(buyPot(state), STRINGS.shop.potBought),
   onBuyDecor: (kind, id) => {
@@ -1155,7 +1168,7 @@ const home = createHomeScreen(root, {
   onSetOff: (slot, party, percy) => {
     const now = gameNow();
     const s = simulate(state, now);
-    const offer = s.journeys.offers[slot];
+    const offer = offerAt(s, slot);
     const result = goTogether(s, now, slot, party, percy);
     setState(result.state);
     const nameOf = (id: string | undefined) => allPets(s).find((p) => p.id === id)?.name ?? '';
@@ -1169,15 +1182,29 @@ const home = createHomeScreen(root, {
     home.toast(b ? STRINGS.journeys.leftTogether(a, b, place) : STRINGS.journeys.leftFor(a, place));
     return true;
   },
+  onHoliday: (days) => {
+    const now = gameNow();
+    const result = goHoliday(simulate(state, now), now, days);
+    if (result.blocked) {
+      blocked(STRINGS.journeys.blocked[result.blocked](allPets(state).find((p) => p.id === result.pet)?.name ?? state.pet.name));
+      return false;
+    }
+    setState(result.state);
+    sound('done');
+    home.toast(STRINGS.journeys.holidayLeft);
+    return true;
+  },
   // Calling a pet home cuts the trip short, so it asks first.
   onCallHome: (id) => {
     const pet = allPets(state).find((p) => p.id === id);
     if (!pet?.trip || choice.isOpen()) return;
     const mate = allPets(state).find((p) => p.id === pet.trip!.with && isAway(p));
     const T = STRINGS.journeys;
+    const holidaying = allPets(state).filter((p) => isAway(p) && p.trip!.holiday);
     choice.open({
       title: T.callHomeTitle,
-      text: T.callHomeAsk(mate ? T.together(pet.name, mate.name) : pet.name, placeName(pet.trip.place)),
+      text: pet.trip.holiday ? T.holidayCallHome(STRINGS.list(holidaying.map((p) => p.name)), holidaying.length)
+        : T.callHomeAsk(mate ? T.together(pet.name, mate.name) : pet.name, placeName(pet.trip.place)),
       options: [
         {
           label: T.callHomeYes,
@@ -1231,11 +1258,35 @@ const home = createHomeScreen(root, {
     if (!pet) return;
     // The bag first, over the stat bars; the finds come out once it's tapped.
     home.backpack(pet.name, () => {
-      const result = openBackpack(simulate(state, gameNow()), id);
+      const before = simulate(state, gameNow());
+      const result = openBackpack(before, id);
       setState(result.state);
       if (!result.place) return;
       for (const f of result.finds) showFind(f, STRINGS.journeys.found(placeName(result.place)));
       if (state.pet.id === id) react('happy');
+      // Then the postcard, with what's new: a like it showed, a friend, a
+      // new level for the place.
+      const card = result.postcard;
+      if (!card) return;
+      const place = result.place;
+      const levelOf = (s: typeof state) => placeLevel(s.journeys.journal[place]?.trips ?? 0);
+      const level = levelOf(result.state) > levelOf(before) ? levelOf(result.state) : undefined;
+      const was = allPets(before).find((p) => p.id === id);
+      const now = allPets(result.state).find((p) => p.id === id);
+      const shown = now?.likes.found.find((k) => !was?.likes.found.includes(k));
+      const like = shown && now ? likeNote(now, shown) : undefined;
+      setTimeout(() => {
+        choice.open({
+          art: postcardArt(card, place, card.look ? characterImage(card.look) : undefined, { like, friend: result.friend ?? undefined, level }),
+          artReadable: true,
+          title: STRINGS.journeys.postcardFrom(card.name),
+          text: '',
+          options: [
+            { label: STRINGS.journeys.intoJournal, onPick: () => home.showJournal(place) },
+            { label: STRINGS.journeys.lovely, soft: true, onPick: () => {} },
+          ],
+        });
+      }, result.finds.length * REVEAL_MS + 400);
     });
   },
   onBuyHat: (id) => {
