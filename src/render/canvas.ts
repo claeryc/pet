@@ -4,7 +4,7 @@
 import { drawBag } from './bags';
 import { PALETTE } from './palette';
 import { drawCurtains, drawWall } from './room';
-import { drawFurniture } from './furniture';
+import { drawFurniture, drawSpots } from './furniture';
 import type { FurnitureSlot } from '../game/state';
 import { frameFor } from './animations';
 import { drawFace } from './faces';
@@ -15,7 +15,7 @@ import { drawGardenBackground, drawGardenPots, type GardenScene } from './garden
 import { drawDelivery, type DeliveryScene } from './delivery';
 import { drawPlace } from './places';
 import { drawBath, drawMess, type BathScene, type PetMess } from './hygiene';
-import { drawKeepsakes, type RoomKeepsakes } from './keepsakes';
+import { drawKeepsakes, drawShelfCloseup, type RoomKeepsakes, type ShelfThing } from './keepsakes';
 
 export const ROOM_WIDTH = 64;
 export const ROOM_HEIGHT = 48;
@@ -62,6 +62,12 @@ export interface Scene {
   // Keepsakes from pets in the Meadow (see src/game/meadow.ts): a framed
   // portrait on the wall, and a little shelf.
   keepsakes?: RoomKeepsakes | null;
+  // Decorating: a frame round each furniture spot (the picked one
+  // highlighted), and no pets in the way.
+  build?: { spot: FurnitureSlot | null } | null;
+  // The keepsake shelf up close, in place of the room, with the thing
+  // picked (see src/render/keepsakes.ts).
+  closeup?: { things: (ShelfThing | null)[]; picked: number | null } | null;
 }
 
 export interface TripScene {
@@ -317,6 +323,22 @@ function stepTrip(scene: Scene, timeMs: number): number {
   return tripMix;
 }
 
+// Looking at the shelf up close and back: it fades in over the room.
+let closeMix = 0;
+let lastCloseup: Scene['closeup'] = null;
+let lastCloseFrameMs = 0;
+
+function stepCloseup(scene: Scene, timeMs: number): number {
+  const dt = lastCloseFrameMs ? Math.max(0, timeMs - lastCloseFrameMs) : 0;
+  lastCloseFrameMs = timeMs;
+  if (scene.closeup) lastCloseup = scene.closeup;
+  const target = scene.closeup ? 1 : 0;
+  const instant = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const step = instant ? 1 : dt / TRIP_FADE_MS;
+  closeMix = target > closeMix ? Math.min(target, closeMix + step) : Math.max(target, closeMix - step);
+  return closeMix;
+}
+
 // The place the pets went to, with them standing in it (one in the
 // middle, two side by side), each with a bag on a stick behind it.
 function drawTrip(ctx: CanvasRenderingContext2D, trip: TripScene, night: boolean, timeMs: number): void {
@@ -358,8 +380,9 @@ export function drawRoom(
     drawWindow(ctx, scene.night, timeMs);
     if (scene.room?.curtains) drawCurtains(ctx, scene.room.curtains, WINDOW.x, WINDOW.y, WINDOW.w, WINDOW.h);
     if (scene.room?.furniture && (!scene.fishing || scene.fishing === 'off')) drawFurniture(ctx, scene.room.furniture);
-    if (scene.keepsakes) drawKeepsakes(ctx, scene.keepsakes, timeMs);
+    if (scene.keepsakes) drawKeepsakes(ctx, scene.keepsakes, scene.room?.furniture ?? {}, timeMs);
     if (scene.fishing && scene.fishing !== 'off') drawFishing(ctx, scene.fishing, timeMs);
+    if (scene.build) drawSpots(ctx, scene.room?.furniture ?? {}, scene.build.spot, timeMs);
   }
 
   // The pet, centred and standing on the floor. In the garden it walks over
@@ -411,12 +434,19 @@ export function drawRoom(
     ctx.restore();
   }
 
-  if (!percys && !scene.note) drawPet(mix);
+  if (!percys && !scene.note && !scene.build) drawPet(mix);
 
   const trip = stepTrip(scene, timeMs);
   if (trip > 0 && lastTrip) {
     ctx.globalAlpha = trip;
     drawTrip(ctx, lastTrip, scene.night, timeMs);
+    ctx.globalAlpha = 1;
+  }
+
+  const close = stepCloseup(scene, timeMs);
+  if (close > 0 && lastCloseup) {
+    ctx.globalAlpha = close;
+    drawShelfCloseup(ctx, scene.room?.wallpaper ?? 'plain', lastCloseup.things, lastCloseup.picked, scene.night, ROOM_WIDTH, ROOM_HEIGHT, timeMs);
     ctx.globalAlpha = 1;
   }
 
