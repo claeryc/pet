@@ -1155,7 +1155,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       else if (isCritical(pet)) {
         // Only what you already have, never a price: this is about care.
         const stars = revivalStars(state);
-        const { perStar } = CONFIG.revival.fragments;
+        const { perStar } = CONFIG.fragments;
         const have = stars > 0 ? STRINGS.revival.haveStars(stars) : STRINGS.revival.haveFragments(state.fragments.pieces, perStar);
         text = `${STRINGS.status.critical(pet.name, formatDuration(timeLeftToTreat(pet)))} ${have}`;
       }

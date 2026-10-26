@@ -111,6 +111,17 @@ describe('the Family Home', () => {
     expect(s.familyHome.room.wallpaper).toBe('stripes');
   });
 
+  it('furnishes each room on its own', () => {
+    let s = { ...withHome(), gold: 1000 };
+    s = buyDecor(s, 'furniture', 'toyBox').state;
+    expect(s.room.furniture).toEqual({ right: 'toyBox' });
+    s = goToRoom(s, 'family').state;
+    expect(roomDecor(s).furniture).toBeUndefined();
+    s = useDecor(s, 'furniture', 'toyBox').state;
+    expect(s.familyHome.room.furniture).toEqual({ right: 'toyBox' });
+    expect(s.room.furniture).toEqual({ right: 'toyBox' });
+  });
+
   it('a little one moves into the Family Home when the main room is full', () => {
     let s = withHome();
     s = { ...s, housemates: s.housemates.filter((p) => p.id !== 'c') };

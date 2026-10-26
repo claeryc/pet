@@ -5,7 +5,7 @@ import { buyFood, buyHat, checkIn, earn, foodCount, HATS, wearHat } from '../src
 import { createNewGame } from '../src/game/state';
 import { newTeen } from './helpers';
 import { simulate } from '../src/game/simulate';
-import { migrate } from '../src/storage/storage';
+import { SAVE_VERSION, migrate } from '../src/storage/storage';
 
 const HOUR = 3_600_000;
 const START = new Date(2026, 0, 1, 10, 0).getTime();
@@ -126,7 +126,7 @@ describe('the rice jar', () => {
     s.inventory.food = { cookie: 1 };
     delete s.riceJarAt;
     const out = migrate({ version: 33, state: s });
-    expect(out.version).toBe(34);
+    expect(out.version).toBe(SAVE_VERSION);
     expect(out.state.inventory.food).toEqual({ cookie: 1, riceBall: J.size });
     expect(out.state.riceJarAt).toBeNull();
   });

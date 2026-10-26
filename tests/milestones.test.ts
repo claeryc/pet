@@ -86,7 +86,7 @@ describe('milestones', () => {
 
   it('making a Revival Star from fragments counts for Star Maker', () => {
     const s = newTeen(START);
-    s.fragments = { ...s.fragments, pieces: CONFIG.revival.fragments.perStar };
+    s.fragments = { ...s.fragments, pieces: CONFIG.fragments.perStar };
     const made = makeStar(s).state;
     expect(updateMilestones(made).earned).toEqual(['starMaker']);
   });
