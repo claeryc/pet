@@ -7341,8 +7341,7 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   flex: none;
 }
 
-.trip-now-icon svg,
-.trip-map-end svg {
+.trip-now-icon svg {
   display: block;
   width: 100%;
   height: 100%;
@@ -7364,8 +7363,8 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   color: var(--plum);
 }
 
-/* The map: the canvas scaled up with chunky pixels, home and the place at
-   either end of the trail, and the pets' pictures where they are. */
+/* The map: the canvas scaled up with chunky pixels, and the pets'
+   pictures on the trail where they are. */
 .trip-map {
   position: relative;
   border: 3px solid var(--butter);
@@ -7376,7 +7375,7 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 .trip-map-canvas {
   display: block;
   width: 100%;
-  aspect-ratio: 120 / 36;
+  aspect-ratio: 160 / 48;
   image-rendering: pixelated;
 }
 
@@ -7424,14 +7423,6 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 
 @media (prefers-reduced-motion: reduce) {
   .trip-snap { animation: none; }
-}
-
-.trip-map-end {
-  position: absolute;
-  width: 9%;
-  aspect-ratio: 1;
-  transform: translate(-50%, -125%);
-  pointer-events: none;
 }
 
 .trip-map-marker {

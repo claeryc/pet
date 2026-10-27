@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { tripProgress } from '../src/ui/trip';
+import { trailPoint } from '../src/render/tripmap';
 import { shortLeft } from '../src/ui/journeys';
 import { newTeen } from './helpers';
 
@@ -40,5 +41,16 @@ describe('time left in the line-up', () => {
   it('shows minutes under half an hour', () => {
     expect(shortLeft(29 * min)).toBe('29m');
     expect(shortLeft(10_000)).toBe('1m');
+  });
+});
+
+describe('the trip map', () => {
+  it('runs from home on the left to the place on the right', () => {
+    const start = trailPoint(0);
+    const end = trailPoint(1);
+    expect(start.left).toBeLessThan(20);
+    expect(end.left).toBeGreaterThan(80);
+    expect(trailPoint(0.5).left).toBeGreaterThan(start.left);
+    expect(trailPoint(2)).toEqual(end);
   });
 });
