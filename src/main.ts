@@ -48,10 +48,10 @@ import {
   type CropId,
   type GardenResult,
 } from './game/garden';
-import { markSeen, updateProgress } from './game/unlocks';
+import { characterKey, markSeen, updateProgress } from './game/unlocks';
 import { makeStar, weeksToStar } from './game/fragments';
 import { learn, nextCost, rankOf, resetTree, skillBefore, type SkillId } from './game/skills';
-import { SKILL_POINT_ICON } from './ui/icons';
+import { ACHIEVEMENT_ICONS, MILESTONE_ICONS, SKILL_POINT_ICON } from './ui/icons';
 import { fillAll, orderPay, orderTier, putInBox, takeFromBox, type BoxResult } from './game/delivery';
 import { earnedFrom, percyPerks, rewards, type RegularId } from './game/regulars';
 import { regularCard, rewardIcon, rewardName, rewardNote } from './ui/regulars';
@@ -77,6 +77,8 @@ import {
   type MingleBlock,
 } from './game/friends';
 import { createChoiceBox } from './ui/choice';
+import { createGrowUpReveal, createLittleOneReveal } from './ui/growup';
+import { MOMENT_MS, type MomentKind } from './render/moments';
 import { canMoveToMeadow, getMeadowPet, greetVisitor, hangPortrait, keepsakeKind, keepsakeOf, meadowVisitor, memoriesOf, roomKeepsakes, sayHi, toggleShelf, welcomeHome } from './game/meadow';
 import { goodbyeArt } from './ui/meadow';
 import { roomWithSpace } from './game/rooms';
@@ -116,6 +118,10 @@ function gameNow(): number {
 // Load the saved game (or start a new one) and catch it up to right now.
 const saved = loadGame();
 let state: GameState = saved ?? createNewGame(Date.now());
+// How the pets were when the game was last closed, so any that grew up
+// while you were away still get their grow-up reveal.
+const stagesAtClose = new Map(allPets(state).map((p) => [p.id, p.stage]));
+const foundAtClose = state.charactersFound;
 // What Messages had at the last visit, so Percy's news from while you were
 // away can be shown once the screen is up.
 const lastVisitMessages = state.messages;
@@ -132,6 +138,7 @@ const afterNaming: string[] = [];
 // up. A freshly hatched pet is asked for its name first.
 function setState(next: GameState): void {
   const before = new Map(allPets(state).map((p) => [p.id, p.stage]));
+  const foundBefore = state.charactersFound;
   const oldMessages = state.messages;
   const progress = updateProgress(next);
   state = progress.state;
@@ -155,29 +162,22 @@ function setState(next: GameState): void {
   home.update(state, gameNow());
   for (const pet of grew) {
     if (pet.stage === 'baby') continue;
-    sound('grewUp');
-    if (pet.stage === 'adult') {
-      const character = getCharacter(pet.character);
-      const name = STRINGS.characterName(character?.name ?? '?', getVariant(character, pet.variant)?.name);
-      home.toast(STRINGS.growth.adult(pet.name, name, STRINGS.stars(character?.stars ?? 1)));
-    } else {
-      home.toast(STRINGS.growth.teen(pet.name));
-    }
-    if (pet.id === state.pet.id) react('happy');
+    showGrowUp(pet, foundBefore);
   }
   showLevels(progress.levels);
   showFragments(progress.fragments);
   if (progress.badges.length > 0 || progress.milestones.length > 0) sound('badge');
   else if (progress.unlocked.length > 0) sound('unlock');
-  const notices = [
-    ...progress.badges.map((b) => STRINGS.achievements.earned(STRINGS.achievements.names[b.id], STRINGS.achievements.tiers[b.tier])),
-    ...progress.milestones.map((id) => STRINGS.milestones.earned(STRINGS.milestones.names[id])),
-    ...progress.unlocked.map((id) => STRINGS.unlocked[id]),
-  ];
+  const notices = progress.unlocked.map((id) => STRINGS.unlocked[id]);
   if (needsName(state)) {
-    afterNaming.push(...notices);
+    afterNaming.push(
+      ...progress.badges.map((b) => STRINGS.achievements.earned(STRINGS.achievements.names[b.id], STRINGS.achievements.tiers[b.tier])),
+      ...progress.milestones.map((id) => STRINGS.milestones.earned(STRINGS.milestones.names[id])),
+      ...notices,
+    );
     askName();
   } else {
+    showAwards(progress);
     for (const message of notices) home.notice(message);
   }
   announceMail(oldMessages);
@@ -223,6 +223,19 @@ function showFragments(pieces: number): void {
     icon: FRAGMENT_ICON, name: STRINGS.shop.fragment, count: pieces, stars: 0,
     caption: STRINGS.shop.fragmentsCount(state.fragments.pieces, perStar),
   });
+}
+
+// New badges and milestones show off like a catch, in their colour.
+function showAwards({ badges, milestones }: Pick<ReturnType<typeof updateProgress>, 'badges' | 'milestones'>): void {
+  for (const b of badges) {
+    home.reveal({
+      icon: ACHIEVEMENT_ICONS[b.id], name: STRINGS.achievements.names[b.id], count: 1, stars: 0,
+      caption: STRINGS.achievements.newBadge(STRINGS.achievements.tiers[b.tier]), tier: b.tier,
+    });
+  }
+  for (const id of milestones) {
+    home.reveal({ icon: MILESTONE_ICONS[id], name: STRINGS.milestones.names[id], count: 1, stars: 0, caption: STRINGS.milestones.newMilestone, tier: 'gold' });
+  }
 }
 
 // A new Keeper level: a skill point to spend.
@@ -309,6 +322,25 @@ function shownRoom(room: Room, trying: ShopPreview | null): Room {
   return slot ? { ...room, furniture: { ...room.furniture, [slot]: trying.id } } : room;
 }
 
+// The grow-up reveal for a pet that just became a teen or a grown-up (see
+// src/ui/growup.ts): its old look as a silhouette, a flash, then the new
+// one. `foundBefore` is the Collection before, to tell if the look is new.
+function showGrowUp(pet: Pet, foundBefore: readonly string[]): void {
+  const was: Pet = { ...pet, stage: pet.stage === 'adult' ? 'teen' : 'baby' };
+  const character = pet.stage === 'adult' ? getCharacter(pet.character) : undefined;
+  growUp.show({
+    name: pet.name,
+    stage: pet.stage === 'adult' ? 'adult' : 'teen',
+    before: () => portraitOf(was),
+    after: () => portraitOf(pet),
+    ...(character && {
+      character: STRINGS.characterName(character.name, getVariant(character, pet.variant)?.name),
+      stars: character.stars,
+      isNew: !foundBefore.includes(characterKey(character.id, pet.variant)),
+    }),
+  });
+}
+
 // Asks for the pet's name: once it hatches (it must have one), or to
 // rename it from the Family Tree.
 function askName(): void {
@@ -342,6 +374,11 @@ function askName(): void {
 // and isn't saved. A happy wiggle comes with a happy face unless another
 // is asked for. Anything you do with the pet also stops it pouting.
 let reaction: { animation: string; until: number } | null = null;
+// A moment of care playing in the room (see src/render/moments.ts).
+let moment: { kind: MomentKind; start: number } | null = null;
+function playMoment(kind: MomentKind): void {
+  moment = { kind, start: performance.now() };
+}
 let faceReaction: { expression: Expression; until: number } | null = null;
 let lastTouched = performance.now();
 function react(animation: string, ms: number = CONFIG.reactionMs, face?: Reaction): void {
@@ -459,6 +496,7 @@ function playWith(activity: 'cuddle' | 'tickle'): void {
   showGains(before, CONFIG.activities.find((a) => a.id === activity)!);
   sound('cuddle');
   react('happy', CONFIG.reactionMs, result.felt === 'loved' ? 'inLove' : undefined);
+  playMoment(activity);
   luckySeed('play');
 }
 
@@ -820,11 +858,19 @@ function mingleNow(id: string): void {
   setState(result.state);
   if (result.blocked) return friendBlocked(result.blocked);
   react('happy');
-  if (!result.egg) return home.toast(STRINGS.friends.noLittleOne(parent.name, friend?.name ?? ''));
-  sound('grewUp');
-  home.toast(STRINGS.friends.littleOne(parent.name, friend?.name ?? ''));
-  // A full room keeps the egg in the nest until there's room.
-  if (result.nested) askToMakeRoom();
+  const friendSheet = friend ? characterSheet(friend.character, friend.variant) : '';
+  littleOne.show({
+    pet: parent.name,
+    friend: friend?.name ?? '',
+    petPic: () => portraitOf(parent),
+    friendPic: () => characterImage(friendSheet),
+    eggPic: () => portraitOf({ ...parent, stage: 'egg' }),
+    egg: !!result.egg,
+    // A full room keeps the egg in the nest until there's room.
+    onClose: () => {
+      if (result.nested) askToMakeRoom();
+    },
+  });
 }
 
 // Gives the check-in bonus if one is due (on opening the game or coming back).
@@ -914,12 +960,16 @@ const home = createHomeScreen(root, {
   onLights: () => {
     if (!runAction(toggleLights)) return;
     sound(state.pet.asleep ? 'lightsOff' : 'lightsOn');
+    playMoment(state.pet.asleep ? 'doze' : 'wake');
     if (!state.pet.asleep && (getTrait(state.pet.trait)?.grumpyWhenWoken || feeling(state.pet, 'woken') === 'disliked')) pullFace('grumpy');
   },
   onMedicine: () => {
     const before = simulate(state, gameNow()).pet;
-    runAction(giveMedicine);
-    showGains(before, { health: 1 });
+    if (!runAction(giveMedicine)) return;
+    playMoment('medicine');
+    // Yuck! Then better.
+    window.setTimeout(() => pullFace('grumpy'), MOMENT_MS.medicine * 0.38);
+    window.setTimeout(() => showGains(before, { health: 1 }), MOMENT_MS.medicine * 0.72);
   },
   onRevive: askRevive,
   onGoodbye: askGoodbye,
@@ -1044,6 +1094,7 @@ const home = createHomeScreen(root, {
     setState(result.state);
     if (result.blocked) return friendBlocked(result.blocked);
     sound('cast');
+    playMoment('gift');
     home.toast(STRINGS.friends.gave(STRINGS.foods[food], getFriend(state, id)?.name ?? '', result.gained ?? 0));
   },
   onMingle,
@@ -1408,6 +1459,15 @@ const home = createHomeScreen(root, {
 // Made after the home screen, which clears the page when it starts.
 const naming = createNamingBox(root);
 const choice = createChoiceBox(root);
+const littleOne = createLittleOneReveal(root, (moment) => {
+  if (moment === 'egg') sound('grewUp');
+  else if (moment === 'hearts') sound('cuddle');
+});
+const growUp = createGrowUpReveal(root, (moment) => {
+  if (moment === 'flash') sound('grewUp');
+  else if (moment === 'star') sound('place');
+  else react('happy');
+});
 skipFortuneOnTap();
 const away = createAwayCard(root);
 const guide = createGuideCard(root);
@@ -1415,7 +1475,12 @@ home.update(state, gameNow());
 startAudio();
 playMusic();
 announceMail(lastVisitMessages);
+for (const pet of allPets(state)) {
+  const was = stagesAtClose.get(pet.id);
+  if (was && was !== 'egg' && was !== pet.stage && pet.stage !== 'baby') showGrowUp(pet, foundAtClose);
+}
 showLevels(startup.levels); // levels reached while away (Percy's pickups)
+if (!needsName(state)) showAwards(startup); // and badges
 showFragments(startup.fragments);
 tryCheckIn();
 if (saved) showAway(saved, saved.lastUpdated);
@@ -1505,6 +1570,7 @@ function render(timeMs: number): void {
       note: away,
       night: isNight(gameNow()),
       lightsOff: pet.asleep,
+      moment: !away && moment && timeMs - moment.start < MOMENT_MS[moment.kind] ? { kind: moment.kind, ms: timeMs - moment.start } : null,
       fishing: home.fishingPhase(),
       garden: home.gardenScene(),
       delivery: home.deliveryScene(),

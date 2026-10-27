@@ -795,6 +795,22 @@ export const STRINGS = {
     teen: (name: string) => `${name} grew into a teen!`,
     adult: (name: string, character: string, stars: string) => `${name} grew up into a ${character}! ${stars}`,
   },
+  // The grow-up reveal (src/ui/growup.ts).
+  growUp: {
+    building: (name: string) => `${name} is growing up…`,
+    teen: (name: string) => `${name} is a teen now!`,
+    grewInto: (name: string) => `${name} grew up into…`,
+    hello: (name: string) => `Hello, ${name}!`,
+    newInCollection: 'New in the Collection!',
+    // After mingling.
+    mingling: (pet: string, friend: string) => `${pet} and ${friend}…`,
+    littleOne: (pet: string, friend: string) => `${pet} and ${friend} are having a little one!`,
+    anEgg: 'An egg!',
+    welcome: 'Welcome, little one!',
+    noLittleOne: (pet: string, friend: string) => `${pet} and ${friend} had a lovely time.`,
+    lovelyTime: 'No little one this time',
+    nextTime: 'Maybe next time',
+  },
   stars: (count: number) => '★'.repeat(count),
   // "Pebblit", or "Pebblit (Amber)" for a colour variant.
   // "Pip", "Pip and Mo", "Pip, Mo and Bean".
@@ -1255,6 +1271,7 @@ export const STRINGS = {
     // Once gold: "All done! 214 so far"
     allDone: (have: number) => `All done! ${have} so far`,
     earned: (name: string, tier: string) => `New badge: ${name} (${tier})!`,
+    newBadge: (tier: string) => `New ${tier} badge!`,
   },
   // Milestone badges: one each, for a moment that happens once.
   milestones: {
@@ -1281,6 +1298,7 @@ export const STRINGS = {
     },
     done: 'Earned!',
     earned: (name: string) => `New milestone: ${name}!`,
+    newMilestone: 'Milestone reached!',
   },
   // The "While you were away" card.
   away: {

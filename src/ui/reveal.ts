@@ -16,6 +16,7 @@ export interface RevealItem {
   count: number;
   stars: number; // 0 for none
   caption?: string; // a small line on top, e.g. "Perfect catch!" or "New recipe!"
+  tier?: 'bronze' | 'silver' | 'gold'; // a badge: the beams take its colour
 }
 
 // How long one reveal stays (the CSS animations are timed to fit).
@@ -66,6 +67,8 @@ export function createReveal(): Reveal {
     name.textContent = STRINGS.reveal.name(item.name, item.count);
     stars.textContent = STRINGS.stars(item.stars);
     stars.hidden = item.stars === 0;
+    if (item.tier) el.dataset.tier = item.tier;
+    else delete el.dataset.tier;
     // Restart the animations for this item.
     el.hidden = false;
     el.classList.remove('in', 'out');
