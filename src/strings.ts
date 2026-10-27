@@ -89,7 +89,26 @@ export const STRINGS = {
     offer: (trip: string, place: string) => `${trip} · ${place}`,
     // "Adventure · 10 hours"
     tripLine: (trip: string, length: string) => `${trip} · ${length}`,
-    pickHint: 'Tap a ticket to see the trip.',
+    pickHint: 'Tap a postcard to see what it might bring home.',
+    rackTitle: 'Where to today?',
+    // The night trip's spot in the daytime: "A night trip at 20:00"
+    nightSoon: (time: string) => `A night trip at ${time}`,
+    favouriteShort: (name: string) => `${name}'s favourite`,
+    holidayChip: (n: number) => `Holiday · ${n}`,
+    // The back of a picked trip's postcard, written by the pet.
+    noteHours: (length: string) => `Off for ${length}.`,
+    noteNight: 'Off for the night, home in the morning.',
+    // "I'll bring home some honey, and maybe gold or seeds."
+    noteFind: (food: string, sure: boolean, gold: boolean, seeds: boolean) => {
+      const extra = gold && seeds ? 'gold or seeds' : gold ? 'gold' : seeds ? 'seeds' : '';
+      const first = sure ? `I'll bring home ${food.toLowerCase()}` : `I might find ${food.toLowerCase()}`;
+      return extra ? `${first}, and maybe ${extra}.` : `${first}.`;
+    },
+    noteFinds: (min: number, max: number) => `${min}–${max} finds in my bag!`,
+    noteStar: (percent: number) => `Maybe even a ★★★ find (${percent}%)!`,
+    noteSign: (name: string) => `${name} ♡`,
+    postmark: 'Back',
+    flipBack: 'Tap the card to see all the trips again.',
     back: 'Back',
     getReady: 'Get ready',
     // Why a pet can't go, short enough for its chip on Get ready.

@@ -2,11 +2,12 @@
 // fishing or the garden, it takes over the spot of the stat bars and the
 // button row:
 //
-//   1. The board: the three trips on offer as tickets, the size of the stat
-//      bars. A coloured band shows the rarity with 1, 2 or 3 gems (green,
-//      blue, a shiny purple). Tapping one shows its info card at the bottom,
-//      just above the buttons: the place, how long, when it's back, what it
-//      can bring home and what it uses on the way.
+//   1. The board: "Where to today?" and a rack of postcards, two by two:
+//      the three trips on offer and tonight's night trip, each with a
+//      picture of the place and a stamp with how long and 1 to 3 stars.
+//      Tapping one turns it over: a note from your pet saying what it
+//      might bring home, the finds as stamps and when it's back as the
+//      postmark. The Holiday chip top right shows the Holiday instead.
 //      Buttons: [Back] [Get ready].
 //   2. Get ready: who's going and their lunch, on one screen. At the top a
 //      chip for each pet at home and Percy, ticked if they're coming. Below,
@@ -30,11 +31,12 @@ import type { GameState, Offer, Pet, Rarity } from '../game/state';
 import { sheetFor } from '../game/growth';
 import { foodCount } from '../game/economy';
 import {
-  CHARMS, NIGHT, cantGo, cantHoliday, charmCount, getPlace, holidayTickets, isDrink, offerAt, offerHours, percyFree, planTrip,
+  CHARMS, MEADOW, NIGHT, cantGo, cantHoliday, charmCount, getPlace, holidayTickets, isDrink, offerAt, offerHours, percyFree, planTrip,
   placeLevel, PLACES, potsDryingBy, tripPreview, type Packed,
 } from '../game/journeys';
 import { hasBackpack, isAway } from '../game/presence';
-import { HEART_ICONS, ITEM_ICONS, MENU_ICONS, STAT_ICONS } from './icons';
+import { HEART_ICONS, ITEM_ICONS, STAT_ICONS } from './icons';
+import { drawPlace } from '../render/places';
 import { BENTO_HEIGHT, BENTO_WIDTH, drawBento, LID_FRAMES, lidCover } from './bento';
 import { category, type Entry } from './shop';
 import { formatClock, formatDayClock, formatDuration } from './time';
@@ -81,6 +83,10 @@ const J = CONFIG.journeys;
 const HOUR = 3_600_000;
 const FOODS = CONFIG.foods as readonly Food[];
 const GEMS: Record<Rarity, number> = { common: 1, rare: 2, epic: 3 };
+// A place's picture on a postcard, in the scene's own pixels (scaled up
+// with CSS, like the room).
+const PLACE_W = 64;
+const PLACE_H = 48;
 const placeName = (id: string) => STRINGS.journeys.places[id] ?? id;
 const placeIcon = (id: string) => ITEM_ICONS[`place_${id}`] ?? ITEM_ICONS.journey;
 // The Holiday ticket's spot on the board (after the night ticket).
@@ -115,37 +121,6 @@ function gems(rarity: Rarity): HTMLElement {
   const row = el('span', 'trip-gems');
   for (let i = 0; i < GEMS[rarity]; i++) row.append(el('i', 'trip-gem'));
   return row;
-}
-
-// The shine that sweeps over epic things.
-function shine(): HTMLElement[] {
-  return [el('i', 'trip-sheen'), el('i', 'trip-spark s1', '✦'), el('i', 'trip-spark s2', '✦'), el('i', 'trip-spark s3', '✧')];
-}
-
-// One ticket on the board: [gems] [place] Stroll Mossy Woods | 1h COMMON
-// A heart on it if it's the favourite place of `fan` (a pet's name).
-function ticket(offer: Offer, picked: boolean, onPick: () => void, fan: string | null = null): HTMLButtonElement {
-  const T = STRINGS.journeys;
-  const b = el('button', `trip-ticket${picked ? ' is-picked' : ''}${offer.night ? ' is-night' : ''}`);
-  b.dataset.rarity = offer.rarity;
-  b.setAttribute('aria-pressed', String(picked));
-  const band = el('span', 'trip-band');
-  band.append(gems(offer.rarity));
-  const text = el('span', 'trip-ticket-text');
-  text.append(el('b', '', tripName(offer)), el('span', '', placeName(offer.place)));
-  const stub = el('span', 'trip-stub');
-  stub.append(el('b', '', `${offerHours(offer)}h`), el('small', '', offer.night ? T.nightBoard : T.rarities[offer.rarity]));
-  if (offer.rarity === 'epic') b.append(...shine());
-  b.append(band, icon(placeIcon(offer.place), 'trip-ticket-icon'), text, stub);
-  if (offer.night) b.append(el('i', 'trip-moon'));
-  if (fan) {
-    const heart = icon(HEART_ICONS.full, 'trip-fav');
-    heart.title = T.favourite(fan);
-    b.append(heart);
-  }
-  b.setAttribute('aria-label', `${T.offer(tripName(offer), placeName(offer.place))}, ${T.rarities[offer.rarity]}, ${T.hours(offerHours(offer))}${fan ? `, ${T.favourite(fan)}` : ''}`);
-  b.addEventListener('click', onPick);
-  return b;
 }
 
 // tummy or energy: the bar now (striped) and when it's back (solid), with
@@ -222,6 +197,13 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
   let days = J.holiday.days[0] as number; // how long a Holiday is, as picked
 
   back.addEventListener('click', () => {
+    // A trip picked: back to all the postcards first.
+    if (stage === 'board' && slot !== null) {
+      slot = null;
+      flipped = null;
+      render(true);
+      return;
+    }
     if (stage === 'board') {
       stop();
       cb.onExit();
@@ -329,56 +311,177 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     step();
   }
 
-  // ---- 1. The board and the trip's info card ----
+  // ---- 1. The board: postcards of the places ----
 
   // The name of a pet at home whose favourite place this is, if any.
   const fanOf = (s: GameState, place: string): string | null => homePets(s).find((p) => p.favouritePlace === place)?.name ?? null;
+  // The trip whose postcard has already turned over (so a redraw doesn't
+  // flip it again).
+  let flipped: number | null = null;
 
-  function board(s: GameState): HTMLElement {
-    const list = el('div', 'trip-board');
+  // The rack: a postcard for each trip on offer, two by two, and tonight's
+  // night trip last (or a card saying when it comes). Over it, the title
+  // and the Holiday tickets. A picked trip's postcard turns over in its
+  // place to show what it might bring home.
+  function board(s: GameState): HTMLElement[] {
+    const head = el('div', 'trip-head');
+    head.append(el('b', '', T.rackTitle), holidayChip(s));
+    const o = offer();
+    if (o && slot !== null) return [head, postcardBack(s, o, slot)];
+    if (slot === HOLIDAY) return [head, holidayCard(s)];
+    const rack = el('div', 'trip-rack');
     const pick = (i: number) => () => {
-      slot = slot === i ? null : i;
+      slot = i;
       render(true);
     };
-    s.journeys.offers.forEach((o, i) => {
-      if (!o) {
-        const empty = el('div', 'trip-ticket is-empty');
-        empty.append(icon(STAT_ICONS.hourglass, 'trip-ticket-icon'), el('span', 'trip-ticket-text', T.nextOffer(formatDuration(s.journeys.refillAt[i] - now))));
-        list.append(empty);
-        return;
-      }
-      list.append(ticket(o, i === slot, pick(i), fanOf(s, o.place)));
+    s.journeys.offers.forEach((offer, i) => {
+      rack.append(offer ? postcard(offer, pick(i), fanOf(s, offer.place)) : waiting(T.nextOffer(formatDuration(s.journeys.refillAt[i] - now))));
     });
-    // Tonight's ticket, from the evening to the morning.
     const night = s.journeys.night;
-    if (night) list.append(ticket(night, slot === NIGHT, pick(NIGHT), fanOf(s, night.place)));
-    list.classList.toggle('is-night', !!night);
-    list.append(holidayTicket(s, slot === HOLIDAY, pick(HOLIDAY)));
-    return list;
+    rack.append(night ? postcard(night, pick(NIGHT), fanOf(s, night.place)) : waiting(T.nightSoon(nightAt()), true));
+    return [head, rack];
   }
 
-  // The Holiday ticket: always on the board, with how many you have.
-  function holidayTicket(s: GameState, picked: boolean, onPick: () => void): HTMLButtonElement {
-    const have = holidayTickets(s);
-    const b = el('button', `trip-ticket is-holiday${picked ? ' is-picked' : ''}${have ? '' : ' is-none'}`);
-    b.setAttribute('aria-pressed', String(picked));
-    const band = el('span', 'trip-band');
-    band.append(icon(HEART_ICONS.full, 'trip-holiday-heart'));
-    const text = el('span', 'trip-ticket-text');
-    text.append(el('b', '', T.holiday), el('span', '', placeName('meadow')));
-    const stub = el('span', 'trip-stub');
-    stub.append(el('b', '', `${J.holiday.days[0]}–${J.holiday.days[J.holiday.days.length - 1]}d`), el('small', '', T.holidayTickets(have)));
-    b.append(band, icon(MENU_ICONS.meadow, 'trip-ticket-icon'), text, stub);
+  // The time the night trip comes up today, as "20:00".
+  const nightAt = (): string => {
+    const d = new Date(now);
+    d.setHours(J.night.fromHour, 0, 0, 0);
+    return formatClock(d.getTime());
+  };
+
+  // A little picture of a place, from the same scenes the trip shows.
+  function placeArt(place: string, night: boolean): HTMLCanvasElement {
+    const c = el('canvas', 'trip-pc-art');
+    c.width = PLACE_W;
+    c.height = PLACE_H;
+    const ctx = c.getContext('2d');
+    if (ctx) drawPlace(ctx, place, PLACE_W, PLACE_H, night, 0);
+    return c;
+  }
+
+  // The stamp in a postcard's corner: how long, and 1 to 3 stars (a moon
+  // for the night trip).
+  function stamp(o: Offer): HTMLElement {
+    return el('span', 'trip-pc-stamp', `${offerHours(o)}h ${o.night ? '☾' : '★'.repeat(GEMS[o.rarity])}`);
+  }
+
+  // One trip on offer: the place, its name and the kind of trip.
+  function postcard(o: Offer, onPick: () => void, fan: string | null): HTMLButtonElement {
+    const b = el('button', `trip-pc${o.night ? ' is-night' : ''}`);
+    b.dataset.rarity = o.rarity;
+    b.append(placeArt(o.place, !!o.night), stamp(o), el('b', '', placeName(o.place)), el('small', '', o.night ? T.nightBoard : tripName(o)));
+    if (fan) {
+      const heart = el('span', 'trip-pc-fav');
+      heart.append(icon(HEART_ICONS.full, 'trip-pc-fav-icon'), T.favouriteShort(fan));
+      b.append(heart);
+    }
+    b.setAttribute('aria-label', `${T.offer(tripName(o), placeName(o.place))}, ${T.hours(offerHours(o))}${fan ? `, ${T.favourite(fan)}` : ''}`);
     b.addEventListener('click', onPick);
     return b;
+  }
+
+  // A spot with nothing in it yet: the back of a card, and when that changes.
+  function waiting(text: string, night = false): HTMLElement {
+    const card = el('div', `trip-pc is-waiting${night ? ' is-night' : ''}`);
+    card.append(night ? el('i', 'trip-pc-moon', '☾') : icon(STAT_ICONS.hourglass, 'trip-pc-wait-icon'), el('small', '', text));
+    return card;
+  }
+
+  // The Holiday tickets you have, top right. Tapping it shows the Holiday.
+  function holidayChip(s: GameState): HTMLButtonElement {
+    const b = el('button', `trip-holiday-chip${slot === HOLIDAY ? ' is-on' : ''}`);
+    b.setAttribute('aria-pressed', String(slot === HOLIDAY));
+    b.append(icon(HEART_ICONS.full, 'trip-cost-icon'), T.holidayChip(holidayTickets(s)));
+    b.addEventListener('click', () => {
+      slot = slot === HOLIDAY ? null : HOLIDAY;
+      render(true);
+    });
+    return b;
+  }
+
+  // The picked trip's postcard, turned over: a note from your pet about
+  // what it might bring home, the finds as stamps (the ones it might not
+  // find as shadows with a "?"), and when it's back as the postmark. Tap
+  // it to turn it back over.
+  function postcardBack(s: GameState, o: Offer, at: number): HTMLElement {
+    const wrap = el('div', 'trip-flip');
+    const card = el('button', `trip-pc-card${o.night ? ' is-night' : ''}`);
+    card.dataset.rarity = o.rarity;
+    const front = el('span', 'trip-pc-front');
+    front.append(placeArt(o.place, !!o.night), stamp(o));
+    const back = el('span', 'trip-pc-back');
+    const hours = offerHours(o);
+    const writer = fanOf(s, o.place) ?? (homePets(s).find((p) => !cantGo(p, now)) ?? s.pet).name;
+    const place = getPlace(o.place);
+    const stamps = el('span', 'trip-pc-stamps');
+    const lines: string[] = [o.night ? T.noteNight : T.noteHours(T.hours(hours))];
+    if (place) {
+      const preview = tripPreview(place, o.rarity, boxes.get(who)?.charm ?? null);
+      const food = STRINGS.foods[preview.ingredient as FoodId];
+      lines.push(T.noteFind(food, preview.ingredientSure, preview.gold, preview.seeds));
+      lines.push(preview.threeStar > 0 ? T.noteStar(Math.round(preview.threeStar * 100)) : T.noteFinds(preview.finds.min, preview.finds.max));
+      const add = (svg: string, label: string, sure: boolean) => {
+        const st = el('span', `trip-pc-find${sure ? '' : ' is-maybe'}`);
+        st.append(icon(svg, 'trip-pc-find-icon'));
+        st.title = sure ? label : T.maybe(label);
+        stamps.append(st);
+      };
+      add(ITEM_ICONS[preview.ingredient] ?? '', food, preview.ingredientSure);
+      if (preview.gold) add(STAT_ICONS.gold, T.goldFind, false);
+      if (preview.seeds) add(ITEM_ICONS.seed_carrot, T.seeds, false);
+    }
+    stamps.append(el('span', 'trip-pc-find is-wide', stamp(o).textContent ?? ''));
+    const note = el('span', 'trip-pc-note');
+    const title = el('span', '');
+    title.append(el('b', '', placeName(o.place)), ` · ${o.night ? T.night : tripName(o)}`);
+    note.append(title);
+    for (const line of lines) note.append(el('span', '', line));
+    note.append(el('span', 'trip-pc-sign', T.noteSign(writer)));
+    const mark = el('span', 'trip-pc-postmark');
+    mark.append(el('small', '', T.postmark), el('b', '', formatDayClock(now + hours * HOUR, now)));
+    back.append(note, stamps, mark);
+    card.append(front, back);
+    card.setAttribute('aria-label', `${T.offer(tripName(o), placeName(o.place))}. ${lines.join(' ')} ${T.backAt(formatDayClock(now + hours * HOUR, now))}. ${T.flipBack}`);
+    card.addEventListener('click', () => {
+      slot = null;
+      flipped = null;
+      render(true);
+    });
+    // It turns over when first picked, and stays turned over after that.
+    if (flipped === at) card.classList.add('is-flipped');
+    else requestAnimationFrame(() => requestAnimationFrame(() => card.classList.add('is-flipped')));
+    flipped = at;
+    wrap.append(card, el('p', 'trip-note', T.flipBack));
+
+    // Why it can't go yet, if nobody can.
+    const p = s.pet;
+    const why = homePets(s).some((h) => !cantGo(h, now)) ? null : cantGo(p, now);
+    if (why) {
+      const text = why === 'wait' ? T.wait(formatDuration(p.tripReadyAt - now)) : T.blocked[why](p.name);
+      wrap.append(el('p', 'trip-card-warn', text));
+    }
+    // Pots that will dry out with nobody home to water them.
+    const dry = potsDryingBy(s, now + hours * HOUR);
+    if (dry > 0 && !why) {
+      const line = el('p', 'trip-card-dry');
+      line.append(icon(STAT_ICONS.drop, 'trip-cost-icon'), T.dryPots(dry, p.name));
+      const water = el('button', 'shop-btn shop-btn-soft', T.water);
+      water.addEventListener('click', () => {
+        stop();
+        cb.onWater();
+      });
+      line.append(water);
+      wrap.append(line);
+    }
+    return wrap;
   }
 
   // What a Holiday is, how long, and who goes.
   function holidayCard(s: GameState): HTMLElement {
     const card = el('div', 'trip-card is-holiday');
     const top = el('div', 'trip-card-top');
-    const tile = el('span', 'trip-card-tile');
-    tile.append(icon(MENU_ICONS.meadow, 'trip-card-place'));
+    const tile = el('span', 'trip-card-tile is-art');
+    tile.append(placeArt(MEADOW, false));
     const name = el('div', 'trip-card-name');
     name.append(el('b', '', T.holiday), el('span', '', T.holidayTicketsLeft(holidayTickets(s))),
       el('span', '', T.backAt(formatDayClock(now + days * 24 * HOUR, now))));
@@ -410,76 +513,6 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     if (why) {
       const who = allPets(s).find((p) => p.id === why.pet)?.name ?? s.pet.name;
       card.append(el('p', 'trip-card-warn', T.blocked[why.blocked](who)));
-    }
-    return card;
-  }
-
-  function loot(svg: string, text: string, className = ''): HTMLElement {
-    const tile = el('div', `trip-loot ${className}`);
-    if (svg) tile.append(icon(svg, 'trip-loot-icon'));
-    tile.append(el('small', '', text));
-    return tile;
-  }
-
-  function infoCard(s: GameState, o: Offer): HTMLElement {
-    const p = s.pet;
-    const card = el('div', 'trip-card');
-    card.dataset.rarity = o.rarity;
-    card.classList.toggle('is-night', !!o.night);
-    const hours = offerHours(o);
-
-    const top = el('div', 'trip-card-top');
-    const tile = el('span', 'trip-card-tile');
-    if (o.rarity === 'epic') tile.append(...shine());
-    tile.append(icon(placeIcon(o.place), 'trip-card-place'), gems(o.rarity));
-    const name = el('div', 'trip-card-name');
-    name.append(el('b', '', placeName(o.place)), el('span', '', T.tripLine(tripName(o), T.hours(hours))),
-      el('span', '', T.backAt(formatDayClock(now + hours * HOUR, now))));
-    top.append(tile, name);
-
-    // What it can bring home.
-    const place = getPlace(o.place);
-    const loots = el('div', 'trip-loots');
-    if (place) {
-      const preview = tripPreview(place, o.rarity, boxes.get(who)?.charm ?? null);
-      loots.append(loot(ITEM_ICONS[preview.ingredient] ?? '', preview.ingredientSure
-        ? STRINGS.foods[preview.ingredient as FoodId] : T.maybe(STRINGS.foods[preview.ingredient as FoodId])));
-      if (preview.gold) loots.append(loot(STAT_ICONS.gold, T.goldFind));
-      if (preview.seeds) loots.append(loot(ITEM_ICONS.seed_carrot, T.seeds));
-      loots.append(preview.threeStar > 0
-        ? loot('', T.threeStar(Math.round(preview.threeStar * 100)), 'is-star')
-        : loot('', T.finds(preview.finds.min, preview.finds.max), 'is-count'));
-    }
-
-    // What it uses up on the way.
-    const cost = o.night ? J.cost.epic : J.cost[o.rarity];
-    const costs = el('div', 'trip-card-sec');
-    costs.append(el('span', '', T.onTheWay));
-    for (const [svg, v] of [[STAT_ICONS.hunger, cost.hunger], [STAT_ICONS.energy, cost.energy]] as const) {
-      const chip = el('em', 'trip-cost');
-      chip.append(icon(svg, 'trip-cost-icon'), `−${v}`);
-      costs.append(chip);
-    }
-    card.append(top, el('div', 'trip-card-sec', T.bringsHome), loots, costs);
-
-    // Why it can't go yet, if nobody can.
-    const why = homePets(s).some((h) => !cantGo(h, now)) ? null : cantGo(p, now);
-    if (why) {
-      const text = why === 'wait' ? T.wait(formatDuration(p.tripReadyAt - now)) : T.blocked[why](p.name);
-      card.append(el('p', 'trip-card-warn', text));
-    }
-    // Pots that will dry out with nobody home to water them.
-    const dry = potsDryingBy(s, now + hours * HOUR);
-    if (dry > 0 && !why) {
-      const line = el('p', 'trip-card-dry');
-      line.append(icon(STAT_ICONS.drop, 'trip-cost-icon'), T.dryPots(dry, p.name));
-      const water = el('button', 'shop-btn shop-btn-soft', T.water);
-      water.addEventListener('click', () => {
-        stop();
-        cb.onWater();
-      });
-      line.append(water);
-      card.append(line);
     }
     return card;
   }
@@ -825,14 +858,9 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     const o = offer();
     panel.dataset.stage = stage;
     if (stage === 'board') {
-      panel.replaceChildren(...others(s), board(s));
+      panel.replaceChildren(...others(s), ...board(s));
       if (!o && slot !== HOLIDAY) panel.append(el('p', 'trip-note trip-pick-hint', T.pickHint));
-      const shown = sheet.firstElementChild as HTMLElement | null;
-      const card = o ? infoCard(s, o) : slot === HOLIDAY ? holidayCard(s) : null;
-      // A newly picked trip slides up; the same one just refreshes.
-      if (card && shown?.dataset.slot !== String(slot)) card.classList.add('is-new');
-      if (card) card.dataset.slot = String(slot);
-      sheet.replaceChildren(...(card ? [card] : []));
+      sheet.replaceChildren();
     } else if (o) {
       if (!going.includes(who)) who = going[0] ?? s.pet.id;
       panel.replaceChildren(...others(s), ...lunchbox(s, o));

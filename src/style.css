@@ -6261,68 +6261,7 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   height: 100%;
 }
 
-/* ---- The board: tickets with a gem band ---- */
-
-.trip-board {
-  background: var(--card);
-  border-radius: 16px;
-  padding: 9px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.trip-ticket {
-  position: relative;
-  overflow: hidden;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0;
-  border: 2px solid var(--r-dark, var(--lavender));
-  border-radius: 11px;
-  background: var(--r-light, white);
-  font: inherit;
-  color: var(--ink);
-  text-align: left;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-.trip-ticket[data-rarity='epic'] {
-  background: linear-gradient(90deg, #efe0ff, #faf5ff);
-}
-
-.trip-ticket:active:not(.is-empty) {
-  transform: scale(0.98);
-}
-
-.trip-ticket.is-picked {
-  box-shadow: 0 0 0 2px white, 0 0 0 4px var(--accent);
-}
-
-.trip-ticket.is-empty {
-  border-style: dashed;
-  background: transparent;
-  opacity: 0.65;
-  padding-left: 10px;
-  cursor: default;
-  font-size: 0.85rem;
-}
-
-.trip-band {
-  align-self: stretch;
-  width: 38px;
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--r-band);
-  position: relative;
-  z-index: 1;
-}
-
+/* 1, 2 or 3 little diamonds for a rarity (the journal's stamps). */
 .trip-gems {
   display: inline-flex;
   gap: 3px;
@@ -6337,110 +6276,401 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   background: white;
 }
 
-.trip-ticket-icon {
-  width: 26px;
-  height: 26px;
+/* ---- The board: postcards of the places ---- */
+
+.trip-head .trip-holiday-chip {
   flex: none;
+}
+
+/* The Holiday tickets you have: a little chip top right. */
+.trip-holiday-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px 2px 6px;
+  border: 2px solid var(--lavender);
+  border-radius: 999px;
+  background: white;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #8b7aa0;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.trip-holiday-chip.is-on {
+  border-color: #8fc77a;
+  background: #f3fbef;
+  color: var(--ink);
+}
+
+/* Two by two, each card tipped a little. */
+.trip-rack {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 2px 4px 4px;
+}
+
+.trip-pc {
   position: relative;
-  z-index: 1;
-}
-
-.trip-ticket-text {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  white-space: nowrap;
-  position: relative;
-  z-index: 1;
-}
-
-.trip-ticket-text b {
-  font-size: 0.92rem;
-}
-
-.trip-ticket-text span {
-  font-size: 0.82rem;
-  color: #5b4a6e;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.trip-stub {
-  align-self: stretch;
-  width: 62px;
-  flex: none;
   display: flex;
   flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  padding: 5px 5px 7px;
+  border: none;
+  border-radius: 10px;
+  background: white;
+  box-shadow: 0 3px 0 var(--lavender);
+  font: inherit;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transform: rotate(-1.2deg);
+  transition: transform 0.15s;
+}
+
+.trip-pc:nth-child(even) {
+  transform: rotate(1deg);
+}
+
+.trip-pc:active:not(.is-waiting) {
+  transform: scale(0.96);
+}
+
+.trip-pc-art {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  border-radius: 6px;
+  image-rendering: pixelated;
+}
+
+.trip-pc > b {
+  margin: 3px 3px 0;
+  font-size: 0.85rem;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trip-pc > small {
+  margin: 0 3px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #8b7aa0;
+}
+
+/* How long and how rare, as a stamp in the corner. */
+.trip-pc-stamp {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  padding: 0 4px;
+  border: 2px dotted #c9b48c;
+  border-radius: 3px;
+  background: #fffaf0;
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1.5;
+  color: var(--plum);
+  white-space: nowrap;
+}
+
+/* An Adventure: a gold foil edge and a twinkle. */
+.trip-pc[data-rarity='epic'],
+.trip-pc-card[data-rarity='epic'] .trip-pc-front {
+  background: linear-gradient(135deg, #fff6c9, #f2e2ff 60%, #fff6c9);
+  box-shadow: 0 3px 0 #d9b85a, inset 0 0 0 2px #e7cd78;
+}
+
+.trip-pc[data-rarity='epic']::after {
+  content: '✦';
+  position: absolute;
+  top: 7px;
+  left: 10px;
+  font-size: 13px;
+  color: white;
+  text-shadow: 0 0 4px #ffd36b;
+  animation: trip-twinkle 1.6s ease-in-out infinite;
+}
+
+/* The night trip: a night sky card. */
+.trip-pc.is-night {
+  background: #3b3363;
+  box-shadow: 0 3px 0 #1d1940;
+}
+
+.trip-pc.is-night > b {
+  color: white;
+}
+
+.trip-pc.is-night > small {
+  color: var(--butter);
+}
+
+/* A pet's favourite place: a heart sticker on the picture. */
+.trip-pc-fav {
+  position: absolute;
+  left: 9px;
+  bottom: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: calc(100% - 18px);
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: white;
+  font-size: 0.6rem;
+  font-weight: 900;
+  color: var(--accent-dark);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.trip-pc-fav-icon {
+  flex: none;
+  width: 10px;
+  height: 10px;
+}
+
+.trip-pc-fav-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* A spot waiting for a new trip: the back of a card. */
+.trip-pc.is-waiting {
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  line-height: 1;
-  border-left: 2px dashed var(--lavender);
-  position: relative;
-  z-index: 1;
+  gap: 6px;
+  min-height: 120px;
+  border: 2px dashed var(--lavender);
+  background: transparent;
+  box-shadow: none;
+  text-align: center;
+  cursor: default;
 }
 
-.trip-stub b {
-  font-size: 0.95rem;
+.trip-pc.is-waiting.is-night {
+  border-color: #8b84b8;
+  background: rgba(59, 51, 99, 0.08);
 }
 
-.trip-stub small {
-  font-size: 0.6rem;
+.trip-pc.is-waiting small {
+  font-size: 0.72rem;
   font-weight: 800;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-  color: var(--r-dark);
+  color: #8b7aa0;
 }
 
-/* The shine on epic things: a sweep of light and three twinkles. */
-.trip-sheen {
-  position: absolute;
-  top: -20px;
-  bottom: -20px;
-  left: -20%;
-  width: 38px;
-  transform: skewX(-24deg);
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9), transparent);
-  animation: trip-sheen 2.6s ease-in-out infinite;
-  pointer-events: none;
-  z-index: 3;
+.trip-pc-wait-icon {
+  width: 22px;
+  height: 22px;
+  opacity: 0.6;
 }
 
-.trip-spark {
-  position: absolute;
+.trip-pc-wait-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.trip-pc-moon {
   font-style: normal;
+  font-size: 1.4rem;
   line-height: 1;
-  color: white;
-  text-shadow: 0 0 4px #b07cf0, 0 0 1px #7a3fc4;
-  animation: trip-twinkle 1.6s ease-in-out infinite;
-  pointer-events: none;
-  z-index: 3;
+  color: #8b84b8;
 }
 
-.trip-spark.s1 { top: 1px; left: 28px; font-size: 11px; }
-.trip-spark.s2 { bottom: 0; left: 58%; font-size: 12px; animation-delay: 0.5s; }
-.trip-spark.s3 { top: 2px; right: 70px; font-size: 10px; animation-delay: 1s; }
+/* ---- A picked trip: its postcard turned over ---- */
 
-@keyframes trip-sheen {
-  0% { left: -20%; }
-  60%, 100% { left: 120%; }
+.trip-flip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 6px 2px;
+  perspective: 900px;
+}
+
+.trip-pc-card {
+  position: relative;
+  display: grid;
+  min-height: 150px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transform-style: preserve-3d;
+  transform: rotate(-1deg);
+  transition: transform 0.45s cubic-bezier(0.3, 0, 0.3, 1);
+}
+
+.trip-pc-card.is-flipped {
+  transform: rotate(-1deg) rotateY(180deg);
+}
+
+.trip-pc-front,
+.trip-pc-back {
+  grid-area: 1 / 1;
+  border-radius: 12px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.trip-pc-front {
+  position: relative;
+  overflow: hidden;
+  padding: 6px;
+  background: white;
+  box-shadow: 0 4px 0 var(--lavender);
+}
+
+.trip-pc-front .trip-pc-art {
+  position: absolute;
+  inset: 6px;
+  width: calc(100% - 12px);
+  height: calc(100% - 12px);
+  aspect-ratio: auto;
+}
+
+.trip-pc-card.is-night .trip-pc-front {
+  background: #3b3363;
+}
+
+/* The back: the pet's note on the left, the finds as stamps on the right,
+   and when it's back as the postmark. */
+.trip-pc-back {
+  position: relative;
+  transform: rotateY(180deg);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px;
+  gap: 10px;
+  padding: 12px;
+  background: #fffdf6;
+  box-shadow: 0 0 0 3px var(--accent), 0 6px 0 var(--accent-dark);
+}
+
+.trip-pc-note {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8rem;
+  line-height: 18px;
+  color: #4d3f63;
+  background-image: repeating-linear-gradient(transparent 0 17px, #ecdcef 17px 18px);
+}
+
+.trip-pc-note b {
+  font-size: 0.85rem;
+}
+
+.trip-pc-sign {
+  margin-top: 2px;
+  font-weight: 800;
+}
+
+.trip-pc-stamps {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  align-content: start;
+  padding-left: 9px;
+  border-left: 2px dashed #e6d6ee;
+}
+
+.trip-pc-find {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border: 2px dotted #c9b48c;
+  border-radius: 3px;
+  background: white;
+}
+
+.trip-pc-find-icon {
+  width: 26px;
+  height: 26px;
+}
+
+.trip-pc-find-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Something it might not find: a shadow with a question mark. */
+.trip-pc-find.is-maybe .trip-pc-find-icon {
+  filter: brightness(0) opacity(0.2);
+}
+
+.trip-pc-find.is-maybe::after {
+  content: '?';
+  position: absolute;
+  font-weight: 900;
+  font-size: 0.85rem;
+  color: #8b7aa0;
+}
+
+.trip-pc-find.is-wide {
+  grid-column: span 2;
+  aspect-ratio: auto;
+  padding: 2px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  color: var(--plum);
+}
+
+.trip-pc-postmark {
+  position: absolute;
+  right: 104px;
+  bottom: -10px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  width: 62px;
+  height: 62px;
+  border: 2px solid rgba(224, 90, 122, 0.55);
+  border-radius: 50%;
+  color: rgba(224, 90, 122, 0.85);
+  line-height: 1.1;
+  text-align: center;
+  text-transform: uppercase;
+  transform: rotate(-12deg);
+  pointer-events: none;
+}
+
+.trip-pc-postmark small {
+  font-size: 0.55rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+.trip-pc-postmark b {
+  font-size: 0.62rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trip-pc-card {
+    transition: none;
+  }
+  .trip-pc[data-rarity='epic']::after {
+    animation: none;
+  }
 }
 
 @keyframes trip-twinkle {
   0%, 100% { opacity: 0.35; transform: scale(0.8); }
   50% { opacity: 1; transform: scale(1.15); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .trip-sheen,
-  .trip-spark {
-    animation: none;
-  }
-  .trip-sheen {
-    display: none;
-  }
 }
 
 /* ---- The trip's info card ---- */
@@ -6484,6 +6714,16 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 .trip-card-tile .trip-spark.s1 { top: 2px; left: 4px; }
 .trip-card-tile .trip-spark.s2 { bottom: 2px; left: auto; right: 4px; }
 .trip-card-tile .trip-spark.s3 { top: 4px; right: 6px; }
+
+.trip-card-tile.is-art {
+  padding: 0;
+  overflow: hidden;
+}
+
+.trip-card-tile.is-art .trip-pc-art {
+  height: 100%;
+  object-fit: cover;
+}
 
 .trip-card-place {
   width: 36px;
@@ -8635,84 +8875,6 @@ button.trip-bars-name.is-on {
 }
 
 /* ---- Journeys: the night ticket, the Holiday ticket, favourite places ---- */
-
-/* The night ticket: a night sky with a moon, only from evening to morning. */
-.trip-ticket.is-night {
-  --r-light: #2e2a5a;
-  border-color: #1d1940;
-  background: linear-gradient(90deg, #2e2a5a, #4b4380);
-  color: white;
-}
-
-.trip-ticket.is-night .trip-ticket-text span,
-.trip-ticket.is-night .trip-stub small {
-  color: var(--butter);
-}
-
-.trip-ticket.is-night .trip-stub {
-  border-left-color: rgba(255, 255, 255, 0.3);
-}
-
-.trip-ticket.is-night::after {
-  content: '✦ · ✧';
-  position: absolute;
-  top: 2px;
-  left: 46%;
-  font-size: 9px;
-  letter-spacing: 4px;
-  color: var(--butter);
-  opacity: 0.8;
-}
-
-.trip-moon {
-  position: absolute;
-  right: 70px;
-  top: 6px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  box-shadow: -3px 1px 0 0 var(--butter);
-  z-index: 1;
-}
-
-/* The board turns a little darker while the night ticket is up. */
-.trip-board.is-night {
-  background: linear-gradient(#efeaf8, var(--card) 40%);
-}
-
-/* A heart on a ticket to a pet's favourite place. */
-.trip-fav {
-  position: absolute;
-  top: 2px;
-  left: 40px;
-  width: 12px;
-  height: 12px;
-  z-index: 2;
-}
-
-.trip-fav svg,
-.trip-holiday-heart svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-/* The Holiday ticket: soft green, faded while you have none. */
-.trip-ticket.is-holiday {
-  --r-light: #f3fbef;
-  --r-dark: #8fc77a;
-  --r-band: #a8d8a0;
-  border-style: dashed;
-}
-
-.trip-ticket.is-holiday.is-none {
-  opacity: 0.7;
-}
-
-.trip-holiday-heart {
-  width: 16px;
-  height: 16px;
-}
 
 .trip-card.is-night {
   background: linear-gradient(#ecebfb, white 60%);
