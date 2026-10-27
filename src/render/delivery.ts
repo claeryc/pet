@@ -1,5 +1,5 @@
 // Percy's scene, for filling an order. The room makes way for a meadow
-// where Percy the pigeon (in his mail cap, with a satchel) stands beside
+// where Percy the pigeon (in his red post cap, with a satchel) stands beside
 // one small crate per thing he asked for. The crates sit on an open net
 // spread out on the grass: that's how Percy carries them off. He's strong,
 // but cute. A crate is open and empty at first, gets a few things peeking
@@ -29,32 +29,54 @@ const COLORS: Record<string, string> = {
   y: PALETTE.butter,
   b: PALETTE.ocean,
   s: PALETTE.sky,
+  e: PALETTE.cream,
+  h: PALETTE.blush,
+  d: PALETTE.deep,
+  x: PALETTE.berry,
 };
 
 // Percy, facing right towards his crates: head and body apart, so the head
-// can bob on its own like a pigeon's does. A round, sturdy bird.
+// can bob on its own like a pigeon's does. A chubby blue pigeon, wider than
+// he is tall, in a big red post cap with a gold badge, with a shimmery neck
+// and a satchel at his side with a letter sticking out. Blue and red so he
+// stands apart from the pets, who are mostly lilac and pastel.
 const PERCY_HEAD: Sprite = [
-  '.....bbbbb.....',
-  '....bbbbbbb....',
-  '...byyyyyyyb...',
-  '...lllllllkloo.',
-  '...lllllllllooo',
-  '....llllllll...',
+  '........rrrrr.......',
+  '.......rrrrrrr......',
+  '.......rrryrrrr.....',
+  '......kkkkkkkkkkk...',
+  '.......bbbbbbbbb....',
+  '......bbbbbbbbwkb...',
+  '......bbbbbbbbkkboo.',
+  '......bbbbbbbhhbooo.',
 ];
 const PERCY_BODY: Sprite = [
-  '.....mmgmmm....',
-  '...llmmmmmmll..',
-  '..vvvlllllllll.',
-  '.vvvvvllcllllll',
-  '.vvvvvlcllllll.',
-  '..vvvccycllll..',
-  '..lllcyyclllll.',
-  '...llcccclllll.',
-  '....lllllllll..',
-  '.....lllllll...',
-  '......r...r....',
-  '.....rr..rr....',
+  '.....bbbmmmppmmmcb..',
+  '...bbbbbmmmppmmcbbb.',
+  '..bbbbbbbsssscssss..',
+  '.bbbdbbbsssscsssss..',
+  '.bbbbdbbssscsssssss.',
+  'bbbbbbdbsscssssssss.',
+  'bbbbbceeeeecssssssss',
+  'bbbbbceexeecssssssss',
+  '.bbbbcccccccsssssss.',
+  '.bbbbcccycccssssss..',
+  '..bbbcccccccsssss...',
+  '....ssssssssssss....',
+  '.......rr...rr......',
+  '......rrr..rrr......',
 ];
+
+// Percy standing with his feet on row `footY`. Every so often he bobs his
+// head. His outline is dark blue, like a blue pet's.
+export function drawPercy(ctx: CanvasRenderingContext2D, x: number, footY: number, timeMs: number): void {
+  const bob = Math.floor(timeMs / 450) % 4 === 1 ? 1 : 0;
+  const bodyTop = footY + 1 - PERCY_BODY.length;
+  draw(ctx, PERCY_BODY, x, bodyTop, PALETTE.deep);
+  draw(ctx, PERCY_HEAD, x + bob, bodyTop - PERCY_HEAD.length + bob, PALETTE.deep);
+  // The body's top again over the head's outline, so they look joined.
+  draw(ctx, PERCY_BODY.slice(0, 1), x, bodyTop);
+}
 
 // A small wooden crate, by how full it is.
 const CRATES: Record<CrateFill, Sprite> = {
@@ -68,7 +90,7 @@ const NET = { left: 21, right: 61, top: 37, bottom: 45 }; // the net on the gras
 const CRATE_W = 10;
 const CRATE_BOTTOM = 41; // the crates stand on the net
 
-function draw(ctx: CanvasRenderingContext2D, sprite: Sprite, x: number, y: number, outline = false): void {
+function draw(ctx: CanvasRenderingContext2D, sprite: Sprite, x: number, y: number, outline?: string): void {
   const paint = (ox: number, oy: number, solid?: string) =>
     sprite.forEach((row, sy) => {
       for (let sx = 0; sx < row.length; sx++) {
@@ -78,7 +100,7 @@ function draw(ctx: CanvasRenderingContext2D, sprite: Sprite, x: number, y: numbe
         ctx.fillRect(Math.round(x) + sx + ox, Math.round(y) + sy + oy, 1, 1);
       }
     });
-  if (outline) for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) paint(ox, oy, PALETTE.ink);
+  if (outline) for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) paint(ox, oy, outline);
   paint(0, 0);
 }
 
@@ -155,17 +177,9 @@ export function drawDelivery(
   const start = Math.round((NET.left + NET.right + 1 - span) / 2);
   scene.crates.forEach((fill, i) => {
     const crate = CRATES[fill];
-    draw(ctx, crate, start + i * (CRATE_W + gap), CRATE_BOTTOM - crate.length, true);
+    draw(ctx, crate, start + i * (CRATE_W + gap), CRATE_BOTTOM - crate.length, PALETTE.ink);
   });
 
-  // Percy, on the grass beside his crates. Every so often he bobs his head.
-  if (scene.percy) {
-    const bob = Math.floor(timeMs / 450) % 4 === 1 ? 1 : 0;
-    const x = 3;
-    const bodyTop = 42 - PERCY_BODY.length;
-    draw(ctx, PERCY_BODY, x, bodyTop, true);
-    draw(ctx, PERCY_HEAD, x + bob, bodyTop - PERCY_HEAD.length + bob, true);
-    // The body's top again over the head's outline, so they look joined.
-    draw(ctx, PERCY_BODY.slice(0, 1), x, bodyTop);
-  }
+  // Percy, on the grass beside his crates.
+  if (scene.percy) drawPercy(ctx, 1, 41, timeMs);
 }

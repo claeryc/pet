@@ -1039,21 +1039,25 @@ export const ITEM_ICONS: Record<string, string> = {
     'kkkkkkkkkkkk',
     '............',
   ]),
-  // Percy himself, for the Messages page.
-  percy: pixelIcon([
-    '...bbbb.....',
-    '..bbbbbb....',
-    '.kyyyyyyk...',
-    'ooklkllk....',
-    '.kllllllk...',
-    '..kmmgmk....',
-    '.kmmmmllkk..',
-    '.kllvvvvllk.',
-    'kllvvvvvvvk.',
-    '.kccccvvkk..',
-    '..kcyck.k...',
-    '..r..r......',
-  ]),
+  // Percy himself, for the Messages page: round and blue, in his red post
+  // cap, with his satchel and a letter.
+  percy: pixelIcon(
+    [
+      '....krrrk...',
+      '...krryrrk..',
+      '..kkkkkkkkk.',
+      '...kbbbbwkk.',
+      '..kbbbbbkkoo',
+      '.kbbbmmpmbk.',
+      'kbbbbssscssk',
+      'kbdcceecsssk',
+      'kbbcexecsssk',
+      '.kbccyccssk.',
+      '..kkkkkkkk..',
+      '....r..r....',
+    ],
+    { d: PALETTE.deep, h: PALETTE.blush, x: PALETTE.berry },
+  ),
   fertilizer: pixelIcon([
     '...kkkkkk...',
     '..kwwwwwwk..',
