@@ -35,6 +35,8 @@ import { cast, justGotShy, land, toggleBait } from './game/fishing';
 import { buyFamilyHome, goToRoom, movePet, otherRoom, ownsFamilyHome, petsIn, roomDecor, roommates, type RoomBlock } from './game/rooms';
 import { TOSS_MS } from './render/garden';
 import { LEAP_MS } from './ui/fishing';
+import { tripProgress } from './ui/trip';
+import { takeSnapshot } from './game/snapshots';
 import { cook } from './game/cooking';
 import {
   clearPlot,
@@ -1278,6 +1280,13 @@ const home = createHomeScreen(root, {
       ],
     });
   },
+  onSnap: (place, moment, petId) => {
+    const pet = allPets(state).find((p) => p.id === petId);
+    const result = takeSnapshot(state, place, { moment, at: gameNow(), name: pet?.name ?? '', image: home.canvas.toDataURL('image/png') });
+    setState(result.state);
+    sound('got');
+    home.toast(STRINGS.journeys.snapped(STRINGS.journeys.moments[moment] ?? moment, result.isNew));
+  },
   onMakeRoom: askToMakeRoom,
   onMeadowVisitor: greetMeadowVisitor,
   onSayHi: (id) => {
@@ -1589,12 +1598,16 @@ function render(timeMs: number): void {
       trip: trip && {
         place: trip.place,
         bag: (state.inventory.bags ?? []).includes('courier') ? 'courier' : 'sack',
-        pets: trip.pets.map((p) => ({
+        share: tripProgress(trip.pets[0], gameNow()),
+        // Waving back when tapped, and all smiles for a little moment.
+        pets: trip.pets.map((p, i) => ({
           sheet: sprites.get(sheetFor(p)),
           hat: sprites.get(getHat(p.hat)?.sheet ?? ''),
-          ...lookOf(p, 'cheerful'),
+          ...lookOf(p, trip.waving[i] ? 'happy' : 'cheerful'),
+          ...(trip.waving[i] || trip.moment ? { face: 'happy' as const } : {}),
           glow: p.starGlow,
         })),
+        moment: trip.moment,
       },
       meeting: meeting && {
         sheet: sprites.get(characterSheet(meeting.friend.character, meeting.friend.variant)),

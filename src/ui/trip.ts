@@ -1,18 +1,24 @@
 // The current trip: tap the note in the corner of the room while a pet is
 // out on a journey. The room shows the place it went to, with the pet (or both
-// pets) there, and the stat bars make way for a little map: a red dashed
-// trail from home to the place, red as far as they've got and faded the
-// rest of the way, with the pets' pictures on it where they are now.
+// pets) there, and the stat bars make way for a little map of the way
+// there (see src/render/tripmap.ts), with the pets' pictures on the trail
+// where they are now.
 // The buttons below change to [Close] [Call home] while it's open.
 // With two pets on different trips there's a note for each.
+// Now and then the pets stop for a little moment (see
+// src/game/snapshots.ts), and a Snap button comes up to put it in the
+// travel journal. Tap a pet and it waves back.
 
 import { STRINGS } from '../strings';
 import type { GameState, Pet } from '../game/state';
 import { sheetFor } from '../game/growth';
 import { isAway } from '../game/presence';
-import { PALETTE } from '../render/palette';
-import { ITEM_ICONS, MENU_ICONS, SKILL_ICONS } from './icons';
+import { drawTripMap, MAP_H, MAP_W, trailPoint } from '../render/tripmap';
+import { ITEM_ICONS, MENU_ICONS } from './icons';
 import { formatDayClock, formatDuration } from './time';
+import { CONFIG } from '../game/config';
+import { isNight } from '../game/stats';
+import { pickMoment, snappedAt } from '../game/snapshots';
 
 export interface TripView {
   panel: HTMLElement; // shown in place of the stat bars
@@ -21,15 +27,27 @@ export interface TripView {
   close: () => void;
   active: () => boolean;
   update: (state: GameState, now: number) => void;
-  // Who's on the trip and where, for the room (null while closed).
-  scene: () => { place: string; pets: Pet[] } | null;
+  // Who's on the trip and where, for the room (null while closed): the
+  // little moment that's on, if any, and which pets are waving.
+  scene: () => { place: string; pets: Pet[]; moment: TripMoment | null; waving: boolean[] } | null;
+  // A tap on the room, in room pixels: a pet there waves back.
+  tap: (x: number, y: number) => void;
 }
 
-// The map, in its own little pixels (scaled up with CSS like the room).
-const MAP_W = 120;
-const MAP_H = 36;
-const FROM = { x: 12, y: 25 };
-const TO = { x: 108, y: 14 };
+// A little moment on the way, on the animation clock (performance.now).
+export interface TripMoment {
+  id: string;
+  at: number;
+  flashAt: number | null; // when it was snapped
+}
+
+// Which of the pets standing on a trip (one in the middle, or two side by
+// side) is at room pixel (x, y), or -1.
+export function tripPetAt(x: number, y: number, pets: number): number {
+  if (y < 8 || y > 41) return -1;
+  if (pets < 2) return x >= 18 && x < 46 ? 0 : -1;
+  return x >= 4 && x < 32 ? 0 : x >= 32 && x < 60 ? 1 : -1;
+}
 
 // The notes in the corner of the room, one for each trip that's on (two
 // pets that went together share one), by the pet it's for, in id order so
@@ -46,65 +64,6 @@ export function tripProgress(pet: Pet, now: number): number {
   const length = trip.endsAt - trip.startedAt;
   if (length <= 0) return 1;
   return Math.min(1, Math.max(0, (now - trip.startedAt) / length));
-}
-
-// The trail's pixels from home to the place: a gentle wiggle, one pixel
-// after another with no gaps.
-function trailPixels(): { x: number; y: number }[] {
-  const out: { x: number; y: number }[] = [];
-  const steps = 600;
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    const x = Math.round(FROM.x + (TO.x - FROM.x) * t);
-    const y = Math.round(FROM.y + (TO.y - FROM.y) * t + Math.sin(t * Math.PI * 2.2) * 6 * Math.sin(t * Math.PI));
-    const last = out[out.length - 1];
-    if (!last || last.x !== x || last.y !== y) out.push({ x, y });
-  }
-  return out;
-}
-const TRAIL = trailPixels();
-
-// Where on the map a share of the trip is, as percent across and down.
-function trailPoint(share: number): { left: number; top: number } {
-  const p = TRAIL[Math.min(TRAIL.length - 1, Math.round(share * (TRAIL.length - 1)))];
-  return { left: ((p.x + 1) / MAP_W) * 100, top: ((p.y + 1) / MAP_H) * 100 };
-}
-
-// The paper, a few tufts and puddles, and the trail.
-function drawMap(ctx: CanvasRenderingContext2D, share: number): void {
-  ctx.fillStyle = PALETTE.cream;
-  ctx.fillRect(0, 0, MAP_W, MAP_H);
-  // A soft edge, like an old map.
-  ctx.fillStyle = PALETTE.butter;
-  ctx.fillRect(0, 0, MAP_W, 1);
-  ctx.fillRect(0, MAP_H - 1, MAP_W, 1);
-  ctx.fillRect(0, 0, 1, MAP_H);
-  ctx.fillRect(MAP_W - 1, 0, 1, MAP_H);
-  // Bits of countryside.
-  ctx.fillStyle = PALETTE.mint;
-  for (const [x, y] of [[30, 6], [48, 29], [70, 5], [86, 27], [22, 31], [100, 30], [58, 12]]) {
-    ctx.fillRect(x, y, 1, 2);
-    ctx.fillRect(x + 2, y - 1, 1, 3);
-  }
-  ctx.fillStyle = PALETTE.sky;
-  ctx.fillRect(38, 28, 6, 2);
-  ctx.fillRect(39, 27, 4, 1);
-  ctx.fillRect(78, 8, 5, 2);
-  // The trail: dashes two pixels thick, red as far as they've got.
-  const reached = share * (TRAIL.length - 1);
-  TRAIL.forEach((p, i) => {
-    if (i % 6 > 3) return;
-    ctx.fillStyle = PALETTE.rose;
-    ctx.globalAlpha = i <= reached ? 1 : 0.3;
-    ctx.fillRect(p.x, p.y, 2, 2);
-  });
-  ctx.globalAlpha = 1;
-  // An X where the place is.
-  ctx.fillStyle = PALETTE.rose;
-  for (let i = -2; i <= 2; i++) {
-    ctx.fillRect(TO.x + i, TO.y + i, 2, 1);
-    ctx.fillRect(TO.x + i, TO.y - i, 2, 1);
-  }
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text?: string): HTMLElementTagNameMap[K] {
@@ -125,9 +84,11 @@ export interface TripSetup {
   characterImage: (sheet: string) => string | undefined;
   onClose: () => void; // back to the stat bars
   onCallHome: (petId: string) => void; // asks first (see main.ts)
+  // The Snap button: the moment `moment` at `place` goes in the journal.
+  onSnap: (place: string, moment: string, petId: string) => void;
 }
 
-export function createTripView({ characterImage, onClose, onCallHome }: TripSetup): TripView {
+export function createTripView({ characterImage, onClose, onCallHome, onSnap }: TripSetup): TripView {
   const T = STRINGS.journeys;
   const panel = el('div', 'trip-now');
   panel.hidden = true;
@@ -147,21 +108,19 @@ export function createTripView({ characterImage, onClose, onCallHome }: TripSetu
   canvas.setAttribute('aria-hidden', 'true');
   const ctx = canvas.getContext('2d');
   if (ctx) ctx.imageSmoothingEnabled = false;
-  const home = icon(SKILL_ICONS.cozyHome, 'trip-map-end');
-  const there = icon('', 'trip-map-end');
   const marker = el('span', 'trip-map-marker');
-  map.append(canvas, home, there, marker);
-  const start = trailPoint(0);
-  home.style.left = `${start.left}%`;
-  home.style.top = `${start.top}%`;
-  const end = trailPoint(1);
-  there.style.left = `${end.left}%`;
-  there.style.top = `${end.top}%`;
+  map.append(canvas, marker);
 
   const foot = el('div', 'trip-now-foot');
   const back = el('span', 'trip-now-back');
   const left = el('b', 'trip-now-left');
   foot.append(back, left);
+
+  // The Snap button, over the map while a moment's on.
+  const snapBtn = el('button', 'trip-snap');
+  snapBtn.hidden = true;
+  snapBtn.append(icon(ITEM_ICONS.camera, 'trip-snap-icon'), el('span', '', T.snap));
+  map.append(snapBtn);
 
   panel.append(head, map, foot);
 
@@ -173,7 +132,7 @@ export function createTripView({ characterImage, onClose, onCallHome }: TripSetu
 
   let open = false;
   let latest: { state: GameState; now: number } | null = null;
-  let drawnShare = -1;
+  let drawnMap = ''; // the place and how far along, as last drawn
   let drawnFaces = '';
   let showing = ''; // the id of the pet whose trip is on show
 
@@ -196,7 +155,6 @@ export function createTripView({ characterImage, onClose, onCallHome }: TripSetu
     if (!trip) return;
     const place = T.places[trip.place] ?? trip.place;
     placeIcon.innerHTML = ITEM_ICONS[`place_${trip.place}`] ?? (trip.holiday ? MENU_ICONS.meadow : ITEM_ICONS.journey);
-    there.innerHTML = placeIcon.innerHTML;
     title.textContent = T.offer(trip.holiday ? T.holiday : trip.night ? T.night : T.trips[trip.rarity], place);
     who.textContent = trip.holiday ? T.onHoliday(STRINGS.list(pets.map((p) => p.name)), pets.length)
       : pets.length > 1 ? T.tripWho2(pets[0].name, pets[1].name) : T.tripWho(pets[0].name);
@@ -204,10 +162,10 @@ export function createTripView({ characterImage, onClose, onCallHome }: TripSetu
     const share = tripProgress(pets[0], now);
     left.textContent = share >= 1 ? T.tripAlmost : T.tripLeft(formatDuration(trip.endsAt - now));
     // The trail only changes a pixel at a time, so it's redrawn only then.
-    const step = Math.round(share * (TRAIL.length - 1));
-    if (ctx && step !== drawnShare) {
-      drawnShare = step;
-      drawMap(ctx, share);
+    const step = `${trip.place}:${Math.round(share * 400)}`;
+    if (ctx && step !== drawnMap) {
+      drawnMap = step;
+      drawTripMap(ctx, trip.place, share);
     }
     const at = trailPoint(share);
     marker.style.left = `${at.left}%`;
@@ -227,6 +185,35 @@ export function createTripView({ characterImage, onClose, onCallHome }: TripSetu
       if (!pets.some((p) => characterImage(sheetFor(p)))) drawnFaces = ''; // try again once the art loads
     }
   }
+
+  // Little moments (see src/game/snapshots.ts): a few seconds after the
+  // trip opens there's a chance of one, and another try every so often
+  // while it stays open. Times are on the animation clock.
+  const S = CONFIG.journeys.snapshots;
+  let moment: TripMoment | null = null;
+  let nextTry = 0;
+  const waveUntil = [0, 0];
+  function tickMoment(t: number): void {
+    if (moment && t - moment.at > S.momentMs) {
+      moment = null;
+      snapBtn.hidden = true;
+    }
+    const pet = latest && travellers(latest.state)[0];
+    if (moment || !pet || t < nextTry) return;
+    nextTry = t + S.againMs;
+    const place = pet.trip!.place;
+    const id = pickMoment(place, isNight(latest!.now), snappedAt(latest!.state, place), Math.random(), Math.random());
+    if (!id) return;
+    moment = { id, at: t, flashAt: null };
+    snapBtn.hidden = false;
+  }
+  snapBtn.addEventListener('click', () => {
+    const pet = latest && travellers(latest.state)[0];
+    if (!moment || moment.flashAt !== null || !pet) return;
+    onSnap(pet.trip!.place, moment.id, pet.id);
+    moment = { ...moment, flashAt: performance.now() };
+    snapBtn.hidden = true;
+  });
 
   const close = () => {
     if (!open) return;
@@ -248,8 +235,11 @@ export function createTripView({ characterImage, onClose, onCallHome }: TripSetu
       if (travellers(latest.state).length === 0) return;
       open = true;
       row.hidden = false;
-      drawnShare = -1;
+      drawnMap = '';
       drawnFaces = '';
+      moment = null;
+      snapBtn.hidden = true;
+      nextTry = performance.now() + S.firstMs[0] + Math.random() * (S.firstMs[1] - S.firstMs[0]);
       panel.hidden = false;
       panel.classList.remove('is-in');
       void panel.offsetHeight;
@@ -268,7 +258,15 @@ export function createTripView({ characterImage, onClose, onCallHome }: TripSetu
       if (!open || !latest) return null;
       const pets = travellers(latest.state);
       const trip = pets[0]?.trip;
-      return trip ? { place: trip.place, pets } : null;
+      if (!trip) return null;
+      const t = performance.now();
+      tickMoment(t);
+      return { place: trip.place, pets, moment, waving: pets.map((_, i) => t < (waveUntil[i] ?? 0)) };
+    },
+    tap(x, y) {
+      if (!open || !latest) return;
+      const i = tripPetAt(x, y, Math.min(2, travellers(latest.state).length));
+      if (i >= 0) waveUntil[i] = performance.now() + 1200;
     },
   };
 }
