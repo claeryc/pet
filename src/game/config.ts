@@ -684,6 +684,11 @@ export const CONFIG = {
     // as they were, the garden stops, growing up pauses, nothing is found
     // and no good care days are counted. They come home `joy` happier.
     holiday: { fragments: 50, days: [1, 2, 3], joy: 10 },
+    // Snapshots (see snapshots.ts): each look at a trip has `chance` of a
+    // little moment after a few seconds, and another try every `againMs`
+    // while you keep looking; a moment lasts `momentMs`. `freshShare` of the
+    // time it's one that isn't in the journal yet (if there are any).
+    snapshots: { chance: 0.6, freshShare: 0.7, firstMs: [4000, 9000], againMs: 45000, momentMs: 7000 },
     // The places, one per theme. Each opens with `opens` (see journeys.ts)
     // and has finds by stars: a food, a seed ("seed:pumpkin") or gold
     // ("gold:12").

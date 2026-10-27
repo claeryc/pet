@@ -157,6 +157,17 @@ export const FRAGMENT_ICON = pixelIcon([
 
 // Big icons (12x12) shown at the start of each row.
 export const ITEM_ICONS: Record<string, string> = {
+  // The Snap button, for a snapshot of a little moment on a trip.
+  camera: pixelIcon([
+    '........',
+    '..kkk...',
+    'kkkkkkkk',
+    'kvvkkvwk',
+    'kvkwlkvk',
+    'kvklbkvk',
+    'kvvkkvvk',
+    'kkkkkkkk',
+  ]),
   ...ROOM_ICONS,
   energyDrink: pixelIcon([
     '....kkkk....',

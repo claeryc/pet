@@ -38,7 +38,7 @@ import { createFx, type Gains } from './fx';
 import { hasBackpack, isAway, nobodyHome } from '../game/presence';
 import { formatClock } from './time';
 import { createJourneys, JOURNEYS_OUT_MS } from './journeys';
-import { createTripView, tripNotes } from './trip';
+import { createTripView, tripNotes, type TripMoment } from './trip';
 import { createDecorateView, createShelfView } from './decorate';
 import { spotAt } from '../render/furniture';
 import { closeupSpotAt, shelfHit } from '../render/keepsakes';
@@ -50,6 +50,7 @@ import { SPOTS } from '../render/canvas';
 import type { SpriteSheet } from '../render/sprites';
 
 export interface HomeCallbacks extends MenuCallbacks {
+  onSnap: (place: string, moment: string, petId: string) => void; // a little moment on a trip, for the journal
   onPlaceFurniture: (spot: FurnitureSlot, id: string | null) => void; // decorating
   onFeed: (food: FoodId) => void;
   onPlay: (activity: ActivityId) => void;
@@ -102,7 +103,7 @@ export interface HomeScreen {
   gardenScene: () => GardenScene | null; // so the room can turn into the garden
   deliveryScene: () => DeliveryScene | null; // ...or Percy's meadow, for his order
   meetScene: () => { friend: Friend; hearts: boolean } | null; // a friend over to play
-  tripScene: () => { place: string; pets: Pet[] } | null; // looking at the current trip
+  tripScene: () => { place: string; pets: Pet[]; moment: TripMoment | null; waving: boolean[] } | null; // looking at the current trip
   // Whether the Shop is showing (so the room can show what's tried on),
   // and the "Trying on · Party Hat" tag over the room, or null to take it off.
   shopShowing: () => boolean;
@@ -633,6 +634,12 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       if (i !== null) shelf.pick(i);
       return;
     }
+    // Looking in on a trip: tap a pet and it waves back.
+    if (trip.active()) {
+      const { x, y } = roomPoint(e);
+      trip.tap(x, y);
+      return;
+    }
     if (actions.hidden) return;
     // A poop on the floor: pick it up.
     if (tapPoop(e)) return;
@@ -904,6 +911,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       showActions(0);
     },
     onCallHome: cb.onCallHome,
+    onSnap: cb.onSnap,
   });
   // Decorating, and the keepsake shelf up close: each in place of the bars
   // and the buttons, like a trip.

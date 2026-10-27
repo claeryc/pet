@@ -7,6 +7,7 @@
 //   ♥ Pip's favourite place
 //   Stamps        [Stroll] [Hike] [Adventure] [Night trip]
 //   Found here    everything the place can give, found ones in colour
+//   Snapshots     little moments snapped on trips here (see snapshots.ts)
 //   Postcards     the pets' postcards, newest first, two to a row
 //
 // The same postcard, bigger, comes up after a backpack is opened (see
@@ -18,6 +19,7 @@ import { getCharacter, sheetFor } from '../game/growth';
 import { PLACES, placeFinds, placeLevel, type Place } from '../game/journeys';
 import type { GameState, Pet, Postcard } from '../game/state';
 import { HEART_ICONS, ITEM_ICONS } from './icons';
+import { placeMoments } from '../game/snapshots';
 
 export interface JournalCallbacks {
   characterImage: (sheet: string) => string | undefined;
@@ -212,6 +214,25 @@ export function journalPage(state: GameState, placeId: string, cb: JournalCallba
     finds.append(tile);
   }
   book.append(head(T.foundHere, all.filter((e) => page.found.includes(e)).length, all.length), finds);
+
+  // Snapshots: the place's set, the ones snapped with their picture.
+  const moments = placeMoments(place.id);
+  const snaps = page.snaps ?? [];
+  const album = el('div', 'jr-snaps');
+  for (const id of moments) {
+    const snap = snaps.find((x) => x.moment === id);
+    const frame = el('figure', `jr-snap${snap ? '' : ' is-none'}`);
+    if (snap) {
+      const img = el('img', '');
+      img.src = snap.image;
+      img.alt = T.moments[id] ?? id;
+      frame.append(img, el('figcaption', '', T.moments[id] ?? id));
+    } else frame.append(el('span', 'jr-snap-none', '?'), el('figcaption', '', STRINGS.collection.unknown));
+    album.append(frame);
+  }
+  book.append(head(T.snapshots, moments.filter((id) => snaps.some((x) => x.moment === id)).length, moments.length));
+  if (!snaps.length) book.append(el('p', 'jr-empty', T.noSnapshots));
+  book.append(album);
 
   // Postcards, newest first.
   book.append(head(T.postcards, page.postcards.length));

@@ -74,11 +74,13 @@ export function drawBundle(ctx: CanvasRenderingContext2D, bag: string, hx: numbe
 // The stick comes out from behind the pet and is held out to the side,
 // with the bundle tied a little short of its end. With two pets on a trip
 // there's no room at the side, so each holds it up over its outer
-// shoulder instead: `outer` is 'left' or 'right'. `x` is the left edge of
-// the pet's 32-pixel frame.
-export function drawBag(ctx: CanvasRenderingContext2D, bag: string, x: number, outer?: 'left' | 'right'): void {
+// shoulder instead: `outer` is 'left' or 'right'. Walking along to the
+// right (see src/render/journey.ts), it's held out 'behind', to the left.
+// `x` is the left edge of the pet's 32-pixel frame.
+export function drawBag(ctx: CanvasRenderingContext2D, bag: string, x: number, outer?: 'left' | 'right' | 'behind'): void {
   const points = outer === 'left' ? drawStick(ctx, x + 16, 26, x + 2, 12)
     : outer === 'right' ? drawStick(ctx, x + 16, 26, x + 30, 12)
+    : outer === 'behind' ? drawStick(ctx, x + 14, 24, x - 10, 15)
     : drawStick(ctx, x + 18, 24, x + 42, 15);
   const [hx, hy] = points[points.length - 3];
   drawBundle(ctx, bag, hx, hy);

@@ -167,6 +167,15 @@ export interface JournalPage {
   found: string[]; // food ids found there, and seeds as "seed:carrot"
   best?: Rarity; // the longest trip finished there (its stamp in the journal)
   stamps?: string[]; // the kinds of trip finished there: rarities and 'night'
+  snaps?: Snapshot[]; // little moments snapped on the way (see snapshots.ts)
+}
+
+// A little moment on a journey, snapped while looking in on the trip.
+export interface Snapshot {
+  moment: string; // which moment (see snapshots.ts)
+  at: number; // when it was taken
+  name: string; // the pet in it
+  image: string; // the room as it was, a PNG data URL (64 by 48 pixels)
 }
 
 export interface Journeys {
