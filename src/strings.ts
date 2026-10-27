@@ -795,6 +795,14 @@ export const STRINGS = {
     teen: (name: string) => `${name} grew into a teen!`,
     adult: (name: string, character: string, stars: string) => `${name} grew up into a ${character}! ${stars}`,
   },
+  // The grow-up reveal (src/ui/growup.ts).
+  growUp: {
+    building: (name: string) => `${name} is growing up…`,
+    teen: (name: string) => `${name} is a teen now!`,
+    grewInto: (name: string) => `${name} grew up into…`,
+    hello: (name: string) => `Hello, ${name}!`,
+    newInCollection: 'New in the Collection!',
+  },
   stars: (count: number) => '★'.repeat(count),
   // "Pebblit", or "Pebblit (Amber)" for a colour variant.
   // "Pip", "Pip and Mo", "Pip, Mo and Bean".

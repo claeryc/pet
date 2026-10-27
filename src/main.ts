@@ -48,7 +48,7 @@ import {
   type CropId,
   type GardenResult,
 } from './game/garden';
-import { markSeen, updateProgress } from './game/unlocks';
+import { characterKey, markSeen, updateProgress } from './game/unlocks';
 import { makeStar, weeksToStar } from './game/fragments';
 import { learn, nextCost, rankOf, resetTree, skillBefore, type SkillId } from './game/skills';
 import { SKILL_POINT_ICON } from './ui/icons';
@@ -77,6 +77,7 @@ import {
   type MingleBlock,
 } from './game/friends';
 import { createChoiceBox } from './ui/choice';
+import { createGrowUpReveal } from './ui/growup';
 import { canMoveToMeadow, getMeadowPet, greetVisitor, hangPortrait, keepsakeKind, keepsakeOf, meadowVisitor, memoriesOf, roomKeepsakes, sayHi, toggleShelf, welcomeHome } from './game/meadow';
 import { goodbyeArt } from './ui/meadow';
 import { roomWithSpace } from './game/rooms';
@@ -116,6 +117,10 @@ function gameNow(): number {
 // Load the saved game (or start a new one) and catch it up to right now.
 const saved = loadGame();
 let state: GameState = saved ?? createNewGame(Date.now());
+// How the pets were when the game was last closed, so any that grew up
+// while you were away still get their grow-up reveal.
+const stagesAtClose = new Map(allPets(state).map((p) => [p.id, p.stage]));
+const foundAtClose = state.charactersFound;
 // What Messages had at the last visit, so Percy's news from while you were
 // away can be shown once the screen is up.
 const lastVisitMessages = state.messages;
@@ -132,6 +137,7 @@ const afterNaming: string[] = [];
 // up. A freshly hatched pet is asked for its name first.
 function setState(next: GameState): void {
   const before = new Map(allPets(state).map((p) => [p.id, p.stage]));
+  const foundBefore = state.charactersFound;
   const oldMessages = state.messages;
   const progress = updateProgress(next);
   state = progress.state;
@@ -155,15 +161,7 @@ function setState(next: GameState): void {
   home.update(state, gameNow());
   for (const pet of grew) {
     if (pet.stage === 'baby') continue;
-    sound('grewUp');
-    if (pet.stage === 'adult') {
-      const character = getCharacter(pet.character);
-      const name = STRINGS.characterName(character?.name ?? '?', getVariant(character, pet.variant)?.name);
-      home.toast(STRINGS.growth.adult(pet.name, name, STRINGS.stars(character?.stars ?? 1)));
-    } else {
-      home.toast(STRINGS.growth.teen(pet.name));
-    }
-    if (pet.id === state.pet.id) react('happy');
+    showGrowUp(pet, foundBefore);
   }
   showLevels(progress.levels);
   showFragments(progress.fragments);
@@ -307,6 +305,25 @@ function shownRoom(room: Room, trying: ShopPreview | null): Room {
   if (trying.kind === 'curtains') return { ...room, curtains: trying.id };
   const slot = getDecor('furniture', trying.id)?.slot;
   return slot ? { ...room, furniture: { ...room.furniture, [slot]: trying.id } } : room;
+}
+
+// The grow-up reveal for a pet that just became a teen or a grown-up (see
+// src/ui/growup.ts): its old look as a silhouette, a flash, then the new
+// one. `foundBefore` is the Collection before, to tell if the look is new.
+function showGrowUp(pet: Pet, foundBefore: readonly string[]): void {
+  const was: Pet = { ...pet, stage: pet.stage === 'adult' ? 'teen' : 'baby' };
+  const character = pet.stage === 'adult' ? getCharacter(pet.character) : undefined;
+  growUp.show({
+    name: pet.name,
+    stage: pet.stage === 'adult' ? 'adult' : 'teen',
+    before: () => portraitOf(was),
+    after: () => portraitOf(pet),
+    ...(character && {
+      character: STRINGS.characterName(character.name, getVariant(character, pet.variant)?.name),
+      stars: character.stars,
+      isNew: !foundBefore.includes(characterKey(character.id, pet.variant)),
+    }),
+  });
 }
 
 // Asks for the pet's name: once it hatches (it must have one), or to
@@ -1408,6 +1425,11 @@ const home = createHomeScreen(root, {
 // Made after the home screen, which clears the page when it starts.
 const naming = createNamingBox(root);
 const choice = createChoiceBox(root);
+const growUp = createGrowUpReveal(root, (moment) => {
+  if (moment === 'flash') sound('grewUp');
+  else if (moment === 'star') sound('place');
+  else react('happy');
+});
 skipFortuneOnTap();
 const away = createAwayCard(root);
 const guide = createGuideCard(root);
@@ -1415,6 +1437,10 @@ home.update(state, gameNow());
 startAudio();
 playMusic();
 announceMail(lastVisitMessages);
+for (const pet of allPets(state)) {
+  const was = stagesAtClose.get(pet.id);
+  if (was && was !== 'egg' && was !== pet.stage && pet.stage !== 'baby') showGrowUp(pet, foundAtClose);
+}
 showLevels(startup.levels); // levels reached while away (Percy's pickups)
 showFragments(startup.fragments);
 tryCheckIn();
