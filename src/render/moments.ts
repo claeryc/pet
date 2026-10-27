@@ -8,6 +8,8 @@
 //   doze      lights off: it settles down with a little squash
 //   wake      lights on: a big stretch, then a hop
 //   gift      a wrapped present hops from your pet over to a friend
+//   setOff    off on a journey: the bag pops on, it waves with a few
+//             hearts, then hops out of the room to the right
 //
 // While two pets play together (Meet), they hop in turn (see playHop).
 //
@@ -19,9 +21,10 @@
 // faces and sounds are picked in main.ts.
 
 import { PALETTE } from './palette';
+import { drawBag } from './bags';
 import type { SpriteSheet } from './sprites';
 
-export type MomentKind = 'cuddle' | 'tickle' | 'medicine' | 'doze' | 'wake' | 'gift';
+export type MomentKind = 'cuddle' | 'tickle' | 'medicine' | 'doze' | 'wake' | 'gift' | 'setOff';
 
 export interface Moment {
   kind: MomentKind;
@@ -36,7 +39,13 @@ export const MOMENT_MS: Record<MomentKind, number> = {
   doze: 700,
   wake: 1300,
   gift: 1100,
+  setOff: 2000,
 };
+
+// The send-off's parts, as fractions of it: the bag pops on, it waves, and
+// from LEAVE it hops away.
+const BAG_ON = 0.12;
+const LEAVE = 0.5;
 
 // How the pet moves: whole pixels sideways and up (negative dy is up),
 // and a squash or stretch around its feet.
@@ -87,6 +96,16 @@ export function momentMotion(m: Moment | null | undefined): MomentMotion {
     case 'gift':
       // Leans over to hand it across.
       return { dx: t > 0.15 && t < 0.5 ? 1 : 0, dy: 0, sx: 1, sy: 1 };
+    case 'setOff': {
+      // A happy hop as the bag goes on...
+      if (t < 0.2) return { dx: 0, dy: -Math.round(Math.sin((t / 0.2) * Math.PI) * 3), sx: 1, sy: 1 };
+      // ...a wave, swaying side to side...
+      if (t < LEAVE) return { dx: Math.floor(m.ms / 130) % 2 ? 1 : -1, dy: 0, sx: 1, sy: 1 };
+      // ...then hop, hop, hop out of the room to the right.
+      const away = (t - LEAVE) / (1 - LEAVE);
+      const hop = Math.abs(Math.sin(away * Math.PI * 4));
+      return { dx: Math.round(away ** 1.3 * 66), dy: -Math.round(hop * 2), sx: 1, sy: 1 };
+    }
   }
 }
 
@@ -121,6 +140,29 @@ export function drawMoment(ctx: CanvasRenderingContext2D, m: Moment, sheet: Spri
   }
   else if (m.kind === 'wake') wakeSparkle(ctx, cx, top, t);
   else if (m.kind === 'gift') present(ctx, t);
+  else if (m.kind === 'setOff') sendOff(ctx, m, x, cx, top, t);
+}
+
+// The send-off's bag on its stick, drawn before the pet so the stick comes
+// out from behind it. It goes along with the pet as it hops away.
+export function drawSendOffBag(ctx: CanvasRenderingContext2D, m: Moment, x: number, bag: string): void {
+  const t = Math.min(1, m.ms / MOMENT_MS[m.kind]);
+  if (m.kind !== 'setOff' || t < BAG_ON) return;
+  const { dx, dy } = momentMotion(m);
+  ctx.translate(0, dy);
+  drawBag(ctx, bag, x + dx, t < LEAVE ? undefined : 'behind');
+  ctx.translate(0, -dy);
+}
+
+// A sparkle as the bag pops on, and a few hearts float up while it waves
+// goodbye.
+function sendOff(ctx: CanvasRenderingContext2D, m: Moment, x: number, cx: number, top: number, t: number): void {
+  if (t < BAG_ON) return;
+  const { dx, dy } = momentMotion(m);
+  ctx.translate(0, dy);
+  if (t < BAG_ON + 0.12) wakeSparkle(ctx, x + dx + 34, top + 10, 0.25 + ((t - BAG_ON) / 0.12) * 0.5);
+  ctx.translate(0, -dy);
+  if (t > 0.18 && t < LEAVE + 0.1) floatHearts(ctx, cx, top, (t - 0.18) / (LEAVE - 0.08));
 }
 
 // A wrapped present that pops up between the two pets and hops over to
