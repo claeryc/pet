@@ -42,8 +42,9 @@ import { category, type Entry } from './shop';
 import { formatClock, formatDayClock, formatDuration } from './time';
 
 export interface JourneysCallbacks {
-  // The pets in the line-up set off, each with its lunch; true if they went.
-  onSetOff: (slot: number, party: Packed[], percy: boolean) => boolean;
+  // The pets getting ready set off, each with its lunch: true if they can.
+  // `gone` runs once they've left, after the pet's send-off in the room.
+  onSetOff: (slot: number, party: Packed[], percy: boolean, gone: () => void) => boolean;
   onCallHome: (pet: string) => void;
   onOpenBackpack: (pet: string) => void;
   onHoliday: (days: number) => boolean; // everyone goes on a Holiday; true if they went
@@ -251,12 +252,14 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
         const b = boxes.get(id) ?? { food: [], drink: null, charm: null };
         return { pet: id, lunch: lunchOf(b), charm: b.charm };
       });
-      if (cb.onSetOff(slot!, party, percy)) {
+      // The closed box stays up while the pet says goodbye.
+      const leaving = cb.onSetOff(slot!, party, percy, () => {
+        row.classList.remove('is-busy');
         stop();
         cb.onExit();
-      } else {
-        setStage('pack');
-      }
+      });
+      if (leaving) row.classList.add('is-busy');
+      else setStage('pack');
     });
   });
   holiday.addEventListener('click', () => {

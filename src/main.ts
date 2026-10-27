@@ -1226,21 +1226,41 @@ const home = createHomeScreen(root, {
       home.toast(STRINGS.journeys.percyWoke);
     }
   },
-  onSetOff: (slot, party, percy) => {
+  onSetOff: (slot, party, percy, gone) => {
+    const nameOf = (s: GameState, id: string | undefined) => allPets(s).find((p) => p.id === id)?.name ?? '';
+    // Checked now, so a box that's short says so straight away...
     const now = gameNow();
-    const s = simulate(state, now);
-    const offer = offerAt(s, slot);
-    const result = goTogether(s, now, slot, party, percy);
-    setState(result.state);
-    const nameOf = (id: string | undefined) => allPets(s).find((p) => p.id === id)?.name ?? '';
-    if (result.blocked) {
-      blocked(STRINGS.journeys.blocked[result.blocked](nameOf(result.pet)));
+    const check = goTogether(simulate(state, now), now, slot, party, percy);
+    if (check.blocked) {
+      blocked(STRINGS.journeys.blocked[check.blocked](nameOf(state, check.pet)));
       return false;
     }
-    sound('done');
-    const [a, b] = party.map((m) => nameOf(m.pet));
-    const place = placeName(offer?.place ?? '');
-    home.toast(b ? STRINGS.journeys.leftTogether(a, b, place) : STRINGS.journeys.leftFor(a, place));
+    // ...and done after the send-off, from the state as it is by then.
+    const leave = () => {
+      const at = gameNow();
+      const s = simulate(state, at);
+      const offer = offerAt(s, slot);
+      const result = goTogether(s, at, slot, party, percy);
+      if (result.blocked) {
+        blocked(STRINGS.journeys.blocked[result.blocked](nameOf(s, result.pet)));
+        gone();
+        return;
+      }
+      setState(result.state);
+      sound('done');
+      const [a, b] = party.map((m) => nameOf(s, m.pet));
+      const place = placeName(offer?.place ?? '');
+      home.toast(b ? STRINGS.journeys.leftTogether(a, b, place) : STRINGS.journeys.leftFor(a, place));
+      gone();
+    };
+    // The pet you're looking after puts its bag on, waves and hops out.
+    if (party.some((m) => m.pet === state.pet.id) && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      playMoment('setOff');
+      sound('cuddle');
+      setTimeout(leave, MOMENT_MS.setOff);
+    } else {
+      leave();
+    }
     return true;
   },
   onHoliday: (days) => {
@@ -1580,6 +1600,7 @@ function render(timeMs: number): void {
       night: isNight(gameNow()),
       lightsOff: pet.asleep,
       moment: !away && moment && timeMs - moment.start < MOMENT_MS[moment.kind] ? { kind: moment.kind, ms: timeMs - moment.start } : null,
+      bag: (state.inventory.bags ?? []).includes('courier') ? 'courier' : 'sack',
       fishing: home.fishingPhase(),
       garden: home.gardenScene(),
       delivery: home.deliveryScene(),

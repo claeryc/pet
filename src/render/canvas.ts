@@ -17,7 +17,7 @@ import { drawPlace } from './places';
 import { drawFlash, drawSnapMoment } from './snapshots';
 import { drawWalk, drawWalkFront, legFor, stepWalk, WALK_SPEED, type Walk } from './journey';
 import { drawBath, drawMess, type BathScene, type PetMess } from './hygiene';
-import { drawMoment, drawSickCloud, drawSleepZs, drawWindowLight, momentMotion, playHop, type Moment, type MomentMotion } from './moments';
+import { drawMoment, drawSendOffBag, drawSickCloud, drawSleepZs, drawWindowLight, momentMotion, playHop, type Moment, type MomentMotion } from './moments';
 import { drawKeepsakes, drawShelfCloseup, type RoomKeepsakes, type ShelfThing } from './keepsakes';
 
 export const ROOM_WIDTH = 64;
@@ -48,6 +48,7 @@ export interface Scene {
   // A moment of care playing on your pet: a cuddle, medicine, waking up
   // (see src/render/moments.ts).
   moment?: Moment | null;
+  bag?: string; // the bag it takes on a journey, for the send-off (see bags.ts)
   fishing?: FishingPhase; // draws a little pond, rod and bobber while fishing
   garden?: GardenScene | null; // while gardening: the garden, with the pet on the left
   delivery?: DeliveryScene | null; // while filling Percy's order: his meadow
@@ -494,6 +495,7 @@ export function drawRoom(
     }
     // Playing with a friend, the two hop in turn.
     const motion = meeting?.hearts && !scene.moment ? playHop(timeMs, 1) : momentMotion(scene.moment);
+    if (scene.moment) drawSendOffBag(ctx, scene.moment, x, scene.bag ?? 'sack');
     drawPetMoving(ctx, sheet, scene.animation, x, timeMs, hat, scene, motion);
     if (scene.glow) drawGlow(ctx, x, timeMs);
     if (scene.animation === 'sick') drawSickCloud(ctx, sheet, x, timeMs);
