@@ -5,6 +5,9 @@
 // rest of the way, with the pets' pictures on it where they are now.
 // The buttons below change to [Close] [Call home] while it's open.
 // With two pets on different trips there's a note for each.
+// Now and then the pets stop for a little moment (see
+// src/game/snapshots.ts), and a Snap button comes up to put it in the
+// travel journal. Tap a pet and it waves back.
 
 import { STRINGS } from '../strings';
 import type { GameState, Pet } from '../game/state';
@@ -13,9 +16,9 @@ import { isAway } from '../game/presence';
 import { PALETTE } from '../render/palette';
 import { ITEM_ICONS, MENU_ICONS, SKILL_ICONS } from './icons';
 import { formatDayClock, formatDuration } from './time';
-import { openSpots } from '../game/journeys';
-import { glintAt, legFor, parcelAt, percyAt, stillScenery, type SpotScene } from '../render/journey';
-import { ROOM_WIDTH } from '../render/canvas';
+import { CONFIG } from '../game/config';
+import { isNight } from '../game/stats';
+import { pickMoment, snappedAt } from '../game/snapshots';
 
 export interface TripView {
   panel: HTMLElement; // shown in place of the stat bars
@@ -24,11 +27,26 @@ export interface TripView {
   close: () => void;
   active: () => boolean;
   update: (state: GameState, now: number) => void;
-  // Who's on the trip and where, and what's spotted on the way, for the
-  // room (null while closed).
-  scene: () => { place: string; pets: Pet[]; spots: SpotScene } | null;
-  // A tap on the room, in room pixels: picks up something spotted.
-  tap: (x: number, y: number) => boolean;
+  // Who's on the trip and where, for the room (null while closed): the
+  // little moment that's on, if any, and which pets are waving.
+  scene: () => { place: string; pets: Pet[]; moment: TripMoment | null; waving: boolean[] } | null;
+  // A tap on the room, in room pixels: a pet there waves back.
+  tap: (x: number, y: number) => void;
+}
+
+// A little moment on the way, on the animation clock (performance.now).
+export interface TripMoment {
+  id: string;
+  at: number;
+  flashAt: number | null; // when it was snapped
+}
+
+// Which of the pets standing on a trip (one in the middle, or two side by
+// side) is at room pixel (x, y), or -1.
+export function tripPetAt(x: number, y: number, pets: number): number {
+  if (y < 8 || y > 41) return -1;
+  if (pets < 2) return x >= 18 && x < 46 ? 0 : -1;
+  return x >= 4 && x < 32 ? 0 : x >= 32 && x < 60 ? 1 : -1;
 }
 
 // The map, in its own little pixels (scaled up with CSS like the room).
@@ -131,12 +149,11 @@ export interface TripSetup {
   characterImage: (sheet: string) => string | undefined;
   onClose: () => void; // back to the stat bars
   onCallHome: (petId: string) => void; // asks first (see main.ts)
-  // Something on the way was tapped (by its key, see spotSlots in
-  // src/game/journeys.ts): into the backpack it goes.
-  onSpot: (petId: string, key: string) => void;
+  // The Snap button: the moment `moment` at `place` goes in the journal.
+  onSnap: (place: string, moment: string, petId: string) => void;
 }
 
-export function createTripView({ characterImage, onClose, onCallHome, onSpot }: TripSetup): TripView {
+export function createTripView({ characterImage, onClose, onCallHome, onSnap }: TripSetup): TripView {
   const T = STRINGS.journeys;
   const panel = el('div', 'trip-now');
   panel.hidden = true;
@@ -171,6 +188,12 @@ export function createTripView({ characterImage, onClose, onCallHome, onSpot }: 
   const back = el('span', 'trip-now-back');
   const left = el('b', 'trip-now-left');
   foot.append(back, left);
+
+  // The Snap button, over the map while a moment's on.
+  const snapBtn = el('button', 'trip-snap');
+  snapBtn.hidden = true;
+  snapBtn.append(icon(ITEM_ICONS.camera, 'trip-snap-icon'), el('span', '', T.snap));
+  map.append(snapBtn);
 
   panel.append(head, map, foot);
 
@@ -237,39 +260,34 @@ export function createTripView({ characterImage, onClose, onCallHome, onSpot }: 
     }
   }
 
-  // Spotted on the way (see src/render/journey.ts): while a pebble is on
-  // the path (see spotSlots in src/game/journeys.ts), it glints a moment
-  // after you open the trip, and Percy comes by while his parcel's due. One
-  // that goes by untapped comes round again a little later. Times here are
-  // on the animation clock.
-  const SHOW_AFTER_MS = 3000;
-  const AGAIN_MS = 15000;
-  let spots: SpotScene = { glint: null, percy: null, parcelTaken: false, picked: null };
-  let glintKey: string | null = null;
-  let nextGlint = 0;
-  let nextPercy = 0;
-  const walking = (pet: Pet) => !!legFor(pet.trip!.place, tripProgress(pet, latest!.now)) && !stillScenery();
-  function tickSpots(t: number): void {
+  // Little moments (see src/game/snapshots.ts): a few seconds after the
+  // trip opens there's a chance of one, and another try every so often
+  // while it stays open. Times are on the animation clock.
+  const S = CONFIG.journeys.snapshots;
+  let moment: TripMoment | null = null;
+  let nextTry = 0;
+  const waveUntil = [0, 0];
+  function tickMoment(t: number): void {
+    if (moment && t - moment.at > S.momentMs) {
+      moment = null;
+      snapBtn.hidden = true;
+    }
     const pet = latest && travellers(latest.state)[0];
-    if (!pet) return;
-    const w = walking(pet);
-    const there = openSpots(pet, latest!.now);
-    if (spots.glint !== null && (!glintAt(spots.glint, t, w, ROOM_WIDTH) || !there.some((s) => s.key === glintKey))) {
-      spots = { ...spots, glint: null };
-      nextGlint = t + AGAIN_MS;
-    }
-    const glint = there.find((s) => s.kind === 'glint');
-    if (spots.glint === null && glint && t >= nextGlint) {
-      spots = { ...spots, glint: t };
-      glintKey = glint.key;
-    }
-    const gone = (since: number) => percyAt(since, t, ROOM_WIDTH) === null && (spots.parcelTaken || !parcelAt(since, t, w));
-    if (spots.percy !== null && gone(spots.percy)) {
-      spots = { ...spots, percy: null };
-      nextPercy = t + AGAIN_MS;
-    }
-    if (spots.percy === null && there.some((s) => s.kind === 'parcel') && t >= nextPercy) spots = { ...spots, percy: t, parcelTaken: false };
+    if (moment || !pet || t < nextTry) return;
+    nextTry = t + S.againMs;
+    const place = pet.trip!.place;
+    const id = pickMoment(place, isNight(latest!.now), snappedAt(latest!.state, place), Math.random(), Math.random());
+    if (!id) return;
+    moment = { id, at: t, flashAt: null };
+    snapBtn.hidden = false;
   }
+  snapBtn.addEventListener('click', () => {
+    const pet = latest && travellers(latest.state)[0];
+    if (!moment || moment.flashAt !== null || !pet) return;
+    onSnap(pet.trip!.place, moment.id, pet.id);
+    moment = { ...moment, flashAt: performance.now() };
+    snapBtn.hidden = true;
+  });
 
   const close = () => {
     if (!open) return;
@@ -293,10 +311,9 @@ export function createTripView({ characterImage, onClose, onCallHome, onSpot }: 
       row.hidden = false;
       drawnShare = -1;
       drawnFaces = '';
-      const t = performance.now();
-      spots = { glint: null, percy: null, parcelTaken: false, picked: null };
-      nextGlint = t + SHOW_AFTER_MS;
-      nextPercy = t + SHOW_AFTER_MS * 2;
+      moment = null;
+      snapBtn.hidden = true;
+      nextTry = performance.now() + S.firstMs[0] + Math.random() * (S.firstMs[1] - S.firstMs[0]);
       panel.hidden = false;
       panel.classList.remove('is-in');
       void panel.offsetHeight;
@@ -316,29 +333,14 @@ export function createTripView({ characterImage, onClose, onCallHome, onSpot }: 
       const pets = travellers(latest.state);
       const trip = pets[0]?.trip;
       if (!trip) return null;
-      tickSpots(performance.now());
-      return { place: trip.place, pets, spots };
+      const t = performance.now();
+      tickMoment(t);
+      return { place: trip.place, pets, moment, waving: pets.map((_, i) => t < (waveUntil[i] ?? 0)) };
     },
     tap(x, y) {
-      const pet = open && latest ? travellers(latest.state)[0] : undefined;
-      if (!pet) return false;
-      const t = performance.now();
-      const w = walking(pet);
-      // Generous, for small fingers: things on the ground are tiny.
-      const near = (at: { x: number; y: number } | null) => !!at && Math.abs(at.x - x) <= 6 && Math.abs(at.y - 1 - y) <= 6;
-      const glint = spots.glint !== null ? glintAt(spots.glint, t, w, ROOM_WIDTH) : null;
-      const parcel = spots.percy !== null && !spots.parcelTaken ? parcelAt(spots.percy, t, w) : null;
-      if (glint && near(glint)) {
-        spots = { ...spots, glint: null, picked: { at: t, ...glint } };
-        if (glintKey) onSpot(pet.id, glintKey);
-        return true;
-      }
-      if (parcel && near(parcel)) {
-        spots = { ...spots, parcelTaken: true, picked: { at: t, ...parcel } };
-        onSpot(pet.id, 'percy');
-        return true;
-      }
-      return false;
+      if (!open || !latest) return;
+      const i = tripPetAt(x, y, Math.min(2, travellers(latest.state).length));
+      if (i >= 0) waveUntil[i] = performance.now() + 1200;
     },
   };
 }

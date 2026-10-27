@@ -684,11 +684,11 @@ export const CONFIG = {
     // as they were, the garden stops, growing up pauses, nothing is found
     // and no good care days are counted. They come home `joy` happier.
     holiday: { fragments: 50, days: [1, 2, 3], joy: 10 },
-    // Pebbles on the way (see spotSlots in journeys.ts): how many lie on
-    // the path on each kind of trip, and Percy's parcel of `parcelPebbles`
-    // in the middle of them, spread out evenly, each there for `windowShare`
-    // of the trip (at least `minWindowMs`).
-    spot: { glints: { common: 2, rare: 4, epic: 6 }, windowShare: 0.1, minWindowMs: 10 * 60_000, parcelPebbles: 3 },
+    // Snapshots (see snapshots.ts): each look at a trip has `chance` of a
+    // little moment after a few seconds, and another try every `againMs`
+    // while you keep looking; a moment lasts `momentMs`. `freshShare` of the
+    // time it's one that isn't in the journal yet (if there are any).
+    snapshots: { chance: 0.6, freshShare: 0.7, firstMs: [4000, 9000], againMs: 45000, momentMs: 7000 },
     // The places, one per theme. Each opens with `opens` (see journeys.ts)
     // and has finds by stars: a food, a seed ("seed:pumpkin") or gold
     // ("gold:12").

@@ -14,7 +14,8 @@ import type { FishingPhase } from '../ui/fishing';
 import { drawGardenBackground, drawGardenPots, type GardenScene } from './garden';
 import { drawDelivery, type DeliveryScene } from './delivery';
 import { drawPlace } from './places';
-import { drawSpotted, drawWalk, drawWalkFront, legFor, stepWalk, stillScenery, WALK_SPEED, type SpotScene, type Walk } from './journey';
+import { drawFlash, drawSnapMoment } from './snapshots';
+import { drawWalk, drawWalkFront, legFor, stepWalk, WALK_SPEED, type Walk } from './journey';
 import { drawBath, drawMess, type BathScene, type PetMess } from './hygiene';
 import { drawMoment, drawSickCloud, drawSleepZs, drawWindowLight, momentMotion, playHop, type Moment, type MomentMotion } from './moments';
 import { drawKeepsakes, drawShelfCloseup, type RoomKeepsakes, type ShelfThing } from './keepsakes';
@@ -80,7 +81,10 @@ export interface TripScene {
   pets: OtherPet[];
   bag: string; // what they carry on a stick (see src/render/bags.ts)
   share: number; // how far along the trip is, 0 to 1 (see src/ui/trip.ts)
-  spots: SpotScene; // things to tap on the way
+  // A little moment that's on, to snap for the journal (see
+  // src/render/snapshots.ts), from `at` on the animation clock, and when
+  // the camera flashed, if it has.
+  moment: { id: string; at: number; flashAt: number | null } | null;
 }
 
 export function setupCanvas(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
@@ -372,12 +376,20 @@ function stepCloseup(scene: Scene, timeMs: number): number {
 // middle, two side by side), each with a bag on a stick behind it. On the
 // way there (see src/render/journey.ts), they walk along with the scenery
 // going by, hopping a little with each step.
+// They stop walking for a little moment (see src/render/snapshots.ts),
+// so how far the ground has gone by adds up frame by frame.
 let walk: Walk | null = null;
+let camera = 0;
+let lastWalkFrameMs = 0;
 const SHADOW_Y = 40 - 32 + 29; // the shadow row of a pet standing on the floor
 function drawTrip(ctx: CanvasRenderingContext2D, trip: TripScene, night: boolean, timeMs: number): void {
   const leg = legFor(trip.place, trip.share);
-  const still = stillScenery();
-  const camera = still ? 0 : timeMs * WALK_SPEED;
+  const still = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const stopped = !!trip.moment && timeMs >= trip.moment.at;
+  const dt = lastWalkFrameMs ? Math.min(100, Math.max(0, timeMs - lastWalkFrameMs)) : 0;
+  lastWalkFrameMs = timeMs;
+  const walking = !!leg && !still && !stopped;
+  if (walking) camera += dt * WALK_SPEED;
   if (leg) {
     walk = stepWalk(walk, trip.place, leg, camera);
     drawWalk(ctx, walk, camera, ROOM_WIDTH, ROOM_HEIGHT, night, timeMs);
@@ -387,7 +399,7 @@ function drawTrip(ctx: CanvasRenderingContext2D, trip: TripScene, night: boolean
   // Walking to the right, every bag is held out behind, to the left (two
   // pets: over their left shoulders, all behind both pets).
   const holds = (i: number) => (!leg ? (spots.length > 1 ? (i === 0 ? 'left' : 'right') : undefined) : spots.length > 1 ? 'left' : 'behind');
-  const hopOf = (i: number) => (leg && !still ? (Math.floor(timeMs / 180) + i) % 2 : 0);
+  const hopOf = (i: number) => (walking ? (Math.floor(timeMs / 180) + i) % 2 : 0);
   const hopping = (i: number, draw: () => void) => {
     ctx.save();
     ctx.translate(0, -hopOf(i));
@@ -415,7 +427,10 @@ function drawTrip(ctx: CanvasRenderingContext2D, trip: TripScene, night: boolean
     ctx.restore();
   });
   if (leg && walk) drawWalkFront(ctx, walk, camera, ROOM_WIDTH, ROOM_HEIGHT);
-  drawSpotted(ctx, trip.spots, !!leg && !still, ROOM_WIDTH, timeMs);
+  if (trip.moment && timeMs >= trip.moment.at) {
+    drawSnapMoment(ctx, trip.moment.id, timeMs - trip.moment.at, SPOTS[spots[0]], ROOM_WIDTH);
+    if (trip.moment.flashAt !== null) drawFlash(ctx, timeMs - trip.moment.flashAt, ROOM_WIDTH, ROOM_HEIGHT);
+  }
 }
 
 // Clips drawing to everything below a grassy edge `edge` pixels down.

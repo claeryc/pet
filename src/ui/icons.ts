@@ -157,6 +157,17 @@ export const FRAGMENT_ICON = pixelIcon([
 
 // Big icons (12x12) shown at the start of each row.
 export const ITEM_ICONS: Record<string, string> = {
+  // The Snap button, for a snapshot of a little moment on a trip.
+  camera: pixelIcon([
+    '........',
+    '..kkk...',
+    'kkkkkkkk',
+    'kvvkkvwk',
+    'kvkwlkvk',
+    'kvklbkvk',
+    'kvvkkvvk',
+    'kkkkkkkk',
+  ]),
   ...ROOM_ICONS,
   energyDrink: pixelIcon([
     '....kkkk....',
@@ -1614,17 +1625,6 @@ export const HEART_ICONS = {
 };
 
 export const STAT_ICONS = {
-  // A smooth pebble from a journey (for a Mystery Bag in the Shop).
-  pebble: pixelIcon([
-    '........',
-    '..kkkk..',
-    '.kvvllk.',
-    'kvwvlllk',
-    'kvllllck',
-    'kllllcuk',
-    '.kkkkkk.',
-    '........',
-  ], { c: PALETTE.plum }),
   gold: pixelIcon([
     '..kkkk..',
     '.kyyyyk.',

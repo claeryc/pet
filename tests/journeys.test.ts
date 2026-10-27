@@ -4,7 +4,7 @@ import { CONFIG } from '../src/game/config';
 import { simulate } from '../src/game/simulate';
 import { feed } from '../src/game/actions';
 import {
-  buyCharm, callHome, cantGo, charmCount, getPlace, openBackpack, planTrip, potsDryingBy, restPercy, rollFinds, setOff, spotFind, spotSlots, openSpots, type SpotSlot,
+  buyCharm, callHome, cantGo, charmCount, getPlace, openBackpack, planTrip, potsDryingBy, restPercy, rollFinds, setOff,
   goTogether,
   tripPreview, type Place,
 } from '../src/game/journeys';
@@ -364,57 +364,5 @@ describe('going together', () => {
     const now = START + 2 * HOUR;
     const back = callHome(simulate(left, now), now, left.pet.id).state;
     expect([back.pet, ...back.housemates].every(hasBackpack)).toBe(true);
-  });
-});
-
-describe('pebbles on the way', () => {
-  const tripOf = (s: GameState) => s.pet.trip!;
-  const mid = (slot: SpotSlot) => (slot.from + slot.until) / 2;
-
-  it('spreads more of them over longer trips, with Percy halfway', () => {
-    for (const [slot, rarity] of [[0, 'common'], [1, 'rare'], [2, 'epic']] as const) {
-      const trip = tripOf(setOff(ready(), START, slot, [], false).state);
-      const slots = spotSlots(trip);
-      expect(slots.filter((x) => x.kind === 'glint')).toHaveLength(J.spot.glints[rarity]);
-      const percy = slots.find((x) => x.kind === 'parcel')!;
-      expect(mid(percy)).toBeCloseTo(trip.startedAt + (trip.endsAt - trip.startedAt) / 2);
-      // In order through the trip, and none of them overlapping.
-      const sorted = [...slots].sort((a, b) => a.from - b.from);
-      sorted.slice(1).forEach((x, n) => expect(x.from).toBeGreaterThanOrEqual(sorted[n].until));
-      expect(sorted[0].from).toBeGreaterThan(trip.startedAt);
-      expect(sorted[sorted.length - 1].until).toBeLessThan(trip.endsAt);
-    }
-  });
-
-  it('can only be picked up while it is there, and only once', () => {
-    const s = setOff(ready(), START, 1, [], false).state;
-    const first = spotSlots(tripOf(s))[0];
-    expect(spotFind(s, s.pet.id, first.key, first.from - 1).find).toBeNull();
-    expect(spotFind(s, s.pet.id, first.key, first.until).find).toBeNull();
-    const got = spotFind(s, s.pet.id, first.key, mid(first));
-    expect(got.find).toEqual({ kind: 'pebble', id: '', count: 1, stars: 1 });
-    expect(openSpots(got.state.pet, mid(first))).toEqual([]);
-    expect(spotFind(got.state, s.pet.id, first.key, mid(first)).find).toBeNull();
-  });
-
-  it("Percy's parcel holds a few", () => {
-    const s = setOff(ready(), START, 1, [], false).state;
-    const percy = spotSlots(tripOf(s)).find((x) => x.key === 'percy')!;
-    expect(spotFind(s, s.pet.id, 'percy', mid(percy)).find!.count).toBe(J.spot.parcelPebbles);
-  });
-
-  it('none on a trip nobody is on', () => {
-    expect(spotFind(ready(), 'nobody', 'g0', START).find).toBeNull();
-  });
-
-  it('come home in the backpack, even when called home early', () => {
-    const s = setOff(ready(), START, 2, [], false).state;
-    const [first] = spotSlots(tripOf(s));
-    const now = mid(first);
-    const got = spotFind(s, s.pet.id, first.key, now);
-    const back = callHome(simulate(got.state, now), now, s.pet.id).state;
-    const opened = openBackpack(back, back.pet.id);
-    expect(opened.finds).toContainEqual({ kind: 'pebble', id: '', count: 1, stars: 1 });
-    expect(opened.state.pebbles).toBe((back.pebbles ?? 0) + 1);
   });
 });

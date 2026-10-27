@@ -10,7 +10,6 @@
 
 import { PALETTE } from './palette';
 import { GROUND, paint, rect, stars, type Sprite } from './places';
-import { drawPercy } from './delivery';
 
 // A part of the way, with its own scenery.
 export type Leg = 'fields' | 'edge' | 'woods';
@@ -29,11 +28,6 @@ const ROUTES: Record<string, { leg: Leg; until: number }[]> = {
 // null once they're there (and for a place with no walk yet).
 export function legFor(place: string, share: number): Leg | null {
   return ROUTES[place]?.find((l) => share < l.until)?.leg ?? null;
-}
-
-// Whether the scenery should keep still (the player asked for less motion).
-export function stillScenery(): boolean {
-  return typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 // How fast the ground goes by, in room pixels a millisecond. The other
@@ -320,106 +314,4 @@ export function drawWalkFront(ctx: CanvasRenderingContext2D, walk: Walk, camera:
       rect(ctx, woods ? PALETTE.leaf : PALETTE.mint, sx + dx + lean, h - tall - 1 + Math.abs(lean), 1, 1);
     }
   });
-}
-
-// ---- Spotted on the way ----
-// Over the walk (and over a place, once they're there, or a place with no
-// walk yet): now and then something glints on the ground, and once a trip
-// Percy hurries past and drops a parcel. Tap one to pick it up (see
-// src/ui/trip.ts and spotFind in src/game/journeys.ts). On a walk they go
-// by with the ground; otherwise they stay put for a while.
-
-// What's showing, by when it started, on the same clock as `timeMs`.
-export interface SpotScene {
-  glint: number | null; // when something came into view on the ground
-  percy: number | null; // when Percy came in from the left
-  parcelTaken: boolean; // his parcel's been picked up
-  picked: { at: number; x: number; y: number } | null; // a little burst where something was picked up
-}
-
-const LINGER_MS = 30000; // how long a thing stays on a place with no walk
-const PERCY_SPEED = 0.02; // room pixels a millisecond, on screen
-const PERCY_FROM = -22; // just off the left edge (he's about 20 pixels wide)
-const PERCY_DROP_X = 38; // where he drops the parcel
-const PERCY_FLOOR = 47; // he walks along the front of the path
-export const PERCY_DROP_MS = (PERCY_DROP_X - PERCY_FROM) / PERCY_SPEED;
-const PICKED_MS = 600;
-
-// Where a thing that showed up at `since` is at `timeMs` (its middle), or
-// null once it's gone: on a walk it comes in from the right (or from
-// `from`) and goes by with the ground.
-function goingBy(since: number, timeMs: number, walking: boolean, from: number, still: { x: number; y: number }): { x: number; y: number } | null {
-  if (timeMs < since) return null;
-  if (!walking) return timeMs - since < LINGER_MS ? still : null;
-  const x = Math.round(from - (timeMs - since) * WALK_SPEED);
-  return x > -4 ? { x, y: still.y } : null;
-}
-
-export function glintAt(since: number, timeMs: number, walking: boolean, w: number): { x: number; y: number } | null {
-  return goingBy(since, timeMs, walking, w + 4, { x: 55, y: 42 });
-}
-
-export function parcelAt(percySince: number, timeMs: number, walking: boolean): { x: number; y: number } | null {
-  return goingBy(percySince + PERCY_DROP_MS, timeMs, walking, PERCY_DROP_X + 7, { x: PERCY_DROP_X + 7, y: 43 });
-}
-
-// Where Percy is (his left edge), or null before he comes and once he's gone.
-export function percyAt(since: number, timeMs: number, w: number): number | null {
-  const x = Math.round(PERCY_FROM + (timeMs - since) * PERCY_SPEED);
-  return timeMs >= since && x < w ? x : null;
-}
-
-const PARCEL: Sprite = [
-  '..y....',
-  'cccyccc',
-  'ooocyoo',
-  'oooyooo',
-  'cccyccc',
-];
-
-// A twinkle: a bright four-pointed star whose rays grow and shrink, so a
-// tiny thing on the ground catches the eye.
-function twinkle(ctx: CanvasRenderingContext2D, x: number, y: number, timeMs: number): void {
-  const reach = [1, 2, 3, 2][Math.floor(timeMs / 160) % 4];
-  for (let i = 1; i <= reach; i++) {
-    const c = i === reach ? PALETTE.butter : PALETTE.white;
-    rect(ctx, c, x - i, y, 1, 1);
-    rect(ctx, c, x + i, y, 1, 1);
-    rect(ctx, c, x, y - i, 1, 1);
-    rect(ctx, c, x, y + i, 1, 1);
-  }
-  if (reach === 3) {
-    for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) rect(ctx, PALETTE.butter, x + dx, y + dy, 1, 1);
-  }
-  rect(ctx, PALETTE.white, x, y, 1, 1);
-}
-
-// Draws what's spotted, over everything else.
-export function drawSpotted(ctx: CanvasRenderingContext2D, spots: SpotScene, walking: boolean, w: number, timeMs: number): void {
-  if (spots.glint !== null) {
-    const at = glintAt(spots.glint, timeMs, walking, w);
-    if (at) {
-      // Something half in the ground, catching the light.
-      rect(ctx, PALETTE.plum, at.x - 2, at.y + 1, 5, 1);
-      rect(ctx, PALETTE.lilac, at.x - 2, at.y, 4, 1);
-      rect(ctx, PALETTE.lavender, at.x - 1, at.y - 1, 2, 1);
-      twinkle(ctx, at.x + 1, at.y - 3, timeMs);
-    }
-  }
-  if (spots.percy !== null) {
-    const parcel = spots.parcelTaken ? null : parcelAt(spots.percy, timeMs, walking);
-    if (parcel) {
-      paint(ctx, PARCEL, parcel.x - 3, parcel.y - 2);
-      twinkle(ctx, parcel.x + 3, parcel.y - 4, timeMs);
-    }
-    const x = percyAt(spots.percy, timeMs, w);
-    if (x !== null) drawPercy(ctx, x, PERCY_FLOOR, timeMs);
-  }
-  if (spots.picked && timeMs - spots.picked.at < PICKED_MS) {
-    const r = 1 + Math.floor(((timeMs - spots.picked.at) / PICKED_MS) * 4);
-    const { x, y } = spots.picked;
-    for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1.4]]) {
-      rect(ctx, PALETTE.butter, Math.round(x + dx * r), Math.round(y - r + dy * r), 1, 1);
-    }
-  }
 }

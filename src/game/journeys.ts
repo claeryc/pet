@@ -268,7 +268,6 @@ export function bestFind(finds: readonly Find[]): number {
 // Puts a find into the inventory (or the gold purse).
 function giveFind(state: GameState, f: Find): GameState {
   if (f.kind === 'gold') return { ...state, gold: state.gold + f.count };
-  if (f.kind === 'pebble') return { ...state, pebbles: (state.pebbles ?? 0) + f.count };
   if (f.kind === 'seed') {
     let s = state;
     for (let n = 0; n < f.count; n++) s = addSeed(s, f.id as CropId);
@@ -290,7 +289,7 @@ function withPage(state: GameState, place: string, change: (page: JournalPage) =
 // Writes the food and seeds in `finds` into the place's journal page
 // (seeds as "seed:carrot").
 function noteFound(state: GameState, place: string, finds: readonly Find[]): GameState {
-  const foods = finds.filter((f) => f.kind === 'food' || f.kind === 'seed').map((f) => (f.kind === 'seed' ? `seed:${f.id}` : f.id));
+  const foods = finds.filter((f) => f.kind !== 'gold').map((f) => (f.kind === 'seed' ? `seed:${f.id}` : f.id));
   if (foods.every((id) => journalPage(state, place).found.includes(id))) return state;
   return withPage(state, place, (page) => ({ ...page, found: [...page.found, ...foods.filter((id) => !page.found.includes(id))] }));
 }
@@ -630,64 +629,6 @@ function callOneHome(state: GameState, now: number, petId: string): GameState {
   return logMessage(s, { kind: 'tripHome', at: now, name: home.name, place: trip.place });
 }
 
-// ---- Spotted on the way ----
-
-// Pebbles on the way: a few times through a trip (more on a longer one)
-// one lies on the path for a while, and Percy drops by around halfway with
-// a parcel of them. Open the trip during that time and it shows up (see
-// src/ui/trip.ts); tap it to put it in the backpack. Miss it and it's gone.
-// Pebbles add up for a Mystery Bag in the Shop.
-export interface SpotSlot {
-  key: string; // 'g0', 'g1'... for the pebbles, 'percy' for the parcel
-  kind: 'glint' | 'parcel';
-  from: number;
-  until: number;
-}
-
-// The times on `trip` when something's on the way: the pebbles and Percy's
-// parcel spread out evenly, Percy's in the middle. None on a Holiday.
-export function spotSlots(trip: Trip): SpotSlot[] {
-  if (trip.holiday) return [];
-  const length = trip.endsAt - trip.startedAt;
-  const window = Math.max(J.spot.minWindowMs, length * J.spot.windowShare);
-  const n = J.spot.glints[trip.rarity];
-  const percy = Math.floor(n / 2);
-  return Array.from({ length: n + 1 }, (_, i): SpotSlot => {
-    const mid = trip.startedAt + (length * (i + 1)) / (n + 2);
-    const at = { from: mid - window / 2, until: mid + window / 2 };
-    if (i === percy) return { key: 'percy', kind: 'parcel', ...at };
-    return { key: `g${i < percy ? i : i - 1}`, kind: 'glint', ...at };
-  });
-}
-
-// What's on the way of `pet`'s trip at `now` and not picked up yet.
-export function openSpots(pet: Pet, now: number): SpotSlot[] {
-  if (!isAway(pet)) return [];
-  const picked = pet.trip!.picked ?? [];
-  return spotSlots(pet.trip!).filter((s) => now >= s.from && now < s.until && !picked.includes(s.key));
-}
-
-// How many pebbles a thing on the way is worth.
-export const pebblesOf = (kind: SpotSlot['kind']) => (kind === 'parcel' ? J.spot.parcelPebbles : 1);
-
-// Picks up the thing `key` on `petId`'s trip at `now`, if it's there: it
-// goes in the backpack.
-export function spotFind(state: GameState, petId: string, key: string, now: number): { state: GameState; find: Find | null } {
-  const pet = allPets(state).find((p) => p.id === petId);
-  const slot = pet && openSpots(pet, now).find((s) => s.key === key);
-  if (!pet || !slot) return { state, find: null };
-  const trip = pet.trip!;
-  const changed = { ...pet, trip: { ...trip, picked: [...(trip.picked ?? []), key] } };
-  return { state: replacePet(state, changed), find: { kind: 'pebble', id: '', count: pebblesOf(slot.kind), stars: 1 } };
-}
-
-// A trip's finds with the pebbles picked up on the way.
-function allFinds(trip: Trip): Find[] {
-  const slots = spotSlots(trip);
-  const pebbles = (trip.picked ?? []).reduce((n, key) => n + pebblesOf(slots.find((s) => s.key === key)?.kind ?? 'glint'), 0);
-  return pebbles > 0 ? [...trip.finds, { kind: 'pebble', id: '', count: pebbles, stars: 1 }] : trip.finds;
-}
-
 // Opens the backpack of a pet that's home: everything in it goes into the
 // inventory, and a finished trip goes into the travel journal and counts
 // for the journey badges. Returns what was in it.
@@ -697,13 +638,12 @@ export function openBackpack(state: GameState, petId: string): {
   const pet = allPets(state).find((p) => p.id === petId);
   if (!pet || !hasBackpack(pet)) return { state, finds: [], place: null, postcard: null, friend: null };
   const trip = pet.trip!;
-  const finds = allFinds(trip);
   const counted = trip.early ? { pet, newFavourite: false } : countTravel(pet, trip.place);
   let s = replacePet(state, { ...counted.pet, trip: null });
-  for (const f of finds) s = giveFind(s, f);
-  s = noteFound(s, trip.place, finds);
+  for (const f of trip.finds) s = giveFind(s, f);
+  s = noteFound(s, trip.place, trip.finds);
   // A 3-star find counts for Epic Finder even on a trip cut short: it's home.
-  const epic = finds.filter((f) => f.stars === 3).length;
+  const epic = trip.finds.filter((f) => f.stars === 3).length;
   if (epic > 0) s = addTally(s, 'epicFinds', epic);
   let postcard: Postcard | null = null;
   let friend: string | null = null;
@@ -711,8 +651,8 @@ export function openBackpack(state: GameState, petId: string): {
     const stamp = trip.night ? 'night' : trip.rarity;
     // Percy brought this trip's postcard already, unless there's news.
     if (trip.percy !== 'flown' || trip.friend || counted.newFavourite) {
-      const story = storyOf(counted.pet, trip, finds, counted.newFavourite);
-      postcard = postcardOf(counted.pet, trip, trip.backAt!, story, finds);
+      const story = storyOf(counted.pet, trip, trip.finds, counted.newFavourite);
+      postcard = postcardOf(counted.pet, trip, trip.backAt!, story, trip.finds);
       s = noteStoryLike(s, pet.id, story);
     }
     s = withPage(s, trip.place, (page) => ({
@@ -734,7 +674,7 @@ export function openBackpack(state: GameState, petId: string): {
       friend = trip.friend.name;
     }
   }
-  return { state: s, finds: finds, place: trip.place, postcard, friend };
+  return { state: s, finds: trip.finds, place: trip.place, postcard, friend };
 }
 
 // Everything a place can give, for its "Found here" page in the journal:

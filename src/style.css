@@ -7380,6 +7380,52 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   image-rendering: pixelated;
 }
 
+/* The Snap button, over the map while the pets stop for a little moment. */
+.trip-snap {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  translate: -50% -50%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  background: var(--butter);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  box-shadow: 0 3px 0 var(--ink);
+  animation: trip-snap-in 0.3s var(--snap), trip-snap-bob 1.2s 0.3s ease-in-out infinite;
+}
+
+.trip-snap[hidden] {
+  display: none;
+}
+
+.trip-snap:active {
+  translate: -50% calc(-50% + 2px);
+  box-shadow: 0 1px 0 var(--ink);
+}
+
+.trip-snap-icon svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+@keyframes trip-snap-in {
+  from { scale: 0.4; opacity: 0; }
+}
+
+@keyframes trip-snap-bob {
+  50% { rotate: -4deg; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trip-snap { animation: none; }
+}
+
 .trip-map-end {
   position: absolute;
   width: 9%;
@@ -9009,6 +9055,51 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 .jr-empty {
   margin: 4px 2px;
   font-size: 0.85rem;
+  color: #9b86b5;
+}
+
+/* Snapshots: little moments from trips, three to a row, with an empty
+   frame for each one still to snap. */
+.jr-snaps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.jr-snap {
+  margin: 0;
+  padding: 4px 4px 6px;
+  border-radius: 4px;
+  background: white;
+  box-shadow: 0 2px 0 #e6d6c3, 0 0 0 2px #eadccb;
+  text-align: center;
+}
+
+.jr-snap img,
+.jr-snap-none {
+  display: block;
+  width: 100%;
+  aspect-ratio: 64 / 48;
+  image-rendering: pixelated;
+  border-radius: 2px;
+}
+
+.jr-snap-none {
+  display: grid;
+  place-items: center;
+  background: var(--seg-empty);
+  color: #9b86b5;
+  font-weight: 700;
+}
+
+.jr-snap figcaption {
+  margin-top: 4px;
+  font-size: 0.7rem;
+  line-height: 1.2;
+}
+
+.jr-snap.is-none figcaption {
   color: #9b86b5;
 }
 

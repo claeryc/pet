@@ -36,6 +36,7 @@ import { buyFamilyHome, goToRoom, movePet, otherRoom, ownsFamilyHome, petsIn, ro
 import { TOSS_MS } from './render/garden';
 import { LEAP_MS } from './ui/fishing';
 import { tripProgress } from './ui/trip';
+import { takeSnapshot } from './game/snapshots';
 import { cook } from './game/cooking';
 import {
   clearPlot,
@@ -99,8 +100,7 @@ import { STRINGS } from './strings';
 import { FRAGMENT_ICON, ITEM_ICONS } from './ui/icons';
 import { DISH_MS, DONE_MS as COOKED_MS } from './ui/cooking';
 import { music, sound, startAudio } from './audio/audio';
-import { buyCharm, buyHolidayTicket, callHome, goHoliday, goTogether, offerAt, openBackpack, placeLevel, restPercy, spotFind } from './game/journeys';
-import { findName } from './ui/messages';
+import { buyCharm, buyHolidayTicket, callHome, goHoliday, goTogether, offerAt, openBackpack, placeLevel, restPercy } from './game/journeys';
 import { postcardArt } from './ui/journal';
 import { REVEAL_MS } from './ui/reveal';
 import { isAway } from './game/presence';
@@ -451,7 +451,6 @@ const placeName = (id: string) => STRINGS.journeys.places[id] ?? id;
 // What a journey find is called: "Honey", "Pumpkin seed" or "Gold".
 function findLabel(f: Find): string {
   if (f.kind === 'gold') return STRINGS.journeys.goldFind;
-  if (f.kind === 'pebble') return STRINGS.journeys.pebbleFind;
   const name = STRINGS.foods[f.id as FoodId] ?? f.id;
   return f.kind === 'seed' ? STRINGS.garden.seedName(name) : name;
 }
@@ -460,10 +459,10 @@ function findLabel(f: Find): string {
 function showFind(f: Find, caption: string): void {
   sound('got');
   home.reveal({
-    icon: f.kind === 'gold' ? STAT_ICONS.gold : f.kind === 'pebble' ? STAT_ICONS.pebble : ITEM_ICONS[f.kind === 'seed' ? `seed_${f.id}` : f.id] ?? '',
+    icon: f.kind === 'gold' ? STAT_ICONS.gold : ITEM_ICONS[f.kind === 'seed' ? `seed_${f.id}` : f.id] ?? '',
     name: findLabel(f),
     count: f.count,
-    stars: f.kind === 'gold' || f.kind === 'pebble' ? 0 : f.stars,
+    stars: f.kind === 'gold' ? 0 : f.stars,
     caption,
   });
 }
@@ -1281,14 +1280,12 @@ const home = createHomeScreen(root, {
       ],
     });
   },
-  onSpot: (id, key) => {
-    const now = gameNow();
-    const result = spotFind(simulate(state, now), id, key, now);
-    if (!result.find) return;
+  onSnap: (place, moment, petId) => {
+    const pet = allPets(state).find((p) => p.id === petId);
+    const result = takeSnapshot(state, place, { moment, at: gameNow(), name: pet?.name ?? '', image: home.canvas.toDataURL('image/png') });
     setState(result.state);
     sound('got');
-    const pet = allPets(result.state).find((p) => p.id === id);
-    home.toast(STRINGS.journeys.spotted(pet?.name ?? '', result.find.count, key === 'percy'));
+    home.toast(STRINGS.journeys.snapped(STRINGS.journeys.moments[moment] ?? moment, result.isNew));
   },
   onMakeRoom: askToMakeRoom,
   onMeadowVisitor: greetMeadowVisitor,
@@ -1602,13 +1599,15 @@ function render(timeMs: number): void {
         place: trip.place,
         bag: (state.inventory.bags ?? []).includes('courier') ? 'courier' : 'sack',
         share: tripProgress(trip.pets[0], gameNow()),
-        spots: trip.spots,
-        pets: trip.pets.map((p) => ({
+        // Waving back when tapped, and all smiles for a little moment.
+        pets: trip.pets.map((p, i) => ({
           sheet: sprites.get(sheetFor(p)),
           hat: sprites.get(getHat(p.hat)?.sheet ?? ''),
-          ...lookOf(p, 'cheerful'),
+          ...lookOf(p, trip.waving[i] ? 'happy' : 'cheerful'),
+          ...(trip.waving[i] || trip.moment ? { face: 'happy' as const } : {}),
           glow: p.starGlow,
         })),
+        moment: trip.moment,
       },
       meeting: meeting && {
         sheet: sprites.get(characterSheet(meeting.friend.character, meeting.friend.variant)),
