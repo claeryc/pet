@@ -921,12 +921,16 @@ body {
   gap: 8px;
 }
 
+/* A flex row, not a grid: Safari sized the grid's row before it knew the
+   column widths, so Shop's line wrapped word by word and the row came out
+   too tall until pressing a tile made it measure again. */
 .menu-grid.is-big {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
 }
 
-.menu-grid.is-big:has(> :only-child) {
-  grid-template-columns: 1fr;
+.menu-grid.is-big > .menu-tile {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .menu-grid.is-mid {
