@@ -9718,3 +9718,16 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
     animation: none;
   }
 }
+
+/* A new badge or milestone: the beams in its colour. */
+.reveal[data-tier='bronze'] .reveal-beams {
+  background: repeating-conic-gradient(rgba(232, 160, 110, 0.75) 0deg 10deg, rgba(232, 160, 110, 0) 10deg 30deg);
+}
+
+.reveal[data-tier='silver'] .reveal-beams {
+  background: repeating-conic-gradient(rgba(255, 255, 255, 0.95) 0deg 10deg, rgba(255, 255, 255, 0) 10deg 30deg);
+}
+
+.reveal[data-tier='gold'] .reveal-beams {
+  background: repeating-conic-gradient(rgba(255, 200, 80, 0.9) 0deg 6deg, rgba(255, 229, 150, 0) 6deg 18deg);
+}

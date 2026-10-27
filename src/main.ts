@@ -51,7 +51,7 @@ import {
 import { characterKey, markSeen, updateProgress } from './game/unlocks';
 import { makeStar, weeksToStar } from './game/fragments';
 import { learn, nextCost, rankOf, resetTree, skillBefore, type SkillId } from './game/skills';
-import { SKILL_POINT_ICON } from './ui/icons';
+import { ACHIEVEMENT_ICONS, MILESTONE_ICONS, SKILL_POINT_ICON } from './ui/icons';
 import { fillAll, orderPay, orderTier, putInBox, takeFromBox, type BoxResult } from './game/delivery';
 import { earnedFrom, percyPerks, rewards, type RegularId } from './game/regulars';
 import { regularCard, rewardIcon, rewardName, rewardNote } from './ui/regulars';
@@ -168,15 +168,16 @@ function setState(next: GameState): void {
   showFragments(progress.fragments);
   if (progress.badges.length > 0 || progress.milestones.length > 0) sound('badge');
   else if (progress.unlocked.length > 0) sound('unlock');
-  const notices = [
-    ...progress.badges.map((b) => STRINGS.achievements.earned(STRINGS.achievements.names[b.id], STRINGS.achievements.tiers[b.tier])),
-    ...progress.milestones.map((id) => STRINGS.milestones.earned(STRINGS.milestones.names[id])),
-    ...progress.unlocked.map((id) => STRINGS.unlocked[id]),
-  ];
+  const notices = progress.unlocked.map((id) => STRINGS.unlocked[id]);
   if (needsName(state)) {
-    afterNaming.push(...notices);
+    afterNaming.push(
+      ...progress.badges.map((b) => STRINGS.achievements.earned(STRINGS.achievements.names[b.id], STRINGS.achievements.tiers[b.tier])),
+      ...progress.milestones.map((id) => STRINGS.milestones.earned(STRINGS.milestones.names[id])),
+      ...notices,
+    );
     askName();
   } else {
+    showAwards(progress);
     for (const message of notices) home.notice(message);
   }
   announceMail(oldMessages);
@@ -222,6 +223,19 @@ function showFragments(pieces: number): void {
     icon: FRAGMENT_ICON, name: STRINGS.shop.fragment, count: pieces, stars: 0,
     caption: STRINGS.shop.fragmentsCount(state.fragments.pieces, perStar),
   });
+}
+
+// New badges and milestones show off like a catch, in their colour.
+function showAwards({ badges, milestones }: Pick<ReturnType<typeof updateProgress>, 'badges' | 'milestones'>): void {
+  for (const b of badges) {
+    home.reveal({
+      icon: ACHIEVEMENT_ICONS[b.id], name: STRINGS.achievements.names[b.id], count: 1, stars: 0,
+      caption: STRINGS.achievements.newBadge(STRINGS.achievements.tiers[b.tier]), tier: b.tier,
+    });
+  }
+  for (const id of milestones) {
+    home.reveal({ icon: MILESTONE_ICONS[id], name: STRINGS.milestones.names[id], count: 1, stars: 0, caption: STRINGS.milestones.newMilestone, tier: 'gold' });
+  }
 }
 
 // A new Keeper level: a skill point to spend.
@@ -1466,6 +1480,7 @@ for (const pet of allPets(state)) {
   if (was && was !== 'egg' && was !== pet.stage && pet.stage !== 'baby') showGrowUp(pet, foundAtClose);
 }
 showLevels(startup.levels); // levels reached while away (Percy's pickups)
+if (!needsName(state)) showAwards(startup); // and badges
 showFragments(startup.fragments);
 tryCheckIn();
 if (saved) showAway(saved, saved.lastUpdated);

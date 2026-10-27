@@ -1271,6 +1271,7 @@ export const STRINGS = {
     // Once gold: "All done! 214 so far"
     allDone: (have: number) => `All done! ${have} so far`,
     earned: (name: string, tier: string) => `New badge: ${name} (${tier})!`,
+    newBadge: (tier: string) => `New ${tier} badge!`,
   },
   // Milestone badges: one each, for a moment that happens once.
   milestones: {
@@ -1297,6 +1298,7 @@ export const STRINGS = {
     },
     done: 'Earned!',
     earned: (name: string) => `New milestone: ${name}!`,
+    newMilestone: 'Milestone reached!',
   },
   // The "While you were away" card.
   away: {
