@@ -7,22 +7,19 @@
 //      blue, a shiny purple). Tapping one shows its info card at the bottom,
 //      just above the buttons: the place, how long, when it's back, what it
 //      can bring home and what it uses on the way.
-//      Buttons: [Back] [Line up].
-//   2. The line-up: who's going. A list like the board, with a row for
-//      each pet at home (one, or both together) and Percy last, each with
-//      a tick.
-//      Buttons: [Back] [Pack a lunch].
-//   3. The lunchbox: a wooden bento box seen from above. Two foods go in
-//      the big compartment, a drink in the small one at the top and a charm
-//      in the one below, and the pet's tummy and energy show now and when
-//      it's back home. What you have (Food, Drinks and Charms tabs) sits at
-//      the bottom. Tapping something in the box takes it out again.
-//      The pet's name is at the top of its stats. Buttons: [Back]
-//      [Close the lid]. With two going, each packs its own box in turn.
-//   4. Lid on: the wooden lid slides over bit by bit and the trip's label
-//      goes on. Tap the box (or Open) to change the lunch.
-//      Buttons: [Open] [Set off], or [Open] [Next lunchbox] after the first
-//      of two.
+//      Buttons: [Back] [Get ready].
+//   2. Get ready: who's going and their lunch, on one screen. At the top a
+//      chip for each pet at home and Percy, ticked if they're coming. Below,
+//      a wooden bento box seen from above: two foods go in the big
+//      compartment, a drink in the small one at the top and a charm in the
+//      one below, and the pet's tummy and energy show now and when it's
+//      back home. What you have (Food, Drinks and Charms tabs) sits at the
+//      bottom, with "Same as last time" first once a pet has been on a
+//      trip. Tapping something in the box takes it out again. With two
+//      going, their names over the stats switch between the two boxes.
+//      Buttons: [Back] [Set off].
+//   3. Set off: the wooden lid slides over bit by bit, the trip's label
+//      goes on, and off they go.
 //
 // The rules live in src/game/journeys.ts.
 
@@ -53,6 +50,7 @@ export interface JourneysCallbacks {
 export interface JourneysSetup extends JourneysCallbacks {
   onExit: () => void;
   onWater: () => void; // out to the garden, to water before going
+  onShop: () => void; // to the Shop's Journeys tab, for a Holiday ticket
   toast: (message: string) => void;
   characterImage: (sheet: string) => string | undefined;
 }
@@ -76,6 +74,8 @@ interface Box {
 
 // How long the stat bars wait to fill back up after Journeys closes.
 export const JOURNEYS_OUT_MS = 300;
+// How long the closed lunchbox shows, label on, before they set off.
+const LID_HOLD_MS = 650;
 
 const J = CONFIG.journeys;
 const HOUR = 3_600_000;
@@ -175,7 +175,8 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
   let active = false;
   // What's picked: a trip, who's going with their lunches, Percy, and
   // which step it's on.
-  let stage: 'board' | 'lineup' | 'pack' | 'closed' = 'board';
+  // 'closed' is the moment the lid is on, just before they set off.
+  let stage: 'board' | 'pack' | 'closed' = 'board';
   let slot: number | null = null;
   let going: string[] = []; // pet ids, in the order they were picked
   let boxes = new Map<string, Box>(); // each pet's lunchbox
@@ -208,14 +209,10 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
   const row = el('div', 'actions journeys-row');
   row.hidden = true;
   const back = el('button', 'btn btn-soft', T.back);
-  const lineUp = el('button', 'btn', T.lineUp);
-  const pack = el('button', 'btn', T.packLunch);
-  const closeLid = el('button', 'btn', T.closeLid);
-  const openLid = el('button', 'btn btn-soft', T.openLid);
+  const getReady = el('button', 'btn', T.getReady);
   const go = el('button', 'btn', T.go);
-  const nextBox = el('button', 'btn', T.nextBox);
   const holiday = el('button', 'btn', T.holidayGo);
-  row.append(back, openLid, lineUp, holiday, pack, closeLid, nextBox, go);
+  row.append(back, getReady, holiday, go);
 
   const allPets = (s: GameState): Pet[] => [s.pet, ...s.housemates];
   // Pets at home, who could be in the line-up.
@@ -230,22 +227,9 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
       cb.onExit();
       return;
     }
-    // Packing the second box: back to the first, lid on.
-    const i = going.indexOf(who);
-    if (stage === 'pack' && i > 0) {
-      who = going[i - 1];
-      setStage('closed');
-      return;
-    }
-    setStage(stage === 'pack' ? 'lineup' : 'board');
+    if (stage === 'pack') setStage('board');
   });
-  nextBox.addEventListener('click', () => {
-    const i = going.indexOf(who);
-    if (i < 0 || i >= going.length - 1) return;
-    who = going[i + 1];
-    setStage('pack');
-  });
-  lineUp.addEventListener('click', () => {
+  getReady.addEventListener('click', () => {
     if (!state) return;
     if (!offer()) return cb.toast(T.blocked.noOffer(state.pet.name));
     const can = homePets(state).filter((p) => !cantGo(p, now));
@@ -257,29 +241,42 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     // can, or else the pet you're looking after (or the other one).
     going = going.filter((id) => can.some((p) => p.id === id));
     if (!going.length) going = [can[0].id];
-    setStage('lineup');
-  });
-  pack.addEventListener('click', () => {
-    if (!state) return;
-    if (!going.length) return cb.toast(T.blocked.nobody(state.pet.name));
-    for (const p of allPets(state).filter((p) => going.includes(p.id))) {
-      const why = cantGo(p, now);
-      if (why) return cb.toast(T.blocked[why](p.name));
-    }
     who = going[0];
     setStage('pack');
   });
-  const tryClose = () => {
-    const p = pet();
+  // Set off: every box is checked first (showing the one that's short),
+  // then the lid goes on and off they go.
+  go.addEventListener('click', () => {
+    if (!state || slot === null || stage !== 'pack') return;
     const o = offer();
-    if (!p || !o) return;
-    const result = planTrip(p, o, lunch());
-    if (!result.enoughFood) return cb.toast(T.blocked.notEnoughFood(p.name));
-    if (!result.enoughEnergy) return cb.toast(T.blocked.notEnoughEnergy(p.name));
-    moveLid(true);
-  };
-  closeLid.addEventListener('click', tryClose);
-  openLid.addEventListener('click', () => moveLid(false));
+    if (!o) return;
+    if (!going.length) return cb.toast(T.blocked.nobody(state.pet.name));
+    for (const id of going) {
+      const p = allPets(state).find((h) => h.id === id);
+      if (!p) continue;
+      const why = cantGo(p, now);
+      const plan = planTrip(p, o, lunchOf(boxes.get(id) ?? { food: [], drink: null, charm: null }));
+      const short = why ?? (!plan.enoughFood ? 'notEnoughFood' : !plan.enoughEnergy ? 'notEnoughEnergy' : null);
+      if (!short) continue;
+      if (who !== id) {
+        who = id;
+        render(true);
+      }
+      return cb.toast(T.blocked[short](p.name));
+    }
+    moveLid(() => {
+      const party = going.map((id) => {
+        const b = boxes.get(id) ?? { food: [], drink: null, charm: null };
+        return { pet: id, lunch: lunchOf(b), charm: b.charm };
+      });
+      if (cb.onSetOff(slot!, party, percy)) {
+        stop();
+        cb.onExit();
+      } else {
+        setStage('pack');
+      }
+    });
+  });
   holiday.addEventListener('click', () => {
     if (!state) return;
     const why = cantHoliday(state);
@@ -289,37 +286,35 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
       cb.onExit();
     }
   });
-  go.addEventListener('click', () => {
-    if (slot === null) return;
-    const party = going.map((id) => {
-      const b = boxes.get(id) ?? { food: [], drink: null, charm: null };
-      return { pet: id, lunch: lunchOf(b), charm: b.charm };
-    });
-    if (cb.onSetOff(slot, party, percy)) {
-      stop();
-      cb.onExit();
-    }
-  });
-
   function setStage(next: typeof stage): void {
     stage = next;
     render(true);
   }
 
-  // The lid slides over the box (or off it) a few pixels at a time. Packed
-  // things are covered along with it; the label goes on once it's shut.
-  function moveLid(shut: boolean): void {
+  // The lid slides over the box a few pixels at a time, covering what's
+  // packed along with it. The label goes on once it's shut, and after a
+  // moment `done` runs.
+  function moveLid(done: () => void): void {
     if (lidMoving) return;
-    if (!shut) setStage('pack'); // the open box, with the lid still drawn on top
     const canvas = panel.querySelector<HTMLCanvasElement>('.bento-canvas');
     const items = panel.querySelector<HTMLElement>('.bento-items');
-    if (!canvas || !items) return setStage(shut ? 'closed' : 'pack');
+    const finish = () => {
+      lidMoving = false;
+      row.classList.remove('is-busy');
+      done();
+    };
     lidMoving = true;
     row.classList.add('is-busy');
+    if (!canvas || !items || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      lidMoving = false;
+      setStage('closed');
+      lidMoving = true;
+      setTimeout(finish, LID_HOLD_MS);
+      return;
+    }
     let frame = 0;
     const step = () => {
-      const t = frame / LID_FRAMES;
-      const cover = shut ? t : 1 - t;
+      const cover = frame / LID_FRAMES;
       drawBento(canvas, false, cover);
       items.style.clipPath = `inset(${(lidCover(cover) / BENTO_HEIGHT) * 100}% 0 0 0)`;
       if (frame++ < LID_FRAMES) {
@@ -327,10 +322,9 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
         return;
       }
       lidMoving = false;
-      row.classList.remove('is-busy');
-      items.style.clipPath = '';
-      if (shut) setStage('closed');
-      else render(true);
+      setStage('closed');
+      lidMoving = true;
+      setTimeout(finish, LID_HOLD_MS);
     };
     step();
   }
@@ -390,8 +384,10 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
       el('span', '', T.backAt(formatDayClock(now + days * 24 * HOUR, now))));
     top.append(tile, name);
     const picker = el('div', 'trip-days');
+    const none = holidayTickets(s) <= 0;
     for (const d of J.holiday.days) {
-      const b = el('button', `trip-day${d === days ? ' is-on' : ''}`, T.holidayDays(d));
+      const b = el('button', `trip-day${d === days && !none ? ' is-on' : ''}`, T.holidayDays(d));
+      b.disabled = none;
       b.setAttribute('aria-pressed', String(d === days));
       b.addEventListener('click', () => {
         days = d;
@@ -400,6 +396,16 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
       picker.append(b);
     }
     card.append(top, el('p', 'trip-card-note', T.holidayNote), picker);
+    // No ticket: a way to the Shop, rather than a red line.
+    if (none) {
+      const shop = el('button', 'trip-card-shop', T.holidayGetTicket);
+      shop.addEventListener('click', () => {
+        stop();
+        cb.onShop();
+      });
+      card.append(shop);
+      return card;
+    }
     const why = cantHoliday(s);
     if (why) {
       const who = allPets(s).find((p) => p.id === why.pet)?.name ?? s.pet.name;
@@ -478,7 +484,7 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     return card;
   }
 
-  // ---- 2. The line-up ----
+  // ---- 2. Getting ready: who's going ----
 
   function portrait(p: Pet, className: string): HTMLElement {
     const pic = el('span', className);
@@ -491,62 +497,50 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     return pic;
   }
 
-  // A row in the line-up, like a ticket: a picture, a name and a tick.
-  // One that can't go is faded, with why (or how long) on the right.
-  function lineupRow(pic: HTMLElement, name: string, on: boolean, blocked: string | null, onTap: () => void): HTMLElement {
-    const b = el('button', `lineup-row${on ? ' is-on' : ''}`);
+  // A chip in the party row: a picture, a name and a tick. One that can't
+  // go is faded, with why (or how long) in place of the tick.
+  function partyChip(pic: HTMLElement, name: string, on: boolean, blocked: string | null, onTap: () => void): HTMLElement {
+    const b = el('button', `party-chip${on ? ' is-on' : ''}`);
     b.setAttribute('role', 'checkbox');
     b.setAttribute('aria-checked', String(on));
-    b.append(pic, el('b', 'lineup-name', name));
+    b.append(pic, el('b', 'party-name', name));
     if (blocked) {
-      b.append(el('small', 'lineup-why', blocked));
+      b.append(el('small', 'party-why', blocked));
       b.disabled = true;
       b.title = blocked;
     } else {
-      b.append(el('i', 'lineup-tick', on ? '✓' : ''));
+      b.append(el('i', 'party-tick', on ? '✓' : ''));
       b.addEventListener('click', onTap);
     }
     return b;
   }
 
-  function lineup(s: GameState, o: Offer): HTMLElement[] {
-    const head = el('div', 'trip-head');
-    head.append(el('b', '', T.lineUpTitle), tripChip(o));
-    const list = el('div', 'trip-board lineup-list');
+  // Everyone at home who could come, then Percy. A pet out on another
+  // journey is left out: its trip is behind the note on the wall.
+  function party(s: GameState): HTMLElement {
+    const list = el('div', 'party');
     for (const p of homePets(s)) {
       const why = cantGo(p, now);
       const on = !why && going.includes(p.id);
       const blocked = why ? (why === 'wait' ? formatDuration(p.tripReadyAt - now) : T.cantGoShort[why] ?? T.blocked[why](p.name)) : null;
-      list.append(lineupRow(portrait(p, 'lineup-pic'), p.name, on, blocked, () => {
+      list.append(partyChip(portrait(p, 'party-pic'), p.name, on, blocked, () => {
         going = on ? going.filter((id) => id !== p.id) : [...going, p.id];
+        // Show the box of the one just added (or the one still going).
+        who = on ? going[0] ?? '' : p.id;
         render(true);
       }));
     }
-    // A pet out on another journey, faded, with how long until it's back
-    // and an hourglass where the tick would be.
-    for (const p of allPets(s).filter(isAway)) {
-      const trip = p.trip!;
-      const row = el('button', 'lineup-row is-away');
-      row.disabled = true;
-      const left = trip.endsAt - now;
-      row.title = T.backAt(formatClock(trip.endsAt));
-      const timer = icon(STAT_ICONS.hourglass, 'lineup-timer');
-      row.append(portrait(p, 'lineup-pic'), el('b', 'lineup-name', p.name), el('small', 'lineup-why', shortLeft(left)), timer);
-      row.setAttribute('aria-label', `${p.name}, ${T.backAt(formatClock(trip.endsAt))}`);
-      list.append(row);
-    }
-    // Percy, last: along or not, unless he's resting.
     const free = percyFree(s, now);
     if (!free) percy = false;
     const flying = allPets(s).some((p) => p.trip?.percy === 'coming');
     const rest = free ? null : flying ? T.percyAway : formatDuration(s.journeys.percyFreeAt - now);
-    const row = lineupRow(icon(ITEM_ICONS.percy, 'lineup-pic'), T.percyName, percy, rest, () => {
+    const chip = partyChip(icon(ITEM_ICONS.percy, 'party-pic'), T.percyName, percy, rest, () => {
       percy = !percy;
       render(true);
     });
-    row.title = free ? T.percyNote : flying ? T.percyFlying : T.percyResting(rest!);
-    list.append(row);
-    return [head, list];
+    chip.title = free ? T.percyNote : flying ? T.percyFlying : T.percyResting(rest!);
+    list.append(chip);
+    return list;
   }
 
   function tripChip(o: Offer): HTMLElement {
@@ -572,10 +566,7 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
       const head = el('span', 'bento-label-top');
       head.append(icon(placeIcon(o.place), 'bento-label-icon'));
       label.append(head, el('b', '', placeName(o.place)), el('small', '', `${offerHours(o)}h`));
-      const reopen = el('button', 'bento-tap');
-      reopen.setAttribute('aria-label', T.openLid);
-      reopen.addEventListener('click', () => moveLid(false));
-      wrap.append(label, reopen);
+      wrap.append(label);
       return wrap;
     }
     // A spot in the box: what's in it (tap to take it out), or a faint
@@ -620,21 +611,36 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     const p = pet() ?? s.pet;
     const { charm } = box();
     const head = el('div', 'trip-head');
-    head.append(el('b', '', stage === 'closed' ? T.readyTitle : T.lunchTitle), tripChip(o));
-    const result = planTrip(p, o.rarity, lunch());
+    // Getting ready, who's going sits where the title would be.
+    head.append(stage === 'closed' ? el('b', '', T.readyTitle) : party(s), tripChip(o));
+    const result = planTrip(p, o, lunch());
     const bars = el('div', 'trip-bars');
-    // Whose box it is, top left.
+    // Whose box it is, top left. With two going, both names, to switch boxes.
     const barsHead = el('div', 'trip-bars-top');
-    barsHead.append(el('b', 'trip-bars-name', p.name), el('span', 'trip-bars-head', T.nowBack));
+    const names = el('span', 'trip-bars-names');
+    for (const id of going.length > 1 && stage === 'pack' ? going : [p.id]) {
+      const h = allPets(s).find((x) => x.id === id);
+      if (!h) continue;
+      if (going.length < 2 || stage !== 'pack') {
+        names.append(el('b', 'trip-bars-name', h.name));
+        continue;
+      }
+      const b = el('button', `trip-bars-name${id === who ? ' is-on' : ''}`, h.name);
+      b.setAttribute('aria-pressed', String(id === who));
+      b.addEventListener('click', () => {
+        who = id;
+        render(true);
+      });
+      names.append(b);
+    }
+    barsHead.append(names, el('span', 'trip-bars-head', T.nowBack));
     bars.append(barsHead,
       meter(STAT_ICONS.hunger, STRINGS.stats.hunger, p.stats.hunger, result.to.hunger),
       meter(STAT_ICONS.energy, STRINGS.stats.energy, p.stats.energy, result.to.energy));
     // While packing, the Lunch panel sits just under the bars (a short trip
     // shows as a red "!" there), so the notes wait until the lid is on.
     if (stage === 'closed' && charm) bars.append(el('p', 'trip-note', T.charms[charm]?.note ?? ''));
-    const out: HTMLElement[] = [head, bento(o), bars];
-    if (stage === 'closed') out.push(el('p', 'trip-note', T.tapToOpen));
-    return out;
+    return [head, bento(o), bars];
   }
 
   // The spot in the open box where the last thing packed went.
@@ -709,6 +715,16 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
       });
       grid.append(b);
     };
+    const same = sameAsLast(s);
+    if (same) {
+      const b = el('button', 'lunch-tile lunch-same');
+      b.append(el('b', '', T.sameLunch));
+      b.addEventListener('click', () => {
+        boxes.set(who, same);
+        render(true);
+      });
+      grid.append(b);
+    }
     if (tab === 'charm') {
       for (const c of CHARMS) {
         const left = charmCount(s, c.id) - charmsPacked(c.id);
@@ -729,9 +745,31 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
         });
       }
     }
-    if (!grid.childElementCount) grid.append(el('p', 'trip-note', T.nothingToPack[tab]));
+    if (grid.childElementCount === (same ? 1 : 0)) grid.append(el('p', 'trip-note', T.nothingToPack[tab]));
     lunchContent.replaceChildren(tabs, grid);
     grid.scrollLeft = keepScroll;
+  }
+
+  // What the pet on show took last time, as far as you still have it (less
+  // what's in the other box): null if there's nothing to fill, or it's
+  // packed already.
+  function sameAsLast(s: GameState): Box | null {
+    const last = pet()?.lastLunch;
+    if (!last) return null;
+    const others = going.filter((id) => id !== who).map((id) => boxes.get(id)).filter((b): b is Box => !!b);
+    const used = (id: FoodId) => others.flatMap(lunchOf).filter((f) => f === id).length;
+    const next: Box = { food: [], drink: null, charm: null };
+    for (const id of last.lunch as FoodId[]) {
+      const left = foodCount(s, id) - used(id) - lunchOf(next).filter((f) => f === id).length;
+      if (left <= 0) continue;
+      if (isDrink(id)) next.drink ??= id;
+      else if (next.food.length < J.lunch.food) next.food.push(id);
+    }
+    if (last.charm && charmCount(s, last.charm) - others.filter((b) => b.charm === last.charm).length > 0) next.charm = last.charm;
+    if (!next.food.length && !next.drink && !next.charm) return null;
+    const now = box();
+    const key = (b: Box) => JSON.stringify([[...b.food].sort(), b.drink, b.charm]);
+    return key(next) === key(now) ? null : next;
   }
 
   // Other pets home with a backpack, in a line each. (One out on a
@@ -761,7 +799,7 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     }
     // A pet that's gone off (or passed) leaves the line-up.
     going = going.filter((id) => homePets(s).some((h) => h.id === id));
-    if (stage !== 'board' && stage !== 'lineup' && !going.length) stage = 'lineup';
+    if (stage === 'closed' && !going.length) stage = 'board';
     // Packed things you've run out of come out of the boxes.
     const used = new Map<string, number>();
     const keep = (id: string, have: number) => {
@@ -795,11 +833,8 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
       if (card && shown?.dataset.slot !== String(slot)) card.classList.add('is-new');
       if (card) card.dataset.slot = String(slot);
       sheet.replaceChildren(...(card ? [card] : []));
-    } else if (o && stage === 'lineup') {
-      panel.replaceChildren(...others(s), ...lineup(s, o));
-      sheet.replaceChildren();
     } else if (o) {
-      if (!going.includes(who)) who = going[0];
+      if (!going.includes(who)) who = going[0] ?? s.pet.id;
       panel.replaceChildren(...others(s), ...lunchbox(s, o));
       if (stage === 'pack') {
         lunchTiles(s);
@@ -813,19 +848,13 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     sheet.hidden = !sheet.childElementCount;
     // The buttons for this step.
     back.hidden = stage === 'closed';
-    lineUp.hidden = stage !== 'board' || slot === HOLIDAY;
+    getReady.hidden = stage !== 'board' || slot === HOLIDAY;
     holiday.hidden = stage !== 'board' || slot !== HOLIDAY;
     holiday.classList.toggle('is-waiting', !!cantHoliday(s));
-    pack.hidden = stage !== 'lineup';
-    closeLid.hidden = stage !== 'pack';
-    openLid.hidden = stage !== 'closed';
-    // Two going: each box in turn, then off they go.
-    const last = going.indexOf(who) >= going.length - 1;
-    nextBox.hidden = stage !== 'closed' || last;
-    go.hidden = stage !== 'closed' || !last;
+    go.hidden = stage === 'board';
     const ready = !!o && homePets(s).some((h) => !cantGo(h, now));
-    lineUp.classList.toggle('is-waiting', !ready);
-    pack.classList.toggle('is-waiting', !going.length);
+    getReady.classList.toggle('is-waiting', !ready);
+    go.classList.toggle('is-waiting', !going.length);
   }
 
   function stop(): void {

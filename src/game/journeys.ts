@@ -94,10 +94,15 @@ export function placeOpen(state: GameState, place: Place): boolean {
 
 // The offer for spot `slot` made at time `at`. The same spot and time
 // always give the same offer, so the board can be filled inside simulate().
+// It goes somewhere not already on the board when it can, so the board
+// doesn't show the same place twice.
 export function rollOffer(state: GameState, slot: number, at: number): Offer {
   const open = PLACES.filter((p) => placeOpen(state, p));
+  const taken = state.journeys.offers.filter((o, i) => o && i !== slot).map((o) => o!.place);
+  const fresh = open.filter((p) => !taken.includes(p.id));
+  const pool = fresh.length ? fresh : open;
   const key = `journey-offer:${slot}:${at}`;
-  const place = open[Math.floor(seededRoll('journeys', `${key}:place`) * open.length)].id;
+  const place = pool[Math.floor(seededRoll('journeys', `${key}:place`) * pool.length)].id;
   const rarity: Rarity = slot === 0 ? 'common' : seededRoll('journeys', `${key}:rarity`) * 100 < J.odds.rare ? 'rare' : 'epic';
   return { place, rarity };
 }
@@ -106,8 +111,11 @@ export function rollOffer(state: GameState, slot: number, at: number): Offer {
 // the night ticket up in the evening (or takes it down in the morning).
 function fillBoard(state: GameState, t: number): GameState {
   let j = state.journeys;
-  if (j.offers.some((o, i) => o === null && t >= j.refillAt[i])) {
-    j = { ...j, offers: j.offers.map((o, i) => o ?? (t >= j.refillAt[i] ? rollOffer(state, i, j.refillAt[i] || t) : null)) };
+  // One spot at a time, so each new offer knows what's already up.
+  for (const [i, o] of j.offers.entries()) {
+    if (o !== null || t < j.refillAt[i]) continue;
+    const offer = rollOffer({ ...state, journeys: j }, i, j.refillAt[i] || t);
+    j = { ...j, offers: j.offers.map((x, k) => (k === i ? offer : x)) };
   }
   const night = nightOf(t);
   if (night && j.nightOf !== night) j = { ...j, night: rollNight(state, night), nightOf: night };
@@ -465,7 +473,7 @@ export function goTogether(
       ...(offer.night ? { night: true } : {}),
       friend: tripFriend(s, pet, offer, now),
     };
-    trips.push({ ...pet, trip, asleep: false });
+    trips.push({ ...pet, trip, asleep: false, lastLunch: { lunch: [...m.lunch], charm: m.charm } });
   }
   const endsAt = now + offerHours(offer!) * HOUR;
   for (const pet of trips) s = replacePet(s, pet);

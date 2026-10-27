@@ -892,6 +892,11 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       showActions(0);
       startGarden();
     },
+    onShop: () => {
+      stats.hidden = latest?.state.pet.stage === 'egg';
+      showActions(0);
+      goShop('journeys');
+    },
     toast: (msg) => showToast(msg),
     characterImage: cb.characterImage,
   });

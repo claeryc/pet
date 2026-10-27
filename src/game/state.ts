@@ -88,6 +88,8 @@ export interface Pet {
   // it has been on a few (see src/game/journeys.ts). Unset before then.
   travels?: Record<string, number>;
   favouritePlace?: string | null;
+  // What it last took on a journey, for "Same as last time" when packing.
+  lastLunch?: { lunch: string[]; charm: string | null };
 }
 
 // Which character a parent grew into, and its colour variant.
