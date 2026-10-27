@@ -1,5 +1,5 @@
 // Percy's scene, for filling an order. The room makes way for a meadow
-// where Percy the pigeon (in his mail cap, with a satchel) stands beside
+// where Percy the pigeon (in his red post cap, with a letter) stands beside
 // one small crate per thing he asked for. The crates sit on an open net
 // spread out on the grass: that's how Percy carries them off. He's strong,
 // but cute. A crate is open and empty at first, gets a few things peeking
@@ -29,32 +29,101 @@ const COLORS: Record<string, string> = {
   y: PALETTE.butter,
   b: PALETTE.ocean,
   s: PALETTE.sky,
+  e: PALETTE.cream,
+  h: PALETTE.blush,
+  d: PALETTE.deep,
+  x: PALETTE.berry,
 };
 
-// Percy, facing right towards his crates: head and body apart, so the head
-// can bob on its own like a pigeon's does. A round, sturdy bird.
-const PERCY_HEAD: Sprite = [
-  '.....bbbbb.....',
-  '....bbbbbbb....',
-  '...byyyyyyyb...',
-  '...lllllllkloo.',
-  '...lllllllllooo',
-  '....llllllll...',
+// Percy, a round blue pigeon in a big red post cap with a gold badge, with
+// a shimmery neck and a letter tucked under his wing. Blue and red so he
+// stands apart from the pets, who are mostly lilac and pastel. His head
+// and body are apart, so the head can bob on its own like a pigeon's.
+
+// Facing you, like the pets do, wings out: how he waits in his meadow.
+const PERCY_FRONT_HEAD: Sprite = [
+  '.......rrrrrr.......',
+  '.....rrrryrrrr......',
+  '....rrrrrrrrrrr.....',
+  '...kkkkkkkkkkkkk....',
+  '....bbbbbbbbbbb.....',
+  '...bbbbbbbbbbbbb....',
+  '...bbwkbbbbbwkbb....',
+  '...bbkkbbbbbkkbb....',
+  '...bhhbboooobhhb....',
+  '...bbbbbbooobbbbb...',
 ];
-const PERCY_BODY: Sprite = [
-  '.....mmgmmm....',
-  '...llmmmmmmll..',
-  '..vvvlllllllll.',
-  '.vvvvvllcllllll',
-  '.vvvvvlcllllll.',
-  '..vvvccycllll..',
-  '..lllcyyclllll.',
-  '...llcccclllll.',
-  '....lllllllll..',
-  '.....lllllll...',
-  '......r...r....',
-  '.....rr..rr....',
+const PERCY_FRONT_BODY: Sprite = [
+  '....bbmmmppmmmbb....',
+  '.bbbbmmmppppmmmbbbb.',
+  'bbdbbssssssssssbbdbb',
+  'beeeebsssssssssbdbb.',
+  'beexebssssssssssbbb.',
+  'beeeebsssssssssssb..',
+  '.bbbbssssssssssssb..',
+  '....sssssssssssss...',
+  '.....sssssssssss....',
+  '.......oo...oo......',
+  '......ooo...ooo.....',
 ];
+
+// From the side, facing right: how he walks on journeys.
+const PERCY_SIDE_HEAD: Sprite = [
+  '.......rrrrr........',
+  '......rrrryrrr......',
+  '.....rrrrrrrrrr.....',
+  '.....kkkkkkkkkkkkk..',
+  '......bbbbbbbbbbb...',
+  '.....bbbbbbbbbwkbb..',
+  '.....bbbbbbbbbkkbbo.',
+  '.....bbbbbbbbhhbbooo',
+  '.....bbbbbbbbbbbbo..',
+];
+const PERCY_SIDE_BODY: Sprite = [
+  '......bbbmmmppmmb...',
+  '....bbbbbmmmppmmbb..',
+  '..bbbbbbbbsssssssbb.',
+  '.bbdbbbbbbsssssssss.',
+  'bbbdbbeeeebssssssss.',
+  'bbbbdbeexebssssssss.',
+  '.bbbbbeeeebsssssss..',
+  '..bbbbbbbbssssssss..',
+  '....bbsssssssssss...',
+  '......sssssssss.....',
+];
+// His feet from the side: standing, and the two steps of a walk.
+const PERCY_SIDE_FEET: Sprite[] = [
+  ['........oo..oo......', '.......ooo.ooo......'],
+  ['........oo..oo......', '.......ooo..........'],
+  ['........oo..oo......', '...........ooo......'],
+];
+
+function bobOf(timeMs: number): number {
+  return Math.floor(timeMs / 450) % 4 === 1 ? 1 : 0;
+}
+
+// Percy from the side, facing right, with his feet on row `footY`. Every
+// so often he bobs his head. While `walking`, he steps from foot to foot.
+// His outline is dark blue, like a blue pet's.
+export function drawPercy(ctx: CanvasRenderingContext2D, x: number, footY: number, timeMs: number, walking = false): void {
+  const bob = bobOf(timeMs);
+  const feet = PERCY_SIDE_FEET[walking ? 1 + (Math.floor(timeMs / 200) % 2) : 0];
+  const body = [...PERCY_SIDE_BODY, ...feet];
+  const bodyTop = footY + 1 - body.length;
+  draw(ctx, body, x, bodyTop, PALETTE.deep);
+  draw(ctx, PERCY_SIDE_HEAD, x + bob, bodyTop - PERCY_SIDE_HEAD.length + bob, PALETTE.deep);
+  // The body's top again over the head's outline, so they look joined.
+  draw(ctx, body.slice(0, 1), x, bodyTop);
+}
+
+// Percy facing you, with his feet on row `footY`. His head bobs down.
+function drawPercyFront(ctx: CanvasRenderingContext2D, x: number, footY: number, timeMs: number): void {
+  const bob = bobOf(timeMs);
+  const bodyTop = footY + 1 - PERCY_FRONT_BODY.length;
+  draw(ctx, PERCY_FRONT_BODY, x, bodyTop, PALETTE.deep);
+  draw(ctx, PERCY_FRONT_HEAD, x, bodyTop - PERCY_FRONT_HEAD.length + bob, PALETTE.deep);
+  draw(ctx, PERCY_FRONT_BODY.slice(0, 1), x, bodyTop);
+}
 
 // A small wooden crate, by how full it is.
 const CRATES: Record<CrateFill, Sprite> = {
@@ -68,7 +137,7 @@ const NET = { left: 21, right: 61, top: 37, bottom: 45 }; // the net on the gras
 const CRATE_W = 10;
 const CRATE_BOTTOM = 41; // the crates stand on the net
 
-function draw(ctx: CanvasRenderingContext2D, sprite: Sprite, x: number, y: number, outline = false): void {
+function draw(ctx: CanvasRenderingContext2D, sprite: Sprite, x: number, y: number, outline?: string): void {
   const paint = (ox: number, oy: number, solid?: string) =>
     sprite.forEach((row, sy) => {
       for (let sx = 0; sx < row.length; sx++) {
@@ -78,7 +147,7 @@ function draw(ctx: CanvasRenderingContext2D, sprite: Sprite, x: number, y: numbe
         ctx.fillRect(Math.round(x) + sx + ox, Math.round(y) + sy + oy, 1, 1);
       }
     });
-  if (outline) for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) paint(ox, oy, PALETTE.ink);
+  if (outline) for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) paint(ox, oy, outline);
   paint(0, 0);
 }
 
@@ -155,23 +224,9 @@ export function drawDelivery(
   const start = Math.round((NET.left + NET.right + 1 - span) / 2);
   scene.crates.forEach((fill, i) => {
     const crate = CRATES[fill];
-    draw(ctx, crate, start + i * (CRATE_W + gap), CRATE_BOTTOM - crate.length, true);
+    draw(ctx, crate, start + i * (CRATE_W + gap), CRATE_BOTTOM - crate.length, PALETTE.ink);
   });
 
-  // Percy, on the grass beside his crates. Every so often he bobs his head.
-  if (scene.percy) drawPercy(ctx, 3, 42, timeMs);
-}
-
-// Percy, facing right, with his feet on row `footY` and his left edge at
-// `x`. Every so often he bobs his head. (Also used when he drops by on a
-// journey, see src/render/journey.ts.)
-// `_walking` is for the side profile Percy's redesign brings, where he
-// steps from foot to foot.
-export function drawPercy(ctx: CanvasRenderingContext2D, x: number, footY: number, timeMs: number, _walking = false): void {
-  const bob = Math.floor(timeMs / 450) % 4 === 1 ? 1 : 0;
-  const bodyTop = footY - PERCY_BODY.length;
-  draw(ctx, PERCY_BODY, x, bodyTop, true);
-  draw(ctx, PERCY_HEAD, x + bob, bodyTop - PERCY_HEAD.length + bob, true);
-  // The body's top again over the head's outline, so they look joined.
-  draw(ctx, PERCY_BODY.slice(0, 1), x, bodyTop);
+  // Percy, on the grass beside his crates.
+  if (scene.percy) drawPercyFront(ctx, 1, 41, timeMs);
 }
