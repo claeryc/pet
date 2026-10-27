@@ -14,6 +14,7 @@ import type { FishingPhase } from '../ui/fishing';
 import { drawGardenBackground, drawGardenPots, type GardenScene } from './garden';
 import { drawDelivery, type DeliveryScene } from './delivery';
 import { drawPlace } from './places';
+import { drawWalk, drawWalkFront, legFor, stepWalk, WALK_SPEED, type Walk } from './journey';
 import { drawBath, drawMess, type BathScene, type PetMess } from './hygiene';
 import { drawMoment, drawSickCloud, drawSleepZs, drawWindowLight, momentMotion, playHop, type Moment, type MomentMotion } from './moments';
 import { drawKeepsakes, drawShelfCloseup, type RoomKeepsakes, type ShelfThing } from './keepsakes';
@@ -78,6 +79,7 @@ export interface TripScene {
   place: string; // a place id from CONFIG.journeys.places
   pets: OtherPet[];
   bag: string; // what they carry on a stick (see src/render/bags.ts)
+  share: number; // how far along the trip is, 0 to 1 (see src/ui/trip.ts)
 }
 
 export function setupCanvas(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
@@ -341,6 +343,7 @@ function stepTrip(scene: Scene, timeMs: number): number {
   const dt = lastTripFrameMs ? Math.max(0, timeMs - lastTripFrameMs) : 0;
   lastTripFrameMs = timeMs;
   if (scene.trip) lastTrip = scene.trip;
+  else if (tripMix === 0) walk = null; // start afresh next time
   const target = scene.trip ? 1 : 0;
   const instant = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const step = instant ? 1 : dt / TRIP_FADE_MS;
@@ -365,15 +368,29 @@ function stepCloseup(scene: Scene, timeMs: number): number {
 }
 
 // The place the pets went to, with them standing in it (one in the
-// middle, two side by side), each with a bag on a stick behind it.
+// middle, two side by side), each with a bag on a stick behind it. On the
+// way there (see src/render/journey.ts), they walk along with the scenery
+// going by, hopping a little with each step.
+let walk: Walk | null = null;
 function drawTrip(ctx: CanvasRenderingContext2D, trip: TripScene, night: boolean, timeMs: number): void {
-  drawPlace(ctx, trip.place, ROOM_WIDTH, ROOM_HEIGHT, night, timeMs);
+  const leg = legFor(trip.place, trip.share);
+  const still = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const camera = still ? 0 : timeMs * WALK_SPEED;
+  if (leg) {
+    walk = stepWalk(walk, trip.place, leg, camera);
+    drawWalk(ctx, walk, camera, ROOM_WIDTH, ROOM_HEIGHT, night, timeMs);
+  } else drawPlace(ctx, trip.place, ROOM_WIDTH, ROOM_HEIGHT, night, timeMs);
   const spots: Spot[] = trip.pets.length > 1 ? ['left', 'right'] : ['middle'];
   trip.pets.slice(0, 2).forEach((p, i) => {
+    const hop = leg && !still ? (Math.floor(timeMs / 180) + i) % 2 : 0;
+    ctx.save();
+    ctx.translate(0, -hop);
     drawBag(ctx, trip.bag, SPOTS[spots[i]], spots.length > 1 ? (i === 0 ? 'left' : 'right') : undefined);
     drawPetAt(ctx, p.sheet, p.animation, SPOTS[spots[i]], timeMs, p.hat, p);
     if (p.glow) drawGlow(ctx, SPOTS[spots[i]], timeMs);
+    ctx.restore();
   });
+  if (leg && walk) drawWalkFront(ctx, walk, camera, ROOM_WIDTH, ROOM_HEIGHT);
 }
 
 // Clips drawing to everything below a grassy edge `edge` pixels down.

@@ -7,7 +7,7 @@ import { PALETTE } from './palette';
 
 // Little sprites from text grids: "." is see-through, other letters are
 // palette colours.
-type Sprite = string[];
+export type Sprite = string[];
 const COLORS: Record<string, string> = {
   k: PALETTE.ink,
   u: PALETTE.plum,
@@ -24,9 +24,12 @@ const COLORS: Record<string, string> = {
   b: PALETTE.ocean,
   c: PALETTE.cocoa,
   r: PALETTE.rose,
+  n: PALETTE.moss,
+  t: PALETTE.bark,
+  x: PALETTE.berry,
 };
 
-function paint(ctx: CanvasRenderingContext2D, sprite: Sprite, x: number, y: number): void {
+export function paint(ctx: CanvasRenderingContext2D, sprite: Sprite, x: number, y: number): void {
   sprite.forEach((row, sy) => {
     for (let sx = 0; sx < row.length; sx++) {
       const color = COLORS[row[sx]];
@@ -37,15 +40,15 @@ function paint(ctx: CanvasRenderingContext2D, sprite: Sprite, x: number, y: numb
   });
 }
 
-function rect(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number): void {
+export function rect(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number): void {
   ctx.fillStyle = color;
   ctx.fillRect(x, y, w, h);
 }
 
-const GROUND = 34; // where the ground starts, like the room's floor
+export const GROUND = 34; // where the ground starts, like the room's floor
 
 // A few twinkling stars over a night sky.
-function stars(ctx: CanvasRenderingContext2D, w: number, bottom: number, timeMs: number): void {
+export function stars(ctx: CanvasRenderingContext2D, w: number, bottom: number, timeMs: number): void {
   const twinkle = Math.floor(timeMs / 700) % 2;
   for (let i = 0; i < 9; i++) {
     const x = (i * 23 + 5) % w;

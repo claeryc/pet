@@ -35,6 +35,7 @@ import { cast, justGotShy, land, toggleBait } from './game/fishing';
 import { buyFamilyHome, goToRoom, movePet, otherRoom, ownsFamilyHome, petsIn, roomDecor, roommates, type RoomBlock } from './game/rooms';
 import { TOSS_MS } from './render/garden';
 import { LEAP_MS } from './ui/fishing';
+import { tripProgress } from './ui/trip';
 import { cook } from './game/cooking';
 import {
   clearPlot,
@@ -1589,6 +1590,7 @@ function render(timeMs: number): void {
       trip: trip && {
         place: trip.place,
         bag: (state.inventory.bags ?? []).includes('courier') ? 'courier' : 'sack',
+        share: tripProgress(trip.pets[0], gameNow()),
         pets: trip.pets.map((p) => ({
           sheet: sprites.get(sheetFor(p)),
           hat: sprites.get(getHat(p.hat)?.sheet ?? ''),
