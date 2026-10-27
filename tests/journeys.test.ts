@@ -46,11 +46,30 @@ describe('the journey board', () => {
     expect(s.journeys.offers.every((o) => o!.place === 'market')).toBe(true);
   });
 
+  it('puts different places on the board once more are open', () => {
+    const s = newTeen(START);
+    // Every place open: the woods (a harvest), the caves (fish) and the hill (a grown-up).
+    s.grown = ['carrot'];
+    s.tally = { ...s.tally, fish: J.fishToOpen };
+    s.charactersFound = ['dumpling'];
+    const places = simulate(s, START + 60_000).journeys.offers.map((o) => o!.place);
+    expect(new Set(places).size).toBe(places.length);
+  });
+
   it('replaces a taken offer a few hours later', () => {
     const s = setOff(ready(), START, 0, [], false).state;
     expect(s.journeys.offers[0]).toBeNull();
     expect(simulate(s, START + (J.refillHours - 1) * HOUR).journeys.offers[0]).toBeNull();
     expect(simulate(s, START + J.refillHours * HOUR).journeys.offers[0]?.rarity).toBe('common');
+  });
+});
+
+describe('the last lunch', () => {
+  it('is remembered for "Same as last time"', () => {
+    const s = ready();
+    s.inventory.food = { ...s.inventory.food, riceBall: 3 };
+    const left = setOff(s, START, 0, ['riceBall'], false).state;
+    expect(left.pet.lastLunch).toEqual({ lunch: ['riceBall'], charm: null });
   });
 });
 

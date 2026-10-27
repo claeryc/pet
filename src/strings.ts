@@ -89,23 +89,36 @@ export const STRINGS = {
     offer: (trip: string, place: string) => `${trip} · ${place}`,
     // "Adventure · 10 hours"
     tripLine: (trip: string, length: string) => `${trip} · ${length}`,
-    pickHint: 'Tap a ticket to see the trip.',
+    pickHint: 'Tap a postcard to see what it might bring home.',
+    rackTitle: 'Where to today?',
+    // The night trip's spot in the daytime: "A night trip at 20:00"
+    nightSoon: (time: string) => `A night trip at ${time}`,
+    favouriteShort: (name: string) => `${name}'s favourite`,
+    holidayChip: (n: number) => `Holiday · ${n}`,
+    // The back of a picked trip's postcard, written by the pet.
+    noteHours: (length: string) => `Off for ${length}.`,
+    noteNight: 'Off for the night, home in the morning.',
+    // "I'll bring home some honey, and maybe gold or seeds."
+    noteFind: (food: string, sure: boolean, gold: boolean, seeds: boolean) => {
+      const extra = gold && seeds ? 'gold or seeds' : gold ? 'gold' : seeds ? 'seeds' : '';
+      const first = sure ? `I'll bring home ${food.toLowerCase()}` : `I might find ${food.toLowerCase()}`;
+      return extra ? `${first}, and maybe ${extra}.` : `${first}.`;
+    },
+    noteFinds: (min: number, max: number) => `${min}–${max} finds in my bag!`,
+    noteStar: (percent: number) => `Maybe even a ★★★ find (${percent}%)!`,
+    noteSign: (name: string) => `${name} ♡`,
+    postmark: 'Back',
+    flipBack: 'Tap the card to see all the trips again.',
     back: 'Back',
-    lineUp: 'Line up',
-    lineUpTitle: "Who's going?",
-    nextBox: 'Next lunchbox',
-    // Why a pet can't go, short enough for its row in the line-up.
+    getReady: 'Get ready',
+    // Why a pet can't go, short enough for its chip on Get ready.
     cantGoShort: {
       tooYoung: 'Too little', sick: 'Sick', resting: 'Resting', asleep: 'Asleep', backpack: 'Backpack to open',
       sad: 'Feeling down', unwell: 'Not well',
     } as Partial<Record<string, string>>,
-    packLunch: 'Pack a lunch',
-    closeLid: 'Close the lid',
-    openLid: 'Open',
     go: 'Set off',
-    lunchTitle: 'Pack a lunch',
-    readyTitle: 'Ready to go',
-    tapToOpen: 'Tap the box to open it again.',
+    readyTitle: 'Off we go!',
+    sameLunch: 'Same as last time',
     bringsHome: 'Brings home',
     onTheWay: 'On the way',
     maybe: (name: string) => `${name}?`,
@@ -303,6 +316,7 @@ export const STRINGS = {
       `Going away? Every pet stays in the Meadow for up to 3 days and everything at home waits.${have > 0 ? ` You have ${have}.` : ''}`,
     holidayDays: (d: number) => (d === 1 ? '1 day' : `${d} days`),
     holidayGo: 'Go on holiday',
+    holidayGetTicket: 'Get a Holiday ticket in the Shop',
     holidayTickets: (n: number) => `${n} left`, // on the ticket stub
     holidayTicketsLeft: (n: number) => (n === 1 ? '1 ticket left' : `${n} tickets left`),
     holidayLeft: 'Off to the Meadow for a holiday!',
@@ -515,7 +529,7 @@ export const STRINGS = {
         pages: [
           { title: 'Pick a trip', text: 'New tickets come in through the day. A Stroll is short, an Adventure is long and finds better things.' },
           { title: "Who's going?", text: 'Teens and grown-ups can go, if they are awake and feeling well. Two pets can go together.' },
-          { title: 'Pack a lunch', text: 'Food keeps the tummy full and a drink keeps energy up. A charm finds better things. Then close the lid!' },
+          { title: 'Pack a lunch', text: 'Food keeps the tummy full and a drink keeps energy up. A charm finds better things. Then set off!' },
           { title: 'Open the backpack', text: 'Your pet is away for a few hours, even with the game closed. Back home, open the backpack to see the finds!' },
         ],
       },
