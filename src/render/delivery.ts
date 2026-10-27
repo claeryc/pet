@@ -36,35 +36,36 @@ const COLORS: Record<string, string> = {
 };
 
 // Percy, facing right towards his crates: head and body apart, so the head
-// can bob on its own like a pigeon's does. A chubby blue pigeon, wider than
-// he is tall, in a big red post cap with a gold badge, with a shimmery neck
-// and a satchel at his side with a letter sticking out. Blue and red so he
-// stands apart from the pets, who are mostly lilac and pastel.
+// can bob on its own like a pigeon's does. A sturdy blue pigeon in a big
+// red post cap with a gold badge, a shimmery neck, and a satchel across
+// his chest with a letter sticking out. Blue and red so he stands apart
+// from the pets, who are mostly lilac and pastel.
 const PERCY_HEAD: Sprite = [
-  '........rrrrr.......',
-  '.......rrrrrrr......',
-  '.......rrryrrrr.....',
-  '......kkkkkkkkkkk...',
-  '.......bbbbbbbbb....',
-  '......bbbbbbbbwkb...',
-  '......bbbbbbbbkkboo.',
-  '......bbbbbbbhhbooo.',
+  '.......rrrrr......',
+  '......rrrrrrr.....',
+  '......rrryrrrr....',
+  '.....rrrrrrrrr....',
+  '.....kkkkkkkkkkk..',
+  '......bbbbbbbbb...',
+  '......bbbbbbwwkb..',
+  '......bbbbbbwkkboo',
+  '......bbbbbhhbboo.',
+  '.......bbbbbbbbb..',
 ];
 const PERCY_BODY: Sprite = [
-  '.....bbbmmmppmmmcb..',
-  '...bbbbbmmmppmmcbbb.',
-  '..bbbbbbbsssscssss..',
-  '.bbbdbbbsssscsssss..',
-  '.bbbbdbbssscsssssss.',
-  'bbbbbbdbsscssssssss.',
-  'bbbbbceeeeecssssssss',
-  'bbbbbceexeecssssssss',
-  '.bbbbcccccccsssssss.',
-  '.bbbbcccycccssssss..',
-  '..bbbcccccccsssss...',
-  '....ssssssssssss....',
-  '.......rr...rr......',
-  '......rrr..rrr......',
+  '.......mmmppmmc...',
+  '......bmmmppmcmb..',
+  '.....bbbsssscssb..',
+  '....bbbbbsscssss..',
+  '...bbdbbbscsssss..',
+  '..bbbdbbcsssssss..',
+  '.bbbbbdceeeeeeess.',
+  'bbbbbbbceexeeeess.',
+  '.bbbbbbcccccccss..',
+  '..bbbbbccccyccs...',
+  '....sssccccccs....',
+  '.......r...r......',
+  '......rr..rr......',
 ];
 
 // Percy standing with his feet on row `footY`. Every so often he bobs his
@@ -181,5 +182,5 @@ export function drawDelivery(
   });
 
   // Percy, on the grass beside his crates.
-  if (scene.percy) drawPercy(ctx, 1, 41, timeMs);
+  if (scene.percy) drawPercy(ctx, 2, 41, timeMs);
 }
