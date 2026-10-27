@@ -15,6 +15,7 @@ import { drawGardenBackground, drawGardenPots, type GardenScene } from './garden
 import { drawDelivery, type DeliveryScene } from './delivery';
 import { drawPlace } from './places';
 import { drawBath, drawMess, type BathScene, type PetMess } from './hygiene';
+import { drawMoment, drawSickCloud, drawSleepZs, drawWindowLight, momentMotion, type Moment, type MomentMotion } from './moments';
 import { drawKeepsakes, drawShelfCloseup, type RoomKeepsakes, type ShelfThing } from './keepsakes';
 
 export const ROOM_WIDTH = 64;
@@ -42,6 +43,9 @@ export interface Scene {
   bath?: BathScene | null; // while it's having a bath
   night: boolean; // night-time outside the window
   lightsOff: boolean; // the room is dark (pet is sleeping)
+  // A moment of care playing on your pet: a cuddle, medicine, waking up
+  // (see src/render/moments.ts).
+  moment?: Moment | null;
   fishing?: FishingPhase; // draws a little pond, rod and bobber while fishing
   garden?: GardenScene | null; // while gardening: the garden, with the pet on the left
   delivery?: DeliveryScene | null; // while filling Percy's order: his meadow
@@ -155,6 +159,27 @@ export function petAt(x: number, y: number, two: boolean, petOnLeft: boolean): '
 
 export function isOnPet(x: number, y: number): boolean {
   return petAt(x, y, false, true) === 'pet';
+}
+
+// A pet in the middle of a moment of care (see src/render/moments.ts): it
+// moves by whole pixels, and squashes or stretches around its feet.
+function drawPetMoving(
+  ctx: CanvasRenderingContext2D,
+  sheet: SpriteSheet | undefined,
+  animation: string,
+  x: number,
+  timeMs: number,
+  hat: SpriteSheet | undefined,
+  look: { face?: Expression; idleEveryMs?: number },
+  motion: MomentMotion,
+): void {
+  const foot = x + (sheet?.frameWidth ?? 32) / 2;
+  ctx.save();
+  ctx.translate(foot + motion.dx, 40 + motion.dy);
+  ctx.scale(motion.sx, motion.sy);
+  ctx.translate(-foot, -40);
+  drawPetAt(ctx, sheet, animation, x, timeMs, hat, look);
+  ctx.restore();
 }
 
 // Draws one pet standing on the floor with its left edge at `x`, its face
@@ -396,6 +421,8 @@ export function drawRoom(
   const meeting = inRoom ? scene.meeting : null;
   const housemate = inRoom && !meeting ? scene.housemate : null;
   const spot: Spot = meeting ? 'left' : housemate ? (scene.petOnLeft ? 'left' : 'right') : 'middle';
+  // Pets asleep, for their Zzz once the room is dimmed.
+  const sleepers: { sheet: SpriteSheet | undefined; x: number }[] = [];
   const drawPet = (slide: number) => {
     const centre = SPOTS[spot];
     const x = Math.round(centre + (-2 - centre) * slide);
@@ -404,10 +431,15 @@ export function drawRoom(
       const hx = SPOTS[spot === 'left' ? 'right' : 'left'];
       drawPetAt(ctx, housemate.sheet, housemate.animation, hx, timeMs, housemate.hat, housemate);
       if (housemate.glow) drawGlow(ctx, hx, timeMs);
+      if (housemate.animation === 'sick') drawSickCloud(ctx, housemate.sheet, hx, timeMs);
+      if (housemate.animation === 'sleep') sleepers.push({ sheet: housemate.sheet, x: hx });
       if (housemate.mess) drawMess(ctx, housemate.mess, housemate.sheet, hx, timeMs);
     }
-    drawPetAt(ctx, sheet, scene.animation, x, timeMs, hat, scene);
+    drawPetMoving(ctx, sheet, scene.animation, x, timeMs, hat, scene, momentMotion(scene.moment));
     if (scene.glow) drawGlow(ctx, x, timeMs);
+    if (scene.animation === 'sick') drawSickCloud(ctx, sheet, x, timeMs);
+    if (scene.moment) drawMoment(ctx, scene.moment, sheet, x);
+    if (scene.animation === 'sleep') sleepers.push({ sheet, x });
     // Poop and bath time only show in the room.
     if (inRoom && !meeting) {
       if (scene.mess) drawMess(ctx, scene.mess, sheet, x, timeMs);
@@ -450,11 +482,14 @@ export function drawRoom(
     ctx.globalAlpha = 1;
   }
 
-  // Lights off: dim the whole room.
+  // Lights off: dim the whole room, but for the light coming in at the
+  // window. Sleeping pets' Zzz glow over the dark.
   if (scene.lightsOff) {
     ctx.fillStyle = PALETTE.ink;
     ctx.globalAlpha = 0.45;
     ctx.fillRect(0, 0, ROOM_WIDTH, ROOM_HEIGHT);
     ctx.globalAlpha = 1;
+    if (mix < 1 && !scene.room?.curtains) drawWindowLight(ctx, WINDOW, scene.night);
   }
+  if (mix < 1) for (const p of sleepers) drawSleepZs(ctx, p.sheet, p.x, timeMs);
 }

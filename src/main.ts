@@ -78,6 +78,7 @@ import {
 } from './game/friends';
 import { createChoiceBox } from './ui/choice';
 import { createGrowUpReveal } from './ui/growup';
+import { MOMENT_MS, type MomentKind } from './render/moments';
 import { canMoveToMeadow, getMeadowPet, greetVisitor, hangPortrait, keepsakeKind, keepsakeOf, meadowVisitor, memoriesOf, roomKeepsakes, sayHi, toggleShelf, welcomeHome } from './game/meadow';
 import { goodbyeArt } from './ui/meadow';
 import { roomWithSpace } from './game/rooms';
@@ -359,6 +360,11 @@ function askName(): void {
 // and isn't saved. A happy wiggle comes with a happy face unless another
 // is asked for. Anything you do with the pet also stops it pouting.
 let reaction: { animation: string; until: number } | null = null;
+// A moment of care playing in the room (see src/render/moments.ts).
+let moment: { kind: MomentKind; start: number } | null = null;
+function playMoment(kind: MomentKind): void {
+  moment = { kind, start: performance.now() };
+}
 let faceReaction: { expression: Expression; until: number } | null = null;
 let lastTouched = performance.now();
 function react(animation: string, ms: number = CONFIG.reactionMs, face?: Reaction): void {
@@ -476,6 +482,7 @@ function playWith(activity: 'cuddle' | 'tickle'): void {
   showGains(before, CONFIG.activities.find((a) => a.id === activity)!);
   sound('cuddle');
   react('happy', CONFIG.reactionMs, result.felt === 'loved' ? 'inLove' : undefined);
+  playMoment(activity);
   luckySeed('play');
 }
 
@@ -931,12 +938,16 @@ const home = createHomeScreen(root, {
   onLights: () => {
     if (!runAction(toggleLights)) return;
     sound(state.pet.asleep ? 'lightsOff' : 'lightsOn');
+    playMoment(state.pet.asleep ? 'doze' : 'wake');
     if (!state.pet.asleep && (getTrait(state.pet.trait)?.grumpyWhenWoken || feeling(state.pet, 'woken') === 'disliked')) pullFace('grumpy');
   },
   onMedicine: () => {
     const before = simulate(state, gameNow()).pet;
-    runAction(giveMedicine);
-    showGains(before, { health: 1 });
+    if (!runAction(giveMedicine)) return;
+    playMoment('medicine');
+    // Yuck! Then better.
+    window.setTimeout(() => pullFace('grumpy'), MOMENT_MS.medicine * 0.38);
+    window.setTimeout(() => showGains(before, { health: 1 }), MOMENT_MS.medicine * 0.72);
   },
   onRevive: askRevive,
   onGoodbye: askGoodbye,
@@ -1531,6 +1542,7 @@ function render(timeMs: number): void {
       note: away,
       night: isNight(gameNow()),
       lightsOff: pet.asleep,
+      moment: !away && moment && timeMs - moment.start < MOMENT_MS[moment.kind] ? { kind: moment.kind, ms: timeMs - moment.start } : null,
       fishing: home.fishingPhase(),
       garden: home.gardenScene(),
       delivery: home.deliveryScene(),
