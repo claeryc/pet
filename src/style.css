@@ -6178,6 +6178,45 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   overflow-y: auto;
 }
 
+/* Getting ready, the things to pack keep their size and the lunchbox
+   gives way: it shrinks (keeping its shape) into the room that's left. */
+#app:has(> .journeys-row:not([hidden])) > .journeys-sheet:has(> .lunch-panel) {
+  flex-shrink: 0;
+}
+
+#app:has(> .journeys-row:not([hidden])) > .stat-slot:has(> .journeys:is([data-stage='pack'], [data-stage='closed'])) {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-slot > .journeys:is([data-stage='pack'], [data-stage='closed']) {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+/* On a short screen the room is cropped (a bit more off the floor than
+   the wall), so the lunchbox and the things to pack still fit under it.
+   Taps on the room know about the crop (see roomPoint). */
+#app:has(> .journeys-row:not([hidden])):has(> .stat-slot > .journeys:is([data-stage='pack'], [data-stage='closed'])) .room {
+  max-height: max(120px, calc(100dvh - 452px));
+  object-fit: cover;
+  object-position: 50% 40%;
+}
+
+.journeys:is([data-stage='pack'], [data-stage='closed']) .bento {
+  flex: 1 1 0;
+  min-height: 56px;
+  container-type: size;
+  display: grid;
+  place-items: center;
+}
+
+.journeys:is([data-stage='pack'], [data-stage='closed']) .bento-box {
+  width: min(100cqw, 100cqh * var(--bento-ratio));
+}
+
 .journeys-sheet > .is-new,
 .journeys-sheet > .lunch-panel {
   animation: rise-in 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
@@ -6857,8 +6896,14 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  gap: 5px;
+  /* One line whoever's along: more pets scroll sideways. */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.party::-webkit-scrollbar {
+  display: none;
 }
 
 .trip-head > .trip-chip {
@@ -6868,9 +6913,10 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 .party-chip {
   display: flex;
   align-items: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 8px 0 3px;
+  flex: none;
+  gap: 5px;
+  height: 32px;
+  padding: 0 7px 0 2px;
   border: 2px solid var(--lavender);
   border-radius: 999px;
   background: white;
@@ -6893,8 +6939,8 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 .party-pic {
   display: block;
   flex: none;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
 }
 
 .party-pic .portrait,
@@ -6905,8 +6951,8 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 }
 
 .party-name {
-  max-width: 7em;
-  font-size: 0.85rem;
+  max-width: 6em;
+  font-size: 0.8rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -6969,8 +7015,15 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 /* The box is a small pixel canvas, scaled up. The spots on top of it are
    placed in fractions of its 119 × 57 pixels (see drawBento). */
 .bento {
+  width: 100%;
+}
+
+/* The box keeps its shape: as wide as there is room for, or less when the
+   screen is short (see the Get ready layout above). */
+.bento-box {
   position: relative;
   width: 100%;
+  margin: 0 auto;
 }
 
 .bento-canvas {
@@ -7115,10 +7168,10 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 .trip-bars {
   background: var(--card);
   border-radius: 16px;
-  padding: 8px 12px 10px;
+  padding: 6px 12px 8px;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 5px;
 }
 
 .trip-bars-top {
