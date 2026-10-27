@@ -372,6 +372,7 @@ function stepCloseup(scene: Scene, timeMs: number): number {
 // way there (see src/render/journey.ts), they walk along with the scenery
 // going by, hopping a little with each step.
 let walk: Walk | null = null;
+const SHADOW_Y = 40 - 32 + 29; // the shadow row of a pet standing on the floor
 function drawTrip(ctx: CanvasRenderingContext2D, trip: TripScene, night: boolean, timeMs: number): void {
   const leg = legFor(trip.place, trip.share);
   const still = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -381,13 +382,35 @@ function drawTrip(ctx: CanvasRenderingContext2D, trip: TripScene, night: boolean
     drawWalk(ctx, walk, camera, ROOM_WIDTH, ROOM_HEIGHT, night, timeMs);
   } else drawPlace(ctx, trip.place, ROOM_WIDTH, ROOM_HEIGHT, night, timeMs);
   const spots: Spot[] = trip.pets.length > 1 ? ['left', 'right'] : ['middle'];
-  trip.pets.slice(0, 2).forEach((p, i) => {
-    const hop = leg && !still ? (Math.floor(timeMs / 180) + i) % 2 : 0;
+  const pets = trip.pets.slice(0, 2);
+  // Walking to the right, every bag is held out behind, to the left (two
+  // pets: over their left shoulders, all behind both pets).
+  const holds = (i: number) => (!leg ? (spots.length > 1 ? (i === 0 ? 'left' : 'right') : undefined) : spots.length > 1 ? 'left' : 'behind');
+  const hopOf = (i: number) => (leg && !still ? (Math.floor(timeMs / 180) + i) % 2 : 0);
+  const hopping = (i: number, draw: () => void) => {
     ctx.save();
-    ctx.translate(0, -hop);
-    drawBag(ctx, trip.bag, SPOTS[spots[i]], spots.length > 1 ? (i === 0 ? 'left' : 'right') : undefined);
-    drawPetAt(ctx, p.sheet, p.animation, SPOTS[spots[i]], timeMs, p.hat, p);
-    if (p.glow) drawGlow(ctx, SPOTS[spots[i]], timeMs);
+    ctx.translate(0, -hopOf(i));
+    draw();
+    ctx.restore();
+  };
+  if (leg) pets.forEach((_, i) => hopping(i, () => drawBag(ctx, trip.bag, SPOTS[spots[i]], holds(i))));
+  pets.forEach((p, i) => {
+    const x = SPOTS[spots[i]];
+    if (!leg) drawBag(ctx, trip.bag, x, holds(i));
+    // The pet hops, but its shadow (row 29 of its frame, see
+    // docs/ART_GUIDE.md) stays on the ground.
+    hopping(i, () => {
+      ctx.beginPath();
+      ctx.rect(0, 0, ROOM_WIDTH, SHADOW_Y);
+      ctx.clip();
+      drawPetAt(ctx, p.sheet, p.animation, x, timeMs, p.hat, p);
+    });
+    if (p.glow) hopping(i, () => drawGlow(ctx, x, timeMs));
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, SHADOW_Y, ROOM_WIDTH, 1);
+    ctx.clip();
+    drawPetAt(ctx, p.sheet, p.animation, x, timeMs, p.hat, p);
     ctx.restore();
   });
   if (leg && walk) drawWalkFront(ctx, walk, camera, ROOM_WIDTH, ROOM_HEIGHT);
