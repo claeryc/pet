@@ -6178,34 +6178,45 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   overflow-y: auto;
 }
 
-/* Getting ready, the things to pack keep their size and the lunchbox
-   gives way: it shrinks (keeping its shape) into the room that's left. */
-#app:has(> .journeys-row:not([hidden])) > .journeys-sheet:has(> .lunch-panel) {
-  flex-shrink: 0;
+/* Packing, the room steps aside and the box goes at the top, full width.
+   The things to pack take the rest of the screen, the same size whichever
+   tab is open, and scroll inside it. */
+#app:has(> .stat-slot > .journeys[data-stage='pack']:not([hidden])) > .room-wrap {
+  display: none;
 }
 
-#app:has(> .journeys-row:not([hidden])) > .stat-slot:has(> .journeys:is([data-stage='pack'], [data-stage='closed'])) {
+#app:has(> .journeys-row:not([hidden])) > .journeys-sheet:has(> .lunch-panel) {
+  flex: 1 1 0;
+  min-height: 170px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.journeys-sheet > .lunch-panel {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+/* Once the lid is on the room is back for the send-off, and the closed
+   box shrinks (keeping its shape) into the room that's left under it. */
+#app:has(> .stat-slot > .journeys[data-stage='closed']:not([hidden])) > .room-wrap {
+  animation: rise-in 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+#app:has(> .journeys-row:not([hidden])) > .stat-slot:has(> .journeys[data-stage='closed']) {
   flex: 1 1 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
-.stat-slot > .journeys:is([data-stage='pack'], [data-stage='closed']) {
+.stat-slot > .journeys[data-stage='closed'] {
   flex: 1 1 0;
   min-height: 0;
 }
 
-/* On a short screen the room is cropped (a bit more off the floor than
-   the wall), so the lunchbox and the things to pack still fit under it.
-   Taps on the room know about the crop (see roomPoint). */
-#app:has(> .journeys-row:not([hidden])):has(> .stat-slot > .journeys:is([data-stage='pack'], [data-stage='closed'])) .room {
-  max-height: max(120px, calc(100dvh - 452px));
-  object-fit: cover;
-  object-position: 50% 40%;
-}
-
-.journeys:is([data-stage='pack'], [data-stage='closed']) .bento {
+.journeys[data-stage='closed'] .bento {
   flex: 1 1 0;
   min-height: 56px;
   container-type: size;
@@ -6213,7 +6224,7 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   place-items: center;
 }
 
-.journeys:is([data-stage='pack'], [data-stage='closed']) .bento-box {
+.journeys[data-stage='closed'] .bento-box {
   width: min(100cqw, 100cqh * var(--bento-ratio));
 }
 
@@ -6891,19 +6902,14 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 
 /* ---- Get ready: who's going ---- */
 
-/* A row of chips over the lunchbox: picture, name, tick. */
+/* A row of faces under the lunchbox, each with a tick. They're small
+   enough that everyone at home (and Percy) fits on one line. */
 .party {
   flex: 1;
   min-width: 0;
   display: flex;
-  gap: 5px;
-  /* One line whoever's along: more pets scroll sideways. */
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.party::-webkit-scrollbar {
-  display: none;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .trip-head > .trip-chip {
@@ -6911,19 +6917,24 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 }
 
 .party-chip {
-  display: flex;
-  align-items: center;
+  position: relative;
+  display: grid;
+  place-items: center;
   flex: none;
-  gap: 5px;
-  height: 32px;
-  padding: 0 7px 0 2px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
   border: 2px solid var(--lavender);
-  border-radius: 999px;
+  border-radius: 50%;
   background: white;
   font: inherit;
   color: var(--ink);
   cursor: pointer;
   touch-action: manipulation;
+}
+
+.party-chip:active:not(:disabled) {
+  transform: scale(0.92);
 }
 
 .party-chip.is-on {
@@ -6938,9 +6949,8 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 
 .party-pic {
   display: block;
-  flex: none;
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
 }
 
 .party-pic .portrait,
@@ -6950,16 +6960,11 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   height: 100%;
 }
 
-.party-name {
-  max-width: 6em;
-  font-size: 0.8rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
+/* The tick sits on the face's bottom right corner. */
 .party-tick {
-  flex: none;
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
   width: 18px;
   height: 18px;
   border: 2px solid var(--lavender);
@@ -6978,9 +6983,20 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   background: var(--good);
 }
 
+/* Why one can't come (or how long until it can), as a tag under it. */
 .party-why {
-  font-size: 0.7rem;
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0 4px;
+  border: 2px solid var(--lavender);
+  border-radius: 8px;
+  background: white;
+  font-size: 0.6rem;
   font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
   color: #8b7aa0;
 }
 
@@ -7323,17 +7339,20 @@ button.trip-bars-name.is-on {
 }
 
 .lunch-grid {
+  /* Rows of four, as many rows as there's room for; more scroll down. */
+  flex: 1 1 0;
+  min-height: 0;
   display: grid;
-  grid-auto-flow: column;
-  /* Four and a bit fit across, so a cut-off tile shows there's more. */
-  grid-auto-columns: calc((100% - 3 * 8px) / 4.4);
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: 68px;
+  align-content: start;
+  gap: 12px 8px;
   /* Room for the counts that stick out at the top. */
   margin: -8px -8px 0;
-  padding: 8px 8px 4px;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scroll-snap-type: x proximity;
+  padding: 10px 8px 6px;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scroll-snap-type: y proximity;
   scrollbar-width: none;
 }
 
@@ -7343,7 +7362,7 @@ button.trip-bars-name.is-on {
 
 .lunch-grid > .lunch-tile {
   scroll-snap-align: start;
-  scroll-margin-left: 8px;
+  scroll-margin-top: 10px;
 }
 
 .lunch-grid:has(> .trip-note) {
