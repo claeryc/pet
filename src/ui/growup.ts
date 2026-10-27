@@ -155,3 +155,113 @@ export function createGrowUpReveal(root: HTMLElement, onChange: (moment: 'flash'
     isOpen: () => current !== null,
   };
 }
+
+// The little-one moment, after two pets mingle: the two lean in with a big
+// heart between them that beats faster and faster, then (if there's a
+// little one) an egg drops into the middle with a bounce as the beams turn
+// gold. With no little one, the heart just floats away softly.
+
+export interface LittleOne {
+  pet: string;
+  friend: string;
+  petPic: () => string | undefined;
+  friendPic: () => string | undefined;
+  eggPic: () => string | undefined;
+  egg: boolean; // whether a little one is on the way
+  onClose: () => void;
+}
+
+export interface LittleOneReveal {
+  show: (l: LittleOne) => void;
+  isOpen: () => boolean;
+}
+
+const HEART_MS = 1600;
+
+export function createLittleOneReveal(root: HTMLElement, onChange: (moment: 'hearts' | 'egg' | 'done') => void): LittleOneReveal {
+  const backdrop = document.createElement('div');
+  backdrop.className = 'growup littleone';
+  backdrop.hidden = true;
+  backdrop.setAttribute('role', 'dialog');
+  backdrop.setAttribute('aria-modal', 'true');
+  backdrop.setAttribute('aria-labelledby', 'littleone-title');
+  backdrop.innerHTML = `
+    <div class="growup-beams" aria-hidden="true"></div>
+    <div class="growup-body">
+      <p class="growup-caption"></p>
+      <div class="littleone-stage" aria-hidden="true">
+        <span class="growup-glow"></span>
+        <span class="littleone-pic littleone-left portrait"></span>
+        <span class="littleone-heart"></span>
+        <span class="littleone-pic littleone-right portrait"></span>
+        <span class="littleone-egg portrait"></span>
+      </div>
+      <h2 class="growup-title" id="littleone-title"></h2>
+      <button class="btn growup-btn" type="button"></button>
+    </div>`;
+  root.append(backdrop);
+  const q = <T extends HTMLElement>(sel: string) => backdrop.querySelector<T>(sel)!;
+  const caption = q('.growup-caption');
+  const left = q('.littleone-left');
+  const right = q('.littleone-right');
+  const egg = q('.littleone-egg');
+  const title = q('.growup-title');
+  const button = q<HTMLButtonElement>('.growup-btn');
+
+  let current: LittleOne | null = null;
+  let timers: number[] = [];
+  let revealed = false;
+  const later = (ms: number, f: () => void) => timers.push(window.setTimeout(f, ms));
+  const picture = (el: HTMLElement, url: string | undefined) => {
+    el.style.backgroundImage = url ? `url('${url}')` : '';
+  };
+
+  function reveal(): void {
+    const l = current;
+    if (!l || revealed) return;
+    revealed = true;
+    timers.forEach(clearTimeout);
+    timers = [];
+    const S = STRINGS.growUp;
+    backdrop.classList.replace('is-building', l.egg ? 'is-revealed' : 'is-quiet');
+    if (l.egg) {
+      picture(egg, l.eggPic());
+      onChange('egg');
+    }
+    caption.textContent = l.egg ? S.littleOne(l.pet, l.friend) : S.noLittleOne(l.pet, l.friend);
+    title.textContent = l.egg ? S.anEgg : S.lovelyTime;
+    button.textContent = l.egg ? S.welcome : S.nextTime;
+    later(l.egg ? 900 : 500, () => {
+      button.hidden = false;
+      button.focus();
+    });
+  }
+
+  backdrop.addEventListener('click', (e) => {
+    if (!revealed) return reveal();
+    if (e.target !== button || !current) return;
+    const l = current;
+    current = null;
+    backdrop.hidden = true;
+    onChange('done');
+    l.onClose();
+  });
+
+  return {
+    show(l) {
+      current = l;
+      revealed = false;
+      backdrop.className = 'growup littleone is-building';
+      backdrop.hidden = false;
+      caption.textContent = STRINGS.growUp.mingling(l.pet, l.friend);
+      title.textContent = '';
+      button.hidden = true;
+      picture(left, l.petPic());
+      picture(right, l.friendPic());
+      picture(egg, undefined);
+      onChange('hearts');
+      later(HEART_MS, reveal);
+    },
+    isOpen: () => current !== null,
+  };
+}

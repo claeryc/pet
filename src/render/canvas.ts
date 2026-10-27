@@ -15,7 +15,7 @@ import { drawGardenBackground, drawGardenPots, type GardenScene } from './garden
 import { drawDelivery, type DeliveryScene } from './delivery';
 import { drawPlace } from './places';
 import { drawBath, drawMess, type BathScene, type PetMess } from './hygiene';
-import { drawMoment, drawSickCloud, drawSleepZs, drawWindowLight, momentMotion, type Moment, type MomentMotion } from './moments';
+import { drawMoment, drawSickCloud, drawSleepZs, drawWindowLight, momentMotion, playHop, type Moment, type MomentMotion } from './moments';
 import { drawKeepsakes, drawShelfCloseup, type RoomKeepsakes, type ShelfThing } from './keepsakes';
 
 export const ROOM_WIDTH = 64;
@@ -435,7 +435,9 @@ export function drawRoom(
       if (housemate.animation === 'sleep') sleepers.push({ sheet: housemate.sheet, x: hx });
       if (housemate.mess) drawMess(ctx, housemate.mess, housemate.sheet, hx, timeMs);
     }
-    drawPetMoving(ctx, sheet, scene.animation, x, timeMs, hat, scene, momentMotion(scene.moment));
+    // Playing with a friend, the two hop in turn.
+    const motion = meeting?.hearts && !scene.moment ? playHop(timeMs, 1) : momentMotion(scene.moment);
+    drawPetMoving(ctx, sheet, scene.animation, x, timeMs, hat, scene, motion);
     if (scene.glow) drawGlow(ctx, x, timeMs);
     if (scene.animation === 'sick') drawSickCloud(ctx, sheet, x, timeMs);
     if (scene.moment) drawMoment(ctx, scene.moment, sheet, x);
@@ -446,7 +448,8 @@ export function drawRoom(
       if (scene.bath) drawBath(ctx, scene.bath, sheet, x, timeMs);
     }
     if (meeting) {
-      drawPetAt(ctx, meeting.sheet, meeting.animation, SPOTS.right, timeMs, meeting.hat, meeting);
+      if (meeting.hearts) drawPetMoving(ctx, meeting.sheet, meeting.animation, SPOTS.right, timeMs, meeting.hat, meeting, playHop(timeMs, -1));
+      else drawPetAt(ctx, meeting.sheet, meeting.animation, SPOTS.right, timeMs, meeting.hat, meeting);
       if (meeting.hearts) drawHearts(ctx, timeMs);
     }
   };

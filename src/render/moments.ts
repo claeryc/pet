@@ -7,6 +7,9 @@
 //             taste, then sparkles
 //   doze      lights off: it settles down with a little squash
 //   wake      lights on: a big stretch, then a hop
+//   gift      a wrapped present hops from your pet over to a friend
+//
+// While two pets play together (Meet), they hop in turn (see playHop).
 //
 // And some that last as long as the pet's state does: Zzz drifting up while
 // it sleeps, a small rain cloud over a sick pet, and light from the window
@@ -18,7 +21,7 @@
 import { PALETTE } from './palette';
 import type { SpriteSheet } from './sprites';
 
-export type MomentKind = 'cuddle' | 'tickle' | 'medicine' | 'doze' | 'wake';
+export type MomentKind = 'cuddle' | 'tickle' | 'medicine' | 'doze' | 'wake' | 'gift';
 
 export interface Moment {
   kind: MomentKind;
@@ -32,6 +35,7 @@ export const MOMENT_MS: Record<MomentKind, number> = {
   medicine: 1800,
   doze: 700,
   wake: 1300,
+  gift: 1100,
 };
 
 // How the pet moves: whole pixels sideways and up (negative dy is up),
@@ -80,7 +84,18 @@ export function momentMotion(m: Moment | null | undefined): MomentMotion {
       const hop = Math.sin(((t - 0.6) / 0.4) * Math.PI);
       return { dx: 0, dy: -Math.round(hop * 3), sx: 1, sy: 1 };
     }
+    case 'gift':
+      // Leans over to hand it across.
+      return { dx: t > 0.15 && t < 0.5 ? 1 : 0, dy: 0, sx: 1, sy: 1 };
   }
+}
+
+// Two pets playing together hop in turn, each leaning towards the other
+// (`towards` is 1 for the pet on the left, -1 on the right).
+export function playHop(timeMs: number, towards: 1 | -1): MomentMotion {
+  const t = ((timeMs + (towards < 0 ? 380 : 0)) % 760) / 760;
+  const up = t < 0.5 ? Math.sin(t * 2 * Math.PI) : 0;
+  return { dx: up > 0.3 ? towards : 0, dy: -Math.round(up * 3), sx: 1, sy: 1 };
 }
 
 // Where things go on a pet standing with its left edge at `x`: the top of
@@ -105,6 +120,27 @@ export function drawMoment(ctx: CanvasRenderingContext2D, m: Moment, sheet: Spri
     medicine(ctx, cx, mouthY, top, t);
   }
   else if (m.kind === 'wake') wakeSparkle(ctx, cx, top, t);
+  else if (m.kind === 'gift') present(ctx, t);
+}
+
+// A wrapped present that pops up between the two pets and hops over to
+// the friend on the right.
+function present(ctx: CanvasRenderingContext2D, t: number): void {
+  const pop = Math.min(1, t / 0.2);
+  const across = Math.max(0, Math.min(1, (t - 0.3) / 0.45));
+  const x = Math.round(26 + across * 8);
+  const y = Math.round(33 - Math.sin(across * Math.PI) * 6 - (1 - pop) * -4);
+  ctx.globalAlpha = t > 0.85 ? (1 - t) / 0.15 : pop;
+  ctx.fillStyle = PALETTE.pink;
+  ctx.fillRect(x, y, 6, 5);
+  ctx.fillStyle = PALETTE.berry;
+  ctx.fillRect(x, y + 4, 6, 1);
+  ctx.fillStyle = PALETTE.butter; // ribbon and bow
+  ctx.fillRect(x + 2, y, 2, 5);
+  ctx.fillRect(x, y + 2, 6, 1);
+  ctx.fillRect(x + 1, y - 1, 1, 1);
+  ctx.fillRect(x + 4, y - 1, 1, 1);
+  ctx.globalAlpha = 1;
 }
 
 function heart(ctx: CanvasRenderingContext2D, x: number, y: number): void {

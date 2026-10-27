@@ -77,7 +77,7 @@ import {
   type MingleBlock,
 } from './game/friends';
 import { createChoiceBox } from './ui/choice';
-import { createGrowUpReveal } from './ui/growup';
+import { createGrowUpReveal, createLittleOneReveal } from './ui/growup';
 import { MOMENT_MS, type MomentKind } from './render/moments';
 import { canMoveToMeadow, getMeadowPet, greetVisitor, hangPortrait, keepsakeKind, keepsakeOf, meadowVisitor, memoriesOf, roomKeepsakes, sayHi, toggleShelf, welcomeHome } from './game/meadow';
 import { goodbyeArt } from './ui/meadow';
@@ -844,11 +844,19 @@ function mingleNow(id: string): void {
   setState(result.state);
   if (result.blocked) return friendBlocked(result.blocked);
   react('happy');
-  if (!result.egg) return home.toast(STRINGS.friends.noLittleOne(parent.name, friend?.name ?? ''));
-  sound('grewUp');
-  home.toast(STRINGS.friends.littleOne(parent.name, friend?.name ?? ''));
-  // A full room keeps the egg in the nest until there's room.
-  if (result.nested) askToMakeRoom();
+  const friendSheet = friend ? characterSheet(friend.character, friend.variant) : '';
+  littleOne.show({
+    pet: parent.name,
+    friend: friend?.name ?? '',
+    petPic: () => portraitOf(parent),
+    friendPic: () => characterImage(friendSheet),
+    eggPic: () => portraitOf({ ...parent, stage: 'egg' }),
+    egg: !!result.egg,
+    // A full room keeps the egg in the nest until there's room.
+    onClose: () => {
+      if (result.nested) askToMakeRoom();
+    },
+  });
 }
 
 // Gives the check-in bonus if one is due (on opening the game or coming back).
@@ -1072,6 +1080,7 @@ const home = createHomeScreen(root, {
     setState(result.state);
     if (result.blocked) return friendBlocked(result.blocked);
     sound('cast');
+    playMoment('gift');
     home.toast(STRINGS.friends.gave(STRINGS.foods[food], getFriend(state, id)?.name ?? '', result.gained ?? 0));
   },
   onMingle,
@@ -1436,6 +1445,10 @@ const home = createHomeScreen(root, {
 // Made after the home screen, which clears the page when it starts.
 const naming = createNamingBox(root);
 const choice = createChoiceBox(root);
+const littleOne = createLittleOneReveal(root, (moment) => {
+  if (moment === 'egg') sound('grewUp');
+  else if (moment === 'hearts') sound('cuddle');
+});
 const growUp = createGrowUpReveal(root, (moment) => {
   if (moment === 'flash') sound('grewUp');
   else if (moment === 'star') sound('place');

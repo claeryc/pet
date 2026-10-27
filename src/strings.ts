@@ -802,6 +802,14 @@ export const STRINGS = {
     grewInto: (name: string) => `${name} grew up into…`,
     hello: (name: string) => `Hello, ${name}!`,
     newInCollection: 'New in the Collection!',
+    // After mingling.
+    mingling: (pet: string, friend: string) => `${pet} and ${friend}…`,
+    littleOne: (pet: string, friend: string) => `${pet} and ${friend} are having a little one!`,
+    anEgg: 'An egg!',
+    welcome: 'Welcome, little one!',
+    noLittleOne: (pet: string, friend: string) => `${pet} and ${friend} had a lovely time.`,
+    lovelyTime: 'No little one this time',
+    nextTime: 'Maybe next time',
   },
   stars: (count: number) => '★'.repeat(count),
   // "Pebblit", or "Pebblit (Amber)" for a colour variant.
