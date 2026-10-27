@@ -591,18 +591,23 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
   // Where the food sits in the open box: the big compartment, then the two
   // small ones (fractions of the canvas, see drawBento).
   function bento(o: Offer): HTMLElement {
+    // The box keeps its shape and sizes itself to the room there is (see
+    // .bento in the CSS); the canvas and the spots in it fill it.
     const wrap = el('div', `bento${stage === 'closed' ? ' is-closed' : ''}`);
+    const frame = el('div', 'bento-box');
+    frame.style.setProperty('--bento-ratio', String(BENTO_WIDTH / BENTO_HEIGHT));
+    wrap.append(frame);
     const canvas = el('canvas', 'bento-canvas');
     canvas.style.aspectRatio = `${BENTO_WIDTH} / ${BENTO_HEIGHT}`;
     drawBento(canvas, stage === 'closed');
-    wrap.append(canvas);
+    frame.append(canvas);
     if (stage === 'closed') {
       const label = el('div', 'bento-label');
       label.dataset.rarity = o.rarity;
       const head = el('span', 'bento-label-top');
       head.append(icon(placeIcon(o.place), 'bento-label-icon'));
       label.append(head, el('b', '', placeName(o.place)), el('small', '', `${offerHours(o)}h`));
-      wrap.append(label);
+      frame.append(label);
       return wrap;
     }
     // A spot in the box: what's in it (tap to take it out), or a faint
@@ -639,7 +644,7 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
       spot('bento-charm', charm ? `charm_${charm}` : null, ITEM_ICONS.charm_clover, charm ? T.charms[charm]?.name ?? charm : '',
         () => (box().charm = null), 'charm'),
     );
-    wrap.append(items);
+    frame.append(items);
     return wrap;
   }
 

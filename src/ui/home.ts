@@ -588,6 +588,16 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   let lastCuddle = -Infinity;
   const roomPoint = (e: PointerEvent) => {
     const rect = canvas.getBoundingClientRect();
+    // On a short screen the room can be cropped to fit (object-fit: cover),
+    // so it's scaled to fill the box and part of it is cut off.
+    const style = getComputedStyle(canvas);
+    if (style.objectFit === 'cover') {
+      const scale = Math.max(rect.width / ROOM_WIDTH, rect.height / ROOM_HEIGHT);
+      const [px, py] = style.objectPosition.split(' ').map((v) => (v.endsWith('%') ? parseFloat(v) / 100 : 0.5));
+      const left = rect.left + (rect.width - ROOM_WIDTH * scale) * px;
+      const top = rect.top + (rect.height - ROOM_HEIGHT * scale) * py;
+      return { x: (e.clientX - left) / scale, y: (e.clientY - top) / scale };
+    }
     return {
       x: ((e.clientX - rect.left) / rect.width) * ROOM_WIDTH,
       y: ((e.clientY - rect.top) / rect.height) * ROOM_HEIGHT,
