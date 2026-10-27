@@ -533,17 +533,20 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     return pic;
   }
 
-  // A chip in the party row: a picture, a name and a tick. One that can't
-  // go is faded, with why (or how long) in place of the tick.
+  // A face in the party row, with a tick. One that can't go is faded, with
+  // why (or how long) in place of the tick. The name is for screen readers
+  // and the tooltip: faces fit however many are home.
   function partyChip(pic: HTMLElement, name: string, on: boolean, blocked: string | null, onTap: () => void): HTMLElement {
     const b = el('button', `party-chip${on ? ' is-on' : ''}`);
     b.setAttribute('role', 'checkbox');
     b.setAttribute('aria-checked', String(on));
-    b.append(pic, el('b', 'party-name', name));
+    b.setAttribute('aria-label', name);
+    b.title = name;
+    b.append(pic);
     if (blocked) {
       b.append(el('small', 'party-why', blocked));
       b.disabled = true;
-      b.title = blocked;
+      b.title = `${name}: ${blocked}`;
     } else {
       b.append(el('i', 'party-tick', on ? '✓' : ''));
       b.addEventListener('click', onTap);
@@ -681,7 +684,9 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     // While packing, the Lunch panel sits just under the bars (a short trip
     // shows as a red "!" there), so the notes wait until the lid is on.
     if (stage === 'closed' && charm) bars.append(el('p', 'trip-note', T.charms[charm]?.note ?? ''));
-    return [head, bento(o), bars];
+    // Packing, the box is the first thing on screen (the room steps aside,
+    // see the CSS); once the lid is on, "Off we go!" goes over it.
+    return stage === 'pack' ? [bento(o), head, bars] : [head, bento(o), bars];
   }
 
   // The spot in the open box where the last thing packed went.
