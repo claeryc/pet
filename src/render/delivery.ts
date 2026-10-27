@@ -165,7 +165,9 @@ export function drawDelivery(
 // Percy, facing right, with his feet on row `footY` and his left edge at
 // `x`. Every so often he bobs his head. (Also used when he drops by on a
 // journey, see src/render/journey.ts.)
-export function drawPercy(ctx: CanvasRenderingContext2D, x: number, footY: number, timeMs: number): void {
+// `_walking` is for the side profile Percy's redesign brings, where he
+// steps from foot to foot.
+export function drawPercy(ctx: CanvasRenderingContext2D, x: number, footY: number, timeMs: number, _walking = false): void {
   const bob = Math.floor(timeMs / 450) % 4 === 1 ? 1 : 0;
   const bodyTop = footY - PERCY_BODY.length;
   draw(ctx, PERCY_BODY, x, bodyTop, true);

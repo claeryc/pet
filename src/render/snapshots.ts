@@ -28,7 +28,7 @@ const HEART: Sprite = ['.kk.kk.', 'krrkrrk', 'krwrrrk', '.krrrk.', '..krk..', '.
 function percy(ctx: CanvasRenderingContext2D, ms: number, w: number): void {
   const stop = 40;
   const x = ms < 2000 ? Math.round(-22 + (ms / 2000) * (stop + 22)) : ms < 5000 ? stop : Math.round(stop + ((ms - 5000) / 1500) * (w - stop + 2));
-  drawPercy(ctx, x, 47, ms);
+  drawPercy(ctx, x, 47, ms, ms < 2000 || ms >= 5000);
   if (ms >= 2000 && ms < 5000) paint(ctx, HEART, x + 12, 18 - (Math.floor(ms / 300) % 2));
 }
 
