@@ -118,6 +118,7 @@ export interface Trip {
   to: { hunger: number; energy: number };
   joy: number; // joy gained by the time it's home
   finds: Find[]; // what's in the backpack (rolled when it sets off)
+  spotted?: Find[]; // picked up on the way, tapped while watching (see journeys.ts)
   // Percy coming along: 'none', 'coming' (flies home halfway) or 'flown'.
   percy: 'none' | 'coming' | 'flown';
   charm?: string | null; // a charm packed for the trip (see CONFIG.journeys.charms)

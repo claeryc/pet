@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { legAt, legFor, stepWalk } from '../src/render/journey';
+import { glintAt, legAt, legFor, parcelAt, PERCY_DROP_MS, percyAt, stepWalk, WALK_SPEED } from '../src/render/journey';
 
 describe('the walk to a place', () => {
   it('goes across the fields, past the forest edge and into the woods', () => {
@@ -33,5 +33,26 @@ describe('the walk to a place', () => {
     // The far layer goes by slower, so its change is further along it.
     expect(legAt(edge, 230, 0.2, 64)).toBe('fields');
     expect(legAt(edge, 300, 0.2, 64)).toBe('edge');
+  });
+});
+
+describe('things spotted on the way', () => {
+  it('a glint comes in from the right and goes by with the ground', () => {
+    const at = glintAt(1000, 1000, true, 64)!;
+    expect(at.x).toBeGreaterThan(64);
+    expect(glintAt(1000, 3000, true, 64)!.x).toBeLessThan(at.x);
+    expect(glintAt(1000, 1000 + 80 / WALK_SPEED, true, 64)).toBeNull();
+  });
+
+  it('stays put a while where there is no walk', () => {
+    expect(glintAt(0, 5000, false, 64)).toEqual(glintAt(0, 20000, false, 64));
+    expect(glintAt(0, 60000, false, 64)).toBeNull();
+  });
+
+  it('Percy crosses from the left and drops his parcel on the way', () => {
+    expect(percyAt(0, 0, 64)!).toBeLessThan(0);
+    expect(parcelAt(0, PERCY_DROP_MS - 1, true)).toBeNull();
+    expect(parcelAt(0, PERCY_DROP_MS, true)).not.toBeNull();
+    expect(percyAt(0, 60000, 64)).toBeNull();
   });
 });

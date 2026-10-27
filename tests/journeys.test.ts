@@ -4,7 +4,7 @@ import { CONFIG } from '../src/game/config';
 import { simulate } from '../src/game/simulate';
 import { feed } from '../src/game/actions';
 import {
-  buyCharm, callHome, cantGo, charmCount, getPlace, openBackpack, planTrip, potsDryingBy, restPercy, rollFinds, setOff,
+  buyCharm, callHome, cantGo, charmCount, getPlace, openBackpack, planTrip, potsDryingBy, restPercy, rollFinds, setOff, spotFind, canSpot,
   goTogether,
   tripPreview, type Place,
 } from '../src/game/journeys';
@@ -364,5 +364,52 @@ describe('going together', () => {
     const now = START + 2 * HOUR;
     const back = callHome(simulate(left, now), now, left.pet.id).state;
     expect([back.pet, ...back.housemates].every(hasBackpack)).toBe(true);
+  });
+});
+
+describe('spotted on the way', () => {
+  it('a glint is one of the place\'s 1-star finds, and goes in the backpack', () => {
+    const s = setOff(ready(), START, 0, [], false).state;
+    const { state, find } = spotFind(s, s.pet.id, 'glint');
+    expect(find).not.toBeNull();
+    expect(getPlace('market')!.finds[1].map((e) => (e.startsWith('gold:') ? 'gold' : e.replace('seed:', '')))).toContain(find!.kind === 'gold' ? 'gold' : find!.id);
+    expect(state.pet.trip!.spotted).toEqual([find]);
+    expect(state.pet.trip!.finds).toEqual(s.pet.trip!.finds);
+  });
+
+  it("Percy's parcel is some gold", () => {
+    const s = setOff(ready(), START, 0, [], false).state;
+    const { find } = spotFind(s, s.pet.id, 'parcel');
+    expect(find!.kind).toBe('gold');
+    expect(find!.count).toBeGreaterThanOrEqual(J.spot.parcelGold[0]);
+    expect(find!.count).toBeLessThanOrEqual(J.spot.parcelGold[1]);
+  });
+
+  it(`stops at ${J.spot.max} a trip`, () => {
+    let s = setOff(ready(), START, 0, [], false).state;
+    for (let i = 0; i < J.spot.max; i++) s = spotFind(s, s.pet.id, 'glint').state;
+    expect(canSpot(s.pet)).toBe(false);
+    expect(spotFind(s, s.pet.id, 'parcel').find).toBeNull();
+  });
+
+  it('is the same thing however often it is tried', () => {
+    const s = setOff(ready(), START, 0, [], false).state;
+    expect(spotFind(s, s.pet.id, 'glint').find).toEqual(spotFind(s, s.pet.id, 'glint').find);
+  });
+
+  it('needs a pet out on a trip', () => {
+    const s = ready();
+    expect(spotFind(s, s.pet.id, 'glint').find).toBeNull();
+  });
+
+  it('comes home with the rest, even when called home early', () => {
+    const s = setOff(ready(), START, 2, [], false).state;
+    const spotted = spotFind(s, s.pet.id, 'parcel');
+    const now = START + 10 * 60_000; // too soon for any of the trip's own finds
+    const back = callHome(simulate(spotted.state, now), now, s.pet.id).state;
+    const before = back.gold;
+    const opened = openBackpack(back, back.pet.id);
+    expect(opened.finds).toEqual([spotted.find]);
+    expect(opened.state.gold).toBe(before + spotted.find!.count);
   });
 });

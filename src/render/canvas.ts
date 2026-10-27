@@ -14,7 +14,7 @@ import type { FishingPhase } from '../ui/fishing';
 import { drawGardenBackground, drawGardenPots, type GardenScene } from './garden';
 import { drawDelivery, type DeliveryScene } from './delivery';
 import { drawPlace } from './places';
-import { drawWalk, drawWalkFront, legFor, stepWalk, WALK_SPEED, type Walk } from './journey';
+import { drawSpotted, drawWalk, drawWalkFront, legFor, stepWalk, stillScenery, WALK_SPEED, type SpotScene, type Walk } from './journey';
 import { drawBath, drawMess, type BathScene, type PetMess } from './hygiene';
 import { drawMoment, drawSickCloud, drawSleepZs, drawWindowLight, momentMotion, playHop, type Moment, type MomentMotion } from './moments';
 import { drawKeepsakes, drawShelfCloseup, type RoomKeepsakes, type ShelfThing } from './keepsakes';
@@ -80,6 +80,7 @@ export interface TripScene {
   pets: OtherPet[];
   bag: string; // what they carry on a stick (see src/render/bags.ts)
   share: number; // how far along the trip is, 0 to 1 (see src/ui/trip.ts)
+  spots: SpotScene; // things to tap on the way
 }
 
 export function setupCanvas(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
@@ -375,7 +376,7 @@ let walk: Walk | null = null;
 const SHADOW_Y = 40 - 32 + 29; // the shadow row of a pet standing on the floor
 function drawTrip(ctx: CanvasRenderingContext2D, trip: TripScene, night: boolean, timeMs: number): void {
   const leg = legFor(trip.place, trip.share);
-  const still = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const still = stillScenery();
   const camera = still ? 0 : timeMs * WALK_SPEED;
   if (leg) {
     walk = stepWalk(walk, trip.place, leg, camera);
@@ -414,6 +415,7 @@ function drawTrip(ctx: CanvasRenderingContext2D, trip: TripScene, night: boolean
     ctx.restore();
   });
   if (leg && walk) drawWalkFront(ctx, walk, camera, ROOM_WIDTH, ROOM_HEIGHT);
+  drawSpotted(ctx, trip.spots, !!leg && !still, ROOM_WIDTH, timeMs);
 }
 
 // Clips drawing to everything below a grassy edge `edge` pixels down.

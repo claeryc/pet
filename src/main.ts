@@ -99,7 +99,8 @@ import { STRINGS } from './strings';
 import { FRAGMENT_ICON, ITEM_ICONS } from './ui/icons';
 import { DISH_MS, DONE_MS as COOKED_MS } from './ui/cooking';
 import { music, sound, startAudio } from './audio/audio';
-import { buyCharm, buyHolidayTicket, callHome, goHoliday, goTogether, offerAt, openBackpack, placeLevel, restPercy } from './game/journeys';
+import { buyCharm, buyHolidayTicket, callHome, goHoliday, goTogether, offerAt, openBackpack, placeLevel, restPercy, spotFind } from './game/journeys';
+import { findName } from './ui/messages';
 import { postcardArt } from './ui/journal';
 import { REVEAL_MS } from './ui/reveal';
 import { isAway } from './game/presence';
@@ -1279,6 +1280,14 @@ const home = createHomeScreen(root, {
       ],
     });
   },
+  onSpot: (id, kind) => {
+    const result = spotFind(simulate(state, gameNow()), id, kind);
+    if (!result.find) return;
+    setState(result.state);
+    sound('got');
+    const pet = allPets(result.state).find((p) => p.id === id);
+    home.toast(STRINGS.journeys.spotted(pet?.name ?? '', findName(result.find), kind === 'parcel'));
+  },
   onMakeRoom: askToMakeRoom,
   onMeadowVisitor: greetMeadowVisitor,
   onSayHi: (id) => {
@@ -1591,6 +1600,7 @@ function render(timeMs: number): void {
         place: trip.place,
         bag: (state.inventory.bags ?? []).includes('courier') ? 'courier' : 'sack',
         share: tripProgress(trip.pets[0], gameNow()),
+        spots: trip.spots,
         pets: trip.pets.map((p) => ({
           sheet: sprites.get(sheetFor(p)),
           hat: sprites.get(getHat(p.hat)?.sheet ?? ''),

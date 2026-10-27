@@ -629,6 +629,48 @@ function callOneHome(state: GameState, now: number, petId: string): GameState {
   return logMessage(s, { kind: 'tripHome', at: now, name: home.name, place: trip.place });
 }
 
+// ---- Spotted on the way ----
+
+// Whether there's still room for something spotted on `pet`'s trip: it's
+// out on one (not a Holiday, which has no finds) and hasn't had `max` yet.
+export function canSpot(pet: Pet): boolean {
+  return isAway(pet) && !pet.trip!.holiday && (pet.trip!.spotted ?? []).length < J.spot.max;
+}
+
+// Something tapped while watching `petId`'s trip: a glint on the ground
+// (one of the place's 1-star finds) or Percy's parcel (some gold). It goes
+// in the backpack with the rest, and comes home even on a trip called home
+// early. What it is is rolled from the trip, so it can't be rolled again.
+export function spotFind(state: GameState, petId: string, kind: 'glint' | 'parcel'): { state: GameState; find: Find | null } {
+  const pet = allPets(state).find((p) => p.id === petId);
+  if (!pet || !canSpot(pet)) return { state, find: null };
+  const trip = pet.trip!;
+  const n = (trip.spotted ?? []).length;
+  const roll = (label: string) => seededRoll(pet.id, `trip:${trip.startedAt}:spot:${n}:${label}`);
+  let find: Find;
+  if (kind === 'parcel') {
+    const [min, max] = J.spot.parcelGold;
+    find = { kind: 'gold', id: '', count: min + Math.floor(roll('gold') * (max - min + 1)), stars: 1 };
+  } else {
+    const list = getPlace(trip.place)?.finds[1] as readonly string[] | undefined;
+    if (!list?.length) return { state, find: null };
+    find = parseFind(list[Math.floor(roll('pick') * list.length)], 1);
+  }
+  return { state: replacePet(state, { ...pet, trip: { ...trip, spotted: [...(trip.spotted ?? []), find] } }), find };
+}
+
+// A trip's finds with what was spotted on the way, the same things put
+// together.
+function allFinds(trip: Trip): Find[] {
+  const merged: Find[] = trip.finds.map((f) => ({ ...f }));
+  for (const f of trip.spotted ?? []) {
+    const same = merged.find((m) => m.kind === f.kind && m.id === f.id);
+    if (same) same.count += f.count;
+    else merged.push({ ...f });
+  }
+  return merged;
+}
+
 // Opens the backpack of a pet that's home: everything in it goes into the
 // inventory, and a finished trip goes into the travel journal and counts
 // for the journey badges. Returns what was in it.
@@ -638,12 +680,13 @@ export function openBackpack(state: GameState, petId: string): {
   const pet = allPets(state).find((p) => p.id === petId);
   if (!pet || !hasBackpack(pet)) return { state, finds: [], place: null, postcard: null, friend: null };
   const trip = pet.trip!;
+  const finds = allFinds(trip);
   const counted = trip.early ? { pet, newFavourite: false } : countTravel(pet, trip.place);
   let s = replacePet(state, { ...counted.pet, trip: null });
-  for (const f of trip.finds) s = giveFind(s, f);
-  s = noteFound(s, trip.place, trip.finds);
+  for (const f of finds) s = giveFind(s, f);
+  s = noteFound(s, trip.place, finds);
   // A 3-star find counts for Epic Finder even on a trip cut short: it's home.
-  const epic = trip.finds.filter((f) => f.stars === 3).length;
+  const epic = finds.filter((f) => f.stars === 3).length;
   if (epic > 0) s = addTally(s, 'epicFinds', epic);
   let postcard: Postcard | null = null;
   let friend: string | null = null;
@@ -651,8 +694,8 @@ export function openBackpack(state: GameState, petId: string): {
     const stamp = trip.night ? 'night' : trip.rarity;
     // Percy brought this trip's postcard already, unless there's news.
     if (trip.percy !== 'flown' || trip.friend || counted.newFavourite) {
-      const story = storyOf(counted.pet, trip, trip.finds, counted.newFavourite);
-      postcard = postcardOf(counted.pet, trip, trip.backAt!, story, trip.finds);
+      const story = storyOf(counted.pet, trip, finds, counted.newFavourite);
+      postcard = postcardOf(counted.pet, trip, trip.backAt!, story, finds);
       s = noteStoryLike(s, pet.id, story);
     }
     s = withPage(s, trip.place, (page) => ({
@@ -674,7 +717,7 @@ export function openBackpack(state: GameState, petId: string): {
       friend = trip.friend.name;
     }
   }
-  return { state: s, finds: trip.finds, place: trip.place, postcard, friend };
+  return { state: s, finds: finds, place: trip.place, postcard, friend };
 }
 
 // Everything a place can give, for its "Found here" page in the journal:

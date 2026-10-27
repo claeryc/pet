@@ -49,7 +49,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, te
 
 const foodName = (id: string) => STRINGS.foods[id as FoodId] ?? id;
 // "3 gold", "a Pumpkin seed" or "Honey".
-const findName = (f: Find) =>
+export const findName = (f: Find) =>
   f.kind === 'gold' ? `${f.count} ${STRINGS.gold.label.toLowerCase()}`
   : f.kind === 'seed' ? STRINGS.garden.seedName(foodName(f.id)) : foodName(f.id);
 const items = (boxes: { food: string; want: number }[]) =>

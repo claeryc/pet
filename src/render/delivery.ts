@@ -159,13 +159,17 @@ export function drawDelivery(
   });
 
   // Percy, on the grass beside his crates. Every so often he bobs his head.
-  if (scene.percy) {
-    const bob = Math.floor(timeMs / 450) % 4 === 1 ? 1 : 0;
-    const x = 3;
-    const bodyTop = 42 - PERCY_BODY.length;
-    draw(ctx, PERCY_BODY, x, bodyTop, true);
-    draw(ctx, PERCY_HEAD, x + bob, bodyTop - PERCY_HEAD.length + bob, true);
-    // The body's top again over the head's outline, so they look joined.
-    draw(ctx, PERCY_BODY.slice(0, 1), x, bodyTop);
-  }
+  if (scene.percy) drawPercy(ctx, 3, 42, timeMs);
+}
+
+// Percy, facing right, with his feet on row `footY` and his left edge at
+// `x`. Every so often he bobs his head. (Also used when he drops by on a
+// journey, see src/render/journey.ts.)
+export function drawPercy(ctx: CanvasRenderingContext2D, x: number, footY: number, timeMs: number): void {
+  const bob = Math.floor(timeMs / 450) % 4 === 1 ? 1 : 0;
+  const bodyTop = footY - PERCY_BODY.length;
+  draw(ctx, PERCY_BODY, x, bodyTop, true);
+  draw(ctx, PERCY_HEAD, x + bob, bodyTop - PERCY_HEAD.length + bob, true);
+  // The body's top again over the head's outline, so they look joined.
+  draw(ctx, PERCY_BODY.slice(0, 1), x, bodyTop);
 }
