@@ -51,7 +51,7 @@ import { SPOTS } from '../render/canvas';
 import type { SpriteSheet } from '../render/sprites';
 
 export interface HomeCallbacks extends MenuCallbacks {
-  onSpot: (petId: string, kind: 'glint' | 'parcel') => void; // something tapped on the way, watching a trip
+  onSpot: (petId: string, key: string) => void; // something tapped on the way, watching a trip
   onPlaceFurniture: (spot: FurnitureSlot, id: string | null) => void; // decorating
   onFeed: (food: FoodId) => void;
   onPlay: (activity: ActivityId) => void;

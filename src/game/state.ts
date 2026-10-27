@@ -100,8 +100,8 @@ export type Rarity = 'common' | 'rare' | 'epic';
 
 // Something found on a journey: a food, a seed or some gold.
 export interface Find {
-  kind: 'food' | 'seed' | 'gold';
-  id: string; // a food or crop id ('' for gold)
+  kind: 'food' | 'seed' | 'gold' | 'pebble';
+  id: string; // a food or crop id ('' for gold and pebbles)
   count: number;
   stars: number;
 }
@@ -118,7 +118,7 @@ export interface Trip {
   to: { hunger: number; energy: number };
   joy: number; // joy gained by the time it's home
   finds: Find[]; // what's in the backpack (rolled when it sets off)
-  spotted?: Find[]; // picked up on the way, tapped while watching (see journeys.ts)
+  picked?: string[]; // things picked up on the way, tapped while watching (see spotSlots in journeys.ts)
   // Percy coming along: 'none', 'coming' (flies home halfway) or 'flown'.
   percy: 'none' | 'coming' | 'flown';
   charm?: string | null; // a charm packed for the trip (see CONFIG.journeys.charms)
@@ -427,6 +427,7 @@ export interface GameState {
   // The game's clock is always: real time + clockOffsetMs.
   clockOffsetMs: number;
   gold: number;
+  pebbles?: number; // picked up on journeys, for a Mystery Bag in the Shop
   inventory: Inventory;
   // When the rice jar adds its next free rice ball (null while it's full;
   // see stepRiceJar in src/game/economy.ts).

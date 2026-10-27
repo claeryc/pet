@@ -451,6 +451,7 @@ const placeName = (id: string) => STRINGS.journeys.places[id] ?? id;
 // What a journey find is called: "Honey", "Pumpkin seed" or "Gold".
 function findLabel(f: Find): string {
   if (f.kind === 'gold') return STRINGS.journeys.goldFind;
+  if (f.kind === 'pebble') return STRINGS.journeys.pebbleFind;
   const name = STRINGS.foods[f.id as FoodId] ?? f.id;
   return f.kind === 'seed' ? STRINGS.garden.seedName(name) : name;
 }
@@ -459,10 +460,10 @@ function findLabel(f: Find): string {
 function showFind(f: Find, caption: string): void {
   sound('got');
   home.reveal({
-    icon: f.kind === 'gold' ? STAT_ICONS.gold : ITEM_ICONS[f.kind === 'seed' ? `seed_${f.id}` : f.id] ?? '',
+    icon: f.kind === 'gold' ? STAT_ICONS.gold : f.kind === 'pebble' ? STAT_ICONS.pebble : ITEM_ICONS[f.kind === 'seed' ? `seed_${f.id}` : f.id] ?? '',
     name: findLabel(f),
     count: f.count,
-    stars: f.kind === 'gold' ? 0 : f.stars,
+    stars: f.kind === 'gold' || f.kind === 'pebble' ? 0 : f.stars,
     caption,
   });
 }
@@ -1280,13 +1281,14 @@ const home = createHomeScreen(root, {
       ],
     });
   },
-  onSpot: (id, kind) => {
-    const result = spotFind(simulate(state, gameNow()), id, kind);
+  onSpot: (id, key) => {
+    const now = gameNow();
+    const result = spotFind(simulate(state, now), id, key, now);
     if (!result.find) return;
     setState(result.state);
     sound('got');
     const pet = allPets(result.state).find((p) => p.id === id);
-    home.toast(STRINGS.journeys.spotted(pet?.name ?? '', findName(result.find), kind === 'parcel'));
+    home.toast(STRINGS.journeys.spotted(pet?.name ?? '', result.find.count, key === 'percy'));
   },
   onMakeRoom: askToMakeRoom,
   onMeadowVisitor: greetMeadowVisitor,

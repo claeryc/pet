@@ -1614,6 +1614,17 @@ export const HEART_ICONS = {
 };
 
 export const STAT_ICONS = {
+  // A smooth pebble from a journey (for a Mystery Bag in the Shop).
+  pebble: pixelIcon([
+    '........',
+    '..kkkk..',
+    '.kvvllk.',
+    'kvwvlllk',
+    'kvllllck',
+    'kllllcuk',
+    '.kkkkkk.',
+    '........',
+  ], { c: PALETTE.plum }),
   gold: pixelIcon([
     '..kkkk..',
     '.kyyyyk.',

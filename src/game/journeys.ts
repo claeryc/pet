@@ -268,6 +268,7 @@ export function bestFind(finds: readonly Find[]): number {
 // Puts a find into the inventory (or the gold purse).
 function giveFind(state: GameState, f: Find): GameState {
   if (f.kind === 'gold') return { ...state, gold: state.gold + f.count };
+  if (f.kind === 'pebble') return { ...state, pebbles: (state.pebbles ?? 0) + f.count };
   if (f.kind === 'seed') {
     let s = state;
     for (let n = 0; n < f.count; n++) s = addSeed(s, f.id as CropId);
@@ -289,7 +290,7 @@ function withPage(state: GameState, place: string, change: (page: JournalPage) =
 // Writes the food and seeds in `finds` into the place's journal page
 // (seeds as "seed:carrot").
 function noteFound(state: GameState, place: string, finds: readonly Find[]): GameState {
-  const foods = finds.filter((f) => f.kind !== 'gold').map((f) => (f.kind === 'seed' ? `seed:${f.id}` : f.id));
+  const foods = finds.filter((f) => f.kind === 'food' || f.kind === 'seed').map((f) => (f.kind === 'seed' ? `seed:${f.id}` : f.id));
   if (foods.every((id) => journalPage(state, place).found.includes(id))) return state;
   return withPage(state, place, (page) => ({ ...page, found: [...page.found, ...foods.filter((id) => !page.found.includes(id))] }));
 }
@@ -631,44 +632,60 @@ function callOneHome(state: GameState, now: number, petId: string): GameState {
 
 // ---- Spotted on the way ----
 
-// Whether there's still room for something spotted on `pet`'s trip: it's
-// out on one (not a Holiday, which has no finds) and hasn't had `max` yet.
-export function canSpot(pet: Pet): boolean {
-  return isAway(pet) && !pet.trip!.holiday && (pet.trip!.spotted ?? []).length < J.spot.max;
+// Pebbles on the way: a few times through a trip (more on a longer one)
+// one lies on the path for a while, and Percy drops by around halfway with
+// a parcel of them. Open the trip during that time and it shows up (see
+// src/ui/trip.ts); tap it to put it in the backpack. Miss it and it's gone.
+// Pebbles add up for a Mystery Bag in the Shop.
+export interface SpotSlot {
+  key: string; // 'g0', 'g1'... for the pebbles, 'percy' for the parcel
+  kind: 'glint' | 'parcel';
+  from: number;
+  until: number;
 }
 
-// Something tapped while watching `petId`'s trip: a glint on the ground
-// (one of the place's 1-star finds) or Percy's parcel (some gold). It goes
-// in the backpack with the rest, and comes home even on a trip called home
-// early. What it is is rolled from the trip, so it can't be rolled again.
-export function spotFind(state: GameState, petId: string, kind: 'glint' | 'parcel'): { state: GameState; find: Find | null } {
+// The times on `trip` when something's on the way: the pebbles and Percy's
+// parcel spread out evenly, Percy's in the middle. None on a Holiday.
+export function spotSlots(trip: Trip): SpotSlot[] {
+  if (trip.holiday) return [];
+  const length = trip.endsAt - trip.startedAt;
+  const window = Math.max(J.spot.minWindowMs, length * J.spot.windowShare);
+  const n = J.spot.glints[trip.rarity];
+  const percy = Math.floor(n / 2);
+  return Array.from({ length: n + 1 }, (_, i): SpotSlot => {
+    const mid = trip.startedAt + (length * (i + 1)) / (n + 2);
+    const at = { from: mid - window / 2, until: mid + window / 2 };
+    if (i === percy) return { key: 'percy', kind: 'parcel', ...at };
+    return { key: `g${i < percy ? i : i - 1}`, kind: 'glint', ...at };
+  });
+}
+
+// What's on the way of `pet`'s trip at `now` and not picked up yet.
+export function openSpots(pet: Pet, now: number): SpotSlot[] {
+  if (!isAway(pet)) return [];
+  const picked = pet.trip!.picked ?? [];
+  return spotSlots(pet.trip!).filter((s) => now >= s.from && now < s.until && !picked.includes(s.key));
+}
+
+// How many pebbles a thing on the way is worth.
+export const pebblesOf = (kind: SpotSlot['kind']) => (kind === 'parcel' ? J.spot.parcelPebbles : 1);
+
+// Picks up the thing `key` on `petId`'s trip at `now`, if it's there: it
+// goes in the backpack.
+export function spotFind(state: GameState, petId: string, key: string, now: number): { state: GameState; find: Find | null } {
   const pet = allPets(state).find((p) => p.id === petId);
-  if (!pet || !canSpot(pet)) return { state, find: null };
+  const slot = pet && openSpots(pet, now).find((s) => s.key === key);
+  if (!pet || !slot) return { state, find: null };
   const trip = pet.trip!;
-  const n = (trip.spotted ?? []).length;
-  const roll = (label: string) => seededRoll(pet.id, `trip:${trip.startedAt}:spot:${n}:${label}`);
-  let find: Find;
-  if (kind === 'parcel') {
-    const [min, max] = J.spot.parcelGold;
-    find = { kind: 'gold', id: '', count: min + Math.floor(roll('gold') * (max - min + 1)), stars: 1 };
-  } else {
-    const list = getPlace(trip.place)?.finds[1] as readonly string[] | undefined;
-    if (!list?.length) return { state, find: null };
-    find = parseFind(list[Math.floor(roll('pick') * list.length)], 1);
-  }
-  return { state: replacePet(state, { ...pet, trip: { ...trip, spotted: [...(trip.spotted ?? []), find] } }), find };
+  const changed = { ...pet, trip: { ...trip, picked: [...(trip.picked ?? []), key] } };
+  return { state: replacePet(state, changed), find: { kind: 'pebble', id: '', count: pebblesOf(slot.kind), stars: 1 } };
 }
 
-// A trip's finds with what was spotted on the way, the same things put
-// together.
+// A trip's finds with the pebbles picked up on the way.
 function allFinds(trip: Trip): Find[] {
-  const merged: Find[] = trip.finds.map((f) => ({ ...f }));
-  for (const f of trip.spotted ?? []) {
-    const same = merged.find((m) => m.kind === f.kind && m.id === f.id);
-    if (same) same.count += f.count;
-    else merged.push({ ...f });
-  }
-  return merged;
+  const slots = spotSlots(trip);
+  const pebbles = (trip.picked ?? []).reduce((n, key) => n + pebblesOf(slots.find((s) => s.key === key)?.kind ?? 'glint'), 0);
+  return pebbles > 0 ? [...trip.finds, { kind: 'pebble', id: '', count: pebbles, stars: 1 }] : trip.finds;
 }
 
 // Opens the backpack of a pet that's home: everything in it goes into the
