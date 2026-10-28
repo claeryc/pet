@@ -214,7 +214,9 @@ export const CONFIG = {
   // `garden` below).
   // `cookedOnly` food isn't sold either: you make it in the cooking pot
   // (see `cooking` below). Cooked dishes are worth more than eating their
-  // ingredients one by one.
+  // ingredients one by one: a dish's price and its stats added up are its
+  // ingredients' × 1.25 for 1 or 2 ingredients, × 1.4 for 3 (rounded), so
+  // the more work a dish is, the better it pays.
   foods: [
     { id: 'riceBall', price: 3, hunger: 15, happiness: 0, health: 0, staple: true },
     { id: 'strawberry', price: 10, hunger: 10, happiness: 6, health: 0 },
@@ -226,22 +228,22 @@ export const CONFIG = {
     { id: 'carrot', price: 10, hunger: 10, happiness: 0, health: 3, grownOnly: true, stars: 1 },
     { id: 'pumpkin', price: 20, hunger: 20, happiness: 6, health: 4, grownOnly: true, stars: 2 },
     { id: 'dragonFruit', price: 40, hunger: 16, happiness: 16, health: 6, grownOnly: true, stars: 3 },
-    { id: 'grilledShrimp', price: 14, hunger: 16, happiness: 6, health: 2, cookedOnly: true, stars: 1 },
-    { id: 'shrimpOnigiri', price: 18, hunger: 36, happiness: 6, health: 2, cookedOnly: true, stars: 1 },
-    { id: 'strawberryMilk', price: 26, hunger: 26, happiness: 12, health: 4, cookedOnly: true, stars: 1 },
-    { id: 'grilledSalmon', price: 26, hunger: 28, happiness: 8, health: 5, cookedOnly: true, stars: 2 },
-    { id: 'salmonSushi', price: 30, hunger: 46, happiness: 10, health: 5, cookedOnly: true, stars: 2 },
-    { id: 'fishSoup', price: 38, hunger: 38, happiness: 8, health: 10, cookedOnly: true, stars: 2, slowHunger: { percent: 15, hours: 4 } },
-    { id: 'berryShortcake', price: 36, hunger: 30, happiness: 26, health: 2, cookedOnly: true, stars: 2 },
-    { id: 'lobsterBisque', price: 60, hunger: 46, happiness: 20, health: 12, cookedOnly: true, stars: 3, slowHunger: { percent: 20, hours: 6 } },
-    { id: 'veggieOnigiri', price: 16, hunger: 30, happiness: 0, health: 4, cookedOnly: true, stars: 1 },
-    { id: 'carrotSoup', price: 18, hunger: 24, happiness: 0, health: 8, cookedOnly: true, stars: 1 },
-    { id: 'pumpkinSoup', price: 32, hunger: 34, happiness: 6, health: 10, cookedOnly: true, stars: 2 },
-    { id: 'pumpkinPie', price: 40, hunger: 34, happiness: 24, health: 4, cookedOnly: true, stars: 2 },
-    { id: 'heartyStew', price: 55, hunger: 54, happiness: 8, health: 12, cookedOnly: true, stars: 2, slowHunger: { percent: 20, hours: 6 } },
-    { id: 'dragonFruitTart', price: 60, hunger: 30, happiness: 34, health: 6, cookedOnly: true, stars: 3 },
-    { id: 'dragonFruitSmoothie', price: 70, hunger: 34, happiness: 30, health: 14, cookedOnly: true, stars: 3 },
-    { id: 'seafoodPlatter', price: 85, hunger: 66, happiness: 30, health: 12, cookedOnly: true, stars: 3, slowHunger: { percent: 30, hours: 8 } },
+    { id: 'grilledShrimp', price: 13, hunger: 12, happiness: 4, health: 1, cookedOnly: true, stars: 1 },
+    { id: 'shrimpOnigiri', price: 16, hunger: 30, happiness: 5, health: 2, cookedOnly: true, stars: 1 },
+    { id: 'strawberryMilk', price: 28, hunger: 24, happiness: 11, health: 4, cookedOnly: true, stars: 1 },
+    { id: 'grilledSalmon', price: 25, hunger: 25, happiness: 7, health: 4, cookedOnly: true, stars: 2 },
+    { id: 'salmonSushi', price: 29, hunger: 41, happiness: 9, health: 5, cookedOnly: true, stars: 2 },
+    { id: 'fishSoup', price: 40, hunger: 37, happiness: 8, health: 10, cookedOnly: true, stars: 2, slowHunger: { percent: 15, hours: 4 } },
+    { id: 'berryShortcake', price: 42, hunger: 34, happiness: 29, health: 2, cookedOnly: true, stars: 2 },
+    { id: 'lobsterBisque', price: 65, hunger: 46, happiness: 20, health: 12, cookedOnly: true, stars: 3, slowHunger: { percent: 20, hours: 6 } },
+    { id: 'veggieOnigiri', price: 16, hunger: 31, happiness: 0, health: 4, cookedOnly: true, stars: 1 },
+    { id: 'carrotSoup', price: 28, hunger: 26, happiness: 0, health: 9, cookedOnly: true, stars: 1 },
+    { id: 'pumpkinSoup', price: 40, hunger: 38, happiness: 7, health: 11, cookedOnly: true, stars: 2 },
+    { id: 'pumpkinPie', price: 56, hunger: 47, happiness: 33, health: 6, cookedOnly: true, stars: 2 },
+    { id: 'heartyStew', price: 70, hunger: 74, happiness: 11, health: 16, cookedOnly: true, stars: 2, slowHunger: { percent: 20, hours: 6 } },
+    { id: 'dragonFruitTart', price: 60, hunger: 29, happiness: 33, health: 6, cookedOnly: true, stars: 3 },
+    { id: 'dragonFruitSmoothie', price: 87, hunger: 42, happiness: 37, health: 17, cookedOnly: true, stars: 3 },
+    { id: 'seafoodPlatter', price: 98, hunger: 77, happiness: 35, health: 14, cookedOnly: true, stars: 3, slowHunger: { percent: 30, hours: 8 } },
     // A pick-me-up: lots of energy, so the pet can fish and play longer.
     // `limited` food isn't in the Shop every day (see `economy.limited`),
     // and Percy sometimes leaves one after a gold-frame order.
@@ -254,10 +256,10 @@ export const CONFIG = {
     { id: 'glowSalt', price: 20, hunger: 2, happiness: 4, health: 6, foundOnly: true, stars: 2 },
     { id: 'stardustSugar', price: 25, hunger: 4, happiness: 14, health: 0, foundOnly: true, stars: 2 },
     // Dishes made with what journeys bring home.
-    { id: 'honeyCake', price: 45, hunger: 30, happiness: 26, health: 4, cookedOnly: true, stars: 2 },
-    { id: 'mushroomSoup', price: 45, hunger: 36, happiness: 6, health: 14, cookedOnly: true, stars: 2, slowHunger: { percent: 15, hours: 4 } },
-    { id: 'glowSalmon', price: 55, hunger: 34, happiness: 12, health: 12, cookedOnly: true, stars: 2 },
-    { id: 'stardustPudding', price: 80, hunger: 32, happiness: 36, health: 6, cookedOnly: true, stars: 3 },
+    { id: 'honeyCake', price: 49, hunger: 34, happiness: 30, health: 5, cookedOnly: true, stars: 2 },
+    { id: 'mushroomSoup', price: 52, hunger: 40, happiness: 7, health: 15, cookedOnly: true, stars: 2, slowHunger: { percent: 15, hours: 4 } },
+    { id: 'glowSalmon', price: 50, hunger: 30, happiness: 11, health: 11, cookedOnly: true, stars: 2 },
+    { id: 'stardustPudding', price: 66, hunger: 30, happiness: 33, health: 6, cookedOnly: true, stars: 3 },
     // What you get when the pot holds a mix that isn't a recipe.
     { id: 'mushyMess', price: 1, hunger: 8, happiness: 0, health: 0, cookedOnly: true },
   ],

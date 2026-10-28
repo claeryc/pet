@@ -41,6 +41,21 @@ describe('recipes', () => {
     }
   });
 
+  it('every dish is worth more gold than its ingredients', () => {
+    for (const r of RECIPES) {
+      const price = r.ingredients.reduce((t, id) => t + food(id).price, 0);
+      expect(food(r.id).price, r.id).toBeGreaterThan(price);
+    }
+  });
+
+  it('a 3-ingredient dish pays better than any smaller one', () => {
+    // Gold made over what the ingredients are worth.
+    const gain = (r: (typeof RECIPES)[number]) => food(r.id).price / r.ingredients.reduce((t, id) => t + food(id).price, 0);
+    const big = RECIPES.filter((r) => r.ingredients.length === 3).map(gain);
+    const small = RECIPES.filter((r) => r.ingredients.length < 3).map(gain);
+    expect(Math.min(...big)).toBeGreaterThan(Math.max(...small));
+  });
+
   it('every dish has a name and an icon', () => {
     for (const id of [...RECIPES.map((r) => r.id), CONFIG.cooking.mess]) {
       expect(STRINGS.foods[id as keyof typeof STRINGS.foods]).toBeTruthy();
