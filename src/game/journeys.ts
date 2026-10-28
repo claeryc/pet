@@ -225,14 +225,14 @@ export function tripPreview(place: Place, rarity: Rarity, charmId: string | null
 }
 
 // "gold:12", "seed:pumpkin" or a food id, as a find of `stars`.
-function parseFind(entry: string, stars: number): Find {
+export function parseFind(entry: string, stars: number): Find {
   const [kind, id] = entry.split(':');
   if (kind === 'gold') return { kind: 'gold', id: '', count: Number(id), stars };
   if (kind === 'seed') return { kind: 'seed', id, count: 1, stars };
   return { kind: 'food', id: entry, count: 1, stars };
 }
 
-const foodStars = (id: string) => FOODS.find((f) => f.id === id)?.stars ?? 1;
+export const foodStars = (id: string) => FOODS.find((f) => f.id === id)?.stars ?? 1;
 
 // The chance of a 3-star find: epic trips only, unless a charm helps.
 function threeStarChance(rarity: Rarity, charm: Charm | undefined): number {
@@ -283,7 +283,7 @@ export function bestFind(finds: readonly Find[]): number {
 }
 
 // Puts a find into the inventory (or the gold purse).
-function giveFind(state: GameState, f: Find): GameState {
+export function giveFind(state: GameState, f: Find): GameState {
   if (f.kind === 'gold') return { ...state, gold: state.gold + f.count };
   if (f.kind === 'seed') {
     let s = state;

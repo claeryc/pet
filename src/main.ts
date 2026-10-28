@@ -100,6 +100,8 @@ import { STRINGS } from './strings';
 import { FRAGMENT_ICON, ITEM_ICONS } from './ui/icons';
 import { DISH_MS, DONE_MS as COOKED_MS } from './ui/cooking';
 import { music, sound, startAudio } from './audio/audio';
+import { dig, digToday, sniff, type DigBlock } from './game/dig';
+import { placeName as digPlaceName } from './ui/dig';
 import { buyCharm, buyHolidayTicket, callHome, goHoliday, goTogether, offerAt, openBackpack, placeLevel, restPercy } from './game/journeys';
 import { postcardArt } from './ui/journal';
 import { REVEAL_MS } from './ui/reveal';
@@ -449,6 +451,13 @@ function showGot(id: string, count: number, caption?: string, seed = false): voi
 const placeName = (id: string) => STRINGS.journeys.places[id] ?? id;
 
 // What a journey find is called: "Honey", "Pumpkin seed" or "Gold".
+// Why a dig or a sniff was refused.
+function digBlocked(b: DigBlock): void {
+  const T = STRINGS.dig.blocked;
+  if (b === 'noSniffs') blocked(T.noSniffs(state.pet.name));
+  else if (b === 'noDigs' || b === 'cantDig' || b === 'noSpot') blocked(T[b]);
+  else blocked(STRINGS.blocked[b](state.pet.name));
+}
 function findLabel(f: Find): string {
   if (f.kind === 'gold') return STRINGS.journeys.goldFind;
   const name = STRINGS.foods[f.id as FoodId] ?? f.id;
@@ -1004,6 +1013,33 @@ const home = createHomeScreen(root, {
     return caught;
   },
   onPickBait: () => setState(nextBait(state)),
+  onDigToday: () => {
+    const next = digToday(state, gameNow());
+    if (next !== state) setState(next);
+  },
+  onDig: (place, cell) => {
+    const result = dig(state, gameNow(), place, cell);
+    setState(result.state);
+    if (result.blocked) {
+      digBlocked(result.blocked);
+      return null;
+    }
+    if (result.find) {
+      showFind(result.find, STRINGS.dig.found(digPlaceName(place)));
+      react('happy');
+    } else sound(result.flooded ? 'water' : 'place');
+    return result;
+  },
+  onSniff: (place) => {
+    const result = sniff(state, gameNow(), place);
+    setState(result.state);
+    if (result.blocked) {
+      digBlocked(result.blocked);
+      return null;
+    }
+    react('happy');
+    return result.cell ?? null;
+  },
   onCook: (items, opts) => {
     const result = cook(simulate(state, gameNow()), items, [Math.random(), Math.random()], opts);
     setState(result.state);

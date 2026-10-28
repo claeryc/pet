@@ -197,6 +197,32 @@ export interface Journeys {
   holiday?: { from: number; until: number } | null;
 }
 
+// Sniff and dig (see src/game/dig.ts).
+export type TideSide = 'top' | 'right' | 'bottom' | 'left';
+export interface DigTreasure {
+  cell: number; // where it's buried: row * size + column
+  find: string; // like a journey find: "honey", "seed:pumpkin", "gold:12"
+  stars: number;
+}
+export interface DigSpot {
+  place: string;
+  stars: number; // 1 or 2, or 3 for a rare spot
+  treasures: DigTreasure[];
+  dug: number[]; // cells dug, in order
+  sniffed: number[]; // cells the pet pointed its nose at
+  sniffs: number; // sniffs it had today
+  roots: number[]; // cells you can't dig (the woods)
+  tide: TideSide | null; // where the sea comes in from (the cove)
+}
+export interface Dig {
+  day: string; // the day the spots are for ('' before the first)
+  places: string[]; // today's four places, in the order they're shown
+  spots: DigSpot[]; // one for each place that's open
+  used: number; // digs used today
+  // Treasures left in the ground, waiting for the place to come up again.
+  leftovers: Record<string, { find: string; stars: number }[]>;
+}
+
 // Everything the player owns.
 export interface Inventory {
   food: Record<string, number>; // food id -> how many
@@ -508,6 +534,7 @@ export interface GameState {
   keeper: Keeper;
   fragments: Fragments;
   journeys: Journeys;
+  dig: Dig;
   // "How it works" guides already shown (see src/game/guides.ts).
   guidesRead: string[];
   // Regulars by id ("percy"), once you've met them.
@@ -516,6 +543,10 @@ export interface GameState {
 
 export function newJourneys(): Journeys {
   return { offers: [null, null, null], refillAt: [0, 0, 0], percyFreeAt: 0, journal: {} };
+}
+
+export function newDig(): Dig {
+  return { day: '', places: [], spots: [], used: 0, leftovers: {} };
 }
 
 export function newKeeper(): Keeper {
@@ -621,6 +652,7 @@ export function createNewGame(now: number): GameState {
     keeper: newKeeper(),
     fragments: { pieces: 0, careDays: 0, day: '', dayGood: false },
     journeys: newJourneys(),
+    dig: newDig(),
     guidesRead: [],
     regulars: {},
   };
