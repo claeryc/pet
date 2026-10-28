@@ -35,9 +35,9 @@ export function orderPool(state: GameState): string[][] {
   const known = (ids: string[], ok: (f: Food) => boolean) =>
     ids.filter((id, i) => ids.indexOf(id) === i && getFood(id) && ok(getFood(id)!));
   return [
-    known(state.caught, (f) => !!f.caughtOnly),
-    known(state.grown ?? [], (f) => !!f.grownOnly), // missing in saves from before the garden
-    known(state.recipesFound, (f) => !!f.cookedOnly && f.id !== CONFIG.cooking.mess),
+    known(state.caught, (f) => f.source === 'caught'),
+    known(state.grown ?? [], (f) => f.source === 'grown'), // missing in saves from before the garden
+    known(state.recipesFound, (f) => f.source === 'cooked' && f.id !== CONFIG.cooking.mess),
   ];
 }
 

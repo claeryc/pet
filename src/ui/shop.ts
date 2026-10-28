@@ -585,7 +585,7 @@ function untilTomorrow(now: number): number {
 export type ShopCategory = 'today' | 'revival' | 'food' | 'garden' | 'fishing' | 'journeys' | 'room' | 'hats';
 
 // Food the Shop sells: only plain ingredients (the energy drink only on its days).
-export const soldInShop = (f: Food) => f.price > 0 && !f.caughtOnly && !f.grownOnly && !f.cookedOnly && !f.foundOnly;
+export const soldInShop = (f: Food) => f.price > 0 && (f.source === 'shop' || f.source === 'staple');
 
 // Which tab is showing, how far the tabs are scrolled sideways and which
 // sheet is open. Kept by the menu, so they stay while the page redraws

@@ -192,7 +192,7 @@ describe('landing a fish', () => {
   });
 
   it('the three catches are 1, 2 and 3 stars and are not sold in the Shop', () => {
-    const caught = (CONFIG.foods as readonly Food[]).filter((x) => x.caughtOnly);
+    const caught = (CONFIG.foods as readonly Food[]).filter((x) => x.source === 'caught');
     expect(caught.map((x) => [x.id, x.stars])).toEqual([['shrimp', 1], ['salmon', 2], ['lobster', 3]]);
   });
 

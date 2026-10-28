@@ -21,7 +21,11 @@ export interface Recipe {
 }
 
 export const RECIPES = CONFIG.cooking.recipes as readonly Recipe[];
-export const INGREDIENTS = CONFIG.cooking.ingredients as readonly FoodId[];
+// The foods that can go in the pot: every food some recipe uses, in the
+// order of CONFIG.foods.
+export const INGREDIENTS: readonly FoodId[] = CONFIG.foods
+  .map((f) => f.id as FoodId)
+  .filter((id) => RECIPES.some((r) => r.ingredients.includes(id)));
 
 // The same list of foods in a fixed order, so mixes can be compared.
 const sorted = (items: readonly FoodId[]) => [...items].sort().join(',');

@@ -165,9 +165,11 @@ export interface ReelPerks {
   meterStart: number; // the catch meter starts this full
 }
 
+// A food's steadyPaws effect (see CONFIG.foods) widens it a little more.
 export function reelPerks(state: GameState): ReelPerks {
+  const food = state.pet.buffs.find((b) => b.stat === 'fishing')?.percent ?? 0;
   return {
-    widen: 1 + perk(state, 'steadyHands'),
+    widen: 1 + perk(state, 'steadyHands') + food / 100,
     meterStart: Math.min(0.9, CONFIG.fishing.reel.meterStart + perk(state, 'headStart')),
   };
 }

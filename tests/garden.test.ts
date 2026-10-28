@@ -69,7 +69,7 @@ describe('crops', () => {
   it('are grown, not sold, and only carrot seeds are in the Shop', () => {
     for (const c of G.crops) {
       const food = (CONFIG.foods as readonly Food[]).find((f) => f.id === c.id)!;
-      expect(food.grownOnly).toBe(true);
+      expect(food.source).toBe('grown');
     }
     expect(G.crops.filter((c) => c.seedPrice > 0).map((c) => c.id)).toEqual(['carrot']);
   });
@@ -348,13 +348,14 @@ describe('less mushy mess', () => {
   it('knows when a mix can still become a recipe', () => {
     expect(couldBeRecipe(['carrot'])).toBe(true);
     expect(couldBeRecipe(['carrot', 'pumpkin'])).toBe(true); // hearty stew needs salmon too
-    expect(couldBeRecipe(['carrot', 'lobster'])).toBe(false);
+    expect(couldBeRecipe(['carrot', 'lobster'])).toBe(true); // lobster fried rice needs rice too
+    expect(couldBeRecipe(['carrot', 'dragonFruit'])).toBe(false);
     expect(couldBeRecipe(['shrimp', 'shrimp'])).toBe(false);
   });
 
   it('hearty stew is cooked now, not bought', () => {
     const stew = (CONFIG.foods as readonly Food[]).find((f) => f.id === 'heartyStew')!;
-    expect(stew.cookedOnly).toBe(true);
+    expect(stew.source).toBe('cooked');
     const s = newTeen(START);
     s.inventory.food = { carrot: 1, pumpkin: 1, salmon: 1 };
     const r = cook(s, ['salmon', 'carrot', 'pumpkin']);
