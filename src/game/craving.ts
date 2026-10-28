@@ -25,18 +25,18 @@ const C = CONFIG.craving;
 const FOODS = CONFIG.foods as readonly Food[];
 
 // Shop food that's always in (not the energy drink, which only comes some days).
-const fromShop = (f: Food) => !f.caughtOnly && !f.grownOnly && !f.cookedOnly && !f.foundOnly && !f.limited;
+const fromShop = (f: Food) => f.source === 'shop' && !f.limited;
 
 // Everything the pet could crave, in groups like Percy's: Shop treats,
 // fish, crops and dishes. Never the free rice ball, a Mushy mess, or the
 // same thing twice in a row.
 export function cravingPool(state: GameState): string[][] {
-  const ok = (f: Food) => f.price > 0 && !f.staple && f.id !== CONFIG.cooking.mess && f.id !== state.craving.last;
+  const ok = (f: Food) => f.price > 0 && f.source !== 'staple' && f.id !== CONFIG.cooking.mess && f.id !== state.craving.last;
   return [
     FOODS.filter((f) => fromShop(f) && ok(f)),
-    FOODS.filter((f) => f.caughtOnly && ok(f) && state.caught.includes(f.id)),
-    FOODS.filter((f) => f.grownOnly && ok(f) && (state.grown ?? []).includes(f.id)),
-    FOODS.filter((f) => f.cookedOnly && ok(f) && state.recipesFound.includes(f.id)),
+    FOODS.filter((f) => f.source === 'caught' && ok(f) && state.caught.includes(f.id)),
+    FOODS.filter((f) => f.source === 'grown' && ok(f) && (state.grown ?? []).includes(f.id)),
+    FOODS.filter((f) => f.source === 'cooked' && ok(f) && state.recipesFound.includes(f.id)),
   ].map((g) => g.map((f) => f.id as string));
 }
 

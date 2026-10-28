@@ -69,7 +69,7 @@ describe('crops', () => {
   it('are grown, not sold, and only carrot seeds are in the Shop', () => {
     for (const c of G.crops) {
       const food = (CONFIG.foods as readonly Food[]).find((f) => f.id === c.id)!;
-      expect(food.grownOnly).toBe(true);
+      expect(food.source).toBe('grown');
     }
     expect(G.crops.filter((c) => c.seedPrice > 0).map((c) => c.id)).toEqual(['carrot']);
   });
@@ -354,7 +354,7 @@ describe('less mushy mess', () => {
 
   it('hearty stew is cooked now, not bought', () => {
     const stew = (CONFIG.foods as readonly Food[]).find((f) => f.id === 'heartyStew')!;
-    expect(stew.cookedOnly).toBe(true);
+    expect(stew.source).toBe('cooked');
     const s = newTeen(START);
     s.inventory.food = { carrot: 1, pumpkin: 1, salmon: 1 };
     const r = cook(s, ['salmon', 'carrot', 'pumpkin']);

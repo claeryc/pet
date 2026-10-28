@@ -312,7 +312,7 @@ export function giveGift(state: GameState, friendId: string, food: FoodId, now: 
   if (!isVisiting(state, friendId)) return { state, blocked: 'away' };
   const gift = FOODS.find((f) => f.id === food);
   const value = gift?.price ?? 0;
-  if (value <= 0 || gift?.staple) return { state, blocked: 'freeFood' };
+  if (value <= 0 || gift?.source === 'staple') return { state, blocked: 'freeFood' };
   const stocked = useFood(state, food);
   if (!stocked) return { state, blocked: 'noFood' };
   const day = localDay(now);

@@ -20,7 +20,7 @@ function withFood(stock: Record<string, number>) {
 describe('recipes', () => {
   it('every recipe makes a cooked dish and uses real ingredients', () => {
     for (const r of RECIPES) {
-      expect(food(r.id).cookedOnly).toBe(true);
+      expect(food(r.id).source).toBe('cooked');
       expect(r.ingredients.length).toBeGreaterThan(0);
       expect(r.ingredients.length).toBeLessThanOrEqual(CONFIG.cooking.slots);
       for (const id of r.ingredients) expect(INGREDIENTS).toContain(id);
@@ -54,6 +54,10 @@ describe('recipes', () => {
     const big = RECIPES.filter((r) => r.ingredients.length === 3).map(gain);
     const small = RECIPES.filter((r) => r.ingredients.length < 3).map(gain);
     expect(Math.min(...big)).toBeGreaterThan(Math.max(...small));
+  });
+
+  it('every food but a Mushy mess says what kind of food it is', () => {
+    for (const f of foods) if (f.id !== CONFIG.cooking.mess) expect(f.tags.length, f.id).toBeGreaterThan(0);
   });
 
   it('every dish has a name and an icon', () => {

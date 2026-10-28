@@ -200,68 +200,71 @@ export const CONFIG = {
   },
 
   // What's inside the Feed panel. Each food changes stats by these amounts.
-  // A food can also have a timed effect: `slowHunger` makes the tummy empty
-  // more slowly (by `percent`) for a number of `hours`.
   // `price` is the cost in gold in the Shop. Food comes from your
   // inventory, one per meal (food with price 0 would be free and never run
   // out, but none is today).
-  // `staple` food is the everyday fallback: the rice jar refills it for
-  // free (see `riceJar` below), so it's never a favourite, a craving or a
-  // gift.
-  // `caughtOnly` food isn't sold in the Shop: you get it by fishing. Its
-  // `stars` (1-3) say how rare and good it is.
-  // `grownOnly` food isn't sold either: you grow it in the garden (see
-  // `garden` below).
-  // `cookedOnly` food isn't sold either: you make it in the cooking pot
-  // (see `cooking` below). Cooked dishes are worth more than eating their
-  // ingredients one by one: a dish's price and its stats added up are its
-  // ingredients' × 1.25 for 1 or 2 ingredients, × 1.4 for 3 (rounded), so
-  // the more work a dish is, the better it pays.
+  // `source` says where it comes from:
+  //  - `shop`: bought in the Shop.
+  //  - `staple`: the everyday fallback. The rice jar refills it for free
+  //    (see `riceJar` below), so it's never a favourite, a craving or a gift.
+  //  - `caught`: fishing. Its `stars` (1-3) say how rare and good it is.
+  //  - `grown`: the garden (see `garden` below).
+  //  - `found`: a pet brings it home from a journey (see `journeys` below).
+  //  - `cooked`: made in the cooking pot (see `cooking` below). Cooked dishes
+  //    are worth more than eating their ingredients one by one: a dish's
+  //    price and its stats added up are its ingredients' × 1.25 for 1 or 2
+  //    ingredients, × 1.4 for 3 (rounded), so the more work a dish is, the
+  //    better it pays.
+  // Only `shop` and `staple` food is sold.
+  // `tags` say what kind of food it is (a drink, a soup, something sweet…),
+  // for things that care about the kind rather than one food.
+  // `effects` are what a food does besides its stats. Most food has none,
+  // and that's on purpose: an effect should feel special.
+  //  - `slowHunger`: the tummy empties more slowly (by `percent`) for a
+  //    number of `hours`.
   foods: [
-    { id: 'riceBall', price: 3, hunger: 15, happiness: 0, health: 0, staple: true },
-    { id: 'strawberry', price: 10, hunger: 10, happiness: 6, health: 0 },
-    { id: 'warmMilk', price: 12, hunger: 12, happiness: 0, health: 3 },
-    { id: 'cookie', price: 8, hunger: 6, happiness: 12, health: -2 },
-    { id: 'shrimp', price: 10, hunger: 10, happiness: 4, health: 0, caughtOnly: true, stars: 1 },
-    { id: 'salmon', price: 20, hunger: 20, happiness: 6, health: 3, caughtOnly: true, stars: 2 },
-    { id: 'lobster', price: 40, hunger: 28, happiness: 14, health: 5, caughtOnly: true, stars: 3 },
-    { id: 'carrot', price: 10, hunger: 10, happiness: 0, health: 3, grownOnly: true, stars: 1 },
-    { id: 'pumpkin', price: 20, hunger: 20, happiness: 6, health: 4, grownOnly: true, stars: 2 },
-    { id: 'dragonFruit', price: 40, hunger: 16, happiness: 16, health: 6, grownOnly: true, stars: 3 },
-    { id: 'grilledShrimp', price: 13, hunger: 12, happiness: 4, health: 1, cookedOnly: true, stars: 1 },
-    { id: 'shrimpOnigiri', price: 16, hunger: 30, happiness: 5, health: 2, cookedOnly: true, stars: 1 },
-    { id: 'strawberryMilk', price: 28, hunger: 24, happiness: 11, health: 4, cookedOnly: true, stars: 1 },
-    { id: 'grilledSalmon', price: 25, hunger: 25, happiness: 7, health: 4, cookedOnly: true, stars: 2 },
-    { id: 'salmonSushi', price: 29, hunger: 41, happiness: 9, health: 5, cookedOnly: true, stars: 2 },
-    { id: 'fishSoup', price: 40, hunger: 37, happiness: 8, health: 10, cookedOnly: true, stars: 2, slowHunger: { percent: 15, hours: 4 } },
-    { id: 'berryShortcake', price: 42, hunger: 34, happiness: 29, health: 2, cookedOnly: true, stars: 2 },
-    { id: 'lobsterBisque', price: 65, hunger: 46, happiness: 20, health: 12, cookedOnly: true, stars: 3, slowHunger: { percent: 20, hours: 6 } },
-    { id: 'veggieOnigiri', price: 16, hunger: 31, happiness: 0, health: 4, cookedOnly: true, stars: 1 },
-    { id: 'carrotSoup', price: 28, hunger: 26, happiness: 0, health: 9, cookedOnly: true, stars: 1 },
-    { id: 'pumpkinSoup', price: 40, hunger: 38, happiness: 7, health: 11, cookedOnly: true, stars: 2 },
-    { id: 'pumpkinPie', price: 56, hunger: 47, happiness: 33, health: 6, cookedOnly: true, stars: 2 },
-    { id: 'heartyStew', price: 70, hunger: 74, happiness: 11, health: 16, cookedOnly: true, stars: 2, slowHunger: { percent: 20, hours: 6 } },
-    { id: 'dragonFruitTart', price: 60, hunger: 29, happiness: 33, health: 6, cookedOnly: true, stars: 3 },
-    { id: 'dragonFruitSmoothie', price: 87, hunger: 42, happiness: 37, health: 17, cookedOnly: true, stars: 3 },
-    { id: 'seafoodPlatter', price: 98, hunger: 77, happiness: 35, health: 14, cookedOnly: true, stars: 3, slowHunger: { percent: 30, hours: 8 } },
+    { id: 'riceBall', source: 'staple', price: 3, hunger: 15, happiness: 0, health: 0, tags: ['grain'] },
+    { id: 'strawberry', source: 'shop', price: 10, hunger: 10, happiness: 6, health: 0, tags: ['fruit', 'sweet'] },
+    { id: 'warmMilk', source: 'shop', price: 12, hunger: 12, happiness: 0, health: 3, tags: ['drink', 'dairy'] },
+    { id: 'cookie', source: 'shop', price: 8, hunger: 6, happiness: 12, health: -2, tags: ['sweet'] },
+    { id: 'shrimp', source: 'caught', price: 10, hunger: 10, happiness: 4, health: 0, stars: 1, tags: ['seafood'] },
+    { id: 'salmon', source: 'caught', price: 20, hunger: 20, happiness: 6, health: 3, stars: 2, tags: ['seafood'] },
+    { id: 'lobster', source: 'caught', price: 40, hunger: 28, happiness: 14, health: 5, stars: 3, tags: ['seafood'] },
+    { id: 'carrot', source: 'grown', price: 10, hunger: 10, happiness: 0, health: 3, stars: 1, tags: ['veg'] },
+    { id: 'pumpkin', source: 'grown', price: 20, hunger: 20, happiness: 6, health: 4, stars: 2, tags: ['veg'] },
+    { id: 'dragonFruit', source: 'grown', price: 40, hunger: 16, happiness: 16, health: 6, stars: 3, tags: ['fruit'] },
+    { id: 'grilledShrimp', source: 'cooked', price: 13, hunger: 12, happiness: 4, health: 1, stars: 1, tags: ['seafood'] },
+    { id: 'shrimpOnigiri', source: 'cooked', price: 16, hunger: 30, happiness: 5, health: 2, stars: 1, tags: ['seafood', 'grain'] },
+    { id: 'strawberryMilk', source: 'cooked', price: 28, hunger: 24, happiness: 11, health: 4, stars: 1, tags: ['drink', 'sweet'] },
+    { id: 'grilledSalmon', source: 'cooked', price: 25, hunger: 25, happiness: 7, health: 4, stars: 2, tags: ['seafood'] },
+    { id: 'salmonSushi', source: 'cooked', price: 29, hunger: 41, happiness: 9, health: 5, stars: 2, tags: ['seafood', 'grain'] },
+    { id: 'fishSoup', source: 'cooked', price: 40, hunger: 37, happiness: 8, health: 10, stars: 2, tags: ['soup', 'seafood'], effects: [{ kind: 'slowHunger', percent: 15, hours: 4 }] },
+    { id: 'berryShortcake', source: 'cooked', price: 42, hunger: 34, happiness: 29, health: 2, stars: 2, tags: ['sweet'] },
+    { id: 'lobsterBisque', source: 'cooked', price: 65, hunger: 46, happiness: 20, health: 12, stars: 3, tags: ['soup', 'seafood'], effects: [{ kind: 'slowHunger', percent: 20, hours: 6 }] },
+    { id: 'veggieOnigiri', source: 'cooked', price: 16, hunger: 31, happiness: 0, health: 4, stars: 1, tags: ['veg', 'grain'] },
+    { id: 'carrotSoup', source: 'cooked', price: 28, hunger: 26, happiness: 0, health: 9, stars: 1, tags: ['soup', 'veg'] },
+    { id: 'pumpkinSoup', source: 'cooked', price: 40, hunger: 38, happiness: 7, health: 11, stars: 2, tags: ['soup', 'veg'] },
+    { id: 'pumpkinPie', source: 'cooked', price: 56, hunger: 47, happiness: 33, health: 6, stars: 2, tags: ['sweet'] },
+    { id: 'heartyStew', source: 'cooked', price: 70, hunger: 74, happiness: 11, health: 16, stars: 2, tags: ['soup'], effects: [{ kind: 'slowHunger', percent: 20, hours: 6 }] },
+    { id: 'dragonFruitTart', source: 'cooked', price: 60, hunger: 29, happiness: 33, health: 6, stars: 3, tags: ['sweet', 'fruit'] },
+    { id: 'dragonFruitSmoothie', source: 'cooked', price: 87, hunger: 42, happiness: 37, health: 17, stars: 3, tags: ['drink', 'fruit'] },
+    { id: 'seafoodPlatter', source: 'cooked', price: 98, hunger: 77, happiness: 35, health: 14, stars: 3, tags: ['seafood'], effects: [{ kind: 'slowHunger', percent: 30, hours: 8 }] },
     // A pick-me-up: lots of energy, so the pet can fish and play longer.
     // `limited` food isn't in the Shop every day (see `economy.limited`),
     // and Percy sometimes leaves one after a gold-frame order.
-    { id: 'energyDrink', price: 35, hunger: 0, happiness: 4, health: -2, energy: 40, limited: true },
-    // `foundOnly` food isn't sold or grown: a pet brings it home from a
-    // journey, one kind per place (see `journeys` below). There are no
-    // seeds for these.
-    { id: 'honey', price: 15, hunger: 8, happiness: 8, health: 2, foundOnly: true, stars: 1 },
-    { id: 'wildMushroom', price: 15, hunger: 10, happiness: 0, health: 6, foundOnly: true, stars: 1 },
-    { id: 'glowSalt', price: 20, hunger: 2, happiness: 4, health: 6, foundOnly: true, stars: 2 },
-    { id: 'stardustSugar', price: 25, hunger: 4, happiness: 14, health: 0, foundOnly: true, stars: 2 },
+    { id: 'energyDrink', source: 'shop', price: 35, hunger: 0, happiness: 4, health: -2, energy: 40, limited: true, tags: ['drink'] },
+    // Found on journeys, one kind per place. There are no seeds for these.
+    { id: 'honey', source: 'found', price: 15, hunger: 8, happiness: 8, health: 2, stars: 1, tags: ['sweet'] },
+    { id: 'wildMushroom', source: 'found', price: 15, hunger: 10, happiness: 0, health: 6, stars: 1, tags: ['veg'] },
+    { id: 'glowSalt', source: 'found', price: 20, hunger: 2, happiness: 4, health: 6, stars: 2, tags: ['seasoning'] },
+    { id: 'stardustSugar', source: 'found', price: 25, hunger: 4, happiness: 14, health: 0, stars: 2, tags: ['sweet'] },
     // Dishes made with what journeys bring home.
-    { id: 'honeyCake', price: 49, hunger: 34, happiness: 30, health: 5, cookedOnly: true, stars: 2 },
-    { id: 'mushroomSoup', price: 52, hunger: 40, happiness: 7, health: 15, cookedOnly: true, stars: 2, slowHunger: { percent: 15, hours: 4 } },
-    { id: 'glowSalmon', price: 50, hunger: 30, happiness: 11, health: 11, cookedOnly: true, stars: 2 },
-    { id: 'stardustPudding', price: 66, hunger: 30, happiness: 33, health: 6, cookedOnly: true, stars: 3 },
+    { id: 'honeyCake', source: 'cooked', price: 49, hunger: 34, happiness: 30, health: 5, stars: 2, tags: ['sweet'] },
+    { id: 'mushroomSoup', source: 'cooked', price: 52, hunger: 40, happiness: 7, health: 15, stars: 2, tags: ['soup', 'veg'], effects: [{ kind: 'slowHunger', percent: 15, hours: 4 }] },
+    { id: 'glowSalmon', source: 'cooked', price: 50, hunger: 30, happiness: 11, health: 11, stars: 2, tags: ['seafood'] },
+    { id: 'stardustPudding', source: 'cooked', price: 66, hunger: 30, happiness: 33, health: 6, stars: 3, tags: ['sweet'] },
     // What you get when the pot holds a mix that isn't a recipe.
-    { id: 'mushyMess', price: 1, hunger: 8, happiness: 0, health: 0, cookedOnly: true },
+    { id: 'mushyMess', source: 'cooked', price: 1, hunger: 8, happiness: 0, health: 0, tags: [] },
   ],
 
   // The quick ones at the top of the Play panel. Playing costs energy and
@@ -375,16 +378,10 @@ export const CONFIG = {
   // your inventory in the pot and tap Cook. If they match a recipe (in any
   // order) you get that dish, and the recipe shows up in the recipe book;
   // any other mix makes a Mushy mess. Each recipe's id is the dish it makes
-  // (a food above).
+  // (a food above). Every food used in a recipe can go in the pot, a cooked
+  // dish too, and the pot's pantry shows them in the order of `foods`.
   cooking: {
     slots: 3,
-    // The foods that can go in the pot, in the order they're shown.
-    ingredients: [
-      'riceBall', 'strawberry', 'warmMilk', 'cookie',
-      'shrimp', 'salmon', 'lobster',
-      'carrot', 'pumpkin', 'dragonFruit',
-      'honey', 'wildMushroom', 'glowSalt', 'stardustSugar',
-    ],
     recipes: [
       { id: 'grilledShrimp', ingredients: ['shrimp'] },
       { id: 'shrimpOnigiri', ingredients: ['riceBall', 'shrimp'] },

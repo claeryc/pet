@@ -30,13 +30,13 @@ const FOODS = CONFIG.foods as readonly Food[];
 // Foods a pet can love: anything but the everyday rice ball, a Mushy
 // mess, or a treat that only comes some days.
 export const FAVOURITE_FOODS: readonly string[] = FOODS
-  .filter((f) => f.price > 0 && !f.staple && f.id !== CONFIG.cooking.mess && !f.limited)
+  .filter((f) => f.price > 0 && f.source !== 'staple' && f.id !== CONFIG.cooking.mess && !f.limited)
   .map((f) => f.id);
 
 // Foods a pet can dislike: plain ones (Shop treats, fish and crops), never
 // a dish you cooked for it.
 const DISLIKED_FOODS: readonly string[] = FOODS
-  .filter((f) => FAVOURITE_FOODS.includes(f.id) && !f.cookedOnly && !f.foundOnly)
+  .filter((f) => FAVOURITE_FOODS.includes(f.id) && f.source !== 'cooked' && f.source !== 'found')
   .map((f) => f.id);
 
 const pick = <T>(list: readonly T[], roll: number): T => list[Math.floor(roll * list.length)];

@@ -33,18 +33,25 @@ export function withPet(state: GameState, change: (pet: Pet) => void): GameState
   return { ...state, pet };
 }
 
+export type FoodSource = 'shop' | 'staple' | 'caught' | 'grown' | 'found' | 'cooked';
+export type FoodTag = 'drink' | 'soup' | 'sweet' | 'seafood' | 'veg' | 'fruit' | 'grain' | 'dairy' | 'seasoning';
+// What a food does besides its stats (see `foods` in config.ts).
+export type FoodEffect = { kind: 'slowHunger'; percent: number; hours: number };
+
 export type Food = (typeof CONFIG.foods)[number] & {
+  source: FoodSource;
+  tags: readonly FoodTag[];
+  effects?: readonly FoodEffect[];
   energy?: number;
   limited?: boolean;
-  slowHunger?: { percent: number; hours: number };
-  caughtOnly?: boolean;
-  grownOnly?: boolean;
-  cookedOnly?: boolean;
-  foundOnly?: boolean;
-  staple?: boolean;
   stars?: number;
 };
 export type FoodId = Food['id'];
+
+// A food's effect of this kind, if it has one.
+export function effectOf<K extends FoodEffect['kind']>(food: Food, kind: K): Extract<FoodEffect, { kind: K }> | undefined {
+  return food.effects?.find((e): e is Extract<FoodEffect, { kind: K }> => e.kind === kind);
+}
 export type ActivityId = (typeof CONFIG.activities)[number]['id'];
 
 export function feed(state: GameState, now: number, foodId: FoodId = 'riceBall'): ActionResult {
@@ -63,12 +70,13 @@ export function feed(state: GameState, now: number, foodId: FoodId = 'riceBall')
     pet.stats.happiness = clampStat(pet.stats.happiness + food.happiness);
     pet.stats.health = clampStat(pet.stats.health + food.health);
     if (food.energy) pet.stats.energy = clampStat(pet.stats.energy + food.energy);
-    if (food.slowHunger) {
+    const slowHunger = effectOf(food, 'slowHunger');
+    if (slowHunger) {
       // Eating it again restarts the timer (effects don't stack).
-      const until = now + food.slowHunger.hours * 3_600_000;
+      const until = now + slowHunger.hours * 3_600_000;
       pet.buffs = [
         ...pet.buffs.filter((b) => b.stat !== 'hunger'),
-        { stat: 'hunger', percent: food.slowHunger.percent, until },
+        { stat: 'hunger', percent: slowHunger.percent, until },
       ];
     }
   });
