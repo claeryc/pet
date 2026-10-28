@@ -37,7 +37,7 @@ import { TOSS_MS } from './render/garden';
 import { LEAP_MS } from './ui/fishing';
 import { tripProgress } from './ui/trip';
 import { takeSnapshot } from './game/snapshots';
-import { cook } from './game/cooking';
+import { buyKitchen, cook } from './game/cooking';
 import {
   clearPlot,
   compost,
@@ -1004,21 +1004,23 @@ const home = createHomeScreen(root, {
     return caught;
   },
   onPickBait: () => setState(nextBait(state)),
-  onCook: (items) => {
-    const result = cook(simulate(state, gameNow()), items, Math.random());
+  onCook: (items, opts) => {
+    const result = cook(simulate(state, gameNow()), items, [Math.random(), Math.random()], opts);
     setState(result.state);
     if (result.blocked) {
       blocked(
         result.blocked === 'noFood' ? STRINGS.blocked.noFood(state.pet.name)
         : result.blocked === 'needMore' ? STRINGS.cooking.needMore(STRINGS.foods[items[0]])
         : result.blocked === 'closed' ? STRINGS.cooking.outOfSeason
+        : result.blocked === 'noBatch' ? STRINGS.cooking.batch(false)
         : STRINGS.cooking.emptyPot,
       );
       return null;
     }
     // The pot bubbles and shows the dish first, then the reveal.
+    const planned = (opts.batch ?? 1) * (result.recipe?.makes ?? 1);
     const caption = result.discovered ? STRINGS.reveal.newRecipe
-      : result.count > 1 ? STRINGS.skills.secondHelping : undefined;
+      : result.count > planned ? STRINGS.skills.secondHelping : undefined;
     window.setTimeout(() => showGot(result.dish, result.count, caption), COOKED_MS);
     // What it made stays a secret until the lid comes off.
     window.setTimeout(() => {
@@ -1188,6 +1190,7 @@ const home = createHomeScreen(root, {
   onBuyHolidayTicket: () => runShop(buyHolidayTicket(state), STRINGS.shop.bought(STRINGS.journeys.holidayTicket)),
   onBuyCharm: (id) => runShop(buyCharm(state, id), STRINGS.shop.bought(STRINGS.journeys.charms[id]?.name ?? id)),
   onBuyPot: () => runShop(buyPot(state), STRINGS.shop.potBought),
+  onBuyKitchen: (item) => runShop(buyKitchen(state, item), (STRINGS.shop.kitchenBought as Record<string, string>)[item]),
   onBuyDecor: (kind, id) => {
     const result = buyDecor(state, kind, id);
     if (result.blocked === 'earnedOnly' && kind === 'wallpaper') return earnedOnly(kind, id);

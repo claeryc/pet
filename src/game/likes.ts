@@ -28,9 +28,10 @@ export interface Likes {
 const FOODS = CONFIG.foods as readonly Food[];
 
 // Foods a pet can love: anything but the everyday rice ball, a Mushy
-// mess, or a treat that only comes some days.
+// mess, a treat that only comes some days, or a fillet that's only for
+// cooking.
 export const FAVOURITE_FOODS: readonly string[] = FOODS
-  .filter((f) => f.price > 0 && f.source !== 'staple' && f.id !== CONFIG.cooking.mess && !f.limited)
+  .filter((f) => f.price > 0 && f.source !== 'staple' && f.source !== 'prepped' && f.id !== CONFIG.cooking.mess && !f.limited)
   .map((f) => f.id);
 
 // Foods a pet can dislike: plain ones (Shop treats, fish and crops), never

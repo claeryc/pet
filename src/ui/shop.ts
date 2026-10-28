@@ -24,6 +24,7 @@ import { SEEDS_FOR_SALE, SUPPLIES, canCompost, priceOf, seedCount, supplyCount, 
 import { poopCount } from '../game/hygiene';
 import { CHARMS, charmCount, holidayTickets, percyFree } from '../game/journeys';
 import { isUnlocked } from '../game/unlocks';
+import { hasKitchen, KITCHEN_FOR_SALE, kitchenPrice, type KitchenItem } from '../game/cooking';
 import { formatDuration } from './time';
 import { ownsFamilyHome } from '../game/rooms';
 import { CURTAINS as CURTAIN_COLOURS, WALLPAPERS as WALL_PATTERNS } from '../render/room';
@@ -51,6 +52,7 @@ export interface ShopCallbacks {
   onTakeDownFurniture: (id: string) => void; // out of the room you're looking at
   onDecorate?: () => void; // pick where each piece goes, in the room
   onBuyBigJar: () => void; // the bigger rice jar, for star fragments
+  onBuyKitchen: (item: KitchenItem) => void;
   onBuyPack: (productId: string) => void; // star fragments, with real money
   onBuyFamilyHome: () => void; // the second room, for star fragments
   onMakeStar: () => void; // star fragments into a Revival Star
@@ -652,6 +654,12 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
   const bigJar = () => wideCard(ITEM_ICONS.riceBall, '#f1ecfa', S.bigJar,
     hasBigJar(state) ? S.owned : S.bigJarNote(bigger.extra, riceJarSize(state) + bigger.extra),
     hasBigJar(state) ? fact(S.owned) : priceButton({ cur: 'frag', cost: bigger.fragments, onBuy: cb.onBuyBigJar }, pieces));
+  // The kitchen (once cooking is open): a bigger pot and double batch.
+  const cookingOpen = isUnlocked(state, 'cooking');
+  const kitchenText = S.kitchenItems as Record<string, { name: string; note: string }>;
+  const kitchenCards = () => KITCHEN_FOR_SALE.map((id) => wideCard(ITEM_ICONS[id], '#fbeedd', kitchenText[id].name,
+    kitchenText[id].note,
+    hasKitchen(state, id) ? fact(S.owned) : priceButton({ cur: 'gold', cost: kitchenPrice(id)!, onBuy: () => cb.onBuyKitchen(id) }, gold)));
 
   // Hats.
   const hats = HATS.map((h) => hatItem(state, h.id, cb));
@@ -833,7 +841,11 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
     { id: 'today', title: S.todayTab, icon: MENU_ICONS.todayTag, dot: specialNew, items: [...(specialItem ? [specialItem] : []), ...(craved ? [craved] : []), ...scarce], body: today },
     {
       id: 'food', title: S.food, icon: ITEM_ICONS.strawberry, items: foods,
-      body: () => [section(S.treats, S.tapToSee), grid('small', foods.map((f) => card(f, state, open))), section(S.jarTitle), bigJar()],
+      body: () => [
+        section(S.treats, S.tapToSee), grid('small', foods.map((f) => card(f, state, open))),
+        section(S.jarTitle), bigJar(),
+        ...(cookingOpen ? [section(S.kitchen), ...kitchenCards()] : []),
+      ],
     },
     {
       id: 'garden', title: S.garden, icon: ITEM_ICONS.gardenPot, items: [...seeds, ...supplies],

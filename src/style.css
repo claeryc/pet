@@ -2877,8 +2877,50 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   transition: transform 0.45s cubic-bezier(0.5, 0, 0.9, 0.6);
   padding: 10px 10px 4px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 6px;
+}
+
+/* The top of the counter: [Pot] [Board] on the left, ×2 on the right. */
+.kitchen-top {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.kitchen-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.kitchen-tab,
+.kitchen-batch {
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 13px;
+  border: 2px solid var(--plum);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--plum);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.kitchen-tab[hidden],
+.kitchen-batch[hidden] {
+  display: none;
+}
+
+.kitchen-tab.on,
+.kitchen-batch.on {
+  background: var(--plum);
+  color: white;
 }
 
 .kitchen.is-in {
@@ -10099,4 +10141,87 @@ button.trip-bars-name.is-on {
 
 .reveal[data-tier='gold'] .reveal-beams {
   background: repeating-conic-gradient(rgba(255, 200, 80, 0.9) 0deg 6deg, rgba(255, 229, 150, 0) 6deg 18deg);
+}
+
+/* ---- The cutting board ---- */
+
+/* On the board, the "pot" is a wooden board, not a round pot. */
+.pot-row[data-station='board'] .pot-result {
+  border-radius: 14px;
+  background: #ffc59e;
+  width: clamp(80px, 26vw, 104px);
+}
+
+/* The knife's track along the bottom of the board, with the perfect
+   stretch in green. It only shows while the knife is sliding. */
+.cut-track {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 6px;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(91, 63, 110, 0.25);
+  display: none;
+}
+
+.pot-row.cutting .cut-track {
+  display: block;
+}
+
+.cut-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--leaf-dark);
+  border-radius: 4px;
+}
+
+.cut-blade {
+  position: absolute;
+  top: -5px;
+  width: 4px;
+  height: 18px;
+  margin-left: -2px;
+  background: white;
+  border: 2px solid var(--plum);
+  border-radius: 2px;
+}
+
+/* Double batch: a little ×2 on the pot while it's on. */
+.pot-batch {
+  position: absolute;
+  right: -6px;
+  top: -6px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 9px;
+  background: var(--plum);
+  color: white;
+}
+
+.pot-batch[hidden] {
+  display: none;
+}
+
+/* Four spots (the bigger pot): thinner signs and a slightly smaller pot,
+   so the spots stay a good size on a small phone. */
+.pot-row[data-slots='4'] {
+  gap: 2px;
+}
+
+.pot-row[data-slots='4'] .pot-sign {
+  width: 9px;
+  font-size: 1rem;
+}
+
+.pot-row[data-slots='4'] .pot-slot {
+  padding: 5px;
+  border-radius: 12px;
+}
+
+.pot-row[data-slots='4'] .pot-result {
+  width: clamp(56px, 18vw, 82px);
+  height: clamp(56px, 18vw, 82px);
 }

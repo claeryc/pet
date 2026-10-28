@@ -28,6 +28,7 @@ import { createMeet, MEET_OUT_MS } from './meet';
 import { petStandsLeft } from '../game/friends';
 import { needsYou, otherRoom, petsIn, roommates } from '../game/rooms';
 import type { Friend } from '../game/state';
+import type { CookOptions } from '../game/cooking';
 import { potAt, type GardenScene } from '../render/garden';
 import type { DeliveryScene } from '../render/delivery';
 import { formatDuration } from './time';
@@ -62,7 +63,7 @@ export interface HomeCallbacks extends MenuCallbacks {
   onCast: (streak: number) => Bite | null; // throws the fishing line; what will bite, or null if refused
   onLand: (grade: CatchGrade, bite: Bite) => string | null; // the fish landed (a food id), or null
   onPickBait: () => void;
-  onCook: (items: FoodId[]) => FoodId | null; // the dish made, or null if refused
+  onCook: (items: FoodId[], opts: CookOptions) => FoodId | null; // the dish made, or null if refused
   onPlant: (pot: number, crop: CropId) => void;
   onWater: (pot: number, perfect: boolean) => void;
   onFertilize: (pot: number) => void;
