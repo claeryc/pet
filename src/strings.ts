@@ -393,10 +393,12 @@ export const STRINGS = {
     needs: { biggerPot: 'Needs the bigger pot', doubleBatch: '', oven: 'Needs an oven', mill: 'Needs a mill' },
     // The station tabs on the counter.
     stations: { pot: 'Pot', board: 'Board', oven: 'Oven', mill: 'Mill' },
-    boardStart: 'Put a fish on the board, then tap when the marker is in the green to chop!',
+    boardStart: 'Put a fish on the board, then tap Chop! when the marker is in the green!',
     boardEmpty: 'Put a fish on the board first. Tap Food to pick one.',
     boardFull: 'Finish chopping this one first.',
-    boardHint: 'Tap Food to put a fish on the board',
+    boardHint: 'Tap Food to add a fish',
+    onBoard: (name: string) => `${name} on the board. Tap to take it off`,
+    chop: 'Chop!',
     addToBoard: (name: string, count: string) => `${name} (${count}). Tap to put it on the board`,
     // The chopping game: a marker runs up and down a meter beside the
     // board; each tap chops on the next dotted line.

@@ -459,10 +459,10 @@ export const CONFIG = {
       oven: {},
       mill: {},
     },
-    // The cutting board's timing game: a marker runs up a meter beside the
-    // board and back down every `sweepSeconds`, and each tap chops the
+    // The cutting board's timing game: a marker runs along a meter on the
+    // counter and back every `sweepSeconds`, and each tap chops the
     // fish on the next of its `chops` dotted lines. A chop while the
-    // marker is inside `band` (shares of the way up) is a perfect one;
+    // marker is inside `band` (shares of the way along) is a perfect one;
     // all of them perfect is a perfect cut, worth `perfectXp` Keeper XP.
     // Any cut still makes the fillet.
     cutting: { sweepSeconds: 1.2, band: { start: 0.42, end: 0.58 }, chops: 3, perfectXp: 2 },
