@@ -2863,27 +2863,45 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   overflow-y: auto;
 }
 
-/* The kitchen counter: it slides up from the bottom over the stat bars,
-   like the pond's water, and slides back down when you close it. A wooden
-   edge runs along its top. */
+:root {
+  --cocoa: #8a5a44;
+  --wood-dark: #5c3a2e;
+}
+
+/* The kitchen: it fills the stat bars' spot and reaches up over the room
+   (--kitchen-up is set from src/ui/cooking.ts), popping up when it opens
+   and dropping away when it closes. The tiled wall takes the top, the
+   counter the bottom, with a wooden edge between. */
+.stat-slot:has(> .kitchen:not([hidden])) {
+  overflow: visible;
+}
+
 .kitchen {
+  --counter: 60%;
   position: absolute;
-  inset: 0;
-  border-radius: 16px;
+  top: calc(-1 * var(--kitchen-up, 0px));
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 4px solid var(--card);
+  box-shadow: 0 4px 0 rgba(43, 33, 64, 0.12);
   background:
-    linear-gradient(var(--cocoa) 0 4px, #b07a5c 4px 6px, transparent 6px),
-    repeating-conic-gradient(var(--card) 0 25%, #fbeedd 0 50%) 0 0 / 16px 16px;
-  transform: translateY(100%);
-  transition: transform 0.45s cubic-bezier(0.5, 0, 0.9, 0.6);
-  padding: 10px 10px 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    linear-gradient(var(--wood-dark) 0 0) 0 var(--counter) / 100% 4px no-repeat,
+    repeating-linear-gradient(90deg, transparent 0 30px, rgba(166, 139, 201, 0.25) 30px 32px) 0 0 / 100% var(--counter) no-repeat,
+    repeating-linear-gradient(0deg, transparent 0 30px, rgba(166, 139, 201, 0.25) 30px 32px) 0 0 / 100% var(--counter) no-repeat,
+    linear-gradient(var(--card) 0 var(--counter), #ffc59e var(--counter));
+  opacity: 0;
+  transform: translateY(24px) scale(0.96);
+  transition: transform 0.45s cubic-bezier(0.5, 0, 0.9, 0.6), opacity 0.3s ease 0.15s;
 }
 
 .kitchen.is-in {
-  transform: translateY(0);
-  transition: transform 0.6s cubic-bezier(0.34, 1.3, 0.64, 1);
+  opacity: 1;
+  transform: none;
+  transition: transform 0.6s cubic-bezier(0.34, 1.3, 0.64, 1), opacity 0.2s ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2893,13 +2911,305 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   }
 }
 
-:root {
-  --cocoa: #8a5a44;
+.kitchen-scene {
+  position: absolute;
+  inset: 0;
 }
 
-/* [ ] + [ ] + [ ] = (pot) */
-.pot-row {
+.kitchen-scene[hidden] {
+  display: none;
+}
+
+/* The top: [Pot] [Board] on the left, the chop pips in the middle, ×2 on
+   the right. */
+.kitchen-top {
+  position: absolute;
+  z-index: 2;
+  left: 10px;
+  right: 10px;
+  top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.kitchen-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.kitchen-tab,
+.kitchen-batch {
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border: 2px solid var(--plum);
+  background: white;
+  color: var(--plum);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.kitchen-tab[hidden],
+.kitchen-batch[hidden],
+.chop-pips[hidden] {
+  display: none;
+}
+
+.kitchen-tab.on,
+.kitchen-batch.on {
+  background: var(--plum);
+  color: white;
+}
+
+/* Keeps ×2 on the right even when the pips are hidden. */
+.kitchen-batch {
+  margin-left: auto;
+}
+
+/* ---- The pot ---- */
+
+/* The stove: the pot over two flames, on a wooden hob at the counter's
+   edge. The pot is a button: tapping it cooks. */
+.stove {
+  position: absolute;
+  left: 5%;
+  width: min(46%, 190px);
+  top: 50px;
+  bottom: calc(100% - var(--counter) + 2px);
+}
+
+.stove::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 10px;
+  background: var(--cocoa);
+  border: 3px solid var(--wood-dark);
+  border-radius: 6px;
+}
+
+.stove-pot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 34px;
+  padding: 0;
+  border: 0;
+  background: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.stove-pot > svg {
   width: 100%;
+  max-height: 100%;
+  filter: drop-shadow(0 4px 0 rgba(43, 33, 64, 0.2));
+}
+
+.stove-flames {
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  bottom: 12px;
+  height: 24px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.stove-flames svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Something's in the pot: it wiggles to say "tap me to cook". */
+.kitchen[data-kind='known'] .stove-pot,
+.kitchen[data-kind='mystery'] .stove-pot {
+  animation: pot-ready 1.2s ease-in-out infinite;
+}
+
+/* A mix that can only make a Mushy mess wobbles slowly instead. */
+.kitchen[data-kind='mush'] .stove-pot {
+  animation: pot-mush 2.4s ease-in-out infinite;
+}
+
+@keyframes pot-ready {
+  0%, 70%, 100% { transform: rotate(0); }
+  76% { transform: rotate(-4deg); }
+  84% { transform: rotate(4deg); }
+  92% { transform: rotate(-2deg); }
+}
+
+@keyframes pot-mush {
+  0%, 100% { transform: scaleX(1) scaleY(1); }
+  50% { transform: scaleX(1.04) scaleY(0.96); }
+}
+
+/* Just cooked: the pot hops, steams, and the dish pops up out of it. */
+.kitchen.cooked .stove-pot {
+  animation: pot-hop 0.5s cubic-bezier(0.34, 1.6, 0.64, 1);
+}
+
+@keyframes pot-hop {
+  0% { transform: scale(0.85) rotate(-6deg); }
+  60% { transform: scale(1.08) rotate(3deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
+.pot-dish {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 56px;
+  height: 56px;
+  margin-left: -28px;
+  padding: 7px;
+  background: white;
+  border: 3px solid var(--plum);
+  border-radius: 50%;
+  box-shadow: 0 3px 0 var(--plum);
+  display: none;
+}
+
+.pot-dish svg {
+  width: 100%;
+  height: 100%;
+}
+
+.kitchen.cooked .pot-dish {
+  display: block;
+  animation: pop-in 0.35s cubic-bezier(0.34, 1.6, 0.64, 1);
+}
+
+/* Two little pixel puffs of steam rising from the pot. */
+.pot-steam {
+  position: absolute;
+  left: 50%;
+  top: 8%;
+  width: 8px;
+  height: 8px;
+  margin-left: -12px;
+  background: white;
+  box-shadow: 0 0 0 2px var(--lavender), 18px 6px 0 0 white, 18px 6px 0 2px var(--lavender);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.kitchen.cooked .pot-steam {
+  animation: steam 1.1s ease-out 0.15s 2;
+}
+
+@keyframes steam {
+  0% { opacity: 0; transform: translateY(6px); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-18px); }
+}
+
+/* Double batch: a little ×2 on the pot while it's on. */
+.pot-batch {
+  position: absolute;
+  right: 4px;
+  top: 20%;
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 9px;
+  background: var(--plum);
+  color: white;
+}
+
+.pot-batch[hidden] {
+  display: none;
+}
+
+/* The recipe card pinned up beside the pot: what the pot will make. */
+.recipe-card {
+  position: absolute;
+  right: 5%;
+  top: 52px;
+  width: min(38%, 132px);
+  box-sizing: border-box;
+  padding: 12px 8px 8px;
+  background: white;
+  border: 3px solid var(--plum);
+  border-radius: 6px;
+  transform: rotate(3deg);
+  box-shadow: 0 4px 0 rgba(91, 63, 110, 0.4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  color: var(--plum);
+  font-size: 0.8rem;
+  line-height: 1.2;
+}
+
+.recipe-card-pin {
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: var(--rose, #e05a7a);
+  border: 2px solid var(--plum);
+}
+
+.recipe-card-art {
+  width: 52px;
+  height: 52px;
+  margin-bottom: 4px;
+}
+
+.recipe-card-art svg {
+  width: 100%;
+  height: 100%;
+}
+
+.recipe-card-name {
+  font-weight: 900;
+}
+
+.recipe-card-note {
+  margin-top: 2px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--lilac, #a68bc9);
+}
+
+.kitchen[data-kind='empty'] .recipe-card-art,
+.kitchen[data-kind='mush'] .recipe-card-art {
+  opacity: 0.55;
+}
+
+.kitchen.cooked .recipe-card {
+  animation: card-flap 0.5s ease-out;
+}
+
+@keyframes card-flap {
+  0% { transform: rotate(3deg); }
+  30% { transform: rotate(-4deg); }
+  60% { transform: rotate(5deg); }
+  100% { transform: rotate(3deg); }
+}
+
+/* The counter: [ ] + [ ] + [ ], and the Cook! button under it. */
+.pot-row {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: calc(var(--counter) + 16px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2908,16 +3218,22 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 
 .pot-sign {
   flex: 0 0 auto;
-  font-weight: 800;
+  font-weight: 900;
   font-size: 1.2rem;
   color: var(--plum);
   width: 14px;
   text-align: center;
 }
 
-.pot-slot,
-.pot-result {
+.pot-slot {
   font: inherit;
+  flex: 0 1 66px;
+  aspect-ratio: 1;
+  min-width: 0;
+  padding: 9px;
+  border: 3px dashed var(--lavender);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2925,23 +3241,12 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   touch-action: manipulation;
 }
 
-.pot-slot svg,
-.pot-result svg {
+.pot-slot svg {
   width: 100%;
   height: 100%;
 }
 
-/* An empty spot is a dashed outline, a filled one a little white plate. */
-.pot-slot {
-  flex: 0 1 66px;
-  aspect-ratio: 1;
-  min-width: 0;
-  padding: 7px;
-  border: 3px dashed var(--lavender);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.5);
-}
-
+/* An empty spot is a dashed outline, a filled one a little white dish. */
 .pot-slot.filled {
   border: 3px solid var(--plum);
   background: white;
@@ -2959,89 +3264,348 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   to { transform: scale(1); }
 }
 
-/* The pot is the Cook button: a round butter-yellow button with a plum
-   rim that presses down when tapped. */
-.pot-result {
-  position: relative;
-  flex: 0 0 auto;
-  width: clamp(64px, 21vw, 82px);
-  height: clamp(64px, 21vw, 82px);
-  padding: 10px;
-  margin-left: 2px;
-  border-radius: 50%;
-  background: var(--butter);
-  border: 3px solid var(--plum);
-  box-shadow: 0 4px 0 var(--plum);
+/* Four spots (the bigger pot): thinner signs, so the spots stay a good
+   size on a small phone. */
+.kitchen[data-slots='4'] .pot-row {
+  gap: 2px;
 }
 
-.pot-result:active {
-  transform: translateY(3px);
+.kitchen[data-slots='4'] .pot-sign {
+  width: 9px;
+  font-size: 1rem;
+}
+
+.kitchen[data-slots='4'] .pot-slot {
+  padding: 7px;
+  border-radius: 12px;
+}
+
+.kitchen-cook {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: var(--plum);
+  background: var(--butter);
+  border: 3px solid var(--plum);
+  border-radius: 22px;
+  padding: 7px 36px;
+  box-shadow: 0 4px 0 var(--plum);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.kitchen-cook:active {
+  transform: translate(-50%, 3px);
   box-shadow: 0 1px 0 var(--plum);
 }
 
-.pot-result[data-kind='empty'] {
-  cursor: default;
+.kitchen-cook.faded {
+  opacity: 0.5;
 }
 
-.pot-result[data-kind='known'] svg,
-.pot-result[data-kind='mystery'] svg {
-  opacity: 0.8;
+.kitchen-cook[hidden] {
+  display: none;
 }
 
-/* Something's in the pot: it wiggles to say "tap me to cook". */
-.pot-result[data-kind='known'],
-.pot-result[data-kind='mystery'] {
-  animation: pot-ready 1.2s ease-in-out infinite;
-}
-
-@keyframes pot-ready {
-  0%, 70%, 100% { transform: rotate(0); }
-  76% { transform: rotate(-6deg); }
-  84% { transform: rotate(6deg); }
-  92% { transform: rotate(-3deg); }
-}
-
-/* Just cooked: the pot hops and steams. */
-.pot-row.cooked .pot-result {
-  animation: pot-hop 0.5s cubic-bezier(0.34, 1.6, 0.64, 1);
-}
-
-@keyframes pot-hop {
-  0% { transform: scale(0.7) rotate(-8deg); }
-  60% { transform: scale(1.15) rotate(4deg); }
-  100% { transform: scale(1) rotate(0); }
-}
-
-/* Two little pixel puffs of steam rising from the pot. */
-.pot-steam {
-  position: absolute;
-  left: 50%;
-  top: -4px;
-  width: 6px;
-  height: 6px;
-  margin-left: -10px;
-  background: white;
-  box-shadow: 0 0 0 2px var(--lavender), 14px 4px 0 0 white, 14px 4px 0 2px var(--lavender);
-  opacity: 0;
+/* "Fish soup!", big and bubbly, where the Cook! button was. */
+.kitchen-burst,
+.chop-burst {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
   pointer-events: none;
 }
 
-.pot-row.cooked .pot-steam {
-  animation: steam 1.1s ease-out 0.15s 2;
+.kitchen-burst {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
 }
 
-@keyframes steam {
-  0% { opacity: 0; transform: translateY(6px); }
-  30% { opacity: 1; }
-  100% { opacity: 0; transform: translateY(-16px); }
+.kitchen-burst:empty {
+  display: none;
+}
+
+.kitchen-burst svg,
+.chop-burst svg {
+  width: 26px;
+  height: 26px;
+}
+
+.kitchen-burst b,
+.chop-burst b {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: white;
+  -webkit-text-stroke: 6px var(--rose, #e05a7a);
+  paint-order: stroke fill;
+}
+
+.kitchen.cooked .kitchen-burst {
+  animation: burst-in 0.4s cubic-bezier(0.34, 1.6, 0.64, 1);
+}
+
+@keyframes burst-in {
+  from { transform: translateX(-50%) scale(0.4); }
+  to { transform: translateX(-50%) scale(1); }
+}
+
+/* ---- The cutting board ---- */
+
+/* A big wooden board with a hole to hang it by. The whole board is the
+   button: each tap is a chop. */
+.cut-board {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 50px;
+  bottom: 50px;
+  padding: 0;
+  font: inherit;
+  border-radius: 16px;
+  border: 3px solid var(--wood-dark);
+  box-shadow: inset 0 -6px 0 rgba(92, 58, 46, 0.2), inset 0 3px 0 rgba(255, 255, 255, 0.4), 0 5px 0 var(--wood-dark);
+  background:
+    radial-gradient(circle at 18px 18px, var(--wood-dark) 0 5px, var(--cocoa) 5px 7px, transparent 7px),
+    repeating-linear-gradient(177deg, rgba(138, 90, 68, 0) 0 13px, rgba(138, 90, 68, 0.16) 13px 15px, rgba(138, 90, 68, 0) 15px 27px),
+    linear-gradient(#ffd8b6, #ffc59e);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* The food, centred in the space left of the meter. */
+.cut-food {
+  position: absolute;
+  top: 24%;
+  bottom: 16%;
+  left: calc((100% - 52px) / 2);
+  aspect-ratio: 1;
+  transform: translateX(-50%);
+}
+
+/* Board art is wider than it's tall: it spans the board instead (its
+   shape comes from src/ui/cooking.ts). */
+.cut-food.wide {
+  top: 50%;
+  bottom: auto;
+  left: 6%;
+  right: 56px;
+  transform: translateY(-50%);
+}
+
+.cut-piece {
+  position: absolute;
+  inset: 0;
+  transition: transform 0.18s cubic-bezier(0.34, 1.6, 0.64, 1);
+}
+
+.cut-piece svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Where the chops go: dotted lines, the next one glowing green, the ones
+   already chopped a clean white cut. */
+.cut-line {
+  position: absolute;
+  top: -8%;
+  bottom: -8%;
+  margin-left: -1px;
+  border-left: 3px dashed rgba(91, 63, 110, 0.45);
+}
+
+.cut-line[hidden],
+.cut-knife[hidden],
+.cut-meter[hidden] {
+  display: none;
+}
+
+.cut-line.now {
+  border-left: 4px dashed var(--leaf-dark);
+  filter: drop-shadow(0 0 3px #a8e6cf) drop-shadow(0 0 4px #a8e6cf);
+  animation: line-glow 1s ease-in-out infinite;
+}
+
+.cut-line.done {
+  border-left: 3px solid white;
+  opacity: 0.8;
+}
+
+@keyframes line-glow {
+  50% { opacity: 0.55; }
+}
+
+/* The knife, raised over the next line, comes down for each chop. */
+.cut-knife {
+  position: absolute;
+  top: 0;
+  width: 0;
+  height: 0;
+  transition: left 0.15s ease;
+}
+
+.cut-knife svg {
+  position: absolute;
+  width: 84px;
+  height: 26px;
+  left: -42px;
+  top: -13px;
+  transform: translateY(-44px) rotate(-90deg);
+  filter: drop-shadow(-3px 3px 0 rgba(43, 33, 64, 0.22));
+}
+
+.board-scene.chopped .cut-knife svg {
+  animation: knife-chop 0.35s ease-out;
+}
+
+@keyframes knife-chop {
+  0% { transform: translateY(-44px) rotate(-90deg); }
+  35% { transform: translateY(-14px) rotate(-90deg); }
+  100% { transform: translateY(-44px) rotate(-90deg); }
+}
+
+/* A white flash along the line that was just chopped, and the word. */
+.cut-whoosh {
+  position: absolute;
+  top: -10%;
+  bottom: -10%;
+  left: 50%;
+  width: 4px;
+  margin-left: -2px;
+  background: white;
+  box-shadow: 0 0 10px 3px white;
+  opacity: 0;
+}
+
+.board-scene.chopped .cut-whoosh {
+  animation: whoosh 0.35s ease-out;
+}
+
+@keyframes whoosh {
+  20% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.chop-burst {
+  position: absolute;
+  top: -22%;
+  transform: translateX(-50%);
+  opacity: 0;
+}
+
+.board-scene.chopped .chop-burst {
+  animation: chop-word 0.6s ease-out;
+}
+
+@keyframes chop-word {
+  0% { opacity: 0; transform: translate(-50%, 8px) scale(0.6); }
+  25% { opacity: 1; transform: translate(-50%, 0) scale(1.1); }
+  80% { opacity: 1; transform: translate(-50%, -6px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -10px) scale(1); }
+}
+
+/* Just cut: the fillet pops up on the board. */
+.kitchen.cooked .cut-food {
+  animation: board-pop 0.5s cubic-bezier(0.34, 1.6, 0.64, 1);
+}
+
+@keyframes board-pop {
+  0% { scale: 0.7; }
+  60% { scale: 1.1; }
+  100% { scale: 1; }
+}
+
+/* The meter: the marker runs up and down it; the green is a perfect chop. */
+.cut-meter {
+  position: absolute;
+  right: 14px;
+  top: 16px;
+  bottom: 16px;
+  width: 24px;
+  border-radius: 12px;
+  border: 3px solid var(--plum);
+  background: var(--card);
+  overflow: hidden;
+}
+
+.cut-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: var(--good, #6cc19a);
+}
+
+.cut-mark {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 6px;
+  margin-bottom: -3px;
+  background: var(--ink);
+}
+
+/* One pip per chop: green for a perfect one, butter for the rest. */
+.chop-pips {
+  display: flex;
+  gap: 6px;
+}
+
+.chop-pip {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--plum);
+  background: white;
+}
+
+.chop-pip[data-chop='perfect'] {
+  background: var(--good, #6cc19a);
+}
+
+.chop-pip[data-chop='good'] {
+  background: var(--butter);
+}
+
+/* What to do on the board, in a bar along the bottom. */
+.kitchen-prompt {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 10px;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: white;
+  background: rgba(91, 63, 110, 0.92);
+  padding: 5px 10px;
+  border-radius: 12px;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .pot-slot.filled,
-  .pot-result[data-kind],
-  .pot-row.cooked .pot-result,
-  .pot-row.cooked .pot-steam {
+  .kitchen .stove-pot,
+  .kitchen.cooked .pot-steam,
+  .kitchen.cooked .pot-dish,
+  .kitchen.cooked .recipe-card,
+  .kitchen.cooked .kitchen-burst,
+  .kitchen.cooked .cut-food,
+  .cut-line.now,
+  .board-scene.chopped .cut-knife svg,
+  .board-scene.chopped .cut-whoosh {
     animation: none;
+  }
+
+  .board-scene.chopped .chop-burst {
+    animation: none;
+    opacity: 1;
   }
 }
 
@@ -3870,28 +4434,6 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 .tree-cell > .tree-card {
   flex: 1;
   min-width: 0;
-}
-
-/* A mix that can only make a Mushy mess: the pot shows the mess, dimmed,
-   and wobbles slowly instead of wiggling "tap me". */
-.pot-result[data-kind='mush'] svg {
-  opacity: 0.55;
-}
-
-.pot-result[data-kind='mush'] {
-  background: var(--lavender);
-  animation: pot-mush 2.4s ease-in-out infinite;
-}
-
-@keyframes pot-mush {
-  0%, 100% { transform: scaleX(1) scaleY(1); }
-  50% { transform: scaleX(1.06) scaleY(0.94); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pot-result[data-kind='mush'] {
-    animation: none;
-  }
 }
 
 /* ---- Garden ---- */
@@ -5842,7 +6384,7 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   height: 100%;
 }
 
-.pot-result.plop {
+.stove-pot.plop {
   animation: pot-plop 0.22s steps(2);
 }
 
@@ -5869,7 +6411,7 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   100% { transform: translate(calc(-50% + var(--side) * 22px), 2px); opacity: 0; }
 }
 
-.pot-result[data-kind='simmer'] {
+.kitchen[data-kind='simmer'] .stove-pot {
   cursor: default;
   animation: pot-rattle 0.2s steps(1) infinite;
 }
@@ -5881,14 +6423,14 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   75% { transform: translate(2px, -1px) rotate(3deg); }
 }
 
-.pot-row.simmering .pot-steam {
+.kitchen.simmering .pot-steam {
   animation: steam 0.55s ease-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pot-result.plop,
-  .pot-result[data-kind='simmer'],
-  .pot-row.simmering .pot-steam {
+  .stove-pot.plop,
+  .kitchen[data-kind='simmer'] .stove-pot,
+  .kitchen.simmering .pot-steam {
     animation: none;
   }
 }

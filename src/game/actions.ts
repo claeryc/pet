@@ -33,7 +33,7 @@ export function withPet(state: GameState, change: (pet: Pet) => void): GameState
   return { ...state, pet };
 }
 
-export type FoodSource = 'shop' | 'staple' | 'caught' | 'grown' | 'found' | 'cooked';
+export type FoodSource = 'shop' | 'staple' | 'caught' | 'grown' | 'found' | 'cooked' | 'prepped';
 export type FoodTag = 'drink' | 'soup' | 'sweet' | 'seafood' | 'veg' | 'fruit' | 'grain' | 'dairy' | 'seasoning';
 // What a food does besides its stats (see `foods` in config.ts).
 export type FoodEffect =

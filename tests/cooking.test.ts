@@ -3,7 +3,7 @@ import { CONFIG } from '../src/game/config';
 import type { Food } from '../src/game/actions';
 import { foodCount } from '../src/game/economy';
 import {
-  cook, COUNTED_RECIPES, couldBeRecipe, hasStation, haveAll, ingredientsFor, INGREDIENTS, inSeason, matchRecipe,
+  cook, ingredientsAt, isPrep, buyKitchen, maxBatch, recipeNeeds, stationSlots, COUNTED_RECIPES, couldBeRecipe, hasStation, haveAll, ingredientsFor, INGREDIENTS, inSeason, matchRecipe,
   MAX_POT_SLOTS, portions, potSlots, recipeOpen, RECIPES, stationOf, type Recipe,
 } from '../src/game/cooking';
 import { STRINGS } from '../src/strings';
@@ -21,22 +21,34 @@ function withFood(stock: Record<string, number>) {
 }
 
 describe('recipes', () => {
-  it('every recipe makes a cooked dish and uses real ingredients', () => {
+  // Dishes, not the fillets and tails the cutting board makes.
+  const DISHES = RECIPES.filter((r) => !isPrep(stationOf(r)));
+
+  it('every recipe makes a cooked dish (or a prepped food) from real ingredients', () => {
     for (const r of RECIPES) {
-      expect(food(r.id).source).toBe('cooked');
+      expect(food(r.id).source, r.id).toBe(isPrep(stationOf(r)) ? 'prepped' : 'cooked');
       expect(r.ingredients.length).toBeGreaterThan(0);
       expect(r.ingredients.length).toBeLessThanOrEqual(MAX_POT_SLOTS);
-      for (const id of r.ingredients) expect(INGREDIENTS).toContain(id);
+      for (const id of r.ingredients) expect(ingredientsAt(stationOf(r))).toContain(id);
     }
   });
 
-  it('no two recipes use the same mix', () => {
-    const keys = RECIPES.map((r) => [...r.ingredients].sort().join(','));
+  it('no two recipes at a station use the same mix', () => {
+    const keys = RECIPES.map((r) => `${stationOf(r)}:${[...r.ingredients].sort().join(',')}`);
     expect(new Set(keys).size).toBe(keys.length);
   });
 
+  it('a prepped food is worth exactly what it was cut from', () => {
+    for (const r of RECIPES.filter((x) => isPrep(stationOf(x)))) {
+      const from = food(r.ingredients[0]);
+      const made = food(r.id);
+      expect(r.ingredients.length).toBe(1);
+      expect([made.price, made.hunger, made.happiness, made.health], r.id).toEqual([from.price, from.hunger, from.happiness, from.health]);
+    }
+  });
+
   it('every dish is worth more than eating its ingredients one by one', () => {
-    for (const r of RECIPES) {
+    for (const r of DISHES) {
       const raw = r.ingredients.map(food);
       const sum = (k: 'hunger' | 'happiness' | 'health') => raw.reduce((t, f) => t + f[k], 0);
       const dish = food(r.id);
@@ -45,7 +57,7 @@ describe('recipes', () => {
   });
 
   it('every dish is worth more gold than its ingredients', () => {
-    for (const r of RECIPES) {
+    for (const r of DISHES) {
       const price = r.ingredients.reduce((t, id) => t + food(id).price, 0);
       expect(food(r.id).price, r.id).toBeGreaterThan(price);
     }
@@ -89,8 +101,8 @@ describe('recipes', () => {
   });
 
   it('matches a mix in any order', () => {
-    expect(matchRecipe(['riceBall', 'salmon'])?.id).toBe('salmonSushi');
-    expect(matchRecipe(['salmon', 'riceBall'])?.id).toBe('salmonSushi');
+    expect(matchRecipe(['riceBall', 'salmonFillet'])?.id).toBe('salmonSushi');
+    expect(matchRecipe(['salmonFillet', 'riceBall'])?.id).toBe('salmonSushi');
     expect(matchRecipe(['lobster', 'shrimp', 'salmon'])?.id).toBe('seafoodPlatter');
   });
 
@@ -224,5 +236,122 @@ describe('the kitchen', () => {
     expect(portions(s, fake({ makes: 2 }), 1)).toBe(2);
     const skilled = { ...s, keeper: { ...s.keeper, skills: { secondHelping: 1 } } };
     expect(portions(skilled, fake({ makes: 2 }), 0)).toBe(3);
+  });
+});
+
+describe('the cutting board', () => {
+  it('every kitchen has one, and it takes one fish', () => {
+    const s = withFood({});
+    expect(hasStation(s, 'board')).toBe(true);
+    expect(stationSlots(s, 'board')).toBe(1);
+    expect(ingredientsAt('board')).toEqual(['salmon', 'lobster']);
+  });
+
+  it('cuts a salmon into a fillet, with no Mushy mess and no dish counted', () => {
+    const s = withFood({ salmon: 2 });
+    const out = cook(s, ['salmon'], 0, { station: 'board' });
+    if (out.blocked) throw new Error(out.blocked);
+    expect(out.dish).toBe('salmonFillet');
+    expect(out.count).toBe(1); // Second helping never applies to cutting
+    expect(out.state.inventory.food).toMatchObject({ salmon: 1, salmonFillet: 1 });
+    expect(out.state.tally.dishes ?? 0).toBe(0);
+    expect(out.state.keeper.xp).toBe(s.keeper.xp);
+  });
+
+  it('a perfect cut gives a little Keeper XP', () => {
+    const s = withFood({ lobster: 1 });
+    const out = cook(s, ['lobster'], 1, { station: 'board', perfect: true });
+    if (out.blocked) throw new Error(out.blocked);
+    expect(out.dish).toBe('lobsterTail');
+    expect(out.state.keeper.xp).toBe(s.keeper.xp + CONFIG.cooking.cutting.perfectXp);
+  });
+
+  it("won't cut food that isn't for the board", () => {
+    const s = withFood({ shrimp: 1, carrot: 1 });
+    expect(cook(s, ['shrimp'], 1, { station: 'board' }).blocked).toBe('notIngredient');
+    expect(cook(withFood({ salmon: 2 }), ['salmon', 'salmon'], 1, { station: 'board' }).blocked).toBe('tooMany');
+  });
+
+  it('salmon sushi now needs a fillet, so a whole salmon makes a mess', () => {
+    const out = cook(withFood({ riceBall: 1, salmon: 1 }), ['riceBall', 'salmon']);
+    if (out.blocked) throw new Error(out.blocked);
+    expect(out.dish).toBe('mushyMess');
+  });
+});
+
+describe('the bigger pot', () => {
+  const chowder = RECIPES.find((r) => r.id === 'seafoodChowder')!;
+  const stock = { shrimp: 1, salmon: 1, lobster: 1, warmMilk: 1 };
+
+  it('four-ingredient recipes need it', () => {
+    const s = withFood(stock);
+    expect(recipeNeeds(s, chowder)).toBe('biggerPot');
+    expect(cook(s, chowder.ingredients).blocked).toBe('tooMany');
+    const big = { ...s, kitchen: ['biggerPot'] };
+    expect(recipeNeeds(big, chowder)).toBeNull();
+    const out = cook(big, chowder.ingredients);
+    if (out.blocked) throw new Error(out.blocked);
+    expect(out.dish).toBe('seafoodChowder');
+  });
+
+  it('a four-ingredient dish pays better than any three-ingredient one', () => {
+    const gain = (r: Recipe) => food(r.id).price / r.ingredients.reduce((t, id) => t + food(id).price, 0);
+    const four = RECIPES.filter((r) => r.ingredients.length === 4).map(gain);
+    const three = RECIPES.filter((r) => r.ingredients.length === 3).map(gain);
+    expect(four.length).toBeGreaterThan(0);
+    expect(Math.min(...four)).toBeGreaterThan(Math.max(...three));
+  });
+});
+
+describe('double batch', () => {
+  it('needs buying, and only works on the pot', () => {
+    const s = withFood({ salmon: 2, warmMilk: 2 });
+    expect(maxBatch(s, 'pot')).toBe(1);
+    expect(cook(s, ['salmon', 'warmMilk'], 1, { batch: 2 }).blocked).toBe('noBatch');
+    const owned = { ...s, kitchen: ['doubleBatch'] };
+    expect(maxBatch(owned, 'pot')).toBe(2);
+    expect(maxBatch(owned, 'board')).toBe(1);
+  });
+
+  it('uses two of everything and makes two, rolling Second helping for each', () => {
+    const s = { ...withFood({ salmon: 2, warmMilk: 2 }), kitchen: ['doubleBatch'] };
+    const out = cook(s, ['salmon', 'warmMilk'], [1, 1], { batch: 2 });
+    if (out.blocked) throw new Error(out.blocked);
+    expect(out.count).toBe(2);
+    expect(out.state.inventory.food).toMatchObject({ salmon: 0, warmMilk: 0, fishSoup: 2 });
+    const skilled = { ...s, keeper: { ...s.keeper, skills: { secondHelping: 1 } } };
+    const lucky = cook(skilled, ['salmon', 'warmMilk'], [0, 1], { batch: 2 });
+    if (lucky.blocked) throw new Error(lucky.blocked);
+    expect(lucky.count).toBe(3);
+  });
+
+  it("refuses two batches when there's only enough for one", () => {
+    const s = { ...withFood({ salmon: 1, warmMilk: 2 }), kitchen: ['doubleBatch'] };
+    expect(cook(s, ['salmon', 'warmMilk'], 1, { batch: 2 }).blocked).toBe('noFood');
+  });
+});
+
+describe('buying for the kitchen', () => {
+  it('costs gold, once', () => {
+    const s = { ...withFood({}), gold: 1000 };
+    const out = buyKitchen(s, 'biggerPot');
+    expect(out.blocked).toBeUndefined();
+    expect(out.state.gold).toBe(1000 - CONFIG.cooking.kitchen.biggerPot.price);
+    expect(out.state.kitchen).toEqual(['biggerPot']);
+    expect(buyKitchen(out.state, 'biggerPot').blocked).toBe('alreadyOwned');
+    expect(buyKitchen({ ...s, gold: 10 }, 'doubleBatch').blocked).toBe('notEnoughGold');
+  });
+
+  it("doesn't sell what has no price yet", () => {
+    const s = { ...withFood({}), gold: 5000 };
+    expect(buyKitchen(s, 'oven').state).toBe(s);
+  });
+});
+
+describe('prepped food', () => {
+  it('is never a favourite food', async () => {
+    const { FAVOURITE_FOODS } = await import('../src/game/likes');
+    expect(FAVOURITE_FOODS).not.toContain('salmonFillet');
+    expect(FAVOURITE_FOODS).not.toContain('lobsterTail');
   });
 });

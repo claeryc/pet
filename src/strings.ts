@@ -34,6 +34,8 @@ export const STRINGS = {
     shrimp: 'Shrimp',
     salmon: 'Salmon',
     lobster: 'Lobster',
+    salmonFillet: 'Salmon fillet',
+    lobsterTail: 'Lobster tail',
     carrot: 'Carrot',
     pumpkin: 'Pumpkin',
     dragonFruit: 'Dragon fruit',
@@ -71,6 +73,9 @@ export const STRINGS = {
     seaweedLobster: 'Seaweed-steamed lobster',
     lobsterFriedRice: 'Lobster fried rice',
     bento: 'Bento',
+    seafoodChowder: 'Seafood chowder',
+    forestPotPie: 'Forest pot pie',
+    rainbowParfait: 'Rainbow parfait',
   },
   activities: {
     cuddle: 'Cuddle',
@@ -384,13 +389,39 @@ export const STRINGS = {
     unknown: '???',
     hint: (name: string) => `A secret recipe. Try something with ${name}...`,
     missing: (names: string) => `You still need: ${names}`,
-    // A recipe made somewhere you don't have yet, by its station.
-    needs: { pot: '', oven: 'Needs an oven', board: 'Needs a cutting board', mill: 'Needs a mill' },
+    // A recipe that needs a kitchen item you don't have yet.
+    needs: { biggerPot: 'Needs the bigger pot', doubleBatch: '', oven: 'Needs an oven', mill: 'Needs a mill' },
+    // The station tabs on the counter.
+    stations: { pot: 'Pot', board: 'Board', oven: 'Oven', mill: 'Mill' },
+    boardStart: 'Put a fish on the board, then tap when the marker is in the green to chop!',
+    boardEmpty: 'Put a fish on the board first. Tap Food to pick one.',
+    boardFull: 'Finish chopping this one first.',
+    boardHint: 'Tap Food to put a fish on the board',
+    addToBoard: (name: string, count: string) => `${name} (${count}). Tap to put it on the board`,
+    // The chopping game: a marker runs up and down a meter beside the
+    // board; each tap chops on the next dotted line.
+    chopNow: (name: string) => `Chop the ${name}. Tap when the marker is in the green`,
+    chopPrompt: 'Tap in the green to chop',
+    chopsLeft: (n: number) => (n === 1 ? 'One more chop' : n === 2 ? 'Two more chops' : `${n} more chops`),
+    perfectChop: 'Perfect!',
+    goodChop: 'Chop!',
+    perfectCut: 'Perfect cut!',
+    goodCut: 'Nicely cut.',
+    // Double batch: the ×2 switch on the pot.
+    batch: (on: boolean) => (on ? 'Double batch: on. Cooks two at once from two of everything' : 'Double batch: off. Tap to cook two at once'),
+    batchNeeds: (names: string) => `For two at once you need two of everything. Short: ${names}`,
     outOfSeason: "That recipe is out of season. It'll be back!",
     emptySlot: 'Empty spot in the pot',
     inPot: (name: string) => `${name} in the pot. Tap to take it out`,
     addToPot: (name: string, count: string) => `${name} (${count}). Tap to put it in the pot`,
     emptyPotLabel: 'Empty pot',
+    // The recipe card pinned up beside the pot.
+    cardEmpty: 'Add food',
+    cardEmptyHint: 'Tap Food below',
+    cardMystery: 'Cook to find out',
+    cardMush: "Won't make a recipe",
+    cook: 'Cook!',
+    made: (name: string) => `${name}!`,
     simmering: 'Cooking...',
     cookInto: (name: string) => `Cook ${name}`,
     cookMystery: 'Cook this mix and see what it makes',
@@ -1080,6 +1111,7 @@ export const STRINGS = {
     extraPot: 'Garden pot',
     extraPotNote: 'One more pot for your garden',
     potBought: 'A new pot is waiting in your garden!',
+    kitchenBought: { biggerPot: 'The bigger pot is in your kitchen. Four spots now!', doubleBatch: 'Double batch is ready: look for ×2 on the pot.' },
     // Homemade fertilizer: picked-up poop, crafted into the same
     // fertilizer the Shop sells (they share one count).
     homemade: 'Homemade fertilizer',
@@ -1127,6 +1159,11 @@ export const STRINGS = {
     specialKind: { wallpaper: 'Wallpaper', curtains: 'Curtains', furniture: 'Furniture', hat: 'Hat' } as Record<string, string>,
     fewLeft: 'Only a few left',
     // The bigger rice jar, bought with star fragments.
+    kitchen: 'Kitchen',
+    kitchenItems: {
+      biggerPot: { name: 'Bigger pot', note: 'One more spot in the pot, for four-ingredient recipes' },
+      doubleBatch: { name: 'Double batch', note: 'A ×2 switch on the pot: cook two of a dish at once' },
+    },
     bigJar: 'Bigger rice jar',
     bigJarNote: (extra: number, size: number) => `Holds ${extra} more free rice ball, ${size} in all`,
     use: 'Use',

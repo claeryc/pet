@@ -215,6 +215,9 @@ export const CONFIG = {
   //    price and its stats added up are its ingredients' × 1.25 for 1 or 2
   //    ingredients, × 1.4 for 3 (rounded), so the more work a dish is, the
   //    better it pays.
+  //  - `prepped`: cut on the cutting board (a fillet from a fish). It's
+  //    worth just what it was cut from, and only goes into recipes: it's
+  //    never a favourite, a craving or one of Percy's orders.
   // Only `shop` and `staple` food is sold.
   // `tags` say what kind of food it is (a drink, a soup, something sweet…),
   // for things that care about the kind rather than one food.
@@ -236,6 +239,8 @@ export const CONFIG = {
     { id: 'shrimp', source: 'caught', price: 10, hunger: 10, happiness: 4, health: 0, stars: 1, tags: ['seafood'] },
     { id: 'salmon', source: 'caught', price: 20, hunger: 20, happiness: 6, health: 3, stars: 2, tags: ['seafood'] },
     { id: 'lobster', source: 'caught', price: 40, hunger: 28, happiness: 14, health: 5, stars: 3, tags: ['seafood'] },
+    { id: 'salmonFillet', source: 'prepped', price: 20, hunger: 20, happiness: 6, health: 3, stars: 2, tags: ['seafood'] },
+    { id: 'lobsterTail', source: 'prepped', price: 40, hunger: 28, happiness: 14, health: 5, stars: 3, tags: ['seafood'] },
     { id: 'carrot', source: 'grown', price: 10, hunger: 10, happiness: 0, health: 3, stars: 1, tags: ['veg'] },
     { id: 'pumpkin', source: 'grown', price: 20, hunger: 20, happiness: 6, health: 4, stars: 2, tags: ['veg'] },
     { id: 'dragonFruit', source: 'grown', price: 40, hunger: 16, happiness: 16, health: 6, stars: 3, tags: ['fruit'] },
@@ -281,6 +286,10 @@ export const CONFIG = {
     { id: 'lobsterFriedRice', source: 'cooked', price: 74, hunger: 70, happiness: 20, health: 15, stars: 3, tags: ['seafood', 'grain', 'veg'] },
     { id: 'bento', source: 'cooked', price: 71, hunger: 80, happiness: 22, health: 18, stars: 3, tags: ['grain', 'seafood', 'veg'] },
     // What you get when the pot holds a mix that isn't a recipe.
+    // Big-pot dishes: four ingredients, so they need the bigger pot.
+    { id: 'seafoodChowder', source: 'cooked', price: 127, hunger: 85, happiness: 45, health: 33, stars: 3, tags: ['soup', 'seafood'] },
+    { id: 'forestPotPie', source: 'cooked', price: 88, hunger: 70, happiness: 20, health: 25, stars: 2, tags: ['veg'] },
+    { id: 'rainbowParfait', source: 'cooked', price: 119, hunger: 50, happiness: 60, health: 25, stars: 3, tags: ['sweet', 'fruit'] },
     { id: 'mushyMess', source: 'cooked', price: 1, hunger: 8, happiness: 0, health: 0, tags: [] },
   ],
 
@@ -428,29 +437,41 @@ export const CONFIG = {
     // A `prep` station (cutting, milling) adds no worth: what it makes is
     // worth just its ingredients, so it never makes gold by itself.
     worth: { 1: 1.25, 2: 1.25, 3: 1.4, 4: 1.55 },
-    // Where recipes are made. Only the pot is in the game so far; the rest
-    // need the kitchen item of the same name. A `timed` station takes a
-    // while and keeps going while the game is closed (not built yet).
+    // Where recipes are made. Every kitchen has the pot and the cutting
+    // board (`starter`); the rest need the kitchen item of the same name.
+    // A `timed` station takes a while and keeps going while the game is
+    // closed (not built yet).
     stations: {
-      pot: {},
+      pot: { starter: true },
+      board: { prep: true, starter: true },
       oven: {},
-      board: { prep: true },
       mill: { prep: true, timed: true },
     },
-    // Things you can own for the kitchen (in `state.kitchen`). None are
-    // sold yet. The bigger pot takes `slots` foods.
+    // Things you can buy for the kitchen (kept in `state.kitchen`), in
+    // the Shop's Food tab for `price` gold. No price: not sold yet.
+    //  - `biggerPot`: the pot takes `slots` foods, which opens the
+    //    four-ingredient recipes.
+    //  - `doubleBatch`: a ×2 switch on the pot that cooks two of a dish at
+    //    once from two of everything. It saves taps, not food.
     kitchen: {
-      biggerPot: { slots: 4 },
+      biggerPot: { slots: 4, price: 400 },
+      doubleBatch: { price: 300 },
       oven: {},
-      board: {},
       mill: {},
     },
+    // The cutting board's timing game: a marker runs up a meter beside the
+    // board and back down every `sweepSeconds`, and each tap chops the
+    // fish on the next of its `chops` dotted lines. A chop while the
+    // marker is inside `band` (shares of the way up) is a perfect one;
+    // all of them perfect is a perfect cut, worth `perfectXp` Keeper XP.
+    // Any cut still makes the fillet.
+    cutting: { sweepSeconds: 1.2, band: { start: 0.42, end: 0.58 }, chops: 3, perfectXp: 2 },
     recipes: [
       { id: 'grilledShrimp', ingredients: ['shrimp'] },
       { id: 'shrimpOnigiri', ingredients: ['riceBall', 'shrimp'] },
       { id: 'strawberryMilk', ingredients: ['strawberry', 'warmMilk'] },
       { id: 'grilledSalmon', ingredients: ['salmon'] },
-      { id: 'salmonSushi', ingredients: ['riceBall', 'salmon'] },
+      { id: 'salmonSushi', ingredients: ['riceBall', 'salmonFillet'] },
       { id: 'fishSoup', ingredients: ['salmon', 'warmMilk'] },
       { id: 'berryShortcake', ingredients: ['cookie', 'strawberry', 'warmMilk'] },
       { id: 'lobsterBisque', ingredients: ['lobster', 'warmMilk'] },
@@ -472,10 +493,17 @@ export const CONFIG = {
       { id: 'honeySalmon', ingredients: ['honey', 'salmon'] },
       { id: 'starCookies', ingredients: ['stardustSugar', 'cookie'] },
       { id: 'fruitPunch', ingredients: ['strawberry', 'dragonFruit'] },
-      { id: 'seaweedLobster', ingredients: ['seaweed', 'lobster'] },
+      { id: 'seaweedLobster', ingredients: ['seaweed', 'lobsterTail'] },
       { id: 'lobsterFriedRice', ingredients: ['lobster', 'riceBall', 'carrot'] },
       // Made from two other dishes and a carrot.
       { id: 'bento', ingredients: ['shrimpOnigiri', 'grilledSalmon', 'carrot'] },
+      // Cut on the cutting board (a short timing game; see `cutting`).
+      { id: 'salmonFillet', ingredients: ['salmon'], station: 'board' },
+      { id: 'lobsterTail', ingredients: ['lobster'], station: 'board' },
+      // Four ingredients: these need the bigger pot.
+      { id: 'seafoodChowder', ingredients: ['shrimp', 'salmon', 'lobster', 'warmMilk'] },
+      { id: 'forestPotPie', ingredients: ['carrot', 'pumpkin', 'wildMushroom', 'warmMilk'] },
+      { id: 'rainbowParfait', ingredients: ['strawberry', 'dragonFruit', 'honey', 'warmMilk'] },
     ],
     mess: 'mushyMess',
   },
