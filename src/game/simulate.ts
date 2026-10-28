@@ -9,6 +9,7 @@
 // call it when the game loads, when you come back to the tab, and every few
 // seconds while open.
 
+import { stepCrafting } from './crafting';
 import { stepRiceJar } from './economy';
 import { CONFIG } from './config';
 import { clampStat, isNeglected, isNight, isWellFed } from './stats';
@@ -63,7 +64,7 @@ export function simulate(state: GameState, now: number): GameState {
   // (a pickup that came due, or a new order), the pet's cravings, and
   // visitors dropping by.
   const next = stepJourneys(state, { ...state, pet, housemates, garden, lastUpdated: t }, t);
-  return stepRiceJar(stepVisits(stepCraving(stepDelivery(next, t), t), t), t);
+  return stepCrafting(stepRiceJar(stepVisits(stepCraving(stepDelivery(next, t), t), t), t), t);
 }
 
 // Advances the pet by one tick ending at time `t`. Changes `pet` in place

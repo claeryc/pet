@@ -32,6 +32,7 @@
 //
 // The numbers live in CONFIG.journeys.
 
+import { addMaterial, addPart, materialStars, tripCrafting } from './crafting';
 import { CONFIG } from './config';
 import type { Food, FoodId } from './actions';
 import { useFood, type ShopResult } from './economy';
@@ -229,6 +230,8 @@ export function parseFind(entry: string, stars: number): Find {
   const [kind, id] = entry.split(':');
   if (kind === 'gold') return { kind: 'gold', id: '', count: Number(id), stars };
   if (kind === 'seed') return { kind: 'seed', id, count: 1, stars };
+  if (kind === 'mat') return { kind: 'material', id, count: 1, stars: materialStars(id) };
+  if (kind === 'part') return { kind: 'part', id, count: 1, stars };
   return { kind: 'food', id: entry, count: 1, stars };
 }
 
@@ -285,6 +288,8 @@ export function bestFind(finds: readonly Find[]): number {
 // Puts a find into the inventory (or the gold purse).
 export function giveFind(state: GameState, f: Find): GameState {
   if (f.kind === 'gold') return { ...state, gold: state.gold + f.count };
+  if (f.kind === 'material') return addMaterial(state, f.id, f.count);
+  if (f.kind === 'part') return addPart(state, f.id);
   if (f.kind === 'seed') {
     let s = state;
     for (let n = 0; n < f.count; n++) s = addSeed(s, f.id as CropId);
@@ -306,7 +311,7 @@ function withPage(state: GameState, place: string, change: (page: JournalPage) =
 // Writes the food and seeds in `finds` into the place's journal page
 // (seeds as "seed:carrot").
 function noteFound(state: GameState, place: string, finds: readonly Find[]): GameState {
-  const foods = finds.filter((f) => f.kind !== 'gold').map((f) => (f.kind === 'seed' ? `seed:${f.id}` : f.id));
+  const foods = finds.filter((f) => f.kind === 'food' || f.kind === 'seed').map((f) => (f.kind === 'seed' ? `seed:${f.id}` : f.id));
   if (foods.every((id) => journalPage(state, place).found.includes(id))) return state;
   return withPage(state, place, (page) => ({ ...page, found: [...page.found, ...foods.filter((id) => !page.found.includes(id))] }));
 }
@@ -473,7 +478,10 @@ export function goTogether(
       from: { hunger: pet.stats.hunger, energy: pet.stats.energy },
       to: plan.to,
       joy: J.joy[offer.rarity],
-      finds: rollFinds(pet, getPlace(offer.place)!, offer.rarity, now, m.charm, m.lunch),
+      finds: [
+        ...rollFinds(pet, getPlace(offer.place)!, offer.rarity, now, m.charm, m.lunch),
+        ...tripCrafting(s, pet, getPlace(offer.place)!, offer.rarity, now),
+      ],
       percy: n === 0 && percy ? 'coming' : 'none',
       charm: m.charm,
       with: ids.find((id) => id !== pet.id) ?? null,

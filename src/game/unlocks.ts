@@ -15,9 +15,11 @@ import { creditGrownUps, keeperLevel, updateLevel } from './skills';
 import { getCharacter } from './growth';
 import { stepFragments } from './fragments';
 import { CONFIG } from './config';
+import { hasAnyMaterial } from './crafting';
 
 export type UnlockId =
-  | 'shop' | 'cooking' | 'collection' | 'familyTree' | 'garden' | 'messages' | 'delivery' | 'meet' | 'skills' | 'journeys' | 'dig';
+  | 'shop' | 'cooking' | 'collection' | 'familyTree' | 'garden' | 'messages' | 'delivery' | 'meet' | 'skills' | 'journeys' | 'dig'
+  | 'workbench';
 
 const RULES: Record<UnlockId, (s: GameState) => boolean> = {
   // Once the egg hatches and there's someone to buy things for.
@@ -46,6 +48,8 @@ const RULES: Record<UnlockId, (s: GameState) => boolean> = {
   // Sniff and dig (in Play) after the first harvest or the first fish:
   // there's a seed or a fish worth digging for by then.
   dig: (s) => (s.grown ?? []).length > 0 || s.caught.length > 0,
+  // The workbench (in Play) with the first material or key part found.
+  workbench: (s) => hasAnyMaterial(s),
 };
 
 export const UNLOCKS = Object.keys(RULES) as UnlockId[];

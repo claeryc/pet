@@ -97,6 +97,86 @@ export const STRINGS = {
     meet: 'Meet',
     journeys: 'Journeys',
     dig: 'Sniff and dig',
+    workbench: 'Workbench',
+  },
+  // The workbench and projects (Play > Workbench, see src/game/crafting.ts).
+  crafting: {
+    tabs: { bench: 'Bench', projects: 'Projects' } as Record<string, string>,
+    close: 'Close',
+    materialsButton: 'Materials',
+    patternsButton: 'Patterns',
+    make: 'Make!',
+    tap: 'Tap!',
+    build: 'Build',
+    materials: {
+      twig: 'Twigs', pebble: 'Pebbles', twine: 'Twine', clay: 'Clay',
+      shell: 'Shells', beeswax: 'Beeswax', seaGlass: 'Sea glass', starShard: 'Star shard',
+    } as Record<string, string>,
+    // One of a material, for "+1 Twig" style lines.
+    material: {
+      twig: 'Twig', pebble: 'Pebble', twine: 'Twine', clay: 'Clay',
+      shell: 'Shell', beeswax: 'Beeswax', seaGlass: 'Sea glass', starShard: 'Star shard',
+    } as Record<string, string>,
+    parts: { millstone: 'Old millstone', queenCrown: "Queen bee's crown", brassCog: 'Brass cog' } as Record<string, string>,
+    partFound: 'A key part! A new project can start.',
+    categories: { room: 'For the room', trips: 'For trips', pond: 'For the pond', garden: 'For the garden' } as Record<string, string>,
+    patterns: {
+      shellGarland: 'Shell garland', driftwoodShelf: 'Driftwood shelf', pebbleBowl: 'Pebble bowl', seaGlassLamp: 'Sea glass lamp',
+      starMobile: 'Star mobile', clover: 'Clover charm', compass: 'Compass charm', bait: 'Bait', glowLure: 'Glow lure', fertilizer: 'Fertilizer',
+    } as Record<string, string>,
+    // The line under a pattern's name.
+    patternNote: {
+      shellGarland: 'Wall', driftwoodShelf: 'Wall', pebbleBowl: 'Windowsill', seaGlassLamp: 'Floor', starMobile: 'Wall',
+      clover: 'One more find', compass: 'Better finds', bait: 'Two for the pond', glowLure: 'For a lobster', fertilizer: 'Plants grow faster',
+    } as Record<string, string>,
+    pick: 'Pick a pattern',
+    pickHint: 'Tap Patterns below',
+    youHave: (n: number) => `You have ${n}`,
+    made: 'Made',
+    madeAlready: 'You have this one already.',
+    short: (what: string) => `Not enough ${what} yet.`,
+    pouchNote: 'Found on journeys and in Sniff and dig.',
+    keyParts: 'Key parts',
+    noParts: 'None yet. Dig at the places to find them.',
+    hammer: 'Tap to hammer!',
+    oneMore: (n: number) => (n === 1 ? 'One more tap!' : `${n} more taps!`),
+    madeIt: (name: string) => `${name}!`,
+    hangIt: 'Hang it in the room',
+    start: 'Pick a pattern under Patterns.',
+    startEmpty: 'Find materials on journeys and in Sniff and dig.',
+    // Projects.
+    projects: { windmill: 'Windmill', beehive: 'Beehive', perch: "Percy's perch" } as Record<string, string>,
+    stages: {
+      windmill: ['The foundation', 'The frame', 'The sails', 'The millstone'],
+      beehive: ['The stand', 'The hive', 'The roof'],
+      perch: ['The post', 'The roof', 'The bell'],
+    } as Record<string, string[]>,
+    stageOf: (n: number, of: number) => `Stage ${n} of ${of}`,
+    gives: {
+      windmill: 'Adds the mill to your kitchen',
+      beehive: 'Honey and beeswax every day',
+      perch: 'Percy rests 12 hours less after a trip',
+    } as Record<string, string>,
+    locked: (part: string, place: string) => `Find the ${part.toLowerCase()} in the ${place} dig to start it.`,
+    notFound: 'Not found yet',
+    buildingUntil: (time: string) => `Building… ready at ${time}`,
+    built: 'Built!',
+    startBuild: (stage: string) => `Building ${stage.toLowerCase()}!`,
+    blocked: {
+      short: 'Not enough materials yet.',
+      notEnoughGold: 'Not enough gold yet.',
+      building: 'Still building the last stage.',
+      done: 'All built!',
+      locked: 'Find its key part first.',
+    } as Record<string, string>,
+    gold: (n: number) => `${n} gold`,
+    // Messages.
+    stageBuilt: (project: string, stage: string) => `${project}: ${stage.toLowerCase()} is built.`,
+    projectDone: {
+      windmill: 'The windmill is finished! The mill is in your kitchen now.',
+      beehive: 'The beehive is finished! It gives honey and beeswax every day.',
+      perch: "Percy's perch is finished! He'll rest less after a courier trip.",
+    } as Record<string, string>,
   },
   // Sniff and dig (Play > Sniff and dig).
   dig: {
@@ -739,6 +819,7 @@ export const STRINGS = {
     skills: 'New in the Menu: Skills! Spend your first skill point there.',
     journeys: 'New in Play: Journeys! Send your pet out to explore.',
     dig: 'New in Play: Sniff and dig! A little treasure hunt every day.',
+    workbench: 'New in Play: the Workbench! Make things from what you find.',
   },
   // Meeting other pets, friends and little ones (Play > Meet).
   // Regulars (Percy for now): characters who aren't pets, with hearts that
@@ -1225,6 +1306,11 @@ export const STRINGS = {
       candle: 'Windowsill candle',
       keepsakeFrame: 'Keepsake frame',
       keepsakeShelf: 'Keepsake shelf',
+      shellGarland: 'Shell garland',
+      driftwoodShelf: 'Driftwood shelf',
+      pebbleBowl: 'Pebble bowl',
+      seaGlassLamp: 'Sea glass lamp',
+      starMobile: 'Star mobile',
     } as Record<string, string>,
     // Where a piece of furniture goes (its usual spot).
     furnitureSlot: { wall: 'On the wall', wallMid: 'On the wall', sill: 'Windowsill', left: 'Floor, left side', right: 'Floor, right side' } as Record<string, string>,

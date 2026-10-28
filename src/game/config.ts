@@ -796,7 +796,7 @@ export const CONFIG = {
       {
         id: 'market', theme: 'bakery', ingredient: 'honey', opens: 'start',
         finds: {
-          1: ['strawberry', 'warmMilk', 'cookie', 'gold:10', 'seed:carrot'],
+          1: ['strawberry', 'warmMilk', 'cookie', 'seed:carrot'],
           2: ['gold:25', 'jamCookie', 'berryShortcake', 'seed:pumpkin'],
           3: ['gold:60', 'seed:dragonFruit', 'energyDrink'],
         },
@@ -804,7 +804,7 @@ export const CONFIG = {
       {
         id: 'woods', theme: 'nature', ingredient: 'wildMushroom', opens: 'harvest',
         finds: {
-          1: ['strawberry', 'carrot', 'seed:carrot', 'gold:8'],
+          1: ['strawberry', 'carrot', 'seed:carrot'],
           2: ['pumpkin', 'seed:pumpkin', 'gold:20'],
           3: ['dragonFruit', 'seed:dragonFruit'],
         },
@@ -812,7 +812,7 @@ export const CONFIG = {
       {
         id: 'cove', theme: 'ocean', ingredient: 'seaweed', opens: 'fish',
         finds: {
-          1: ['shrimp', 'gold:12'],
+          1: ['shrimp'],
           2: ['salmon', 'gold:30'],
           3: ['lobster', 'gold:70'],
         },
@@ -820,7 +820,7 @@ export const CONFIG = {
       {
         id: 'hill', theme: 'starry', ingredient: 'stardustSugar', opens: 'grownUp',
         finds: {
-          1: ['warmMilk', 'cookie', 'gold:12'],
+          1: ['warmMilk', 'cookie'],
           2: ['honeyMilk', 'starCookies', 'gold:30', 'seed:pumpkin'],
           3: ['stardustPudding', 'seed:dragonFruit', 'gold:80'],
         },
@@ -867,31 +867,115 @@ export const CONFIG = {
     // finds). No energy drinks: digging is never a way to skip a nap.
     finds: {
       meadow: {
-        1: ['strawberry', 'carrot', 'seed:carrot', 'gold:8'],
-        2: ['honey', 'seed:pumpkin', 'gold:20'],
+        1: ['strawberry', 'carrot', 'seed:carrot', 'gold:8', 'mat:twig', 'mat:pebble', 'mat:twig'],
+        2: ['honey', 'seed:pumpkin', 'gold:20', 'mat:beeswax'],
         3: ['seed:dragonFruit', 'gold:50'],
       },
       market: {
-        1: ['strawberry', 'cookie', 'gold:10', 'seed:carrot'],
-        2: ['gold:25', 'jamCookie', 'seed:pumpkin'],
+        1: ['strawberry', 'cookie', 'gold:10', 'seed:carrot', 'mat:twine', 'mat:pebble', 'mat:twine'],
+        2: ['gold:25', 'jamCookie', 'seed:pumpkin', 'mat:beeswax'],
         3: ['gold:60', 'seed:dragonFruit', 'berryShortcake'],
       },
       woods: {
-        1: ['strawberry', 'carrot', 'seed:carrot', 'gold:8'],
-        2: ['pumpkin', 'seed:pumpkin', 'gold:20'],
+        1: ['strawberry', 'carrot', 'seed:carrot', 'gold:8', 'mat:twig', 'mat:twine', 'mat:twig'],
+        2: ['pumpkin', 'seed:pumpkin', 'gold:20', 'mat:beeswax'],
         3: ['dragonFruit', 'seed:dragonFruit'],
       },
       cove: {
-        1: ['shrimp', 'gold:12'],
-        2: ['salmon', 'gold:30'],
+        1: ['shrimp', 'gold:12', 'mat:clay', 'mat:pebble'],
+        2: ['salmon', 'gold:30', 'mat:shell', 'mat:seaGlass'],
         3: ['lobster', 'gold:70'],
       },
       hill: {
-        1: ['warmMilk', 'cookie', 'gold:12'],
-        2: ['starCookies', 'gold:30', 'seed:pumpkin'],
-        3: ['stardustPudding', 'seed:dragonFruit', 'gold:80'],
+        1: ['warmMilk', 'cookie', 'gold:12', 'mat:pebble', 'mat:twig'],
+        2: ['starCookies', 'gold:30', 'seed:pumpkin', 'mat:seaGlass'],
+        3: ['stardustPudding', 'seed:dragonFruit', 'gold:80', 'mat:starShard'],
       },
     },
+  },
+
+  // Crafting (see src/game/crafting.ts). Materials are found on journeys
+  // and in Sniff and dig, and kept in their own pouch: they can't be eaten,
+  // sold or given, so they never turn into gold or energy. Each material
+  // has stars, and you can hold up to `maxEach` of one.
+  crafting: {
+    materials: { twig: 1, pebble: 1, twine: 1, clay: 1, shell: 2, beeswax: 2, seaGlass: 2, starShard: 3 },
+    maxEach: 99,
+    // What a journey to each place brings in materials, by stars: `trip`
+    // of them by the trip's rarity (one more for a pet of the place's
+    // theme), each 2-star as often as the trip's finds are. An epic trip to
+    // a place with a 3-star material brings one `threeStarChance` of the
+    // time. (Sniff and dig buries them too: see `dig.finds`.)
+    trip: { common: 1, rare: 2, epic: 3 },
+    threeStarChance: 0.3,
+    places: {
+      market: { 1: ['twine', 'pebble'], 2: ['beeswax'] },
+      woods: { 1: ['twig', 'twine'], 2: ['beeswax'] },
+      cove: { 1: ['clay', 'pebble'], 2: ['shell', 'seaGlass'] },
+      hill: { 1: ['pebble', 'twig'], 2: ['seaGlass'], 3: ['starShard'] },
+    },
+    // Key parts: each one opens a project, and is found once, at its place.
+    // Digging an empty hole there turns one up `dig.first` of the time,
+    // `dig.step` likelier with every empty hole after that, so it always
+    // shows up in the end. A rare or epic journey there finds it
+    // `partTripChance` of the time.
+    parts: { millstone: 'woods', queenCrown: 'meadow', brassCog: 'market' },
+    partDig: { first: 0.1, step: 0.1 },
+    partTripChance: 0.35,
+    // The workbench: patterns you can make from materials, in Shop-like
+    // categories. `makes` is a room piece ("furniture:id", made once), a
+    // charm ("charm:id") or a supply ("supply:id"), `count` of them.
+    // Making one takes `taps` taps of the hammer.
+    taps: 3,
+    categories: ['room', 'trips', 'pond', 'garden'],
+    patterns: [
+      { id: 'shellGarland', category: 'room', makes: 'furniture:shellGarland', needs: { shell: 3, twine: 2 } },
+      { id: 'driftwoodShelf', category: 'room', makes: 'furniture:driftwoodShelf', needs: { twig: 5, shell: 1 } },
+      { id: 'pebbleBowl', category: 'room', makes: 'furniture:pebbleBowl', needs: { pebble: 6, clay: 2 } },
+      { id: 'seaGlassLamp', category: 'room', makes: 'furniture:seaGlassLamp', needs: { seaGlass: 2, twig: 3 } },
+      { id: 'starMobile', category: 'room', makes: 'furniture:starMobile', needs: { starShard: 1, twine: 3 } },
+      { id: 'clover', category: 'trips', makes: 'charm:clover', needs: { twig: 2, twine: 1 } },
+      { id: 'compass', category: 'trips', makes: 'charm:compass', needs: { seaGlass: 1, pebble: 3 } },
+      { id: 'bait', category: 'pond', makes: 'supply:bait', count: 2, needs: { clay: 1, twig: 1 } },
+      { id: 'glowLure', category: 'pond', makes: 'supply:glowLure', needs: { seaGlass: 1, twine: 1 } },
+      { id: 'fertilizer', category: 'garden', makes: 'supply:fertilizer', needs: { clay: 2, twig: 1 } },
+    ],
+    // Projects: big builds in the meadow. Each opens when its key part is
+    // found, and is built in stages: hand over a stage's materials and
+    // gold, and it takes `hours` to build (even with the game closed, and
+    // there's no way to hurry it). The last stage gives `gives`:
+    //  - 'mill': the mill joins the kitchen (CONFIG.cooking.kitchen.mill);
+    //  - 'hive': `hive` (honey and beeswax) each new day;
+    //  - 'perch': Percy rests `perchRestOff` hours less after a courier trip.
+    projects: [
+      {
+        id: 'windmill', part: 'millstone', gives: 'mill',
+        stages: [
+          { id: 'foundation', needs: { pebble: 12, clay: 4 }, gold: 50, hours: 3 },
+          { id: 'frame', needs: { twig: 12, twine: 4 }, gold: 75, hours: 4 },
+          { id: 'sails', needs: { twine: 8, beeswax: 3 }, gold: 75, hours: 6 },
+          { id: 'millstone', needs: { pebble: 6 }, gold: 100, hours: 8 },
+        ],
+      },
+      {
+        id: 'beehive', part: 'queenCrown', gives: 'hive',
+        stages: [
+          { id: 'stand', needs: { twig: 6, pebble: 4 }, gold: 50, hours: 2 },
+          { id: 'hive', needs: { twig: 8, clay: 3 }, gold: 75, hours: 4 },
+          { id: 'roof', needs: { twine: 4, beeswax: 2 }, gold: 75, hours: 6 },
+        ],
+      },
+      {
+        id: 'perch', part: 'brassCog', gives: 'perch',
+        stages: [
+          { id: 'post', needs: { twig: 8, pebble: 4 }, gold: 50, hours: 2 },
+          { id: 'roof', needs: { twig: 6, twine: 4 }, gold: 75, hours: 4 },
+          { id: 'bell', needs: { shell: 3, seaGlass: 1 }, gold: 100, hours: 6 },
+        ],
+      },
+    ],
+    hive: { honey: 1, beeswax: 1 },
+    perchRestOff: 12,
   },
 
   // Decorating the room, from the Shop: a wallpaper, window curtains and
@@ -930,6 +1014,12 @@ export const CONFIG = {
       { id: 'lamp', spots: ['left', 'right'], price: 180 },
       { id: 'toyBox', spots: ['right', 'left'], price: 140 },
       { id: 'bookshelf', spots: ['right', 'left'], price: 220 },
+      // Made at the workbench, never sold (see `crafting.patterns`).
+      { id: 'shellGarland', spots: ['wall'], price: 0, crafted: true },
+      { id: 'driftwoodShelf', spots: ['wall'], price: 0, crafted: true },
+      { id: 'pebbleBowl', spots: ['sill'], price: 0, crafted: true },
+      { id: 'seaGlassLamp', spots: ['left', 'right'], price: 0, crafted: true },
+      { id: 'starMobile', spots: ['wallMid'], price: 0, crafted: true },
     ],
   },
 

@@ -30,7 +30,7 @@ import {
 import { getPlace, parseFind } from '../game/journeys';
 import { isAway, hasBackpack } from '../game/presence';
 import { localDay } from '../game/economy';
-import { HEART_ICONS, ITEM_ICONS, LOCK_ICON, STAT_ICONS } from './icons';
+import { findIconOf, HEART_ICONS, ITEM_ICONS, LOCK_ICON, STAT_ICONS } from './icons';
 import { drawPlace } from '../render/places';
 import { EPIC_H, PLACE_H, PLACE_W, sparkle, twinkles } from './journeys';
 
@@ -77,12 +77,13 @@ function icon(svg: string, className: string): HTMLElement {
 // The icon and name of something buried ("honey", "seed:pumpkin", "gold:12").
 function findIcon(entry: string): string {
   const f = parseFind(entry, 1);
-  if (f.kind === 'gold') return STAT_ICONS.gold;
-  return ITEM_ICONS[f.kind === 'seed' ? `seed_${f.id}` : f.id] ?? ITEM_ICONS.unknown;
+  return findIconOf(f);
 }
 function findName(entry: string): string {
   const f = parseFind(entry, 1);
   if (f.kind === 'gold') return `${f.count} ${T.gold}`;
+  if (f.kind === 'material') return STRINGS.crafting.material[f.id] ?? f.id;
+  if (f.kind === 'part') return STRINGS.crafting.parts[f.id] ?? f.id;
   const name = STRINGS.foods[f.id as FoodId] ?? f.id;
   return f.kind === 'seed' ? STRINGS.garden.seedName(name) : name;
 }

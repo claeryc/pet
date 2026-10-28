@@ -102,10 +102,11 @@ export interface ParentLook {
 
 export type Rarity = 'common' | 'rare' | 'epic';
 
-// Something found on a journey: a food, a seed or some gold.
+// Something found on a journey (or dug up): a food, a seed, some gold, a
+// crafting material or a key part (see src/game/crafting.ts).
 export interface Find {
-  kind: 'food' | 'seed' | 'gold';
-  id: string; // a food or crop id ('' for gold)
+  kind: 'food' | 'seed' | 'gold' | 'material' | 'part';
+  id: string; // a food, crop, material or part id ('' for gold)
   count: number;
   stars: number;
 }
@@ -419,7 +420,9 @@ export type Message =
   // Everyone came home from a Holiday in the Meadow.
   | { kind: 'holidayHome'; at: number; names: string[] }
   // A regular (Percy) reached a new heart and gave its reward.
-  | { kind: 'regular'; at: number; id: string; hearts: number };
+  | { kind: 'regular'; at: number; id: string; hearts: number }
+  // A project's stage was built (`stage` counts from 0; `done`: it was the last).
+  | { kind: 'built'; at: number; project: string; stage: number; done: boolean };
 
 // Star fragments, the free way to a Revival Star (see src/game/fragments.ts).
 export interface Fragments {
@@ -446,6 +449,19 @@ export interface Keeper {
   skills: Record<string, number>; // skill id -> rank learned (0-3)
   resets: number; // how many times a tree's points were taken back
   grownUp: string[]; // ids of pets already given XP for growing up
+}
+
+// Crafting (see src/game/crafting.ts): materials in the pouch, key parts
+// found, and how far each project in the meadow has got.
+export interface Crafting {
+  materials: Record<string, number>; // material id -> how many
+  parts: string[]; // key parts found (each is found once)
+  partTries: Record<string, number>; // empty holes dug at a place while its part is still out there
+  made: string[]; // patterns made at least once
+  // Stages built so far, and when the one being built now is done (0 while
+  // nothing's being built).
+  projects: Record<string, { built: number; until: number }>;
+  hiveDay: string; // the local day the beehive last gave its honey ('' = never)
 }
 
 export interface GameState {
@@ -539,6 +555,7 @@ export interface GameState {
   guidesRead: string[];
   // Regulars by id ("percy"), once you've met them.
   regulars: Record<string, Regular>;
+  crafting: Crafting;
 }
 
 export function newJourneys(): Journeys {
@@ -547,6 +564,10 @@ export function newJourneys(): Journeys {
 
 export function newDig(): Dig {
   return { day: '', places: [], spots: [], used: 0, leftovers: {} };
+}
+
+export function newCrafting(): Crafting {
+  return { materials: {}, parts: [], partTries: {}, made: [], projects: {}, hiveDay: '' };
 }
 
 export function newKeeper(): Keeper {
@@ -655,5 +676,6 @@ export function createNewGame(now: number): GameState {
     dig: newDig(),
     guidesRead: [],
     regulars: {},
+    crafting: newCrafting(),
   };
 }

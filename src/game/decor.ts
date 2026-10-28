@@ -15,6 +15,7 @@ export interface Decor {
   id: string;
   price: number;
   earned?: boolean; // not sold: a regular gives it (see regulars.ts)
+  crafted?: boolean; // not sold: made at the workbench (see crafting.ts)
   slot?: FurnitureSlot; // furniture only: its usual spot
   spots?: FurnitureSlot[]; // furniture only: every spot it fits, usual first
 }
@@ -73,7 +74,7 @@ export const decorKey = (kind: DecorKind, id: string) => `${kind}:${id}`;
 // they're given.
 export function ownsDecor(state: GameState, kind: DecorKind, id: string): boolean {
   const d = getDecor(kind, id);
-  return !!d && ((d.price === 0 && !d.earned) || state.inventory.decor.includes(decorKey(kind, id)));
+  return !!d && ((d.price === 0 && !d.earned && !d.crafted) || state.inventory.decor.includes(decorKey(kind, id)));
 }
 
 // In use in the room you're looking at (each room is decorated on its own).

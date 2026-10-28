@@ -11114,3 +11114,491 @@ button.trip-bars-name.is-on {
     animation: none;
   }
 }
+
+/* ---- The workbench (src/ui/workbench.ts) ----
+   The same frame as the kitchen: the bench (or the meadow with the
+   projects) over the pet's room, the controls over the stat bars. */
+.kitchen.workbench .kitchen-room {
+  --counter: 82%;
+  background:
+    linear-gradient(var(--cocoa) 0 0) 0 var(--counter) / 100% 4px no-repeat,
+    linear-gradient(#f1e3dc 1px, transparent 1px) 0 0 / 22px 22px,
+    linear-gradient(90deg, #f1e3dc 1px, transparent 1px) 0 0 / 22px 22px,
+    linear-gradient(var(--card) 0 var(--counter), #ffc59e var(--counter));
+}
+
+.bench-peg {
+  position: absolute;
+  left: 5%;
+  top: 48px;
+  width: min(44%, 170px);
+  pointer-events: none;
+}
+
+.bench-peg svg,
+.bench-table > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.bench-table {
+  position: absolute;
+  left: 3%;
+  bottom: 10%;
+  width: min(54%, 200px);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* What was just made, sitting on the bench top. */
+.bench-piece {
+  position: absolute;
+  left: 22%;
+  bottom: 72%;
+  width: 34%;
+  aspect-ratio: 1;
+}
+
+.bench-piece svg {
+  width: 100%;
+  height: 100%;
+}
+
+.kitchen.made .bench-piece {
+  animation: pop-in 0.35s cubic-bezier(0.34, 1.6, 0.64, 1);
+}
+
+/* The hammer rests on the bench, and swings down on each tap. */
+.bench-hammer {
+  position: absolute;
+  left: 52%;
+  bottom: 70%;
+  width: 32%;
+  aspect-ratio: 1;
+  transform-origin: 30% 90%;
+  transform: rotate(-28deg);
+  transition: transform 0.15s ease-out;
+}
+
+.bench-hammer svg {
+  width: 100%;
+  height: 100%;
+}
+
+.kitchen.hit .bench-hammer {
+  animation: hammer-hit 0.3s ease-out;
+}
+
+.kitchen.made .bench-hammer {
+  opacity: 0;
+}
+
+@keyframes hammer-hit {
+  0% { transform: rotate(-28deg); }
+  35% { transform: rotate(-70deg); }
+  60% { transform: rotate(12deg); }
+  100% { transform: rotate(-28deg); }
+}
+
+.bench-bang {
+  position: absolute;
+  left: 78%;
+  bottom: 110%;
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: white;
+  -webkit-text-stroke: 5px var(--accent-dark);
+  paint-order: stroke fill;
+  pointer-events: none;
+}
+
+.bench-bang:empty {
+  display: none;
+}
+
+.kitchen.hit .bench-bang {
+  animation: pop-in 0.25s cubic-bezier(0.34, 1.6, 0.64, 1);
+}
+
+.kitchen.made .bench-card {
+  animation: card-flap 0.5s ease-out;
+}
+
+.kitchen.workbench .kitchen-burst {
+  bottom: 4%;
+}
+
+.kitchen.made .kitchen-burst {
+  animation: burst-in 0.4s cubic-bezier(0.34, 1.6, 0.64, 1);
+}
+
+/* The spots: each material with have/need under it, red when short. */
+.bench-spot {
+  position: relative;
+  cursor: default;
+  max-width: 60px;
+}
+
+.bench-spot.short {
+  opacity: 0.6;
+}
+
+.bench-spot-n {
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0 6px;
+  border-radius: 99px;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1.4;
+  white-space: nowrap;
+  color: white;
+  background: var(--good);
+  border: 2px solid var(--good-dark);
+}
+
+.bench-spot.short .bench-spot-n {
+  background: var(--accent-dark);
+  border-color: var(--low-dark);
+}
+
+.bench-prompt[hidden],
+.bench-spots[hidden],
+.bench-made[hidden] {
+  display: none;
+}
+
+/* What you made, with "Hang it in the room" for a room piece. */
+.bench-made {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.bench-made-icon {
+  flex: 0 0 64px;
+  height: 64px;
+}
+
+.bench-made-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.bench-made-text b {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+.bench-hang {
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 900;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 99px;
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 3px 0 var(--accent-dark);
+  cursor: pointer;
+}
+
+.bench-hang[hidden] {
+  display: none;
+}
+
+/* ---- The projects: a meadow with the project in it ---- */
+.meadow-scene {
+  background: linear-gradient(#cdeafa 0 74%, var(--good) 74%);
+}
+
+.meadow-scene::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 74%;
+  height: 4px;
+  background: #3f7d62;
+}
+
+.project-art {
+  position: absolute;
+  left: 50%;
+  bottom: 25%;
+  height: 64%;
+  aspect-ratio: 26 / 30;
+  transform: translateX(-62%);
+  z-index: 1;
+}
+
+.kitchen[data-project='beehive'] .project-art {
+  aspect-ratio: 22 / 24;
+  height: 56%;
+}
+
+.kitchen[data-project='perch'] .project-art {
+  aspect-ratio: 20 / 28;
+}
+
+.project-ghost,
+.project-built {
+  position: absolute;
+  inset: 0;
+}
+
+.project-ghost svg,
+.project-built svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* The part still to build: a faint outline. */
+.project-ghost {
+  opacity: 0.22;
+  filter: grayscale(1);
+}
+
+.project-art.is-building .project-ghost {
+  animation: ghost-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes ghost-pulse {
+  50% { opacity: 0.4; }
+}
+
+.project-unknown {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 90px;
+  height: 90px;
+  margin-left: -45px;
+  display: grid;
+  place-items: center;
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: #3f7d62;
+  border: 3px dashed #3f7d62;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.project-unknown[hidden] {
+  display: none;
+}
+
+.project-sign {
+  position: absolute;
+  right: 5%;
+  top: 48px;
+  z-index: 2;
+  padding: 5px 10px;
+  border: 3px solid var(--plum);
+  border-radius: 8px;
+  background: white;
+  text-align: center;
+  line-height: 1.15;
+  color: var(--ink);
+  box-shadow: 0 3px 0 rgba(91, 63, 110, 0.4);
+}
+
+.project-sign b {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 900;
+}
+
+.project-sign small {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--lilac);
+}
+
+.pj {
+  flex: 1;
+  min-width: 0;
+}
+
+.pj-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pj-name {
+  flex: 1;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pj-arrow {
+  flex: 0 0 28px;
+  height: 28px;
+  padding: 0;
+  border: 2px solid var(--plum);
+  border-radius: 50%;
+  background: white;
+  color: var(--plum);
+  font: inherit;
+  font-weight: 900;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.pj-stages {
+  display: flex;
+  gap: 3px;
+  margin: 6px 0 4px;
+}
+
+.pj-stages i {
+  flex: 1;
+  height: 9px;
+  border-radius: 99px;
+  background: var(--seg-empty);
+  border: 1.5px solid var(--lavender);
+}
+
+.pj-stages i.on {
+  background: var(--good);
+  border-color: var(--good-dark);
+}
+
+.pj-stages i.now {
+  background: var(--butter);
+  border-color: #d9b84a;
+}
+
+.pj-stage {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--plum);
+  margin-bottom: 4px;
+  line-height: 1.2;
+}
+
+.pj-needs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pj-need {
+  flex-direction: row;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pj-need svg {
+  width: 18px;
+  height: 18px;
+}
+
+.pj-gives {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--good-dark);
+  line-height: 1.2;
+}
+
+/* ---- The Materials and Patterns panels ---- */
+.pouch-grid {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.pouch-item {
+  cursor: default;
+}
+
+.pouch-note {
+  margin: 8px 2px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--lilac);
+  text-align: center;
+}
+
+.pouch-parts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.pouch-part {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px 6px 8px;
+  border: 2px solid var(--lavender);
+  border-radius: 14px;
+}
+
+.pouch-part[hidden] {
+  display: none;
+}
+
+.pattern-tabs {
+  padding: 0 0 0;
+  margin: 0 -2px 6px;
+}
+
+.pattern-tabs .shop-tab {
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.pattern-cat {
+  margin-bottom: 6px;
+}
+
+.pattern-note {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--lilac);
+  letter-spacing: 0;
+}
+
+.recipe.pattern.unknown .recipe-name {
+  letter-spacing: 0;
+  color: var(--ink);
+}
+
+.recipe.pattern.unknown {
+  opacity: 0.6;
+  border-style: solid;
+}
+
+.recipe.pattern.picked {
+  border-color: var(--plum);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kitchen.hit .bench-hammer,
+  .kitchen.hit .bench-bang,
+  .kitchen.made .bench-piece,
+  .kitchen.made .bench-card,
+  .kitchen.made .kitchen-burst,
+  .project-art.is-building .project-ghost {
+    animation: none;
+  }
+}

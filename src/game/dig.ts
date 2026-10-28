@@ -27,6 +27,7 @@
 // CONFIG.dig, and the screen in src/ui/dig.ts.
 
 import { CONFIG } from './config';
+import { digForPart } from './crafting';
 import { localDay } from './economy';
 import { seededRoll } from './growth';
 import { foodStars, getPlace, giveFind, MEADOW, parseFind, PLACES, placeOpen } from './journeys';
@@ -244,7 +245,16 @@ export function dig(state: GameState, now: number, place: string, cell: number):
   s = withSpot(s, next, s.dig.used + 1);
   const t = treasureAt(spot, cell);
   const rose = tideLines(next) > before;
-  if (!t) return { state: s, warmth: warmth(spot, cell), flooded: rose };
+  if (!t) {
+    // An empty hole can still turn up the place's key part (see crafting.ts).
+    // It goes in the ground's list too, so the hole shows it.
+    const part = digForPart(s, place, seededRoll('dig', `${s.dig.day}:${place}:part:${next.dug.length}`));
+    if (part.find) {
+      const withPart: DigSpot = { ...next, treasures: [...next.treasures, { cell, find: `part:${part.find.id}`, stars: part.find.stars }] };
+      return { state: withSpot(part.state, withPart), find: part.find, flooded: rose };
+    }
+    return { state: part.state, warmth: warmth(spot, cell), flooded: rose };
+  }
   const find = parseFind(t.find, t.stars);
   return { state: giveFind(s, find), find, flooded: rose };
 }
