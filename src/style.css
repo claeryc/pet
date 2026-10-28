@@ -3390,6 +3390,16 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   transform: translateX(-50%);
 }
 
+/* Board art is wider than it's tall: it spans the board instead (its
+   shape comes from src/ui/cooking.ts). */
+.cut-food.wide {
+  top: 50%;
+  bottom: auto;
+  left: 6%;
+  right: 56px;
+  transform: translateY(-50%);
+}
+
 .cut-piece {
   position: absolute;
   inset: 0;
@@ -3508,9 +3518,9 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 }
 
 @keyframes board-pop {
-  0% { transform: translateX(-50%) scale(0.7); }
-  60% { transform: translateX(-50%) scale(1.1); }
-  100% { transform: translateX(-50%) scale(1); }
+  0% { scale: 0.7; }
+  60% { scale: 1.1; }
+  100% { scale: 1; }
 }
 
 /* The meter: the marker runs up and down it; the green is a perfect chop. */

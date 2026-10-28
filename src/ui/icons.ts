@@ -2114,3 +2114,41 @@ export const KITCHEN_ART = {
     '.kkkkkkkkkkkkkkk',
   ]),
 };
+
+// Bigger art for food on the cutting board, which fills the whole board
+// there. Food without its own board art uses its item icon.
+export const BOARD_ART: Record<string, string> = {
+  salmon: pixelIcon([
+    '............kkkk..................',
+    '...........kooookk..............k.',
+    '.......kkkkoooooookkkk.........kk.',
+    '.....kkpppppppppppppppkk.....kkrk.',
+    '...kkpppppppppppppppppppkk..krrrk.',
+    '...kpwkppapppppppppppppppk.krrrkk.',
+    '..kppwwppawppwppwppwppwpppkrrrk...',
+    '..kppppppawppwppwppwppwppprrrrk...',
+    '..kppppppappppppppppppppppkrrrk...',
+    '...kbbbbbabbbbbbbbbbbbbbbk.krrrkk.',
+    '...kkbbbbbbbbbbbbbbbbbbbkk..krrrk.',
+    '.....kkbbbbbbbbbbbbbbbkk.....kkrk.',
+    '.......kkkkbbbbbbbkkkk.........kk.',
+    '...........kkkkkkk..............k.',
+  ], { b: PALETTE.blush, a: PALETTE.berry }),
+  lobster: pixelIcon([
+    '.kkkk...........................',
+    'krrrrk..........................',
+    'krrrrrk.........................',
+    '.kkkrrrk......k.k...............',
+    '....kkrrk..kkkkkkkk.............',
+    '......krrkkrrrrrrrrkkkkkkkk..kk.',
+    '.......krrrrwkrrrrrkorrkorrkkrrk',
+    '........krrrkkrrrrrkorrkorrrrrrk',
+    '.......krrrrrrrrrrrkorrkorrkkrrk',
+    '......krrkkrrrrrrrrkkkkkkkk..kk.',
+    '....kkrrk..kkkkkkkk.............',
+    '.kkkrrrk...k.k.k................',
+    'krrrrrk.........................',
+    'krrrrk..........................',
+    '.kkkk...........................',
+  ]),
+};

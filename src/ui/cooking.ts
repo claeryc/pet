@@ -47,7 +47,7 @@ import {
 import type { Food, FoodId } from '../game/actions';
 import type { GameState } from '../game/state';
 import { createDrawer } from './drawer';
-import { ITEM_ICONS, KITCHEN_ART, SKILL_POINT_ICON } from './icons';
+import { BOARD_ART, ITEM_ICONS, KITCHEN_ART, SKILL_POINT_ICON } from './icons';
 import { soldInShop, type ShopCategory } from './shop';
 
 export interface CookingCallbacks {
@@ -639,7 +639,13 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     const food = plopping[0] ?? pot[0];
     const shown = justMade ?? food;
     kitchen.dataset.kind = justMade ? 'done' : food ? 'known' : 'empty';
-    for (const p of pieces) p.innerHTML = shown ? ITEM_ICONS[shown] : '';
+    // Food with its own board art is drawn wide across the board.
+    const big = !justMade && shown ? BOARD_ART[shown] : undefined;
+    const art = big ?? (shown ? ITEM_ICONS[shown] : '');
+    const box = /viewBox="0 0 (\d+) (\d+)"/.exec(art);
+    cutFood.classList.toggle('wide', big !== undefined);
+    cutFood.style.aspectRatio = big && box ? `${box[1]} / ${box[2]}` : '';
+    for (const p of pieces) p.innerHTML = art;
     // Each chop slides the pieces on either side of its line apart.
     pieces.forEach((p, i) => {
       const apart = justMade ? 0 : Math.min(i, chops.length) - chops.length / 2;
