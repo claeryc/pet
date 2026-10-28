@@ -830,6 +830,70 @@ export const CONFIG = {
     fishToOpen: 10,
   },
 
+  // Sniff and dig (Play > Dig, see dig.ts): a little treasure hunt each
+  // day at four spots, the Meadow and three of the journey places. Every
+  // spot is a `size` x `size` patch with `treasures` buried in it (one more
+  // at a 3-star spot), and you get `digsPerDay` digs a day to share between
+  // them. A dug hole shows how many treasures are buried next to it. Each
+  // spot has `sniffs` (the hill one more, and one more where a pet at home
+  // loves the place): the pet points its nose at a buried treasure. It costs
+  // no energy, and never gives energy or star fragments.
+  //
+  // A spot has 1 or 2 stars (`twoStarChance`), and one spot a day can be a
+  // rare 3-star one (`rareChance`) with a 3-star find and the place's
+  // ingredient in it; elsewhere the ingredient turns up `ingredientChance`
+  // of the time. Treasures left in the ground stay buried there for the
+  // next day the place comes up (at most `keepLeftovers`).
+  //
+  // The woods have `roots` you can't dig through. At the cove the tide
+  // comes in from a different side each day and covers one more row or
+  // column every `tideEvery` digs there (at most `tideLines`). The market
+  // has `marketGold` more treasure, always gold.
+  dig: {
+    size: 6,
+    digsPerDay: 6,
+    treasures: 4,
+    sniffs: 1,
+    spots: 4,
+    twoStarChance: 0.4,
+    rareChance: 0.3,
+    ingredientChance: 0.3,
+    keepLeftovers: 2,
+    roots: 5,
+    tideEvery: 2,
+    tideLines: 2,
+    marketGold: 1,
+    // What can be buried at each place, by stars (written like the journey
+    // finds). No energy drinks: digging is never a way to skip a nap.
+    finds: {
+      meadow: {
+        1: ['strawberry', 'carrot', 'seed:carrot', 'gold:8'],
+        2: ['honey', 'seed:pumpkin', 'gold:20'],
+        3: ['seed:dragonFruit', 'gold:50'],
+      },
+      market: {
+        1: ['strawberry', 'cookie', 'gold:10', 'seed:carrot'],
+        2: ['gold:25', 'jamCookie', 'seed:pumpkin'],
+        3: ['gold:60', 'seed:dragonFruit', 'berryShortcake'],
+      },
+      woods: {
+        1: ['strawberry', 'carrot', 'seed:carrot', 'gold:8'],
+        2: ['pumpkin', 'seed:pumpkin', 'gold:20'],
+        3: ['dragonFruit', 'seed:dragonFruit'],
+      },
+      cove: {
+        1: ['shrimp', 'gold:12'],
+        2: ['salmon', 'gold:30'],
+        3: ['lobster', 'gold:70'],
+      },
+      hill: {
+        1: ['warmMilk', 'cookie', 'gold:12'],
+        2: ['starCookies', 'gold:30', 'seed:pumpkin'],
+        3: ['stardustPudding', 'seed:dragonFruit', 'gold:80'],
+      },
+    },
+  },
+
   // Decorating the room, from the Shop: a wallpaper, window curtains and
   // furniture. Each is bought once, then you pick which to use in each
   // room. Every room starts with the plain wallpaper, no curtains and no

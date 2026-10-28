@@ -88,10 +88,10 @@ const FOODS = CONFIG.foods as readonly Food[];
 const GEMS: Record<Rarity, number> = { common: 1, rare: 2, epic: 3 };
 // A place's picture on a postcard, in the scene's own pixels (scaled up
 // with CSS, like the room).
-const PLACE_W = 64;
-const PLACE_H = 48;
+export const PLACE_W = 64;
+export const PLACE_H = 48;
 // A 3-star postcard's picture fills the whole card, so it's drawn taller.
-const EPIC_H = 56;
+export const EPIC_H = 56;
 const placeName = (id: string) => STRINGS.journeys.places[id] ?? id;
 const placeIcon = (id: string) => ITEM_ICONS[`place_${id}`] ?? ITEM_ICONS.journey;
 // The Holiday ticket's spot on the board (after the night ticket).
@@ -120,7 +120,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, te
 const SPARKLE_MS = 125;
 const sparkling = new Map<HTMLCanvasElement, string>();
 let sparkleAt = 0;
-function sparkle(canvas: HTMLCanvasElement, place: string): void {
+export function sparkle(canvas: HTMLCanvasElement, place: string): void {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
   drawPlaceSparkle(ctx, place, canvas.width, 0);
@@ -146,7 +146,7 @@ function sparkleFrame(time: number): void {
 
 // Little pixel twinkles around a 3-star postcard's edge.
 const TWINKLE = '<svg viewBox="0 0 7 7" shape-rendering="crispEdges"><path fill="#f48fb1" d="M3 0h1v2h1v1h2v1H5v1H4v2H3V5H2V4H0V3h2V2h1z"/><path fill="#fff" d="M3 2h1v3H3zM2 3h3v1H2z"/></svg>';
-function twinkles(card: HTMLElement): void {
+export function twinkles(card: HTMLElement): void {
   for (let i = 0; i < 5; i++) card.append(icon(TWINKLE, `trip-pc-twinkle is-${i + 1}`));
 }
 

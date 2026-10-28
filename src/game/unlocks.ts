@@ -17,7 +17,7 @@ import { stepFragments } from './fragments';
 import { CONFIG } from './config';
 
 export type UnlockId =
-  | 'shop' | 'cooking' | 'collection' | 'familyTree' | 'garden' | 'messages' | 'delivery' | 'meet' | 'skills' | 'journeys';
+  | 'shop' | 'cooking' | 'collection' | 'familyTree' | 'garden' | 'messages' | 'delivery' | 'meet' | 'skills' | 'journeys' | 'dig';
 
 const RULES: Record<UnlockId, (s: GameState) => boolean> = {
   // Once the egg hatches and there's someone to buy things for.
@@ -43,6 +43,9 @@ const RULES: Record<UnlockId, (s: GameState) => boolean> = {
   skills: (s) => !!s.keeper && keeperLevel(s) >= 2,
   // Journeys (in Play and the Menu) once a pet is old enough to go out.
   journeys: (s) => [s.pet, ...(s.housemates ?? [])].some((p) => p.stage === 'teen' || p.stage === 'adult'),
+  // Sniff and dig (in Play) after the first harvest or the first fish:
+  // there's a seed or a fish worth digging for by then.
+  dig: (s) => (s.grown ?? []).length > 0 || s.caught.length > 0,
 };
 
 export const UNLOCKS = Object.keys(RULES) as UnlockId[];

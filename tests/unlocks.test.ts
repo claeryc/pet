@@ -28,7 +28,7 @@ describe('menus that open up as you play', () => {
     let s = updateProgress(newTeen(START)).state;
     s = land(s, 'perfect', { fish: 'shrimp', bait: null }).state;
     const result = updateProgress(s);
-    expect(result.unlocked).toEqual(['cooking', 'delivery']);
+    expect(result.unlocked).toEqual(['cooking', 'delivery', 'dig']);
     const eaten = { ...result.state, inventory: { ...result.state.inventory, food: {} } };
     expect(isUnlocked(updateProgress(eaten).state, 'cooking')).toBe(true);
   });

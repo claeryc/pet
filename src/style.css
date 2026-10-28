@@ -10816,3 +10816,301 @@ button.trip-bars-name.is-on {
 .reveal[data-tier='gold'] .reveal-beams {
   background: repeating-conic-gradient(rgba(255, 200, 80, 0.9) 0deg 6deg, rgba(255, 229, 150, 0) 6deg 18deg);
 }
+
+/* ---- Sniff and dig ---- */
+
+/* The spots use the Journeys postcards, a rare one in the 3-star frame.
+   One that's all dug up fades a little. */
+.trip-pc.dig-pc.is-done {
+  opacity: 0.6;
+}
+
+.dig-pc-locked > b {
+  font-size: 0.9rem;
+  color: var(--plum);
+}
+
+.dig-chip {
+  cursor: default;
+}
+
+/* [Back] [Sniff (1)] [Dig] */
+.dig-row > .dig-sniff:not([hidden]) {
+  background: var(--lilac);
+  box-shadow: 0 4px 0 var(--plum);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.dig-btn-icon {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+}
+
+.dig-btn-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* "DIG · CORAL COVE" and what's left there. */
+.dig-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 2px;
+}
+
+.dig-kicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--plum);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dig-kicker-icon {
+  display: inline-flex;
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.dig-kicker-icon svg,
+.dig-cell-icon svg,
+.dig-trowel svg {
+  width: 100%;
+  height: 100%;
+}
+
+.dig-pill {
+  margin-left: auto;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--butter);
+  color: #8a5a44;
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* The tide: "← Tide in: 1 more dig" with a pip per dig. */
+.dig-tide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: fit-content;
+  margin: 0 auto;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #e3f3fb;
+  color: #3b7ea6;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.dig-tide i {
+  width: 14px;
+  height: 10px;
+  border-radius: 3px;
+  background: #cfe6f2;
+}
+
+.dig-tide i.is-on {
+  background: #6fb6dd;
+}
+
+/* The patch of ground: six by six squares, as big as fits. */
+.dig-field {
+  --dig-gap: 4px;
+  display: grid;
+  grid-template-columns: repeat(var(--dig-size), 1fr);
+  gap: var(--dig-gap);
+  width: min(100%, 300px);
+  margin: 0 auto;
+  padding: 8px;
+  border: 3px solid #4a9a76;
+  border-radius: 16px;
+  background: #8fd19e;
+  box-shadow: inset 0 -4px 0 #6cc19a;
+}
+
+.dig-field.is-woods {
+  border-color: #3f7d5f;
+  background: #6cb488;
+  box-shadow: inset 0 -4px 0 #4a9a76;
+}
+
+.dig-field.is-sand {
+  border-color: #c9a35e;
+  background: #f0d79a;
+  box-shadow: inset 0 -4px 0 #e2c27e;
+}
+
+/* Waves along the side the sea comes from. */
+.dig-field.is-tide-left { border-left: 6px solid #9ad3f0; }
+.dig-field.is-tide-right { border-right: 6px solid #9ad3f0; }
+.dig-field.is-tide-top { border-top: 6px solid #9ad3f0; }
+.dig-field.is-tide-bottom { border-bottom: 6px solid #9ad3f0; }
+
+.dig-cell {
+  position: relative;
+  aspect-ratio: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 900;
+  background: #b5e6b0;
+  box-shadow: inset 0 -3px 0 #8fd19e;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* A few tufts on untouched grass (sand gets specks instead). */
+.dig-cell:not(:disabled):not(.is-sniffed)::before {
+  content: '';
+  position: absolute;
+  left: 30%;
+  top: 30%;
+  width: 4px;
+  height: 4px;
+  background: #6cc19a;
+  box-shadow: 8px 5px 0 #6cc19a, 3px 10px 0 #6cc19a;
+  opacity: 0.7;
+}
+
+.is-woods .dig-cell { background: #a3d9a5; box-shadow: inset 0 -3px 0 #7cc191; }
+
+.is-sand .dig-cell {
+  background: #fbecc6;
+  box-shadow: inset 0 -3px 0 #ecd49c;
+}
+
+.is-sand .dig-cell:not(:disabled):not(.is-sniffed)::before {
+  width: 3px;
+  height: 3px;
+  background: #d9b878;
+  box-shadow: 9px 4px 0 #d9b878, 4px 10px 0 #d9b878;
+}
+
+.dig-cell.is-wet {
+  box-shadow: inset 0 0 0 3px #9ad3f0, inset 0 -3px 0 #ecd49c;
+}
+
+.dig-cell.is-picked {
+  outline: 3px solid var(--accent-dark);
+  outline-offset: 1px;
+  transform: translateY(-2px);
+}
+
+.dig-cell.is-sniffed {
+  outline: 3px dashed var(--accent);
+  outline-offset: 1px;
+}
+
+.dig-cell.is-sniffed.is-picked {
+  outline-style: solid;
+  outline-color: var(--accent-dark);
+}
+
+.dig-cell-icon {
+  display: inline-flex;
+  width: 70%;
+  height: 70%;
+}
+
+/* A hole: warmer for more treasures next to it. */
+.dig-cell.is-dug { cursor: default; color: #fff7ec; }
+.dig-cell.w0 { background: #c9b8a8; box-shadow: inset 0 3px 0 #a3917f; color: #8a7a6e; }
+.dig-cell.w1 { background: #f2c78a; box-shadow: inset 0 3px 0 #d29a6c; color: #8a5a44; }
+.dig-cell.w2 { background: #f39a6b; box-shadow: inset 0 3px 0 #d8744a; }
+.dig-cell.w3 { background: #e05a7a; box-shadow: inset 0 3px 0 #b23a5a; }
+
+.dig-cell.is-found {
+  cursor: default;
+  background: #fff7ec;
+  box-shadow: inset 0 0 0 3px #f2c14e;
+}
+
+.dig-cell.is-fresh {
+  animation: pop-in 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+/* Roots: brown knots you can't dig through. */
+.dig-cell.is-root {
+  cursor: default;
+  background:
+    linear-gradient(35deg, transparent 42%, #8a5a44 42% 58%, transparent 58%),
+    linear-gradient(-30deg, transparent 44%, #a3612f 44% 56%, transparent 56%),
+    #7cc191;
+  box-shadow: inset 0 -3px 0 #4a9a76;
+}
+
+/* The sea, over the lines the tide has covered. */
+.dig-cell.is-sea {
+  cursor: default;
+  background: #9ad3f0;
+  box-shadow: inset 0 3px 0 #6fb6dd;
+}
+
+.dig-cell.is-sea::after {
+  content: '';
+  position: absolute;
+  left: 22%;
+  right: 30%;
+  top: 40%;
+  height: 3px;
+  border-radius: 2px;
+  background: #e8f6fd;
+  box-shadow: 5px 7px 0 #e8f6fd;
+}
+
+.dig-hint {
+  min-height: 2.4em;
+  font-weight: 600;
+}
+
+/* "Digs today" and a trowel per dig, used ones faded. */
+.dig-digs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--plum);
+  white-space: nowrap;
+}
+
+.dig-trowel {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+}
+
+.dig-trowel.is-used {
+  opacity: 0.3;
+  filter: grayscale(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dig-cell.is-fresh {
+    animation: none;
+  }
+}
