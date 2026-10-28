@@ -723,7 +723,7 @@ export const CONFIG = {
         id: 'market', theme: 'bakery', ingredient: 'honey', opens: 'start',
         finds: {
           1: ['strawberry', 'warmMilk', 'cookie', 'gold:10', 'seed:carrot'],
-          2: ['gold:25', 'salmon', 'berryShortcake', 'seed:pumpkin'],
+          2: ['gold:25', 'jamCookie', 'berryShortcake', 'seed:pumpkin'],
           3: ['gold:60', 'seed:dragonFruit', 'energyDrink'],
         },
       },
@@ -738,7 +738,7 @@ export const CONFIG = {
       {
         id: 'caves', theme: 'ocean', ingredient: 'glowSalt', opens: 'fish',
         finds: {
-          1: ['shrimp', 'warmMilk', 'gold:12'],
+          1: ['shrimp', 'gold:12'],
           2: ['salmon', 'gold:30'],
           3: ['lobster', 'gold:70'],
         },
@@ -746,9 +746,9 @@ export const CONFIG = {
       {
         id: 'hill', theme: 'starry', ingredient: 'stardustSugar', opens: 'grownUp',
         finds: {
-          1: ['cookie', 'strawberry', 'gold:12'],
-          2: ['berryShortcake', 'gold:30', 'seed:pumpkin'],
-          3: ['dragonFruitTart', 'seed:dragonFruit', 'gold:80'],
+          1: ['warmMilk', 'cookie', 'gold:12'],
+          2: ['honeyMilk', 'starCookies', 'gold:30', 'seed:pumpkin'],
+          3: ['stardustPudding', 'seed:dragonFruit', 'gold:80'],
         },
       },
     ],
