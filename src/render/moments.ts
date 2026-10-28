@@ -283,13 +283,21 @@ function zee(ctx: CanvasRenderingContext2D, x: number, y: number, big: boolean):
   ctx.fillRect(x, y + s - 1, s, 1);
 }
 
+const ZZZ_RISE_MS = 2400;
+const ZZZ_EVERY_MS = 1333; // 40% fewer than the one every 0.8s they used to be
+
 // Zzz drifting up and off to the right from a sleeping pet's head. Drawn
 // after the room is dimmed, so they glow.
 export function drawSleepZs(ctx: CanvasRenderingContext2D, sheet: SpriteSheet | undefined, x: number, timeMs: number): void {
   const { cx, top } = anchors(sheet, x);
   ctx.fillStyle = PALETTE.cream;
-  for (let i = 0; i < 3; i++) {
-    const t = (timeMs / 2400 + i / 3) % 1;
+  // Each Z takes 2.4s to float up and fade, and a new one starts every
+  // 1.33s, so one or two are up at a time.
+  const newest = Math.floor(timeMs / ZZZ_EVERY_MS);
+  for (let n = newest - 1; n <= newest; n++) {
+    const t = (timeMs - n * ZZZ_EVERY_MS) / ZZZ_RISE_MS;
+    if (t >= 1) continue;
+    const i = ((n % 3) + 3) % 3;
     ctx.globalAlpha = t < 0.15 ? t / 0.15 : 1 - (t - 0.15) / 0.85;
     const zx = cx + 4 + Math.round(t * 8 + Math.sin(t * 7 + i) * 1.2);
     const zy = top + 2 - Math.round(t * 14);
