@@ -112,7 +112,7 @@ export function collectionPage(state: GameState, cb: CollectionCallbacks, open: 
   const recipes: Entry[] = RECIPES.map((r) =>
     entry(state.recipesFound.includes(r.id), ITEM_ICONS[r.id], STRINGS.foods[r.id], '', foodStars(r.id)),
   );
-  const fish = (Object.keys(CONFIG.fishing.catchOdds.other) as FoodId[]).map((id) =>
+  const fish = (Object.keys(CONFIG.fishing.fish) as FoodId[]).map((id) =>
     entry(state.caught.includes(id), ITEM_ICONS[id], STRINGS.foods[id], '', foodStars(id)),
   );
   const title = (name: string, list: Entry[]) =>

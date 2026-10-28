@@ -6,7 +6,11 @@
 // and drains away again when you stop. The catch bar shows up at the
 // bottom of the pond while you reel in.
 //
-// A bite buzzes the phone. A landed fish flips up out of the water before
+// While you wait, a fish may nibble first: the bait dips a little, and
+// reeling in then scares it off. A bite buzzes the phone. Which fish bit
+// shows in the size of its shadow, and in how it fights on the bar. The
+// meter along the bar's bottom takes the colour of the zone the dot is on.
+// A landed fish flips up out of the water before
 // it's shown to you, and a perfect catch gets a big "Perfect!" with a count
 // of perfects in a row.
 //
@@ -18,12 +22,17 @@ import { ITEM_ICONS } from './icons';
 import { CONFIG } from '../game/config';
 import { createFroth, createPond } from '../render/pond';
 import {
+  BAITS,
   biteDelayMs,
+  gradeAt,
+  nibbleTimes,
   reelGrade,
   reelOutcome,
   reelZones,
   startReel,
   stepReel,
+  type BaitId,
+  type Bite,
   type CatchGrade,
   type CatchZones,
   type Reel,
@@ -32,14 +41,17 @@ import type { ReelPerks } from '../game/skills';
 import { sound } from '../audio/audio';
 
 // ready: line in, waiting for you to cast. waiting: line out, no bite yet.
-// bite: a fish is nibbling, tap Reel in now! reeling: the catch bar is up.
-export type FishingPhase = 'off' | 'ready' | 'waiting' | 'bite' | 'reeling';
+// nibble: a fish is only nibbling, don't reel in yet! bite: a fish is
+// biting, tap Reel in now! reeling: the catch bar is up.
+export type FishingPhase = 'off' | 'ready' | 'waiting' | 'nibble' | 'bite' | 'reeling';
 
 export interface FishingCallbacks {
-  onCast: () => boolean; // false if the game refused (the reason is shown elsewhere)
-  onLand: (grade: CatchGrade) => string | null; // the fish landed (a food id), or null if it got away
+  // Throws the line; says which fish will bite (`streak`: perfects in a
+  // row), or null if the game refused (the reason is shown elsewhere).
+  onCast: (streak: number) => Bite | null;
+  onLand: (grade: CatchGrade, bite: Bite) => string | null; // the fish landed (a food id), or null
   onExit: () => void;
-  onToggleBait: () => void;
+  onPickBait: () => void; // the next bait (or none)
   toast: (message: string) => void;
 }
 
@@ -49,7 +61,8 @@ export interface Fishing {
   start: () => void;
   stop: () => void;
   phase: () => FishingPhase;
-  setBait: (count: number, on: boolean) => void; // the bait you have, and whether it's switched on
+  // The bait picked (null for none) and how many of each kind you have.
+  setBait: (picked: BaitId | null, counts: Record<BaitId, number>) => void;
   setPerks: (perks: ReelPerks) => void; // the fishing skills, for the next reel
 }
 
@@ -102,11 +115,10 @@ export function createFishing(cb: FishingCallbacks): Fishing {
   pond.hidden = true;
   const froth = createFroth();
   // Bait you have, in the corner (only when you have some). Tap it to
-  // switch bait on: the little ring fills in.
+  // pick the next kind, or none: the little ring fills in while one's on.
   const bait = document.createElement('button');
   bait.className = 'pond-bait';
   bait.hidden = true;
-  bait.setAttribute('role', 'switch');
   const baitDot = document.createElement('i');
   baitDot.className = 'pond-bait-dot';
   const baitIcon = document.createElement('span');
@@ -114,7 +126,10 @@ export function createFishing(cb: FishingCallbacks): Fishing {
   baitIcon.setAttribute('aria-hidden', 'true');
   const baitCount = document.createElement('b');
   bait.append(baitDot, baitIcon, baitCount);
-  bait.addEventListener('click', () => cb.onToggleBait());
+  bait.addEventListener('click', () => {
+    if (phase === 'ready') cb.onPickBait();
+    else cb.toast(STRINGS.fishing.baitLater);
+  });
   pond.append(froth.canvas, pondView.canvas, bait, bar);
   // Shows the fizzy edge for a while, then fades it out.
   let frothTimer = 0;
@@ -134,8 +149,10 @@ export function createFishing(cb: FishingCallbacks): Fishing {
 
   let phase: FishingPhase = 'off';
   let timer = 0;
+  let nibbleTimers: number[] = [];
   let frame = 0;
   let reel: Reel | null = null;
+  let hooked: Bite | null = null; // what's on the line this cast
   let held = false; // Pull is held down
   // Perfect catches in a row, and whether the last cast ended in one.
   let streak = 0;
@@ -145,6 +162,8 @@ export function createFishing(cb: FishingCallbacks): Fishing {
 
   function clearTimers(): void {
     clearTimeout(timer);
+    nibbleTimers.forEach(clearTimeout);
+    nibbleTimers = [];
     cancelAnimationFrame(frame);
     setHeld(false);
   }
@@ -159,7 +178,7 @@ export function createFishing(cb: FishingCallbacks): Fishing {
     row.dataset.phase = next;
     main.textContent =
       next === 'reeling' ? STRINGS.fishing.pull
-      : next === 'waiting' || next === 'bite' ? STRINGS.fishing.reelIn
+      : next === 'waiting' || next === 'nibble' || next === 'bite' ? STRINGS.fishing.reelIn
       : STRINGS.fishing.cast;
     main.disabled = false;
   }
@@ -197,11 +216,27 @@ export function createFishing(cb: FishingCallbacks): Fishing {
   }
 
   function castLine(): void {
-    if (!cb.onCast()) return;
     if (!lastPerfect) streak = 0;
+    hooked = cb.onCast(streak);
+    if (!hooked) return;
     lastPerfect = false;
     setPhase('waiting');
-    timer = window.setTimeout(bite, biteDelayMs(Math.random()));
+    pondView.hook(hooked.fish);
+    const biteMs = biteDelayMs(Math.random(), hooked.bait);
+    timer = window.setTimeout(bite, biteMs);
+    nibbleTimers = nibbleTimes(biteMs, Math.random(), [Math.random(), Math.random()]).map((at) =>
+      window.setTimeout(nibble, at),
+    );
+  }
+
+  // A quick dip of the bait that isn't the real bite yet.
+  function nibble(): void {
+    if (phase !== 'waiting') return;
+    setPhase('nibble');
+    sound('nibble');
+    nibbleTimers.push(window.setTimeout(() => {
+      if (phase === 'nibble') setPhase('waiting');
+    }, CONFIG.fishing.nibbles.seconds * 1000));
   }
 
   function bite(): void {
@@ -216,15 +251,18 @@ export function createFishing(cb: FishingCallbacks): Fishing {
 
   function reelIn(): void {
     clearTimers();
-    if (phase === 'waiting') {
-      cb.toast(STRINGS.fishing.tooSoon);
+    if (phase === 'waiting' || phase === 'nibble') {
+      cb.toast(phase === 'nibble' ? STRINGS.fishing.onlyNibble : STRINGS.fishing.tooSoon);
+      pondView.landed(false); // it swims off
       return backToReady();
     }
-    reel = startReel(Math.random(), perks);
+    const fish = hooked?.fish ?? 'shrimp';
+    reel = startReel(Math.random(), perks, fish);
     showReel(reel);
     bar.hidden = false;
+    bar.dataset.fish = fish;
     setPhase('reeling');
-    cb.toast(STRINGS.fishing.hold);
+    cb.toast(STRINGS.fishing.hold[fish]);
     let last = performance.now();
     const tick = (t: number) => {
       reel = stepReel(reel!, held, t - last, Math.random());
@@ -245,13 +283,15 @@ export function createFishing(cb: FishingCallbacks): Fishing {
     paintZones(reelZones(r));
     moveMarker(r.marker);
     meterFill.style.width = `${(r.meter * 100).toFixed(1)}%`;
+    meterFill.dataset.zone = gradeAt(reelZones(r), r.marker);
   }
 
   function landed(r: Reel): void {
     clearTimers();
     const grade = reelGrade(r);
     bar.dataset.grade = grade;
-    const caught = cb.onLand(grade);
+    const caught = hooked ? cb.onLand(grade, hooked) : null;
+    hooked = null;
     pondView.landed(caught !== null);
     if (caught) leap(ITEM_ICONS[caught] ?? '');
     if (grade === 'perfect') {
@@ -309,7 +349,7 @@ export function createFishing(cb: FishingCallbacks): Fishing {
 
   main.addEventListener('click', () => {
     if (phase === 'ready') castLine();
-    else if (phase === 'waiting' || phase === 'bite') reelIn();
+    else if (phase === 'waiting' || phase === 'nibble' || phase === 'bite') reelIn();
   });
   // Pull is held, not tapped: hold to drag the dot right.
   main.addEventListener('pointerdown', (e) => {
@@ -339,6 +379,7 @@ export function createFishing(cb: FishingCallbacks): Fishing {
 
   function stop(): void {
     clearTimers();
+    hooked = null;
     phase = 'off';
     row.hidden = true;
     bar.hidden = true;
@@ -359,12 +400,15 @@ export function createFishing(cb: FishingCallbacks): Fishing {
     setPerks(next) {
       perks = next;
     },
-    setBait(count, on) {
-      bait.hidden = count <= 0;
+    setBait(picked, counts) {
+      bait.hidden = BAITS.every((id) => counts[id] <= 0);
+      const on = picked !== null && counts[picked] > 0;
       bait.classList.toggle('on', on);
-      bait.setAttribute('aria-checked', String(on));
-      baitCount.textContent = String(count);
-      bait.setAttribute('aria-label', STRINGS.fishing.bait(count, on));
+      // With none picked it shows plain bait and how much of everything you have.
+      const shown = on ? picked : 'bait';
+      baitIcon.innerHTML = ITEM_ICONS[shown] ?? '';
+      baitCount.textContent = String(on ? counts[picked] : BAITS.reduce((n, id) => n + counts[id], 0));
+      bait.setAttribute('aria-label', on ? STRINGS.fishing.baitOn(STRINGS.shop.baits[picked].name, counts[picked]) : STRINGS.fishing.baitOff);
     },
     start() {
       row.hidden = false;

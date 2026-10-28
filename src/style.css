@@ -2670,6 +2670,20 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   background: var(--catch-green);
 }
 
+/* The meter takes the colour of the zone the dot is on: green fills it
+   fastest, red slowest, and on blue it drains. */
+.catch-meter-fill[data-zone='good'] {
+  background: var(--catch-yellow);
+}
+
+.catch-meter-fill[data-zone='weak'] {
+  background: var(--catch-red);
+}
+
+.catch-meter-fill[data-zone='miss'] {
+  background: var(--catch-miss);
+}
+
 /* A catch landed: the dot blinks where it ended up. */
 .catch-bar[data-grade] .catch-marker {
   animation: catch-blink 0.15s steps(1) 4;

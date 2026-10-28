@@ -56,8 +56,8 @@ describe('Keeper XP and levels', () => {
 
   it('a perfect catch gives extra XP', () => {
     const s = newTeen(START);
-    const good = land(s, 'good', 0, 0).state.keeper.xp;
-    const perfect = land(s, 'perfect', 0, 0).state.keeper.xp;
+    const good = land(s, 'good', { fish: 'shrimp', bait: null }).state.keeper.xp;
+    const perfect = land(s, 'perfect', { fish: 'shrimp', bait: null }).state.keeper.xp;
     expect(perfect - good).toBe(K.perfectFishXp);
   });
 
@@ -170,11 +170,12 @@ describe('what the skills do', () => {
 
   it('Lucky line moves odds from shrimp to lobster', () => {
     // A roll just past the plain lobster cut-off lands lobster with the skill.
-    const odds = CONFIG.fishing.catchOdds.other;
+    const fish = CONFIG.fishing.fish;
+    const odds = { shrimp: fish.shrimp.odds, salmon: fish.salmon.odds, lobster: fish.lobster.odds };
     const total = odds.shrimp + odds.salmon + odds.lobster;
-    expect(pickCatch('good', 0.01, false, 0)).toBe('shrimp');
-    expect(pickCatch('good', (total - odds.lobster - 1) / total, false, 0)).toBe('salmon');
-    expect(pickCatch('good', (total - odds.lobster - 1) / total, false, 5)).toBe('lobster');
+    expect(pickCatch(0.01, null, 0)).toBe('shrimp');
+    expect(pickCatch((total - odds.lobster - 1) / total, null, 0)).toBe('salmon');
+    expect(pickCatch((total - odds.lobster - 1) / total, null, 5)).toBe('lobster');
   });
 
   it('Quick sprouts makes crops grow faster', () => {

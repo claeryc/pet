@@ -351,14 +351,22 @@ export const STRINGS = {
     bar: 'Catch bar',
     start: 'Tap Cast to throw your line!',
     tooSoon: 'Too soon! Nothing was biting yet.',
+    onlyNibble: 'That was only a nibble! The fish swam off.',
     gotAway: 'The fish got away...',
-    hold: 'Hold Pull to keep the dot on the green!',
+    // When the catch bar comes up: which fish it is, and how it fights.
+    hold: {
+      shrimp: 'A shrimp! Hold Pull to keep the dot on the green!',
+      salmon: 'A salmon! It darts about, so keep up with the green!',
+      lobster: 'A lobster! It tugs hard, so hold on tight!',
+    },
     slack: 'The line went slack. The fish swam off.',
     grades: { perfect: 'Perfect catch!', good: 'Good catch!', weak: 'Weak catch...', miss: 'No catch.' },
     slipped: (grade: string) => `${grade} The fish slipped off the hook.`,
     perfect: 'Perfect!',
     streak: (n: number) => `${n} in a row!`,
-    bait: (count: number, on: boolean) => `Use bait (${count} left): ${on ? 'on' : 'off'}`,
+    baitOn: (name: string, count: number) => `Bait: ${name} (${count} left). Tap for another kind`,
+    baitOff: 'No bait. Tap to pick one',
+    baitLater: 'Change bait once the line is back in.',
     shy: 'The fish are getting shy. More catches today give no XP or seeds, but you can keep fishing for food.',
   },
   cooking: {
@@ -513,8 +521,8 @@ export const STRINGS = {
         name: 'Fishing',
         pages: [
           { title: 'Cast your line', text: 'Tap Cast to throw your line into the pond. Each cast uses a little energy. The first 30 fish each day give XP.' },
-          { title: 'Wait for the !', text: 'Watch the line. When a ! pops up, tap Reel in quickly. Tap too soon and nothing is there.' },
-          { title: 'Keep the dot on green', text: 'Hold Pull to move the dot right, let go to drift back. Stay on green to fill the meter and land the fish.' },
+          { title: 'Wait for the !', text: 'Watch the line. A little dip is only a nibble. When a ! pops up, tap Reel in quickly. Too soon and the fish swims off.' },
+          { title: 'Keep the dot on green', text: 'Hold Pull to move the dot right, let go to drift back. Green fills the meter fastest. Big fish fight harder!' },
         ],
       },
       cooking: {
@@ -1057,8 +1065,13 @@ export const STRINGS = {
     left: (left: number, total: number) => `Left: ${left}/${total}`,
     soldOut: 'Sold out',
     soldOutToday: 'Sold out for today. Check back another day!',
-    bait: 'Bait',
-    baitNote: (count: number) => `Rarer fish for each catch. You have ${count}`,
+    // The tackle shelf: baits for fishing (see CONFIG.fishing.baits).
+    baits: {
+      crumbs: { name: 'Bread crumbs', note: 'Fish bite twice as fast' },
+      bait: { name: 'Bait', note: 'Salmon and lobster bite more' },
+      glowLure: { name: 'Glow lure', note: "Lobster can't resist it" },
+    },
+    baitNote: (note: string, count: number) => `${note}. Pick it in the pond. You have ${count}`,
     fortuneCookie: 'Fortune cookie',
     fortuneCookieNote: (count: number) => `Open one before mingling for a hint about the little one. You have ${count}`,
     extraPot: 'Garden pot',

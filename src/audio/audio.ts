@@ -27,7 +27,8 @@ const SOUNDS = {
   unlock: { file: 'unlock', volume: 0.6 }, // a new feature opened up, a skill learned
   grewUp: { file: 'achievement', volume: 0.75 },
   mail: { file: 'notification', volume: 0.55 }, // news from Percy or a visitor
-  bite: { file: 'mention', volume: 0.65 }, // a fish is nibbling
+  bite: { file: 'mention', volume: 0.65 }, // a fish is biting
+  nibble: { file: 'mention', volume: 0.2 }, // only a nibble: a much quieter blip
   missed: { file: 'cancel', volume: 0.5 },
   cast: { file: 'send', volume: 0.55 }, // casting the line, giving a gift
   place: { file: 'drop', volume: 0.6 }, // planting, filling a box

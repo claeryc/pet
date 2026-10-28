@@ -31,7 +31,7 @@ import { feeling } from './game/likes';
 import { afterEating, chooseExpression, idleEveryMs, reactionMs, type Expression, type Reaction } from './game/expressions';
 import { getTrait, traitOf } from './game/traits';
 import { drawFace } from './render/faces';
-import { cast, justGotShy, land, toggleBait } from './game/fishing';
+import { cast, hook, justGotShy, land, nextBait } from './game/fishing';
 import { buyFamilyHome, goToRoom, movePet, otherRoom, ownsFamilyHome, petsIn, roomDecor, roommates, type RoomBlock } from './game/rooms';
 import { TOSS_MS } from './render/garden';
 import { LEAP_MS } from './ui/fishing';
@@ -975,15 +975,18 @@ const home = createHomeScreen(root, {
   },
   onRevive: askRevive,
   onGoodbye: askGoodbye,
-  onCast: () => {
+  onCast: (streak) => {
     const result = cast(state, gameNow());
     setState(result.state);
-    if (result.blocked) blocked(STRINGS.blocked[result.blocked](state.pet.name));
-    else sound('cast');
-    return !result.blocked;
+    if (result.blocked) {
+      blocked(STRINGS.blocked[result.blocked](state.pet.name));
+      return null;
+    }
+    sound('cast');
+    return hook(state, Math.random(), streak);
   },
-  onLand: (grade) => {
-    const { state: next, caught, count, rewarded } = land(state, grade, Math.random(), Math.random());
+  onLand: (grade, bite) => {
+    const { state: next, caught, count, rewarded } = land(state, grade, bite);
     setState(next);
     const label = STRINGS.fishing.grades[grade];
     if (caught) {
@@ -1000,7 +1003,7 @@ const home = createHomeScreen(root, {
     }
     return caught;
   },
-  onToggleBait: () => setState(toggleBait(state)),
+  onPickBait: () => setState(nextBait(state)),
   onCook: (items) => {
     const result = cook(simulate(state, gameNow()), items, Math.random());
     setState(result.state);
@@ -1179,7 +1182,7 @@ const home = createHomeScreen(root, {
   onAddGold: () => setState(earn(state, CONFIG.debug.addGold)),
   onSetCare: (careScore) => setState({ ...state, pet: { ...state.pet, careScore } }),
   onBuyFood: (food) => runShop(buyFood(state, food, gameNow()), STRINGS.shop.bought(STRINGS.foods[food])),
-  onBuyBait: () => runShop(buyBait(state), STRINGS.shop.bought(STRINGS.shop.bait)),
+  onBuyBait: (id) => runShop(buyBait(state, id), STRINGS.shop.bought(STRINGS.shop.baits[id].name)),
   onBuyFortuneCookie: () => runShop(buyFortuneCookie(state), STRINGS.shop.bought(STRINGS.shop.fortuneCookie)),
   onBuyHolidayTicket: () => runShop(buyHolidayTicket(state), STRINGS.shop.bought(STRINGS.journeys.holidayTicket)),
   onBuyCharm: (id) => runShop(buyCharm(state, id), STRINGS.shop.bought(STRINGS.journeys.charms[id]?.name ?? id)),

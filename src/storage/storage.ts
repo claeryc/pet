@@ -21,7 +21,7 @@ const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 38;
+export const SAVE_VERSION = 39;
 
 export interface SaveFile {
   version: number;
@@ -89,7 +89,7 @@ export function migrate(save: SaveFile): SaveFile {
     const st = save.state;
     const pet = st.pet;
     st.recentFoods = [];
-    st.caught = Object.keys(CONFIG.fishing.catchOdds.other).filter((id) => (st.inventory?.food?.[id] ?? 0) > 0);
+    st.caught = Object.keys(CONFIG.fishing.fish).filter((id) => (st.inventory?.food?.[id] ?? 0) > 0);
     st.charactersFound = pet.stage === 'adult' && pet.character ? [characterKey(pet.character, pet.variant)] : [];
     st.showAllMenus = false;
     st.unlocked = unlocksFor(st as GameState);
@@ -456,6 +456,14 @@ export function migrate(save: SaveFile): SaveFile {
   if (save.version === 37) {
     save.state = renameIds(save.state, COVE_RENAMES);
     save.version = 38;
+  }
+  // Version 38 -> 39: the tackle shelf. Bait switched on or off became a
+  // pick of which bait to fish with.
+  if (save.version === 38) {
+    const st = save.state;
+    st.tackle = st.baitOn ? 'bait' : null;
+    delete st.baitOn;
+    save.version = 39;
   }
   return save;
 }
