@@ -77,7 +77,7 @@ export const MEADOW = 'meadow';
 // ---- The places and the board ----
 
 // A place is open once its rule is met: the market from the start, the
-// woods after the first harvest, the caves after some fish, and the hill
+// woods after the first harvest, the cove after some fish, and the hill
 // once a pet has grown up.
 export function placeOpen(state: GameState, place: Place): boolean {
   switch (place.opens) {
@@ -315,7 +315,7 @@ function noteFound(state: GameState, place: string, finds: readonly Find[]): Gam
 
 // Which like a story shows (written into the Family Tree the first time).
 const STORY_LIKES: Record<string, LikeKind> = {
-  lovedFood: 'food', cuddle: 'play', tickle: 'play', dislikedFood: 'dislike', rain: 'dislike', drip: 'dislike', sunrise: 'dislike',
+  lovedFood: 'food', cuddle: 'play', tickle: 'play', dislikedFood: 'dislike', rain: 'dislike', splash: 'dislike', sunrise: 'dislike',
 };
 
 // The line on `pet`'s postcard from `trip` (with `finds`, what it brought).
@@ -332,7 +332,7 @@ export function storyOf(pet: Pet, trip: Trip, finds: readonly Find[], newFavouri
   if (foods.includes(likes.food)) liked.push({ id: 'lovedFood', food: likes.food });
   if (foods.includes(likes.dislike)) liked.push({ id: 'dislikedFood', food: likes.dislike });
   if (likes.dislike === 'bath' && trip.place === 'woods') liked.push({ id: 'rain' });
-  if (likes.dislike === 'bath' && trip.place === 'caves') liked.push({ id: 'drip' });
+  if (likes.dislike === 'bath' && trip.place === 'cove') liked.push({ id: 'splash' });
   if (likes.dislike === 'woken' && (trip.night || trip.rarity === 'epic')) liked.push({ id: 'sunrise' });
   if (likes.play === 'cuddle' || likes.play === 'tickle') liked.push({ id: likes.play });
   if (liked.length > 0 && roll('liked') < J.storyLikeChance) return liked[Math.floor(roll('whichLike') * liked.length)];

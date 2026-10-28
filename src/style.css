@@ -7495,7 +7495,7 @@ button.trip-bars-name.is-on {
 }
 
 .postcard[data-place='woods'] .postcard-pic { --sky: #bfe7d0; }
-.postcard[data-place='caves'] .postcard-pic { --sky: #c9d4f5; }
+.postcard[data-place='cove'] .postcard-pic { --sky: #c9ecf7; }
 .postcard[data-place='market'] .postcard-pic { --sky: #e2cff8; }
 .postcard[data-place='hill'] .postcard-pic { --sky: #d6c8f2; }
 
@@ -9131,7 +9131,7 @@ button.trip-bars-name.is-on {
 /* The place's own colours: its sky and its ground. */
 [data-place='market'] { --sky: #e2cff8; --ground: #f6c9a8; }
 [data-place='woods'] { --sky: #bfe7d0; --ground: #8fd0a6; }
-[data-place='caves'] { --sky: #c9d4f5; --ground: #a9b3db; }
+[data-place='cove'] { --sky: #c9ecf7; --ground: #ffe9b3; }
 [data-place='hill'] { --sky: #d6c8f2; --ground: #b5a4e4; }
 
 .jr-hero {

@@ -1,5 +1,5 @@
 // The journey places, drawn in the room while you look at the current trip
-// (tap the note on the wall): Market Town, Mossy Woods, Crystal Caves and
+// (tap the note on the wall): Market Town, Mossy Woods, Coral Cove and
 // Starlit Hill, one per theme (see CONFIG.journeys.places). The pets stand
 // on the ground at y = 40, like in the room.
 
@@ -138,38 +138,80 @@ function drawWoods(ctx: CanvasRenderingContext2D, w: number, h: number, night: b
   rect(ctx, PALETTE.pink, w - 3, 42, 1, 1);
 }
 
-// Crystal Caves: a dark cave with dripping rocks and glowing crystals.
-const CRYSTAL: Sprite = ['..k..', '.kvk.', '.klk.', 'kvllk', 'klllk', 'kkkkk'];
-const BLUE_CRYSTAL: Sprite = ['.k.', 'ksk', 'ksk', 'kbk', 'kkk'];
-function drawCaves(ctx: CanvasRenderingContext2D, w: number, h: number, _night: boolean, timeMs: number): void {
-  rect(ctx, PALETTE.plum, 0, 0, w, h);
-  rect(ctx, PALETTE.ink, 0, 0, w, 3);
-  // The far wall, with a tunnel going on: an arch, lighter towards the
-  // middle where the glow of more crystals comes through.
-  for (let y = 12; y < GROUND; y++) {
-    const half = Math.min(9, 3 + (y - 12) * 2);
-    rect(ctx, PALETTE.lilac, 32 - half, y, half * 2, 1);
-    if (y >= 16) rect(ctx, PALETTE.lavender, 32 - Math.max(1, half - 4), y, Math.max(1, half - 4) * 2, 1);
+// Coral Cove: a sandy cove by the sea, a rock arch on the left, and a tide
+// pool in front with pink coral, seaweed and a starfish.
+const STARFISH: Sprite = ['...p...', '..ppp..', 'pppxppp', '.ppppp.', '..p.p..', '.p...p.'];
+const SHELL: Sprite = ['.p.', 'pwp', 'ppp'];
+const CORAL: Sprite = ['p.p.p', 'p.p.p', '.ppp.', '..p..'];
+function drawCove(ctx: CanvasRenderingContext2D, w: number, h: number, night: boolean, timeMs: number): void {
+  const SEA = 17; // where the sea meets the sky
+  const SHORE = 28; // where the waves come up the sand
+  rect(ctx, night ? PALETTE.plum : PALETTE.sky, 0, 0, w, SEA);
+  if (night) {
+    stars(ctx, w, SEA - 4, timeMs);
+    rect(ctx, PALETTE.butter, 44, 4, 4, 4);
+    rect(ctx, PALETTE.cream, 45, 5, 1, 1);
+  } else {
+    rect(ctx, PALETTE.white, 30, 5, 7, 2);
+    rect(ctx, PALETTE.white, 50, 9, 4, 1);
   }
-  // Stalactites.
-  for (const [x, len] of [[3, 6], [11, 4], [19, 8], [33, 3], [42, 7], [51, 4], [59, 6]]) {
-    for (let i = 0; i < len; i++) rect(ctx, PALETTE.ink, x + Math.floor(i / 3), 3 + i, Math.max(1, 3 - Math.floor(i / 2)), 1);
+  // The sea, with little waves rolling in.
+  rect(ctx, night ? PALETTE.deep : PALETTE.ocean, 0, SEA, w, SHORE - SEA);
+  const roll = Math.floor(timeMs / 600) % 4;
+  for (let y = SEA + 2; y < SHORE; y += 3) {
+    for (let x = ((y * 7 + roll * 2) % 9); x < w; x += 9) rect(ctx, night ? PALETTE.ocean : PALETTE.sky, x, y, 3, 1);
   }
-  // A drip falling now and then.
-  const drip = (timeMs / 40) % 60;
-  if (drip < 30) rect(ctx, PALETTE.sky, 20, 11 + Math.floor(drip), 1, 1);
-  // The floor.
-  rect(ctx, PALETTE.ink, 0, GROUND, w, h - GROUND);
-  rect(ctx, PALETTE.plum, 0, GROUND, w, 1);
-  for (let x = 2; x < w; x += 9) rect(ctx, PALETTE.plum, x, GROUND + 5 + (x % 4), 3, 1);
-  paint(ctx, CRYSTAL, 3, 29);
-  paint(ctx, BLUE_CRYSTAL, 9, 30);
-  paint(ctx, CRYSTAL, w - 8, 29);
-  paint(ctx, BLUE_CRYSTAL, w - 12, 31);
-  // The crystals glint, one at a time.
-  const glint = Math.floor(timeMs / 500) % 4;
-  const spots = [[5, 30], [10, 31], [w - 6, 30], [w - 11, 32]];
-  rect(ctx, PALETTE.white, spots[glint][0], spots[glint][1], 1, 1);
+  if (night) for (let y = SEA + 1; y < SHORE; y += 2) rect(ctx, PALETTE.butter, 45 + (y % 3), y, 2, 1); // the moon on the water
+  // Wet sand, and the foam coming in and going out.
+  rect(ctx, PALETTE.peach, 0, SHORE, w, GROUND - SHORE);
+  const foam = Math.floor(timeMs / 900) % 2;
+  for (let x = 0; x < w; x++) rect(ctx, PALETTE.white, x, SHORE + foam + ((x >> 2) % 2), 1, 1);
+  // Dry sand, where the pets stand.
+  rect(ctx, PALETTE.butter, 0, GROUND, w, h - GROUND);
+  for (let x = 3; x < w; x += 7) rect(ctx, PALETTE.peach, x, GROUND + 3 + (x % 4) * 2, 2, 1);
+  // The rock arch on the left, with the sea showing through it.
+  for (let y = 3; y < GROUND + 2; y++) {
+    const rw = Math.min(17, 7 + Math.floor((y - 3) * 0.6) + (y % 5 === 0 ? 1 : 0));
+    rect(ctx, PALETTE.lilac, 0, y, rw, 1);
+    rect(ctx, PALETTE.plum, rw - 1, y, 1, 1);
+  }
+  rect(ctx, PALETTE.lavender, 0, 3, 5, 1);
+  rect(ctx, PALETTE.lavender, 1, 4, 2, 1);
+  rect(ctx, PALETTE.plum, 3, 9, 1, 3); // cracks
+  rect(ctx, PALETTE.plum, 2, 26, 1, 2);
+  for (let y = 14; y < SHORE; y++) {
+    const half = [1, 2, 3, 3, 4][Math.min(4, y - 14)];
+    rect(ctx, PALETTE.plum, 8 - half - 1, y, half * 2 + 2, 1);
+    rect(ctx, night ? PALETTE.deep : PALETTE.ocean, 8 - half, y, half * 2, 1);
+    if (y < SEA) rect(ctx, night ? PALETTE.plum : PALETTE.sky, 8 - half, y, half * 2, 1);
+  }
+  rect(ctx, PALETTE.white, 5, SHORE - 1, 6, 1);
+  // A little rock out at sea.
+  rect(ctx, PALETTE.lilac, w - 14, SEA - 2, 5, 3);
+  rect(ctx, PALETTE.lilac, w - 13, SEA - 3, 3, 1);
+  rect(ctx, PALETTE.white, w - 15, SEA + 1, 7, 1);
+  paint(ctx, CORAL, 12, GROUND - 2);
+  // Shells on the sand.
+  paint(ctx, SHELL, 22, GROUND + 9);
+  rect(ctx, PALETTE.lavender, 4, GROUND + 11, 2, 1);
+  // The tide pool in front, on the right, with coral, seaweed and a starfish.
+  const px = w - 22;
+  const py = GROUND + 6;
+  for (let y = 0; y < 7; y++) {
+    const inset = [4, 2, 1, 0, 0, 1, 3][y];
+    rect(ctx, PALETTE.lilac, px + inset - 1, py + y, 20 - inset * 2 + 2, 1);
+    rect(ctx, night ? PALETTE.deep : PALETTE.ocean, px + inset, py + y, 20 - inset * 2, 1);
+  }
+  rect(ctx, PALETTE.sky, px + 5, py + 1, 3, 1);
+  paint(ctx, CORAL, px + 12, py + 2);
+  const sway = Math.floor(timeMs / 700) % 2;
+  for (let i = 0; i < 5; i++) {
+    rect(ctx, PALETTE.leaf, px + 3 + ((i + sway) % 2), py + 6 - i, 1, 1);
+    rect(ctx, PALETTE.moss, px + 7 + ((i + sway + 1) % 2), py + 6 - Math.min(i, 3), 1, 1);
+  }
+  paint(ctx, STARFISH, w - 9, GROUND - 1);
+  // Seaweed washed up by the rocks, swaying.
+  for (let i = 0; i < 4; i++) rect(ctx, PALETTE.leaf, 17 + ((i + sway) % 2), GROUND + 1 - i, 1, 1);
 }
 
 // Starlit Hill: always a starry sky, a big moon, and a soft green hill.
@@ -234,7 +276,7 @@ const PLACES: Record<string, typeof drawMarket> = {
   meadow: drawMeadowPlace,
   market: drawMarket,
   woods: drawWoods,
-  caves: drawCaves,
+  cove: drawCove,
   hill: drawHill,
 };
 

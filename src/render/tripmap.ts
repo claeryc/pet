@@ -111,18 +111,28 @@ const COMPASS: Sprite = [
 const STAR: Sprite = ['..y..', '.yyy.', 'yyyyy', '.y.y.'];
 
 // The place at the end of the trail: Mossy Woods is a thick wood, Market
-// Town a cluster of roofs, Crystal Caves a mountain with a dark mouth,
+// Town a cluster of roofs, Coral Cove a little bay with a rock arch,
 // Starlit Hill a big hill under a star, the Meadow flowers and a big tree.
 function landmark(ctx: CanvasRenderingContext2D, place: string): void {
   const { x, y } = TO;
   if (place === 'market') {
     for (const [dx, dy] of [[-12, -7], [-5, -10], [2, -7], [-9, 0], [4, 0]]) paint(ctx, HOUSE, x + dx, y + dy);
-  } else if (place === 'caves') {
-    paint(ctx, MOUNTAIN, x - 14, y - 9);
-    paint(ctx, MOUNTAIN, x - 2, y - 11);
-    rect(ctx, PALETTE.ink, x + 2, y - 7, 2, 2); // the cave's mouth
-    rect(ctx, PALETTE.lavender, x - 9, y - 3, 1, 1); // crystals
-    rect(ctx, PALETTE.sky, x + 6, y - 6, 1, 1);
+  } else if (place === 'cove') {
+    // A bay of sea, out to the map's edge, with a sandy rim, waves, and a rock arch.
+    for (let dy = -12; dy <= 2; dy++) {
+      const half = Math.round(17 * Math.sqrt(Math.max(0, 1 - ((dy + 5) / 8) ** 2)));
+      if (!half) continue;
+      rect(ctx, PALETTE.butter, x + 2 - half - 1, y + dy, half * 2 + 2, 1);
+      rect(ctx, PALETTE.ocean, x + 2 - half + 1, y + dy, Math.max(0, half * 2 - 2), 1);
+    }
+    for (const [dx, dy] of [[-10, -8], [-3, -4], [-12, -2], [2, -10], [-6, 0]]) rect(ctx, PALETTE.sky, x + dx, y + dy, 3, 1);
+    for (let dy = -9; dy <= -4; dy++) {
+      const inner = dy < -7 ? 0 : 1;
+      rect(ctx, PALETTE.lilac, x + 6, y + dy, 5, 1);
+      if (inner) rect(ctx, PALETTE.ocean, x + 8, y + dy, 1, 1);
+    }
+    rect(ctx, PALETTE.plum, x + 6, y - 10, 5, 1);
+    rect(ctx, PALETTE.pink, x - 15, y, 1, 1); // a shell on the sand
   } else if (place === 'hill') {
     for (let dx = -16; dx <= 12; dx++) {
       const top = y - 3 - Math.round(7 * Math.cos((dx / 16) * (Math.PI / 2)));

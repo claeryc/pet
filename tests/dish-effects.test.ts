@@ -35,9 +35,9 @@ describe('what dishes do besides their stats', () => {
 
   it('salt-baked lobster widens the green stripe for a while', () => {
     const s = newTeen(START);
-    s.inventory.food = { saltBakedLobster: 1 };
+    s.inventory.food = { seaweedLobster: 1 };
     const before = reelPerks(s).widen;
-    const fed = feed(s, START, 'saltBakedLobster').state;
+    const fed = feed(s, START, 'seaweedLobster').state;
     expect(reelPerks(fed).widen).toBeCloseTo(before + 0.2);
   });
 

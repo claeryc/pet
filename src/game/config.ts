@@ -262,12 +262,12 @@ export const CONFIG = {
     // Found on journeys, one kind per place. There are no seeds for these.
     { id: 'honey', source: 'found', price: 15, hunger: 8, happiness: 8, health: 2, stars: 1, tags: ['sweet'] },
     { id: 'wildMushroom', source: 'found', price: 15, hunger: 10, happiness: 0, health: 6, stars: 1, tags: ['veg'] },
-    { id: 'glowSalt', source: 'found', price: 20, hunger: 2, happiness: 4, health: 6, stars: 2, tags: ['seasoning'] },
+    { id: 'seaweed', source: 'found', price: 20, hunger: 2, happiness: 4, health: 6, stars: 2, tags: ['seasoning'] },
     { id: 'stardustSugar', source: 'found', price: 25, hunger: 4, happiness: 14, health: 0, stars: 2, tags: ['sweet'] },
     // Dishes made with what journeys bring home.
     { id: 'honeyCake', source: 'cooked', price: 49, hunger: 34, happiness: 30, health: 5, stars: 2, tags: ['sweet'], effects: [{ kind: 'placeFind', place: 'market' }] },
     { id: 'mushroomSoup', source: 'cooked', price: 52, hunger: 40, happiness: 7, health: 15, stars: 2, tags: ['soup', 'veg'], effects: [{ kind: 'slowHunger', percent: 15, hours: 4 }, { kind: 'placeFind', place: 'woods' }] },
-    { id: 'glowSalmon', source: 'cooked', price: 50, hunger: 30, happiness: 11, health: 11, stars: 2, tags: ['seafood'], effects: [{ kind: 'placeFind', place: 'caves' }] },
+    { id: 'seaweedSalmon', source: 'cooked', price: 50, hunger: 30, happiness: 11, health: 11, stars: 2, tags: ['seafood'], effects: [{ kind: 'placeFind', place: 'cove' }] },
     { id: 'stardustPudding', source: 'cooked', price: 66, hunger: 30, happiness: 33, health: 6, stars: 3, tags: ['sweet'], effects: [{ kind: 'placeFind', place: 'hill' }] },
     // More dishes: second uses for what journeys bring home, the mixes
     // people try first, and the Bento, made partly from other dishes.
@@ -277,7 +277,7 @@ export const CONFIG = {
     { id: 'honeySalmon', source: 'cooked', price: 44, hunger: 32, happiness: 18, health: 9, stars: 2, tags: ['seafood', 'sweet'] },
     { id: 'starCookies', source: 'cooked', price: 41, hunger: 12, happiness: 30, health: 1, stars: 2, tags: ['sweet'] },
     { id: 'fruitPunch', source: 'cooked', price: 63, hunger: 24, happiness: 34, health: 10, stars: 3, tags: ['drink', 'fruit'] },
-    { id: 'saltBakedLobster', source: 'cooked', price: 75, hunger: 40, happiness: 20, health: 14, stars: 3, tags: ['seafood'], effects: [{ kind: 'steadyPaws', percent: 20, hours: 2 }] },
+    { id: 'seaweedLobster', source: 'cooked', price: 75, hunger: 40, happiness: 20, health: 14, stars: 3, tags: ['seafood'], effects: [{ kind: 'steadyPaws', percent: 20, hours: 2 }] },
     { id: 'lobsterFriedRice', source: 'cooked', price: 74, hunger: 70, happiness: 20, health: 15, stars: 3, tags: ['seafood', 'grain', 'veg'] },
     { id: 'bento', source: 'cooked', price: 71, hunger: 80, happiness: 22, health: 18, stars: 3, tags: ['grain', 'seafood', 'veg'] },
     // What you get when the pot holds a mix that isn't a recipe.
@@ -418,7 +418,7 @@ export const CONFIG = {
       { id: 'dragonFruitSmoothie', ingredients: ['dragonFruit', 'strawberry', 'warmMilk'] },
       { id: 'honeyCake', ingredients: ['honey', 'cookie', 'warmMilk'] },
       { id: 'mushroomSoup', ingredients: ['wildMushroom', 'carrot', 'warmMilk'] },
-      { id: 'glowSalmon', ingredients: ['glowSalt', 'salmon'] },
+      { id: 'seaweedSalmon', ingredients: ['seaweed', 'salmon'] },
       { id: 'stardustPudding', ingredients: ['stardustSugar', 'warmMilk', 'strawberry'] },
       { id: 'honeyMilk', ingredients: ['honey', 'warmMilk'] },
       { id: 'jamCookie', ingredients: ['strawberry', 'cookie'] },
@@ -426,7 +426,7 @@ export const CONFIG = {
       { id: 'honeySalmon', ingredients: ['honey', 'salmon'] },
       { id: 'starCookies', ingredients: ['stardustSugar', 'cookie'] },
       { id: 'fruitPunch', ingredients: ['strawberry', 'dragonFruit'] },
-      { id: 'saltBakedLobster', ingredients: ['glowSalt', 'lobster'] },
+      { id: 'seaweedLobster', ingredients: ['seaweed', 'lobster'] },
       { id: 'lobsterFriedRice', ingredients: ['lobster', 'riceBall', 'carrot'] },
       // Made from two other dishes and a carrot.
       { id: 'bento', ingredients: ['shrimpOnigiri', 'grilledSalmon', 'carrot'] },
@@ -736,7 +736,7 @@ export const CONFIG = {
         },
       },
       {
-        id: 'caves', theme: 'ocean', ingredient: 'glowSalt', opens: 'fish',
+        id: 'cove', theme: 'ocean', ingredient: 'seaweed', opens: 'fish',
         finds: {
           1: ['shrimp', 'gold:12'],
           2: ['salmon', 'gold:30'],
