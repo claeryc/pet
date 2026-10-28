@@ -51,6 +51,8 @@ const foodName = (id: string) => STRINGS.foods[id as FoodId] ?? id;
 // "3 gold", "a Pumpkin seed" or "Honey".
 const findName = (f: Find) =>
   f.kind === 'gold' ? `${f.count} ${STRINGS.gold.label.toLowerCase()}`
+  : f.kind === 'material' ? STRINGS.crafting.materials[f.id] ?? f.id
+  : f.kind === 'part' ? STRINGS.crafting.parts[f.id] ?? f.id
   : f.kind === 'seed' ? STRINGS.garden.seedName(foodName(f.id)) : foodName(f.id);
 const items = (boxes: { food: string; want: number }[]) =>
   boxes.map((b) => STRINGS.delivery.item(b.want, foodName(b.food))).join(', ');
@@ -102,6 +104,11 @@ function text(m: Message): string {
       return STRINGS.journeys.tripFriend(m.name, m.friend, STRINGS.journeys.places[m.place] ?? m.place);
     case 'holidayHome':
       return STRINGS.journeys.holidayHome(STRINGS.list(m.names));
+    case 'built': {
+      const T = STRINGS.crafting;
+      if (m.done) return T.projectDone[m.project] ?? '';
+      return T.stageBuilt(T.projects[m.project] ?? m.project, T.stages[m.project]?.[m.stage] ?? '');
+    }
   }
 }
 
@@ -166,6 +173,7 @@ function messageRow(m: Message, now: number): HTMLElement {
     : m.kind === 'milestone' ? MILESTONE_ICONS[m.id] ?? ITEM_ICONS.letter
     : m.kind === 'level' ? SKILL_POINT_ICON
     : m.kind === 'tripHome' ? ITEM_ICONS.journey
+    : m.kind === 'built' ? ITEM_ICONS.workbench
     : m.kind === 'tripFriend' ? ITEM_ICONS.meet
     : m.kind === 'holidayHome' ? MENU_ICONS.meadow
     : m.kind === 'courier' || m.kind === 'regular' ? ITEM_ICONS.percy

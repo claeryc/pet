@@ -17,6 +17,8 @@ import type { ActivityId, Food, FoodId } from '../game/actions';
 import type { CatchGrade } from '../game/fishing';
 import { createFishing, DRAIN_MS, type FishingPhase } from './fishing';
 import { createCooking, KITCHEN_OUT_MS } from './cooking';
+import { createWorkbench } from './workbench';
+import type { Pattern } from '../game/crafting';
 import { createGarden, GARDEN_OUT_MS } from './garden';
 import { createDelivery, DELIVERY_OUT_MS } from './delivery';
 import { unreadMail } from '../game/messages';
@@ -65,6 +67,8 @@ export interface HomeCallbacks extends MenuCallbacks, DigCallbacks {
   onLand: (grade: CatchGrade, bite: Bite) => string | null; // the fish landed (a food id), or null
   onPickBait: () => void;
   onCook: (items: FoodId[], opts: CookOptions) => FoodId | null; // the dish made, or null if refused
+  onCraft: (pattern: string) => Pattern | null; // the workbench: what was made, or null if refused
+  onBuild: (project: string) => boolean; // a project's next stage started
   onPlant: (pot: number, crop: CropId) => void;
   onWater: (pot: number, perfect: boolean) => void;
   onFertilize: (pot: number) => void;
@@ -518,12 +522,20 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       effects: [],
       onPick: () => openDig(),
     },
+    // The workbench, once you've found materials.
+    {
+      icon: ITEM_ICONS.workbench,
+      label: STRINGS.minigames.workbench,
+      effects: [],
+      onPick: () => startWorkbench(),
+    },
   ];
 
   const MEET_ROW = CONFIG.activities.length; // after Cuddle and Tickle
   const GARDEN_ROW = MEET_ROW + 2; // after Meet and Fishing
   const JOURNEYS_ROW = GARDEN_ROW + 1;
   const DIG_ROW = JOURNEYS_ROW + 1;
+  const WORKBENCH_ROW = DIG_ROW + 1;
   const feedDrawer = createDrawer({ id: 'feed', label: STRINGS.buttons.feed, options: feedOptions, ...drawerSetup });
   const playDrawer = createDrawer({ id: 'play', label: STRINGS.buttons.play, options: playOptions, ...drawerSetup });
 
@@ -848,6 +860,31 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     cooking.start();
     cb.onGuide('cooking');
   }
+  // The workbench too: [Close] [Materials] [Patterns], and a bench that
+  // pops up over the stat bars and the room.
+  const workbench = createWorkbench({
+    onCraft: cb.onCraft,
+    onBuild: cb.onBuild,
+    onHang: () => {
+      showActions(0);
+      openDecorate();
+    },
+    onExit: () => showActions(KITCHEN_OUT_MS),
+    toast: showToast,
+    roomBox: () => roomWrap.getBoundingClientRect(),
+  });
+  function startWorkbench(): void {
+    if (actions.hidden) return;
+    cb.onSeen('workbench');
+    feedDrawer.close();
+    playDrawer.close();
+    menuDrawer!.close();
+    hideActions();
+    stats.setAttribute('aria-hidden', 'true');
+    roomWrap.setAttribute('aria-hidden', 'true');
+    if (latest) workbench.update(latest.state, latest.now);
+    workbench.start();
+  }
   // The garden too: its own buttons, and a bed of pots that slides up over
   // the stat bars.
   const garden = createGarden({
@@ -1117,7 +1154,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const reveal = createReveal();
   const craft = createCraft();
   const backpack = createBackpack();
-  statSlot.append(stats, bath.panel, journeys.panel, dig.panel, trip.panel, decorate.panel, shelf.panel, fishing.pond, cooking.kitchen, garden.beds, delivery.panel, meet.panel, backpack.el, reveal.el, craft.el);
+  statSlot.append(stats, bath.panel, journeys.panel, dig.panel, trip.panel, decorate.panel, shelf.panel, fishing.pond, cooking.kitchen, workbench.bench, garden.beds, delivery.panel, meet.panel, backpack.el, reveal.el, craft.el);
 
   // A short message that pops up and fades, e.g. "Mochi is asleep". When
   // you've run out of something the Shop sells, it has a Shop button too.
@@ -1195,7 +1232,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     else showToast(message);
   }
 
-  root.append(roomWrap, banner, statSlot, garden.pour, actions, bath.row, trip.row, decorate.row, shelf.row, fishing.row, cooking.row, garden.row, delivery.row, meet.row, journeys.sheet, journeys.row, dig.row, toastEl);
+  root.append(roomWrap, banner, statSlot, garden.pour, actions, bath.row, trip.row, decorate.row, shelf.row, fishing.row, cooking.row, workbench.row, garden.row, delivery.row, meet.row, journeys.sheet, journeys.row, dig.row, toastEl);
 
   // Which pet the bars were showing, so switching pets can slide them.
   let barsFor: string | null = null;
@@ -1276,6 +1313,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
         feedDrawer.setOrder(order);
       }
       cooking.update(state);
+      workbench.update(state, now);
       fishing.setBait(baitInUse(state), Object.fromEntries(BAITS.map((id) => [id, baitCount(state, id)])) as Record<BaitId, number>);
       fishing.setPerks(reelPerks(state));
       garden.update(state, now);
@@ -1301,7 +1339,10 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       playDrawer.setHidden(DIG_ROW, !isUnlocked(state, 'dig'));
       const digIsNew = isNew(state, 'dig');
       playDrawer.setOptionNew(DIG_ROW, digIsNew);
-      playDrawer.setNew(gardenIsNew || meetIsNew || journeysIsNew || digIsNew);
+      playDrawer.setHidden(WORKBENCH_ROW, !isUnlocked(state, 'workbench'));
+      const benchIsNew = isNew(state, 'workbench');
+      playDrawer.setOptionNew(WORKBENCH_ROW, benchIsNew);
+      playDrawer.setNew(gardenIsNew || meetIsNew || journeysIsNew || digIsNew || benchIsNew);
       // A drop on Play when a pot is dry, sick or ready to harvest.
       const tend = isUnlocked(state, 'garden') && needsTending(state.garden, now);
       playDrawer.setBadge(tend ? STAT_ICONS.drop : null, STRINGS.garden.needsYou);

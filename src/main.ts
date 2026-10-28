@@ -102,11 +102,13 @@ import { DISH_MS, DONE_MS as COOKED_MS } from './ui/cooking';
 import { music, sound, startAudio } from './audio/audio';
 import { dig, digToday, sniff, type DigBlock } from './game/dig';
 import { placeName as digPlaceName } from './ui/dig';
+import { buildStage, craft, getProject } from './game/crafting';
+import { patternIcon } from './ui/workbench';
 import { buyCharm, buyHolidayTicket, callHome, goHoliday, goTogether, offerAt, openBackpack, placeLevel, restPercy } from './game/journeys';
 import { postcardArt } from './ui/journal';
 import { REVEAL_MS } from './ui/reveal';
 import { isAway } from './game/presence';
-import { STAT_ICONS } from './ui/icons';
+import { findIconOf, STAT_ICONS } from './ui/icons';
 import type { Find } from './game/state';
 import { guideDue, markGuideRead, type GuideId } from './game/guides';
 import { createGuideCard } from './ui/guide';
@@ -460,6 +462,8 @@ function digBlocked(b: DigBlock): void {
 }
 function findLabel(f: Find): string {
   if (f.kind === 'gold') return STRINGS.journeys.goldFind;
+  if (f.kind === 'material') return STRINGS.crafting.material[f.id] ?? f.id;
+  if (f.kind === 'part') return STRINGS.crafting.parts[f.id] ?? f.id;
   const name = STRINGS.foods[f.id as FoodId] ?? f.id;
   return f.kind === 'seed' ? STRINGS.garden.seedName(name) : name;
 }
@@ -468,7 +472,7 @@ function findLabel(f: Find): string {
 function showFind(f: Find, caption: string): void {
   sound('got');
   home.reveal({
-    icon: f.kind === 'gold' ? STAT_ICONS.gold : ITEM_ICONS[f.kind === 'seed' ? `seed_${f.id}` : f.id] ?? '',
+    icon: findIconOf(f),
     name: findLabel(f),
     count: f.count,
     stars: f.kind === 'gold' ? 0 : f.stars,
@@ -1025,7 +1029,7 @@ const home = createHomeScreen(root, {
       return null;
     }
     if (result.find) {
-      showFind(result.find, STRINGS.dig.found(digPlaceName(place)));
+      showFind(result.find, result.find.kind === 'part' ? STRINGS.crafting.partFound : STRINGS.dig.found(digPlaceName(place)));
       react('happy');
     } else sound(result.flooded ? 'water' : 'place');
     return result;
@@ -1065,6 +1069,36 @@ const home = createHomeScreen(root, {
       if (result.discovered) react('happy');
     }, DISH_MS);
     return result.dish;
+  },
+  onCraft: (id) => {
+    const result = craft(simulate(state, gameNow()), id);
+    setState(result.state);
+    if (result.blocked || !result.pattern) {
+      blocked(result.blocked === 'made' ? STRINGS.crafting.madeAlready : STRINGS.crafting.blocked.short);
+      return null;
+    }
+    const p = result.pattern;
+    sound('place');
+    // The piece pops up on the bench first, then the reveal.
+    window.setTimeout(() => {
+      sound('got');
+      home.reveal({ icon: patternIcon(p), name: STRINGS.crafting.patterns[p.id], count: p.count ?? 1, stars: 0 });
+      react('happy');
+    }, 700);
+    return p;
+  },
+  onBuild: (id) => {
+    const result = buildStage(simulate(state, gameNow()), gameNow(), id);
+    setState(result.state);
+    if (result.blocked) {
+      blocked(STRINGS.crafting.blocked[result.blocked]);
+      return false;
+    }
+    const p = getProject(id)!;
+    const stage = STRINGS.crafting.stages[id][result.state.crafting.projects[id]?.built ?? 0];
+    sound('purchase');
+    home.toast(STRINGS.crafting.startBuild(stage ?? STRINGS.crafting.projects[p.id]));
+    return true;
   },
   onPlant: (pot, crop) => {
     const planted = runGarden((s, now) => plant(s, pot, crop, now, Math.random()), STRINGS.garden.planted(STRINGS.foods[crop]));

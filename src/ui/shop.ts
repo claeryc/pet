@@ -17,6 +17,8 @@ import { BAITS, baitCount, type BaitId } from '../game/fishing';
 import { HATS, fortuneCookies, revivalStars, canBuyPot, foodCount, limitedInStock, limitedLeft, localDay, dailySpecial, ownsSpecial, priceToday, hasBigJar, riceJarSize, getHat } from '../game/economy';
 import { earnedFrom } from '../game/regulars';
 import { CURTAINS, FURNITURE, SPOTS, WALLPAPERS, getDecor, inUse, ownsDecor, piecesFor, type Decor, type DecorKind } from '../game/decor';
+// Furniture made at the workbench isn't sold.
+const FOR_SALE = FURNITURE.filter((d) => !d.crafted);
 import type { GameState } from '../game/state';
 import type { Food, FoodId } from '../game/actions';
 import { FRAGMENT_ICON, ITEM_ICONS, MENU_ICONS, STAT_ICONS } from './icons';
@@ -726,7 +728,7 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
   // The room: the Family Home (for star fragments only), then wallpaper,
   // furniture and curtains for the room you're looking at.
   const walls = WALLPAPERS.map((d) => decorItem(state, d, cb));
-  const furniture = FURNITURE.map((d) => decorItem(state, d, cb));
+  const furniture = FOR_SALE.map((d) => decorItem(state, d, cb));
   const curtains = CURTAINS.map((d) => decorItem(state, d, cb));
   const ownedOf = (list: Decor[]) => list.filter((d) => ownsDecor(state, d.kind, d.id)).length;
   const familyHome = () => {
@@ -867,7 +869,7 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
         ...(cb.onDecorate && SPOTS.some((spot) => piecesFor(state, spot).length > 0) ? [decorateButton()] : []),
         familyHome(),
         section(S.wallpaper, S.ofAll(ownedOf(WALLPAPERS), WALLPAPERS.length)), grid('two', walls.map((w) => swatchCard(w, state, open))),
-        section(S.furnitureTitle, S.ofAll(ownedOf(FURNITURE), FURNITURE.length)), grid('', furniture.map((f) => card(f, state, open))),
+        section(S.furnitureTitle, S.ofAll(ownedOf(FOR_SALE), FOR_SALE.length)), grid('', furniture.map((f) => card(f, state, open))),
         section(S.curtainsTitle, S.ofAll(ownedOf(CURTAINS), CURTAINS.length)), grid('two', curtains.map((c) => swatchCard(c, state, open))),
       ],
     },

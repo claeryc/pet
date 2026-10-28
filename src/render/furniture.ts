@@ -17,6 +17,68 @@ export const FURNITURE_COLORS: Record<string, string> = {
 };
 
 export const FURNITURE_ART: Record<string, string[]> = {
+  // ---- Made at the workbench (see CONFIG.crafting.patterns) ----
+  // Pink shells on a string across the wall.
+  shellGarland: [
+    'd...............d',
+    '.dd...........dd.',
+    '...ddd.....ddd...',
+    '..pip.ddddd.pip..',
+    '..ppp..pip..ppp..',
+    '...p...ppp...p...',
+    '........p........',
+  ],
+  // A driftwood plank with a shell and a sea glass bottle on it.
+  driftwoodShelf: [
+    '..........ss....',
+    '..pp.....sms....',
+    '.pipp....sms....',
+    '.pppp....sss....',
+    'dddddddddddddddd',
+    'dvvcvvvvcvvvvcvd',
+    'dddddddddddddddd',
+    '..d..........d..',
+  ],
+  // A clay bowl of pebbles, for the windowsill.
+  pebbleBowl: [
+    '...vl....',
+    '.lvuvlvu.',
+    'kkkkkkkkk',
+    'koooooook',
+    '.kooocok.',
+    '..kkkkk..',
+  ],
+  // A floor lamp with a sea glass shade.
+  seaGlassLamp: [
+    '...kkkk...',
+    '..kswsmk..',
+    '.ksmssmsk.',
+    '.kmssmssk.',
+    'kssmsssmsk',
+    'kkkkkkkkkk',
+    '....dd....',
+    '....dd....',
+    '....dd....',
+    '....dd....',
+    '....dd....',
+    '....dd....',
+    '....dd....',
+    '....dd....',
+    '...dccd...',
+    '..dddddd..',
+  ],
+  // Stars hanging from a little wooden mobile.
+  starMobile: [
+    '.....d.....',
+    '.....d.....',
+    '.ddddddddd.',
+    '.d...d...d.',
+    '.d...d...d.',
+    '.y...d...y.',
+    'yyy..y..yyy',
+    '.y..yyy..y.',
+    '.....y.....',
+  ],
   // A string of stars across the wall.
   garland: [
     'c...............c',

@@ -10,6 +10,7 @@
 import { CONFIG } from './config';
 import { addSeed, type CropId } from './garden';
 import { logMessage } from './messages';
+import { perchRestOff } from './crafting';
 import type { GameState, OrderTier, Regular } from './state';
 
 const R = CONFIG.regulars;
@@ -107,6 +108,8 @@ export function percyPerks(state: GameState): PercyPerks {
     perks.seedOdds = reward.seedOdds ?? perks.seedOdds;
     perks.restHours = reward.restHours ?? perks.restHours;
   }
+  // Percy's perch in the meadow (see crafting.ts) lets him rest a bit less.
+  perks.restHours -= perchRestOff(state);
   return perks;
 }
 

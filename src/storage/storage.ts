@@ -6,7 +6,7 @@ import { CONFIG } from '../game/config';
 import type { GameState } from '../game/state';
 import { characterKey, unlocksFor } from '../game/unlocks';
 import { newGarden } from '../game/garden';
-import { newDig, newJourneys, newKeeper } from '../game/state';
+import { newCrafting, newDig, newJourneys, newKeeper } from '../game/state';
 import { grownUpXp, levelInfo } from '../game/skills';
 import { getCharacter } from '../game/growth';
 import { guidesAlreadyKnown } from '../game/guides';
@@ -21,7 +21,7 @@ const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 41;
+export const SAVE_VERSION = 42;
 
 export interface SaveFile {
   version: number;
@@ -474,6 +474,11 @@ export function migrate(save: SaveFile): SaveFile {
   if (save.version === 40) {
     save.state.dig = newDig();
     save.version = 41;
+  }
+  // Version 41 -> 42: crafting (an empty pouch, no projects yet).
+  if (save.version === 41) {
+    save.state.crafting = newCrafting();
+    save.version = 42;
   }
   return save;
 }

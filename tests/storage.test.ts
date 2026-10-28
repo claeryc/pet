@@ -239,6 +239,13 @@ describe('save migration to Sniff and dig', () => {
   it('gives old saves nothing dug yet', () => {
     const out = migrate({ version: 40, state: { pet: { name: 'drip' } } }).state;
     expect(out.dig).toEqual({ day: '', places: [], spots: [], used: 0, leftovers: {} });
-    expect(SAVE_VERSION).toBe(41);
+  });
+});
+
+describe('save migration to crafting', () => {
+  it('gives old saves an empty pouch and no projects', () => {
+    const out = migrate({ version: 41, state: { pet: { name: 'drip' } } }).state;
+    expect(out.crafting).toEqual({ materials: {}, parts: [], partTries: {}, made: [], projects: {}, hiveDay: '' });
+    expect(SAVE_VERSION).toBe(42);
   });
 });
