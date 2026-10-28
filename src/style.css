@@ -7048,14 +7048,127 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   white-space: nowrap;
 }
 
-/* An Adventure: a gold foil edge and a twinkle. */
-.trip-pc[data-rarity='epic'],
-.trip-pc-card[data-rarity='epic'] .trip-pc-front {
-  background: linear-gradient(135deg, #fff6c9, #f2e2ff 60%, #fff6c9);
-  box-shadow: 0 3px 0 #d9b85a, inset 0 0 0 2px #e7cd78;
+/* An Adventure (3 stars) by day: the place fills the card inside a
+   lilac-to-pink frame, its name on a frosted strip, with pixel twinkles
+   around the edge. The place's own touch moves over the picture. */
+.trip-pc.is-epic {
+  padding: 0;
+  background: linear-gradient(160deg, #efe3ff, #fde1ec 70%, #fff4e0);
+  box-shadow: 0 3px 0 var(--lilac), 0 0 0 2px white, 0 0 14px rgba(244, 143, 177, 0.6);
 }
 
-.trip-pc[data-rarity='epic']::after {
+.trip-pc.is-epic .trip-pc-art {
+  position: absolute;
+  inset: 4px;
+  width: calc(100% - 8px);
+  height: calc(100% - 8px);
+  aspect-ratio: auto;
+  border-radius: 7px;
+}
+
+/* Keeps the card as tall as its neighbours. */
+.trip-pc.is-epic::before {
+  content: '';
+  display: block;
+  aspect-ratio: 8 / 7;
+}
+
+.trip-pc.is-epic::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  z-index: 2;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 7px;
+  pointer-events: none;
+}
+
+.trip-pc-strip {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 9px;
+  z-index: 1;
+  height: 38px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.9), rgba(253, 225, 236, 0.9));
+  box-shadow: 0 2px 0 rgba(166, 139, 201, 0.35);
+}
+
+.trip-pc.is-epic > b,
+.trip-pc.is-epic > small {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  z-index: 3;
+  margin: 0;
+  padding: 0 8px;
+}
+
+.trip-pc.is-epic > b {
+  bottom: 27px;
+}
+
+.trip-pc.is-epic > small {
+  bottom: 12px;
+  color: #9a6fbf;
+}
+
+.trip-pc.is-epic .trip-pc-stamp,
+.trip-pc-card.is-epic .trip-pc-stamp {
+  z-index: 3;
+  border-color: var(--lilac);
+  background: white;
+  color: #9a6fbf;
+}
+
+.trip-pc.is-epic .trip-pc-fav {
+  z-index: 3;
+  bottom: 52px;
+}
+
+.trip-pc-card.is-epic .trip-pc-front {
+  padding: 4px;
+  background: linear-gradient(160deg, #efe3ff, #fde1ec 70%, #fff4e0);
+  box-shadow: 0 4px 0 var(--lilac), 0 0 0 2px white, 0 0 14px rgba(244, 143, 177, 0.6);
+}
+
+.trip-pc-card.is-epic .trip-pc-front .trip-pc-art {
+  inset: 4px;
+  width: calc(100% - 8px);
+  height: calc(100% - 8px);
+}
+
+.trip-pc-twinkle {
+  position: absolute;
+  z-index: 4;
+  width: 11px;
+  height: 11px;
+  pointer-events: none;
+  animation: trip-twinkle 1.6s ease-in-out infinite;
+}
+
+.trip-pc-twinkle svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.trip-pc-twinkle.is-1 { top: -4px; left: -3px; }
+.trip-pc-twinkle.is-2 { top: 46%; right: -4px; width: 8px; height: 8px; animation-delay: -0.5s; }
+.trip-pc-twinkle.is-3 { bottom: -3px; left: 40%; width: 7px; height: 7px; animation-delay: -1.1s; }
+.trip-pc-twinkle.is-4 { top: -3px; left: 58%; width: 7px; height: 7px; animation-delay: -1.1s; }
+.trip-pc-twinkle.is-5 { bottom: -3px; right: 14px; width: 8px; height: 8px; animation-delay: -0.5s; }
+
+/* On the turned-over card the front clips its edges, so they sit inside. */
+.trip-pc-front .trip-pc-twinkle.is-1 { top: 8px; left: 8px; }
+.trip-pc-front .trip-pc-twinkle.is-2 { right: 8px; }
+.trip-pc-front .trip-pc-twinkle.is-3,
+.trip-pc-front .trip-pc-twinkle.is-5 { bottom: 8px; }
+.trip-pc-front .trip-pc-twinkle.is-4 { top: 8px; }
+
+/* The night trip's Adventure keeps a twinkle on its night sky. */
+.trip-pc.is-night[data-rarity='epic']::after {
   content: '✦';
   position: absolute;
   top: 7px;
@@ -7329,7 +7442,8 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   .trip-pc-card {
     transition: none;
   }
-  .trip-pc[data-rarity='epic']::after {
+  .trip-pc.is-night[data-rarity='epic']::after,
+  .trip-pc-twinkle {
     animation: none;
   }
 }

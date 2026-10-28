@@ -5,6 +5,8 @@
 //   1. The board: "Where to today?" and a rack of postcards, two by two:
 //      the three trips on offer and tonight's night trip, each with a
 //      picture of the place and a stamp with how long and 1 to 3 stars.
+//      A 3-star Adventure fills its card with the place inside a twinkly
+//      lilac frame, with the place's own touch moving over it.
 //      Tapping one turns it over: a note from your pet saying what it
 //      might bring home, the finds as stamps and when it's back as the
 //      postmark. The Holiday chip top right shows the Holiday instead.
@@ -36,7 +38,7 @@ import {
 } from '../game/journeys';
 import { hasBackpack, isAway } from '../game/presence';
 import { HEART_ICONS, ITEM_ICONS, STAT_ICONS } from './icons';
-import { drawPlace } from '../render/places';
+import { drawPlace, drawPlaceSparkle } from '../render/places';
 import { BENTO_HEIGHT, BENTO_WIDTH, drawBento, LID_FRAMES, lidCover } from './bento';
 import { category, type Entry } from './shop';
 import { formatClock, formatDayClock, formatDuration } from './time';
@@ -88,6 +90,8 @@ const GEMS: Record<Rarity, number> = { common: 1, rare: 2, epic: 3 };
 // with CSS, like the room).
 const PLACE_W = 64;
 const PLACE_H = 48;
+// A 3-star postcard's picture fills the whole card, so it's drawn taller.
+const EPIC_H = 56;
 const placeName = (id: string) => STRINGS.journeys.places[id] ?? id;
 const placeIcon = (id: string) => ITEM_ICONS[`place_${id}`] ?? ITEM_ICONS.journey;
 // The Holiday ticket's spot on the board (after the night ticket).
@@ -108,6 +112,42 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, te
   e.className = className;
   if (text !== undefined) e.textContent = text;
   return e;
+}
+
+// The pictures on 3-star postcards on show, with their place's touch
+// moving over them (see drawPlaceSparkle) about 8 times a second. The loop
+// stops once none are on show, and doesn't run at all with reduced motion.
+const SPARKLE_MS = 125;
+const sparkling = new Map<HTMLCanvasElement, string>();
+let sparkleAt = 0;
+function sparkle(canvas: HTMLCanvasElement, place: string): void {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  drawPlaceSparkle(ctx, place, canvas.width, 0);
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (!sparkling.size) requestAnimationFrame(sparkleFrame);
+  sparkling.set(canvas, place);
+}
+function sparkleFrame(time: number): void {
+  if (time - sparkleAt >= SPARKLE_MS) {
+    sparkleAt = time;
+    for (const [canvas, place] of sparkling) {
+      const ctx = canvas.getContext('2d');
+      if (!canvas.isConnected || !ctx) {
+        sparkling.delete(canvas);
+        continue;
+      }
+      drawPlace(ctx, place, canvas.width, canvas.height, false, time);
+      drawPlaceSparkle(ctx, place, canvas.width, time);
+    }
+  }
+  if (sparkling.size) requestAnimationFrame(sparkleFrame);
+}
+
+// Little pixel twinkles around a 3-star postcard's edge.
+const TWINKLE = '<svg viewBox="0 0 7 7" shape-rendering="crispEdges"><path fill="#f48fb1" d="M3 0h1v2h1v1h2v1H5v1H4v2H3V5H2V4H0V3h2V2h1z"/><path fill="#fff" d="M3 2h1v3H3zM2 3h3v1H2z"/></svg>';
+function twinkles(card: HTMLElement): void {
+  for (let i = 0; i < 5; i++) card.append(icon(TWINKLE, `trip-pc-twinkle is-${i + 1}`));
 }
 
 function icon(svg: string, className: string): HTMLElement {
@@ -352,15 +392,20 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     return formatClock(d.getTime());
   };
 
-  // A little picture of a place, from the same scenes the trip shows.
-  function placeArt(place: string, night: boolean): HTMLCanvasElement {
+  // A little picture of a place, from the same scenes the trip shows. On a
+  // 3-star postcard (`epic`) the place's own touch moves over it.
+  function placeArt(place: string, night: boolean, epic = false, height = PLACE_H): HTMLCanvasElement {
     const c = el('canvas', 'trip-pc-art');
     c.width = PLACE_W;
-    c.height = PLACE_H;
+    c.height = height;
     const ctx = c.getContext('2d');
-    if (ctx) drawPlace(ctx, place, PLACE_W, PLACE_H, night, 0);
+    if (ctx) drawPlace(ctx, place, PLACE_W, height, night, 0);
+    if (epic) sparkle(c, place);
     return c;
   }
+
+  // A 3-star trip by day (the night trip keeps its own night sky card).
+  const isEpic = (o: Offer) => o.rarity === 'epic' && !o.night;
 
   // The stamp in a postcard's corner: how long, and 1 to 3 stars (a moon
   // for the night trip).
@@ -370,9 +415,14 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
 
   // One trip on offer: the place, its name and the kind of trip.
   function postcard(o: Offer, onPick: () => void, fan: string | null): HTMLButtonElement {
-    const b = el('button', `trip-pc${o.night ? ' is-night' : ''}`);
+    const epic = isEpic(o);
+    const b = el('button', `trip-pc${o.night ? ' is-night' : ''}${epic ? ' is-epic' : ''}`);
     b.dataset.rarity = o.rarity;
-    b.append(placeArt(o.place, !!o.night), stamp(o), el('b', '', placeName(o.place)), el('small', '', o.night ? T.nightBoard : tripName(o)));
+    b.append(placeArt(o.place, !!o.night, epic, epic ? EPIC_H : PLACE_H));
+    // A 3-star trip: the place fills the card, with its name on a strip.
+    if (epic) b.append(el('span', 'trip-pc-strip'));
+    b.append(stamp(o), el('b', '', placeName(o.place)), el('small', '', o.night ? T.nightBoard : tripName(o)));
+    if (epic) twinkles(b);
     if (fan) {
       const heart = el('span', 'trip-pc-fav');
       heart.append(icon(HEART_ICONS.full, 'trip-pc-fav-icon'), T.favouriteShort(fan));
@@ -408,10 +458,12 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
   // it to turn it back over.
   function postcardBack(s: GameState, o: Offer, at: number): HTMLElement {
     const wrap = el('div', 'trip-flip');
-    const card = el('button', `trip-pc-card${o.night ? ' is-night' : ''}`);
+    const epic = isEpic(o);
+    const card = el('button', `trip-pc-card${o.night ? ' is-night' : ''}${epic ? ' is-epic' : ''}`);
     card.dataset.rarity = o.rarity;
     const front = el('span', 'trip-pc-front');
-    front.append(placeArt(o.place, !!o.night), stamp(o));
+    front.append(placeArt(o.place, !!o.night, epic), stamp(o));
+    if (epic) twinkles(front);
     const back = el('span', 'trip-pc-back');
     const hours = offerHours(o);
     const writer = fanOf(s, o.place) ?? (homePets(s).find((p) => !cantGo(p, now)) ?? s.pet).name;

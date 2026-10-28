@@ -284,3 +284,62 @@ const PLACES: Record<string, typeof drawMarket> = {
 export function drawPlace(ctx: CanvasRenderingContext2D, place: string, w: number, h: number, night: boolean, timeMs: number): void {
   (PLACES[place] ?? drawMarket)(ctx, w, h, night, timeMs);
 }
+
+// Each place's own little touch, drawn over its picture on a 3-star
+// postcard: confetti from Market Town's bunting, leaves drifting down in
+// Mossy Woods, bubbles rising out of Coral Cove, and fireflies with an
+// extra shooting star on Starlit Hill. Nothing for a place without one.
+export function drawPlaceSparkle(ctx: CanvasRenderingContext2D, place: string, w: number, timeMs: number): void {
+  const t = timeMs / 1000;
+  const dot = (color: string, x: number, y: number, dw = 1, dh = 1) => rect(ctx, color, Math.round(x), Math.round(y), dw, dh);
+  if (place === 'market') {
+    const colors = [PALETTE.pink, PALETTE.butter, PALETTE.white, PALETTE.mint, PALETTE.sky];
+    for (let i = 0; i < 9; i++) {
+      const y = (t * (7 + (i % 3) * 2) + i * 11) % 38 - 2;
+      const x = (i * 13 + 4 + Math.sin(t * 2 + i) * 2.5 + w) % w;
+      const flat = Math.floor(t * 4 + i) % 2;
+      dot(colors[i % colors.length], x, y, flat ? 2 : 1, flat ? 1 : 2);
+    }
+  } else if (place === 'woods') {
+    const colors = [PALETTE.leaf, PALETTE.mint, PALETTE.peach, PALETTE.butter];
+    for (let i = 0; i < 7; i++) {
+      const sway = Math.sin(t * 1.7 + i * 1.7);
+      const y = (t * (5 + (i % 3) * 2) + i * 9) % 30 + 6;
+      const x = (i * 17 + 6 + sway * 4 + w * 10) % w;
+      const c = colors[i % colors.length];
+      dot(c, x, y, 2, 1);
+      dot(c, x + (sway > 0 ? 1 : 0), y + 1);
+    }
+  } else if (place === 'cove') {
+    for (let i = 0; i < 6; i++) {
+      const y = GROUND - ((t * (6 + (i % 3) * 2) + i * 7) % 30) * 0.75;
+      const x = (i * 11 + 26 + Math.sin(t * 2.5 + i) * 1.5) % w;
+      if (y < 13) continue;
+      if (i % 2) {
+        dot(PALETTE.white, x, y);
+      } else {
+        // A little ring of a bubble.
+        dot(PALETTE.white, x, y - 1);
+        dot(PALETTE.white, x - 1, y);
+        dot(PALETTE.white, x + 1, y);
+        dot(PALETTE.white, x, y + 1);
+        dot(PALETTE.sky, x, y);
+      }
+    }
+    // Glints on the water.
+    for (let i = 0; i < 4; i++) if (Math.floor(timeMs / 300 + i * 2) % 4 === 0) dot(PALETTE.white, (i * 15 + 30) % w, 20 + (i % 3) * 3, 2, 1);
+  } else if (place === 'hill') {
+    for (let i = 0; i < 7; i++) {
+      const glow = (Math.sin(t * 2.9 + i * 1.3) + 1) / 2;
+      if (glow < 0.35) continue;
+      const x = (i * 9 + 4 + Math.sin(t * 1.1 + i * 2) * 4 + w) % w;
+      const y = 14 + ((i * 5) % 16) + Math.cos(t * 1.4 + i) * 2;
+      dot(glow > 0.75 ? PALETTE.white : PALETTE.butter, x, y);
+    }
+    const s = (t * 30) % 90;
+    if (s < 24) {
+      dot(PALETTE.white, 30 - s, 4 + s / 3, 2, 1);
+      dot(PALETTE.lavender, 32 - s, 4 + s / 3, 3, 1);
+    }
+  }
+}
