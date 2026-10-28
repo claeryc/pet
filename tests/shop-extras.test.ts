@@ -3,7 +3,6 @@ import { CONFIG } from '../src/game/config';
 import { feed } from '../src/game/actions';
 import { inUse, ownsDecor, useDecor } from '../src/game/decor';
 import {
-  baitCount,
   buyBait,
   buyDecor,
   buyFood,
@@ -14,7 +13,7 @@ import {
   limitedLeft,
   localDay,
 } from '../src/game/economy';
-import { land, pickCatch, toggleBait } from '../src/game/fishing';
+import { baitCount, baitInUse, biteDelayMs, hook, land, nextBait, pickCatch } from '../src/game/fishing';
 import { createNewGame } from '../src/game/state';
 import { newTeen } from './helpers';
 
@@ -69,41 +68,66 @@ describe('the energy drink', () => {
   });
 });
 
-describe('fishing bait', () => {
-  it('is bought one at a time', () => {
-    const s = buyBait(rich()).state;
-    expect(baitCount(s)).toBe(1);
-    expect(s.gold).toBe(10_000 - CONFIG.fishing.bait.price);
-    expect(buyBait({ ...createNewGame(START), gold: 0 }).blocked).toBe('notEnoughGold');
+describe('the tackle shelf', () => {
+  it('sells each bait one at a time', () => {
+    for (const id of ['crumbs', 'bait', 'glowLure'] as const) {
+      const s = buyBait(rich(), id).state;
+      expect(baitCount(s, id)).toBe(1);
+      expect(s.gold).toBe(10_000 - CONFIG.fishing.baits[id].price);
+      expect(buyBait({ ...createNewGame(START), gold: 0 }, id).blocked).toBe('notEnoughGold');
+    }
   });
 
-  it('makes rarer fish more likely', () => {
-    const lobsters = (baited: boolean) => {
+  it('bait makes rarer fish more likely, and the glow lure lobster most of all', () => {
+    const lobsters = (bait: 'bait' | 'glowLure' | null) => {
       let n = 0;
-      for (let i = 0; i < 100; i++) if (pickCatch('good', i / 100, baited) === 'lobster') n++;
+      for (let i = 0; i < 100; i++) if (pickCatch(i / 100, bait) === 'lobster') n++;
       return n;
     };
-    expect(lobsters(true)).toBeGreaterThan(lobsters(false));
+    expect(lobsters('bait')).toBeGreaterThan(lobsters(null));
+    expect(lobsters('glowLure')).toBeGreaterThan(lobsters('bait'));
+    expect(lobsters('glowLure')).toBeGreaterThan(50);
   });
 
-  it('stays in the bag until you switch it on', () => {
-    const s = buyBait(rich()).state;
-    expect(s.baitOn).toBe(false);
-    const r = land(s, 'perfect', 0, 0.999);
+  it('bread crumbs make fish bite sooner, without changing which', () => {
+    expect(biteDelayMs(1, 'crumbs')).toBe(biteDelayMs(1) * CONFIG.fishing.baits.crumbs.bitesSooner);
+    expect(pickCatch(0.7, 'crumbs')).toBe(pickCatch(0.7, null));
+  });
+
+  it('stays in the bag until you pick it in the pond', () => {
+    const s = buyBait(rich(), 'bait').state;
+    expect(baitInUse(s)).toBeNull();
+    const bite = hook(s, 0.999);
+    expect(bite.bait).toBeNull();
+    const r = land(s, 'perfect', bite);
     expect(r.baited).toBe(false);
-    expect(baitCount(r.state)).toBe(1);
-    expect(toggleBait(s).baitOn).toBe(true);
+    expect(baitCount(r.state, 'bait')).toBe(1);
   });
 
-  it('a landed fish uses one up, a fish that gets away does not', () => {
-    let s = toggleBait(buyBait(buyBait(rich()).state).state);
-    const r = land(s, 'perfect', 0, 0.999);
+  it('picking goes through the kinds you have, then back to none', () => {
+    let s = buyBait(buyBait(rich(), 'glowLure').state, 'crumbs').state;
+    s = nextBait(s);
+    expect(baitInUse(s)).toBe('crumbs');
+    s = nextBait(s);
+    expect(baitInUse(s)).toBe('glowLure');
+    s = nextBait(s);
+    expect(baitInUse(s)).toBeNull();
+  });
+
+  it('a landed fish uses one up, and the last one puts the pond back to no bait', () => {
+    let s = nextBait(buyBait(buyBait(rich(), 'bait').state, 'bait').state);
+    const bite = hook(s, 0.999);
+    expect(bite.bait).toBe('bait');
+    const r = land(s, 'perfect', bite);
     expect(r.baited).toBe(true);
-    expect(baitCount(r.state)).toBe(1);
+    expect(baitCount(r.state, 'bait')).toBe(1);
     s = r.state;
-    expect(baitCount(land(s, 'miss', 0, 0).state)).toBe(1);
-    const last = land(land(s, 'perfect', 0, 0).state, 'perfect', 0, 0);
-    expect(last.baited).toBe(false); // none left for the second
+    // A fish that gets away keeps the bait.
+    expect(baitCount(land(s, 'miss', bite).state, 'bait')).toBe(1);
+    const last = land(s, 'perfect', bite).state;
+    expect(baitCount(last, 'bait')).toBe(0);
+    expect(last.tackle).toBeNull();
+    expect(land(last, 'perfect', bite).baited).toBe(false); // none left
   });
 });
 

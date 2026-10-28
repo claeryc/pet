@@ -181,7 +181,7 @@ describe('save migration to the Shop extras', () => {
     expect(out.state.inventory.decor).toEqual([]);
     expect(out.state.room).toEqual({ wallpaper: 'plain', curtains: null });
     expect(out.state.stock).toEqual({ day: '', bought: 0 });
-    expect(out.state.baitOn).toBe(false);
+    expect(out.state.tackle).toBeNull();
   });
 });
 
@@ -218,11 +218,20 @@ describe('save migration to Coral Cove', () => {
   });
 });
 
+describe('save migration to the tackle shelf', () => {
+  it('turns bait switched on into bait picked, and off into none', () => {
+    const on = migrate({ version: 38, state: { baitOn: true } }).state;
+    expect(on.tackle).toBe('bait');
+    expect(on.baitOn).toBeUndefined();
+    expect(migrate({ version: 38, state: { baitOn: false } }).state.tackle).toBeNull();
+  });
+});
+
 describe('save migration to kitchen items', () => {
   it('gives old saves an empty kitchen', () => {
-    const out = migrate({ version: 38, state: { pet: { name: 'drip' }, recipesFound: ['bento'] } }).state;
+    const out = migrate({ version: 39, state: { pet: { name: 'drip' }, recipesFound: ['bento'] } }).state;
     expect(out.kitchen).toEqual([]);
     expect(out.recipesFound).toEqual(['bento']);
-    expect(SAVE_VERSION).toBe(39);
+    expect(SAVE_VERSION).toBe(40);
   });
 });

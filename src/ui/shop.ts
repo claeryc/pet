@@ -13,7 +13,8 @@
 
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
-import { HATS, baitCount, fortuneCookies, revivalStars, canBuyPot, foodCount, limitedInStock, limitedLeft, localDay, dailySpecial, ownsSpecial, priceToday, hasBigJar, riceJarSize, getHat } from '../game/economy';
+import { BAITS, baitCount, type BaitId } from '../game/fishing';
+import { HATS, fortuneCookies, revivalStars, canBuyPot, foodCount, limitedInStock, limitedLeft, localDay, dailySpecial, ownsSpecial, priceToday, hasBigJar, riceJarSize, getHat } from '../game/economy';
 import { earnedFrom } from '../game/regulars';
 import { CURTAINS, FURNITURE, SPOTS, WALLPAPERS, getDecor, inUse, ownsDecor, piecesFor, type Decor, type DecorKind } from '../game/decor';
 import type { GameState } from '../game/state';
@@ -40,7 +41,7 @@ export interface ShopCallbacks {
   onBuyHat: (hat: string) => void;
   onBuyGardenItem: (item: ShopItem) => void;
   onWearHat: (hat: string | null) => void;
-  onBuyBait: () => void;
+  onBuyBait: (id: BaitId) => void;
   onBuyFortuneCookie: () => void;
   onBuyCharm: (charm: string) => void; // a charm for the journey lunchbox
   onBuyHolidayTicket: () => void; // a Holiday ticket, for star fragments
@@ -688,12 +689,13 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
   const pot = () => wideCard(ITEM_ICONS.gardenPot, TINT.garden, S.extraPot, S.extraPotNote,
     priceButton({ cur: 'gold', cost: CONFIG.garden.extraPotPrice, onBuy: cb.onBuyPot }, gold));
 
-  // Fishing.
-  const fishing: Item[] = [{
-    key: 'bait', art: ITEM_ICONS.bait, name: S.bait, kind: S.fishing, about: S.baitNote(baitCount(state)),
-    tint: TINT.fishing, count: countOf(baitCount(state)),
-    price: { cur: 'gold', cost: CONFIG.fishing.bait.price, onBuy: cb.onBuyBait },
-  }];
+  // Fishing: the tackle shelf.
+  const fishing: Item[] = BAITS.map((id) => ({
+    key: `bait:${id}`, art: ITEM_ICONS[id], name: S.baits[id].name, kind: S.fishing,
+    about: S.baitNote(S.baits[id].note, baitCount(state, id)),
+    tint: TINT.fishing, count: countOf(baitCount(state, id)),
+    price: { cur: 'gold', cost: CONFIG.fishing.baits[id].price, onBuy: () => cb.onBuyBait(id) },
+  }));
 
   // Journeys: Percy rests after coming along, and gold wakes him early;
   // charms for the lunchbox, used up on one trip; Holiday tickets.

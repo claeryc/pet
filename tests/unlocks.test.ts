@@ -26,7 +26,7 @@ describe('menus that open up as you play', () => {
 
   it('cooking opens after the first catch and stays open after eating it', () => {
     let s = updateProgress(newTeen(START)).state;
-    s = land(s, 'perfect', 0, 0).state;
+    s = land(s, 'perfect', { fish: 'shrimp', bait: null }).state;
     const result = updateProgress(s);
     expect(result.unlocked).toEqual(['cooking', 'delivery']);
     const eaten = { ...result.state, inventory: { ...result.state.inventory, food: {} } };
@@ -61,8 +61,8 @@ describe('progress the menus use', () => {
 
   it('remembers each kind of fish caught once', () => {
     let s = newTeen(START);
-    s = land(s, 'perfect', 0, 0).state;
-    s = land(s, 'perfect', 0, 0).state;
+    s = land(s, 'perfect', { fish: 'shrimp', bait: null }).state;
+    s = land(s, 'perfect', { fish: 'shrimp', bait: null }).state;
     expect(s.caught).toEqual(['shrimp']);
   });
 });

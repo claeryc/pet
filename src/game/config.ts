@@ -333,6 +333,10 @@ export const CONFIG = {
     energyPerCast: 3, // each cast tires the pet a little
     biteAfterSeconds: { min: 4, max: 10 }, // how long until a fish bites
     biteWindowSeconds: 1.6, // how long you have to tap Reel in after a bite
+    // Before the real bite a fish may nibble at the bait up to `max` times,
+    // each a quick little dip of `seconds`. Reeling in on a nibble scares
+    // it off, so the wait is something to watch, not just sit through.
+    nibbles: { max: 2, seconds: 0.4 },
     // How wide each coloured zone is, as a share of the bar. The green
     // stripe sits in the middle, with yellow on both sides, then red; the
     // rest of the bar is blue (no catch).
@@ -349,20 +353,35 @@ export const CONFIG = {
       // on green counts toward the grade (the dot is still getting there).
       graceSeconds: 2,
       meterStart: 0.3, // the catch meter starts this full
-      fill: 0.16, // meter gained per second on a coloured zone
+      // Meter gained per second on each zone: green fills it fastest, so
+      // you can see how well you're doing while you reel.
+      fill: { perfect: 0.2, good: 0.12, weak: 0.06 },
       drain: 0.15, // meter lost per second on blue
       // A landed catch is perfect if at least this share of the time on
       // the coloured zones was on green, good if on green or yellow.
       gradeShare: 0.5,
     },
-    // The chance (0-1) that a fish is landed for each kind of catch.
-    catchChance: { perfect: 1, good: 0.75, weak: 0.3, miss: 0 },
-    // What you catch, in percent. A perfect catch makes the rarer ones
-    // more likely.
-    catchOdds: {
-      perfect: { shrimp: 40, salmon: 40, lobster: 20 },
-      other: { shrimp: 60, salmon: 30, lobster: 10 },
+    // Everything about each fish you can catch (each is also a food above,
+    // with source 'caught'). To add a fish: an entry here, its food, its
+    // odds in each bait below, its icon and its line in STRINGS.fishing.hold.
+    //  - `odds`: how likely it is to bite without bait, in percent.
+    //  - `shadow`: how big it looks swimming up to the bait.
+    //  - `rare`: the fish that Lucky line and a perfect streak make likelier
+    //    (taken from whichever fish is likeliest). Only one should be rare.
+    //  - `fight`: how it fights, as multiples of the reel numbers above.
+    //    `shiftEvery` < 1 slides the zones more often, `shiftBy` > 1
+    //    further, `glide` > 1 more slowly, and `drain` > 1 empties the
+    //    meter faster. `tug` is how hard it yanks the dot back left now and
+    //    then (every `tugEverySeconds`), as a kick to its speed.
+    fish: {
+      shrimp: { odds: 55, shadow: 'small', rare: false, fight: { shiftEvery: 1, shiftBy: 1, glide: 1, drain: 1, tug: 0 } },
+      salmon: { odds: 33, shadow: 'medium', rare: false, fight: { shiftEvery: 0.5, shiftBy: 1.3, glide: 0.55, drain: 1, tug: 0 } },
+      lobster: { odds: 12, shadow: 'big', rare: true, fight: { shiftEvery: 1, shiftBy: 1, glide: 1, drain: 1.3, tug: 0.85 } },
     },
+    tugEverySeconds: { min: 1, max: 1.8 },
+    // Each perfect catch in a row makes the rare fish this many percent
+    // likelier on the next bite, for up to `max` in a row.
+    streakBonus: { percent: 4, max: 3 },
     // How many fish one successful catch gives. A food buff could raise this
     // later on (e.g. a chance of an extra fish).
     fishPerCatch: 1,
@@ -371,14 +390,15 @@ export const CONFIG = {
     // shy: you can keep fishing for food, but without XP or seeds. One pet
     // lands about 15 a day, so only swapping in rested pets reaches it.
     rewardedPerDay: 30,
-    // Bait from the Shop. While you have some, each fish you land uses one
-    // and is more likely to be a salmon or lobster (odds in percent).
-    bait: {
-      price: 12,
-      catchOdds: {
-        perfect: { shrimp: 20, salmon: 45, lobster: 35 },
-        other: { shrimp: 35, salmon: 45, lobster: 20 },
-      },
+    // The tackle shelf in the Shop: baits for the pond. Pick one in the
+    // pond (the little chip in its corner); each fish you land with it
+    // uses one up. `odds` replace each fish's own odds while it's on, and `bitesSooner`
+    // makes fish bite in that share of the usual time. None of them give
+    // energy: that's the energy drink's job.
+    baits: {
+      crumbs: { price: 4, bitesSooner: 0.5 },
+      bait: { price: 12, odds: { shrimp: 30, salmon: 45, lobster: 25 } },
+      glowLure: { price: 25, odds: { shrimp: 15, salmon: 30, lobster: 55 } },
     },
   },
 
@@ -871,7 +891,7 @@ export const CONFIG = {
     perRank: {
       steadyHands: 0.1, // the green stripe is 10% wider
       headStart: 0.1, // the catch meter starts 10% fuller
-      luckyLine: 5, // lobster 5% likelier (shrimp 5% less)
+      luckyLine: 5, // the rare fish (lobster) 5% likelier
       quickSprouts: 0.08, // crops grow 8% faster
       deepRoots: 2, // soil stays wet 2 hours longer
       hardyPlants: 0.25, // a quarter less likely to get sick

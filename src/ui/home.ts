@@ -9,7 +9,8 @@ import { sheetFor, stageLengthMs } from '../game/growth';
 import type { FurnitureSlot, GameState, PetStats } from '../game/state';
 import { meadowVisitor } from '../game/meadow';
 import { createMenu, type MenuCallbacks } from './menu';
-import { baitCount, foodCount, revivalStars } from '../game/economy';
+import { foodCount, revivalStars } from '../game/economy';
+import { BAITS, baitCount, baitInUse, type BaitId, type Bite } from '../game/fishing';
 import { createDrawer, type DrawerOption, type Effect } from './drawer';
 import { ITEM_ICONS, STAT_ICONS } from './icons';
 import type { ActivityId, Food, FoodId } from '../game/actions';
@@ -58,9 +59,9 @@ export interface HomeCallbacks extends MenuCallbacks {
   onMedicine: () => void;
   onRevive: () => void; // a pet that passed away: use (or buy) a Revival Star
   onGoodbye: () => void; // ...or let it go
-  onCast: () => boolean; // throws the fishing line; false if refused
-  onLand: (grade: CatchGrade) => string | null; // the fish landed (a food id), or null
-  onToggleBait: () => void;
+  onCast: (streak: number) => Bite | null; // throws the fishing line; what will bite, or null if refused
+  onLand: (grade: CatchGrade, bite: Bite) => string | null; // the fish landed (a food id), or null
+  onPickBait: () => void;
   onCook: (items: FoodId[]) => FoodId | null; // the dish made, or null if refused
   onPlant: (pot: number, crop: CropId) => void;
   onWater: (pot: number, perfect: boolean) => void;
@@ -790,7 +791,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const fishing = createFishing({
     onCast: cb.onCast,
     onLand: cb.onLand,
-    onToggleBait: cb.onToggleBait,
+    onPickBait: cb.onPickBait,
     onExit: () => showActions(DRAIN_MS),
     toast: (msg) => showToast(msg),
   });
@@ -1237,7 +1238,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
         feedDrawer.setOrder(order);
       }
       cooking.update(state);
-      fishing.setBait(baitCount(state), state.baitOn);
+      fishing.setBait(baitInUse(state), Object.fromEntries(BAITS.map((id) => [id, baitCount(state, id)])) as Record<BaitId, number>);
       fishing.setPerks(reelPerks(state));
       garden.update(state, now);
       delivery.update(state, now);
