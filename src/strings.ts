@@ -393,14 +393,18 @@ export const STRINGS = {
     needs: { biggerPot: 'Needs the bigger pot', doubleBatch: '', oven: 'Needs an oven', mill: 'Needs a mill' },
     // The station tabs on the counter.
     stations: { pot: 'Pot', board: 'Board', oven: 'Oven', mill: 'Mill' },
-    boardStart: 'Put a fish on the board, then tap the board and tap again to cut!',
+    boardStart: 'Put a fish on the board, then tap when the marker is in the green to chop!',
     boardEmpty: 'Put a fish on the board first. Tap Food to pick one.',
-    boardFull: 'One fish at a time. Tap it to take it off.',
-    onBoard: (name: string) => `${name} on the board. Tap to take it off`,
+    boardFull: 'Finish chopping this one first.',
+    boardHint: 'Tap Food to put a fish on the board',
     addToBoard: (name: string, count: string) => `${name} (${count}). Tap to put it on the board`,
-    emptyBoard: 'Empty spot on the board',
-    cutInto: (name: string) => `Cut it into ${name}. Tap to start, tap again to cut`,
-    cutNow: 'Tap to cut!',
+    // The chopping game: a marker runs up and down a meter beside the
+    // board; each tap chops on the next dotted line.
+    chopNow: (name: string) => `Chop the ${name}. Tap when the marker is in the green`,
+    chopPrompt: 'Tap in the green to chop',
+    chopsLeft: (n: number) => (n === 1 ? 'One more chop' : n === 2 ? 'Two more chops' : `${n} more chops`),
+    perfectChop: 'Perfect!',
+    goodChop: 'Chop!',
     perfectCut: 'Perfect cut!',
     goodCut: 'Nicely cut.',
     // Double batch: the ×2 switch on the pot.
@@ -411,6 +415,13 @@ export const STRINGS = {
     inPot: (name: string) => `${name} in the pot. Tap to take it out`,
     addToPot: (name: string, count: string) => `${name} (${count}). Tap to put it in the pot`,
     emptyPotLabel: 'Empty pot',
+    // The recipe card pinned up beside the pot.
+    cardEmpty: 'Add food',
+    cardEmptyHint: 'Tap Food below',
+    cardMystery: 'Cook to find out',
+    cardMush: "Won't make a recipe",
+    cook: 'Cook!',
+    made: (name: string) => `${name}!`,
     simmering: 'Cooking...',
     cookInto: (name: string) => `Cook ${name}`,
     cookMystery: 'Cook this mix and see what it makes',

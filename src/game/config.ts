@@ -459,11 +459,13 @@ export const CONFIG = {
       oven: {},
       mill: {},
     },
-    // The cutting board's timing game: a knife slides along the fish and
-    // back every `sweepSeconds`; tapping while it's inside `band` (shares
-    // of the way across) is a perfect cut, worth `perfectXp` Keeper XP.
+    // The cutting board's timing game: a marker runs up a meter beside the
+    // board and back down every `sweepSeconds`, and each tap chops the
+    // fish on the next of its `chops` dotted lines. A chop while the
+    // marker is inside `band` (shares of the way up) is a perfect one;
+    // all of them perfect is a perfect cut, worth `perfectXp` Keeper XP.
     // Any cut still makes the fillet.
-    cutting: { sweepSeconds: 1.2, band: { start: 0.42, end: 0.58 }, perfectXp: 2 },
+    cutting: { sweepSeconds: 1.2, band: { start: 0.42, end: 0.58 }, chops: 3, perfectXp: 2 },
     recipes: [
       { id: 'grilledShrimp', ingredients: ['shrimp'] },
       { id: 'shrimpOnigiri', ingredients: ['riceBall', 'shrimp'] },

@@ -2073,3 +2073,44 @@ export const TAP_ICON = pixelIcon([
   '...kwwwwwk..',
   '...kkkkkkk..',
 ]);
+
+// The kitchen scene's bigger pieces: the pot on the stove, a burner flame
+// and the knife over the cutting board.
+export const KITCHEN_ART = {
+  pot: pixelIcon([
+    '...........kkkk...........',
+    '...........kllk...........',
+    '.....kkkkkkkkkkkkkkkk.....',
+    '....kllllllllllllllllk....',
+    '..kkkkkkkkkkkkkkkkkkkkkk..',
+    '...kkkkkkkkkkkkkkkkkkkk...',
+    'kkkkbsbbbbbbbbbbbbbbbbkkkk',
+    'kkkkbsbbbbbbbbbbbbbbbbkkkk',
+    '...kbsbbbbbbbbbbbbbbbbk...',
+    '...kbsbbbbbbbbbbbbbbbbk...',
+    '...kbsbbbbbbbbbbbbbbbbk...',
+    '...kbsbbbbbbbbbbbbbbbbk...',
+    '...kbbbbbbbbbbbbbbbbbbk...',
+    '....kbbbbbbbbbbbbbbbbk....',
+    '.....kbbbbbbbbbbbbbbk.....',
+    '......kbbbbbbbbbbbbk......',
+    '......kkkkkkkkkkkkkk......',
+  ]),
+  flame: pixelIcon([
+    '...r....',
+    '..rr..r.',
+    '..ryr.rr',
+    '.rryyrry',
+    '.ryyyyyr',
+    'rryyyyyr',
+    '.rryyrr.',
+    '..kkkk..',
+  ]),
+  knife: pixelIcon([
+    '..kkkkkkkkkk....',
+    '.kwwwwwwwwwwkkkk',
+    'kwwwwwwwwwwwkcck',
+    'kvvvvvvvvvvvkcck',
+    '.kkkkkkkkkkkkkkk',
+  ]),
+};

@@ -1,16 +1,20 @@
-// The cooking pot. While you cook, the button row becomes
-// [Close] [Food] [Recipes], and a kitchen counter slides up over the stat
-// bars into a panel of the same size, just like the pond does for fishing.
+// The kitchen. While you cook, the button row becomes
+// [Close] [Food] [Recipes], and the kitchen pops up over the stat bars and
+// the pet's room, filling both.
 //
-// The counter shows the pot: a spot for each food it takes (three, four
-// with the bigger pot), then "=" and the pot
-// itself. Tap the pot to cook. When the spots hold a recipe you know, the
-// pot shows the dish it will make. A mix that can't become any recipe,
-// even with more added, shows a Mushy mess as a warning; anything else
-// shows a "?".
+// Tabs at the top switch between the pot and the cutting board.
+//
+// The pot sits on the stove against the tiled wall, with a recipe card
+// pinned up beside it. Below, on the counter, is a spot for each food it
+// takes (three, four with the bigger pot), and a Cook! button (tapping the
+// pot cooks too). When the spots hold a recipe you know, the card shows
+// the dish it will make. A mix that can't become any recipe, even with
+// more added, shows a Mushy mess as a warning; anything else shows a "?".
+// With double batch, a ×2 switch at the top cooks two of a dish at once
+// from two of everything.
 //
 // Food and Recipes open upward like Feed and Play, stopping short of the
-// pot so you can watch it fill:
+// kitchen so you can watch it fill:
 //  - Food: every ingredient with how many you have. Tap one to put it in
 //    the pot; tap it in the pot to take it back out.
 //  - Recipes: every recipe, with what it needs and how many you have
@@ -22,11 +26,11 @@
 // Cooking takes a moment: each ingredient plops into the pot in turn, the
 // lid rattles and steams while it cooks, and then the dish pops up.
 //
-// Tabs at the top of the counter switch between the pot and the cutting
-// board. The board takes one fish: tap the board and a knife starts
-// sliding along it; tap again to cut. A cut in the middle is a perfect
-// one, but any cut makes the fillet. With double batch, a ×2 switch on
-// the counter cooks two of a dish at once from two of everything.
+// The cutting board takes one fish, with dotted lines across it where the
+// chops go. A marker runs up and down a meter beside the board; tap the
+// board to chop on the next line. A chop while the marker is in the green
+// is a perfect one, and all of them perfect is a perfect cut, but any cut
+// makes the fillet.
 //
 // What a mix makes, and what cooking uses up, is decided in
 // src/game/cooking.ts.
@@ -43,7 +47,7 @@ import {
 import type { Food, FoodId } from '../game/actions';
 import type { GameState } from '../game/state';
 import { createDrawer } from './drawer';
-import { ITEM_ICONS } from './icons';
+import { ITEM_ICONS, KITCHEN_ART, SKILL_POINT_ICON } from './icons';
 import { soldInShop, type ShopCategory } from './shop';
 
 export interface CookingCallbacks {
@@ -52,18 +56,19 @@ export interface CookingCallbacks {
   onCook: (items: FoodId[], opts: CookOptions) => FoodId | null;
   onExit: () => void;
   toast: (message: string, shop?: ShopCategory) => void; // `shop`: offer a button to that part of the Shop
+  roomTop: () => number; // the top of the pet's room on screen, which the kitchen reaches up to
 }
 
 export interface Cooking {
   row: HTMLElement; // the buttons, shown in place of the normal button row
-  kitchen: HTMLElement; // the counter, shown in place of the stat bars
+  kitchen: HTMLElement; // the kitchen, shown over the stat bars and the room
   start: () => void;
   stop: () => void;
   active: () => boolean;
   update: (state: GameState) => void;
 }
 
-// How long the counter takes to slide in and out (matches .kitchen in
+// How long the kitchen takes to pop in and out (matches .kitchen in
 // style.css).
 export const KITCHEN_OUT_MS = 450;
 // Cooking, step by step: the ingredients plop in one after another, then
@@ -78,7 +83,7 @@ export const DISH_MS = PLOPS_MS + SIMMER_MS;
 export const DONE_MS = DISH_MS + 1400;
 
 const reduced = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-// Space kept between the pot and an open Food or Recipes panel.
+// Space kept between the kitchen and an open Food or Recipes panel.
 const PANEL_GAP = 12;
 
 const foodName = (id: FoodId) => STRINGS.foods[id];
@@ -86,6 +91,15 @@ const stars = (id: FoodId) => (CONFIG.foods as readonly Food[]).find((f) => f.id
 const inShop = (id: FoodId) => (CONFIG.foods as readonly Food[]).some((f) => f.id === id && soldInShop(f));
 const countText = (n: number) => (n === Infinity ? '∞' : String(n));
 const STATION_TABS: readonly Station[] = ['pot', 'board'];
+// Where the chops go across the food on the board, as shares of its width.
+const CHOP_LINES = [0.32, 0.5, 0.68].slice(0, CONFIG.cooking.cutting.chops);
+// How far apart the pieces slide after each chop, in px.
+const PIECE_GAP = 10;
+const el = (tag: string, className: string): HTMLElement => {
+  const e = document.createElement(tag);
+  e.className = className;
+  return e;
+};
 // Every food that can go on any station, in the order of CONFIG.foods.
 const ALL_INGREDIENTS: readonly FoodId[] = (CONFIG.foods as readonly Food[])
   .map((f) => f.id as FoodId)
@@ -104,49 +118,75 @@ export function createCooking(cb: CookingCallbacks): Cooking {
   let outTimer = 0;
   let station: Station = 'pot';
   let batch = 1; // 2 while the ×2 switch is on
-  // The cutting game: when the knife started sliding (0 while it isn't).
+  // The chopping game: when the marker started running (0 while it
+  // isn't), and how each chop so far landed (true: in the green).
   let cutStart = 0;
   let cutFrame = 0;
+  let chops: boolean[] = [];
+  let chopTimer = 0;
 
-  // ---- The counter with the pot ----
-  const kitchen = document.createElement('div');
-  kitchen.className = 'kitchen';
+  // ---- The kitchen ----
+  const kitchen = el('div', 'kitchen');
   kitchen.hidden = true;
-  // The top of the counter: the station tabs, and the ×2 switch.
-  const top = document.createElement('div');
-  top.className = 'kitchen-top';
-  const tabs = document.createElement('div');
-  tabs.className = 'kitchen-tabs';
+  // The top: the station tabs, and the ×2 switch.
+  const top = el('div', 'kitchen-top');
+  const tabs = el('div', 'kitchen-tabs');
   tabs.setAttribute('role', 'tablist');
   const tabButtons = STATION_TABS.map((st) => {
-    const b = document.createElement('button');
-    b.className = 'kitchen-tab';
+    const b = el('button', 'kitchen-tab');
     b.setAttribute('role', 'tab');
     b.textContent = STRINGS.cooking.stations[st];
     b.addEventListener('click', () => switchTo(st));
     tabs.append(b);
     return { st, b };
   });
-  const batchBtn = document.createElement('button');
-  batchBtn.className = 'kitchen-batch';
+  const batchBtn = el('button', 'kitchen-batch');
   batchBtn.textContent = '×2';
   batchBtn.addEventListener('click', () => {
     if (busy()) return;
     batch = batch === 2 ? 1 : 2;
     render();
   });
-  top.append(tabs, batchBtn);
-  const potRow = document.createElement('div');
-  potRow.className = 'pot-row';
+  // How the chops have gone, one pip each (on the board).
+  const pips = el('span', 'chop-pips');
+  pips.setAttribute('aria-hidden', 'true');
+  const pipDots = CHOP_LINES.map(() => pips.appendChild(el('b', 'chop-pip')));
+  top.append(tabs, pips, batchBtn);
+
+  // ---- The pot: the stove and the recipe card on the wall, the spots and
+  // the Cook! button on the counter ----
+  const potScene = el('div', 'kitchen-scene pot-scene');
+  const card = el('div', 'recipe-card');
+  card.setAttribute('aria-hidden', 'true');
+  const cardArt = el('span', 'recipe-card-art');
+  const cardName = el('b', 'recipe-card-name');
+  const cardNote = el('small', 'recipe-card-note');
+  card.append(el('i', 'recipe-card-pin'), cardArt, cardName, cardNote);
+  const stove = el('div', 'stove');
+  // The pot is a Cook button too.
+  const potBtn = el('button', 'stove-pot');
+  potBtn.innerHTML = KITCHEN_ART.pot;
+  const steam = el('span', 'pot-steam');
+  steam.setAttribute('aria-hidden', 'true');
+  const potDish = el('span', 'pot-dish');
+  potDish.setAttribute('aria-hidden', 'true');
+  const batchTag = el('span', 'pot-batch');
+  batchTag.textContent = '×2';
+  batchTag.setAttribute('aria-hidden', 'true');
+  potBtn.append(steam, potDish, batchTag);
+  potBtn.addEventListener('click', cookIt);
+  const flames = el('span', 'stove-flames');
+  flames.setAttribute('aria-hidden', 'true');
+  flames.innerHTML = KITCHEN_ART.flame.repeat(2);
+  stove.append(potBtn, flames);
+  const potRow = el('div', 'pot-row');
   // Spots for the biggest pot; the ones this pot doesn't have are hidden,
   // with the "+" in front of them.
   const slots = Array.from({ length: MAX_POT_SLOTS }, (_, i) => {
-    const b = document.createElement('button');
-    b.className = 'pot-slot';
+    const b = el('button', 'pot-slot');
     b.addEventListener('click', () => {
       if (pot[i] === undefined || busy()) return;
       pot.splice(i, 1);
-      stopCut();
       render();
     });
     return b;
@@ -156,39 +196,54 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     if (i > 0) potRow.append(pluses[i] = sign('+'));
     potRow.append(s);
   });
-  potRow.append(sign('='));
-  // The pot is the Cook button.
-  const potBtn = document.createElement('button');
-  potBtn.className = 'pot-result';
-  const steam = document.createElement('span');
-  steam.className = 'pot-steam';
-  steam.setAttribute('aria-hidden', 'true');
-  const potIcon = document.createElement('span');
-  potIcon.className = 'pot-result-icon';
-  // On the board: the knife's track, with the perfect stretch marked.
-  const knife = document.createElement('span');
-  knife.className = 'cut-track';
-  knife.setAttribute('aria-hidden', 'true');
-  const band = document.createElement('span');
-  band.className = 'cut-band';
+  const cookBtn = el('button', 'kitchen-cook');
+  cookBtn.textContent = STRINGS.cooking.cook;
+  cookBtn.addEventListener('click', cookIt);
+  // "Fish soup!", where the Cook! button was, once it's made.
+  const burst = el('div', 'kitchen-burst');
+  burst.setAttribute('aria-live', 'polite');
+  potScene.append(card, stove, potRow, cookBtn, burst);
+
+  // ---- The board: the food with its dotted chop lines, the knife over
+  // the next one, and the meter beside it. The whole board is the button.
+  const boardScene = el('div', 'kitchen-scene board-scene');
+  const boardBtn = el('button', 'cut-board');
+  boardBtn.addEventListener('click', chop);
+  const cutFood = el('span', 'cut-food');
+  cutFood.setAttribute('aria-hidden', 'true');
+  // The food is drawn once per piece, each clipped to its stretch between
+  // two chop lines, so the pieces can slide apart.
+  const edges = [0, ...CHOP_LINES, 1];
+  const pieces = edges.slice(1).map((end, i) => {
+    const piece = el('span', 'cut-piece');
+    piece.style.clipPath = `inset(-20% ${(1 - end) * 100}% -20% ${edges[i] * 100}%)`;
+    return piece;
+  });
+  const lines = CHOP_LINES.map((x) => {
+    const line = el('i', 'cut-line');
+    line.style.left = `${x * 100}%`;
+    return line;
+  });
+  const knife = el('span', 'cut-knife');
+  knife.innerHTML = KITCHEN_ART.knife;
+  const whoosh = el('i', 'cut-whoosh');
+  const chopBurst = el('span', 'chop-burst');
+  cutFood.append(...pieces, ...lines, knife, whoosh, chopBurst);
+  const meter = el('span', 'cut-meter');
+  meter.setAttribute('aria-hidden', 'true');
+  const meterBand = el('span', 'cut-band');
   const { start: bandStart, end: bandEnd } = CONFIG.cooking.cutting.band;
-  band.style.left = `${bandStart * 100}%`;
-  band.style.width = `${(bandEnd - bandStart) * 100}%`;
-  const blade = document.createElement('span');
-  blade.className = 'cut-blade';
-  knife.append(band, blade);
-  const batchTag = document.createElement('span');
-  batchTag.className = 'pot-batch';
-  batchTag.textContent = '×2';
-  batchTag.setAttribute('aria-hidden', 'true');
-  potBtn.append(steam, potIcon, knife, batchTag);
-  potBtn.addEventListener('click', cookIt);
-  potRow.append(potBtn);
-  kitchen.append(top, potRow);
+  meterBand.style.bottom = `${bandStart * 100}%`;
+  meterBand.style.height = `${(bandEnd - bandStart) * 100}%`;
+  const marker = el('span', 'cut-mark');
+  meter.append(meterBand, marker);
+  boardBtn.append(cutFood, meter);
+  const prompt = el('div', 'kitchen-prompt');
+  boardScene.append(boardBtn, prompt);
+  kitchen.append(top, potScene, boardScene);
 
   function sign(text: string): HTMLElement {
-    const s = document.createElement('span');
-    s.className = 'pot-sign';
+    const s = el('span', 'pot-sign');
     s.textContent = text;
     s.setAttribute('aria-hidden', 'true');
     return s;
@@ -297,6 +352,9 @@ export function createCooking(cb: CookingCallbacks): Cooking {
   function addToPot(id: FoodId): void {
     if (busy() || !state) return;
     if (!ingredientsAt(station).includes(id)) return;
+    // On the board, a new fish takes the place of the last one until the
+    // first chop.
+    if (onBoard() && pot.length > 0 && chops.length === 0) pot.length = 0;
     if (pot.length >= stationSlots(state, station)) {
       return cb.toast(onBoard() ? STRINGS.cooking.boardFull : STRINGS.cooking.full);
     }
@@ -336,67 +394,111 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     render();
   }
 
-  // The knife's place along the board, 0-1, sliding there and back.
+  // The marker's place up the meter, 0-1, running up and back down.
   function cutAt(now: number): number {
     const t = ((now - cutStart) / (CONFIG.cooking.cutting.sweepSeconds * 1000)) % 2;
     return t <= 1 ? t : 2 - t;
   }
 
   function startCut(): void {
+    if (cutStart) return;
     cutStart = performance.now();
-    potRow.classList.add('cutting');
     const step = () => {
-      blade.style.left = `${cutAt(performance.now()) * 100}%`;
+      marker.style.bottom = `${cutAt(performance.now()) * 100}%`;
       cutFrame = requestAnimationFrame(step);
     };
     step();
-    potBtn.setAttribute('aria-label', STRINGS.cooking.cutNow);
   }
 
+  // Stops the marker, and forgets any chops (the fish isn't used up until
+  // the last one).
   function stopCut(): void {
     cancelAnimationFrame(cutFrame);
+    clearTimeout(chopTimer);
     cutStart = 0;
-    potRow.classList.remove('cutting');
+    chops = [];
+    boardScene.classList.remove('chopped');
+  }
+
+  // A tap on the board: chop on the next line. The last chop cuts it.
+  function chop(): void {
+    if (busy() || !state) return;
+    if (pot.length === 0) return cb.toast(STRINGS.cooking.boardEmpty);
+    const items = [...pot];
+    if (!matchRecipe(items, station)) return cb.toast(STRINGS.cooking.needMore(foodName(items[0])));
+    if (!cutStart) startCut();
+    const at = cutAt(performance.now());
+    const { start, end } = CONFIG.cooking.cutting.band;
+    const hit = at >= start && at <= end;
+    knife.style.left = `${CHOP_LINES[chops.length] * 100}%`;
+    chops.push(hit);
+    chopBurst.innerHTML = hit ? `${SKILL_POINT_ICON}<b>${STRINGS.cooking.perfectChop}</b>` : `<b>${STRINGS.cooking.goodChop}</b>`;
+    chopBurst.style.left = whoosh.style.left = `${CHOP_LINES[chops.length - 1] * 100}%`;
+    // Replay the chop: knife down, a flash along the line, the word.
+    boardScene.classList.remove('chopped');
+    void boardScene.offsetWidth;
+    boardScene.classList.add('chopped');
+    clearTimeout(chopTimer);
+    chopTimer = window.setTimeout(() => {
+      boardScene.classList.remove('chopped');
+      render();
+    }, 600);
+    if (chops.length < CHOP_LINES.length) return render();
+    const perfect = chops.every(Boolean);
+    const dish = cb.onCook(items, { station, batch: 1, perfect });
+    cancelAnimationFrame(cutFrame);
+    if (!dish) {
+      stopCut();
+      return render();
+    }
+    cb.toast(perfect ? STRINGS.cooking.perfectCut : STRINGS.cooking.goodCut);
+    foodDrawer.close();
+    recipeDrawer.close();
+    // The pieces stay apart a moment, then the fillet pops up.
+    pot.length = 0;
+    plopping = items;
+    later(500, () => {
+      plopping = [];
+      stopCut();
+      justMade = dish;
+      kitchen.classList.add('cooked');
+      render();
+    });
+    later(500 + DONE_MS - DISH_MS, () => {
+      justMade = null;
+      kitchen.classList.remove('cooked');
+      render();
+    });
+    render();
   }
 
   function cookIt(): void {
     if (busy() || !state) return;
-    if (pot.length === 0) return cb.toast(onBoard() ? STRINGS.cooking.boardEmpty : STRINGS.cooking.emptyPot);
+    if (pot.length === 0) return cb.toast(STRINGS.cooking.emptyPot);
     const items = [...pot];
-    let perfect = false;
-    if (onBoard()) {
-      // First tap: the knife starts. Second tap: cut where it is.
-      if (!matchRecipe(items, station)) return cb.toast(STRINGS.cooking.needMore(foodName(items[0])));
-      if (!cutStart) return startCut();
-      const at = cutAt(performance.now());
-      const { start, end } = CONFIG.cooking.cutting.band;
-      perfect = at >= start && at <= end;
-      stopCut();
-    }
-    const dish = cb.onCook(items, { station, batch: batchNow(), perfect });
+    const dish = cb.onCook(items, { station, batch: batchNow() });
     if (!dish) return;
-    if (onBoard()) cb.toast(perfect ? STRINGS.cooking.perfectCut : STRINGS.cooking.goodCut);
     clearDone();
     pot.length = 0;
     foodDrawer.close();
     recipeDrawer.close();
     plopping = items;
     simmering = true;
-    potRow.classList.add('simmering');
+    kitchen.classList.add('simmering');
     // In they go, one by one from the left.
     items.forEach((id, i) => later(i * PLOP_EVERY_MS, () => plop(id)));
     // Lid off: the dish pops up.
     later(DISH_MS, () => {
       simmering = false;
       plopping = [];
-      potRow.classList.remove('simmering');
+      kitchen.classList.remove('simmering');
       justMade = dish;
-      potRow.classList.add('cooked');
+      kitchen.classList.add('cooked');
       render();
     });
     later(DONE_MS, () => {
       justMade = null;
-      potRow.classList.remove('cooked');
+      kitchen.classList.remove('cooked');
       render();
     });
     render();
@@ -451,11 +553,8 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     justMade = null;
     plopping = [];
     simmering = false;
-    potRow.classList.remove('cooked', 'simmering');
+    kitchen.classList.remove('cooked', 'simmering');
   }
-
-  // Board-only icons and words, in place of the pot's.
-  const emptyIcon = () => (onBoard() ? ITEM_ICONS.cuttingBoard : ITEM_ICONS.cooking);
 
   // Redraws everything from the pot and the latest state.
   function render(): void {
@@ -476,10 +575,16 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     batchBtn.classList.toggle('on', batchNow() === 2);
     batchBtn.setAttribute('aria-pressed', String(batchNow() === 2));
     batchBtn.setAttribute('aria-label', STRINGS.cooking.batch(batchNow() === 2));
-    batchTag.hidden = batchNow() !== 2 || pot.length === 0;
-    potRow.dataset.station = station;
-    potRow.dataset.slots = String(stationSlots(s, station));
+    kitchen.dataset.station = station;
+    kitchen.dataset.slots = String(stationSlots(s, station));
+    potScene.hidden = onBoard();
+    boardScene.hidden = !onBoard();
+    pips.hidden = !onBoard();
+    return onBoard() ? renderBoard(s) : renderPot(s);
+  }
 
+  function renderPot(s: GameState): void {
+    batchTag.hidden = batchNow() !== 2 || pot.length === 0;
     const inSpots = plopping.length > 0 ? plopping : pot;
     const size = stationSlots(s, station);
     slots.forEach((slot, i) => {
@@ -489,40 +594,86 @@ export function createCooking(cb: CookingCallbacks): Cooking {
       const id = inSpots[i];
       slot.innerHTML = id ? ITEM_ICONS[id] : '';
       slot.classList.toggle('filled', id !== undefined);
-      slot.setAttribute('aria-label', id
-        ? (onBoard() ? STRINGS.cooking.onBoard : STRINGS.cooking.inPot)(foodName(id))
-        : onBoard() ? STRINGS.cooking.emptyBoard : STRINGS.cooking.emptySlot);
+      slot.setAttribute('aria-label', id ? STRINGS.cooking.inPot(foodName(id)) : STRINGS.cooking.emptySlot);
     });
 
-    // The pot: the dish you just made, the dish a known recipe will make,
-    // a "?" for anything else, or the empty pot.
-    // (On the board, what a fish turns into is no secret.)
+    // The card: the dish you just made, the dish a known recipe will
+    // make, a "?" for anything else, or a nudge to add food.
     const known = matchRecipe(pot, station);
-    const preview = justMade ?? (known && (knowsRecipe(s, known.id) || onBoard()) && recipeOpen(s, known) ? known.id : null);
+    const preview = justMade ?? (known && knowsRecipe(s, known.id) && recipeOpen(s, known) ? known.id : null);
     const mush = !preview && pot.length > 0 && !couldBeRecipe(pot, station);
-    potIcon.innerHTML =
-      simmering ? emptyIcon()
-      : preview ? ITEM_ICONS[preview]
-      : mush ? ITEM_ICONS[CONFIG.cooking.mess]
-      : pot.length > 0 ? ITEM_ICONS.unknown
-      : emptyIcon();
-    potBtn.dataset.kind = simmering ? 'simmer' : justMade ? 'done' : preview ? 'known' : mush ? 'mush' : pot.length > 0 ? 'mystery' : 'empty';
-    potBtn.setAttribute(
-      'aria-label',
-      simmering
-        ? STRINGS.cooking.simmering
-        : justMade
-        ? foodName(justMade)
-        : pot.length === 0
-          ? STRINGS.cooking.emptyPotLabel
-          : preview
-            ? (onBoard() ? STRINGS.cooking.cutInto : STRINGS.cooking.cookInto)(foodName(preview))
-            : mush
-              ? STRINGS.cooking.cookMush
-              : STRINGS.cooking.cookMystery,
-    );
-    potBtn.title = mush ? STRINGS.cooking.cookMush : '';
+    const kind = simmering ? 'simmer' : justMade ? 'done' : preview ? 'known' : mush ? 'mush' : pot.length > 0 ? 'mystery' : 'empty';
+    kitchen.dataset.kind = kind;
+    if (kind !== 'simmer') {
+      cardArt.innerHTML = preview ? ITEM_ICONS[preview] : mush ? ITEM_ICONS[CONFIG.cooking.mess] : pot.length > 0 ? ITEM_ICONS.unknown : ITEM_ICONS.cooking;
+      cardName.textContent = preview ? foodName(preview) : mush ? foodName(CONFIG.cooking.mess) : pot.length > 0 ? STRINGS.cooking.unknown : STRINGS.cooking.cardEmpty;
+      const n = preview ? stars(preview) : 0;
+      cardNote.textContent = justMade ? STRINGS.stars(n)
+        : preview ? STRINGS.stars(n)
+        : mush ? STRINGS.cooking.cardMush
+        : pot.length > 0 ? STRINGS.cooking.cardMystery
+        : STRINGS.cooking.cardEmptyHint;
+    }
+    potDish.innerHTML = justMade ? ITEM_ICONS[justMade] : '';
+    burst.innerHTML = justMade ? `${SKILL_POINT_ICON}<b>${STRINGS.cooking.made(foodName(justMade))}</b>` : '';
+    cookBtn.hidden = simmering || justMade !== null;
+    cookBtn.classList.toggle('faded', pot.length === 0);
+    const label = simmering
+      ? STRINGS.cooking.simmering
+      : justMade
+      ? foodName(justMade)
+      : pot.length === 0
+        ? STRINGS.cooking.emptyPotLabel
+        : preview
+          ? STRINGS.cooking.cookInto(foodName(preview))
+          : mush
+            ? STRINGS.cooking.cookMush
+            : STRINGS.cooking.cookMystery;
+    potBtn.setAttribute('aria-label', label);
+    cookBtn.setAttribute('aria-label', label);
+    cookBtn.title = mush ? STRINGS.cooking.cookMush : '';
+    renderLists(s);
+  }
 
+  function renderBoard(s: GameState): void {
+    const food = plopping[0] ?? pot[0];
+    const shown = justMade ?? food;
+    kitchen.dataset.kind = justMade ? 'done' : food ? 'known' : 'empty';
+    for (const p of pieces) p.innerHTML = shown ? ITEM_ICONS[shown] : '';
+    // Each chop slides the pieces on either side of its line apart.
+    pieces.forEach((p, i) => {
+      const apart = justMade ? 0 : Math.min(i, chops.length) - chops.length / 2;
+      p.style.transform = `translateX(${apart * PIECE_GAP}px)`;
+    });
+    lines.forEach((line, i) => {
+      line.hidden = !food || justMade !== null;
+      line.classList.toggle('done', i < chops.length);
+      line.classList.toggle('now', i === chops.length);
+    });
+    pipDots.forEach((pip, i) => pip.dataset.chop = i < chops.length ? (chops[i] ? 'perfect' : 'good') : '');
+    const next = CHOP_LINES[Math.min(chops.length, CHOP_LINES.length - 1)];
+    if (!boardScene.classList.contains('chopped')) knife.style.left = `${next * 100}%`;
+    knife.hidden = !food || justMade !== null;
+    meter.hidden = !food || justMade !== null;
+    // The marker runs while there's a fish to chop.
+    const ready = food !== undefined && !justMade && plopping.length === 0 && matchRecipe(pot, station) !== null;
+    if (ready) startCut();
+    else if (!plopping.length) {
+      cancelAnimationFrame(cutFrame);
+      cutStart = 0;
+    }
+    const leftToChop = CHOP_LINES.length - chops.length;
+    prompt.textContent = justMade ? STRINGS.cooking.made(foodName(justMade))
+      : !food ? STRINGS.cooking.boardHint
+      : chops.length === 0 ? STRINGS.cooking.chopPrompt
+      : leftToChop > 0 ? `${chops[chops.length - 1] ? STRINGS.cooking.perfectChop : STRINGS.cooking.goodChop} ${STRINGS.cooking.chopsLeft(leftToChop)}`
+      : chops.every(Boolean) ? STRINGS.cooking.perfectCut : STRINGS.cooking.goodCut;
+    boardBtn.setAttribute('aria-label', justMade ? foodName(justMade) : food ? STRINGS.cooking.chopNow(foodName(food)) : STRINGS.cooking.boardEmpty);
+    renderLists(s);
+  }
+
+  // The Food and Recipes panels.
+  function renderLists(s: GameState): void {
     const here = ingredientsAt(station);
     for (const p of pantryItems) {
       p.b.style.display = here.includes(p.id) ? '' : 'none';
@@ -581,6 +732,13 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     }
   }
 
+  // The kitchen reaches up from the stat bars over the room.
+  function reach(): void {
+    const slot = kitchen.parentElement;
+    if (!slot) return;
+    kitchen.style.setProperty('--kitchen-up', `${Math.max(0, slot.getBoundingClientRect().top - cb.roomTop())}px`);
+  }
+
   close.addEventListener('click', () => {
     stop();
     cb.onExit();
@@ -595,6 +753,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     stopCut();
     clearDone();
     kitchen.classList.remove('is-in');
+    removeEventListener('resize', reach);
     clearTimeout(outTimer);
     outTimer = window.setTimeout(() => (kitchen.hidden = true), KITCHEN_OUT_MS);
   }
@@ -609,8 +768,10 @@ export function createCooking(cb: CookingCallbacks): Cooking {
       row.hidden = false;
       clearTimeout(outTimer);
       kitchen.hidden = false;
+      reach();
+      addEventListener('resize', reach);
       render();
-      // Start below the stat bars, then slide up over them on the next frame.
+      // Start small and low, then pop up on the next frame.
       void kitchen.offsetHeight;
       kitchen.classList.add('is-in');
       cb.toast(STRINGS.cooking.start);

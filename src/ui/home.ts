@@ -807,17 +807,19 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     fishing.start();
     cb.onGuide('fishing');
   }
-  // Cooking works the same way: its own [Close] [Recipes] [Cook] row, and a
-  // kitchen counter that slides up over the stat bars.
+  // Cooking works the same way: its own [Close] [Food] [Recipes] row, and a
+  // kitchen that pops up over the stat bars and the room.
   const cooking = createCooking({
     onCook: cb.onCook,
     onExit: () => showActions(KITCHEN_OUT_MS),
     toast: showToast,
+    roomTop: () => roomWrap.getBoundingClientRect().top,
   });
   function startCooking(): void {
     cb.onSeen('cooking');
     hideActions();
-    stats.setAttribute('aria-hidden', 'true'); // covered by the counter for now
+    stats.setAttribute('aria-hidden', 'true'); // covered by the kitchen for now
+    roomWrap.setAttribute('aria-hidden', 'true');
     if (latest) cooking.update(latest.state);
     cooking.start();
     cb.onGuide('cooking');
@@ -1059,6 +1061,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   // empty as the water drains and then fill back up to their values.
   function showActions(delayMs = DRAIN_MS): void {
     stats.removeAttribute('aria-hidden');
+    roomWrap.removeAttribute('aria-hidden');
     if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
       for (const bar of Object.values(bars)) bar.refill(delayMs);
     }
