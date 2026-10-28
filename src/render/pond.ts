@@ -14,6 +14,7 @@
 
 import { PALETTE } from './palette';
 import type { FishingPhase } from '../ui/fishing';
+import { CONFIG } from '../game/config';
 import type { CatchId } from '../game/fishing';
 
 // The pond is always this many pixels wide; its height follows the shape
@@ -25,6 +26,8 @@ export const POND_WIDTH = 96;
 export type Sprite = string[];
 
 // Fish shadows (facing right; flipped when swimming left), small to big.
+// Each fish in CONFIG.fishing.fish says which size it shows as.
+const SHADOWS = { small: 0, medium: 1, big: 2 } as const;
 const FISH: Sprite[] = [
   ['k.kkkk.', '.kkkkkk', 'k.kkkk.'],
   ['k...kkkk..', 'kk.kkkkkkk', 'kkkkkkkkk.', 'k...kkk...'],
@@ -367,7 +370,7 @@ export function createPond(): Pond {
   }
 
   function hook(kind: CatchId): void {
-    wanted = FISH[kind === 'lobster' ? 2 : kind === 'salmon' ? 1 : 0];
+    wanted = FISH[SHADOWS[CONFIG.fishing.fish[kind].shadow]];
     biter = null;
   }
 

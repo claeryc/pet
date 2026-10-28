@@ -13,7 +13,7 @@
 // empty and the fish swims off.
 //
 // Which fish it is gets decided when it bites (see hook), and each kind
-// fights its own way (CONFIG.fishing.fights): salmon dart about, lobster
+// fights its own way (CONFIG.fishing.fish): salmon dart about, lobster
 // are heavy and yank the dot back now and then.
 
 import { CONFIG } from './config';
@@ -88,7 +88,7 @@ export interface Reel {
   nextTugAt: number; // when a strong fish next yanks the dot back (elapsedMs)
 }
 
-const fightOf = (fish: CatchId) => CONFIG.fishing.fights[fish];
+const fightOf = (fish: CatchId) => CONFIG.fishing.fish[fish].fight;
 
 function shiftGap(random: number, fish: CatchId = 'shrimp'): number {
   const { min, max } = CONFIG.fishing.reel.shiftEverySeconds;
@@ -252,7 +252,8 @@ export function cast(state: GameState, now: number): ActionResult {
 }
 
 // The kinds of fish you can catch (ids of foods in CONFIG.foods).
-export type CatchId = keyof typeof CONFIG.fishing.catchOdds;
+export type CatchId = keyof typeof CONFIG.fishing.fish;
+export const CATCHES = Object.keys(CONFIG.fishing.fish) as CatchId[];
 
 // The baits on the tackle shelf (ids of supplies in the inventory).
 export type BaitId = keyof typeof CONFIG.fishing.baits;
@@ -274,15 +275,20 @@ export function baitInUse(state: GameState): BaitId | null {
   return state.tackle && baitCount(state, state.tackle) > 0 ? state.tackle : null;
 }
 
+// The fish that Lucky line and a perfect streak make likelier.
+const RARE = CATCHES.find((id) => CONFIG.fishing.fish[id].rare) ?? CATCHES[CATCHES.length - 1];
+
 // Which kind of fish bit, from a random number (0-1). Bait changes the
 // odds. `lucky` (the Lucky line skill) and `streak` (perfect catches in a
-// row) each move some percent from shrimp to lobster.
+// row) each move some percent to the rare fish, from the likeliest one.
 export function pickCatch(random: number, bait: BaitId | null = null, lucky = 0, streak = 0): CatchId {
-  const odds: Record<CatchId, number> = { ...((bait && baitInfo(bait).odds) || CONFIG.fishing.catchOdds) };
-  const { percent, max } = CONFIG.fishing.streakLobster;
-  const moved = Math.min(lucky + percent * Math.min(streak, max), odds.shrimp);
-  odds.shrimp -= moved;
-  odds.lobster += moved;
+  const baitOdds = bait ? baitInfo(bait).odds : undefined;
+  const odds = Object.fromEntries(CATCHES.map((id) => [id, baitOdds?.[id] ?? CONFIG.fishing.fish[id].odds])) as Record<CatchId, number>;
+  const { percent, max } = CONFIG.fishing.streakBonus;
+  const from = CATCHES.filter((id) => id !== RARE).reduce((a, b) => (odds[b] > odds[a] ? b : a));
+  const moved = Math.min(lucky + percent * Math.min(streak, max), odds[from]);
+  odds[from] -= moved;
+  odds[RARE] += moved;
   const entries = Object.entries(odds) as [CatchId, number][];
   const total = entries.reduce((sum, [, p]) => sum + p, 0);
   let roll = random * total;

@@ -89,7 +89,7 @@ export function migrate(save: SaveFile): SaveFile {
     const st = save.state;
     const pet = st.pet;
     st.recentFoods = [];
-    st.caught = Object.keys(CONFIG.fishing.catchOdds).filter((id) => (st.inventory?.food?.[id] ?? 0) > 0);
+    st.caught = Object.keys(CONFIG.fishing.fish).filter((id) => (st.inventory?.food?.[id] ?? 0) > 0);
     st.charactersFound = pet.stage === 'adult' && pet.character ? [characterKey(pet.character, pet.variant)] : [];
     st.showAllMenus = false;
     st.unlocked = unlocksFor(st as GameState);

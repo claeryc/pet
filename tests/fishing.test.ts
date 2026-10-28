@@ -248,7 +248,7 @@ describe('landing a fish', () => {
   });
 
   it('decides which fish it is at the bite, by the odds', () => {
-    const odds = f.catchOdds;
+    const odds = { shrimp: f.fish.shrimp.odds };
     expect(pickCatch(0)).toBe('shrimp');
     expect(pickCatch((odds.shrimp - 1) / 100)).toBe('shrimp');
     expect(pickCatch((odds.shrimp + 1) / 100)).toBe('salmon');
@@ -257,12 +257,21 @@ describe('landing a fish', () => {
   });
 
   it('perfect catches in a row make a lobster likelier, up to a point', () => {
-    const { percent, max } = f.streakLobster;
-    const lobsterAt = 1 - (f.catchOdds.lobster + percent - 1) / 100;
+    const { percent, max } = f.streakBonus;
+    const lobsterAt = 1 - (f.fish.lobster.odds + percent - 1) / 100;
     expect(pickCatch(lobsterAt, null, 0, 0)).toBe('salmon');
     expect(pickCatch(lobsterAt, null, 0, 1)).toBe('lobster');
-    const cap = 1 - (f.catchOdds.lobster + percent * max + 1) / 100;
+    const cap = 1 - (f.fish.lobster.odds + percent * max + 1) / 100;
     expect(pickCatch(cap, null, 0, max + 5)).not.toBe('lobster');
+  });
+
+  it('every fish has its odds in each bait, and exactly one is rare', () => {
+    const ids = Object.keys(f.fish).sort();
+    for (const b of Object.values(f.baits)) if ('odds' in b) expect(Object.keys(b.odds).sort()).toEqual(ids);
+    expect(Object.values(f.fish).filter((x) => x.rare)).toHaveLength(1);
+    // Each one is a caught food too.
+    const caught = (CONFIG.foods as readonly Food[]).filter((x) => x.source === 'caught').map((x) => x.id).sort();
+    expect(caught).toEqual(ids);
   });
 
   it('the three catches are 1, 2 and 3 stars and are not sold in the Shop', () => {

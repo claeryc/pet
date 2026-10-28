@@ -170,7 +170,8 @@ describe('what the skills do', () => {
 
   it('Lucky line moves odds from shrimp to lobster', () => {
     // A roll just past the plain lobster cut-off lands lobster with the skill.
-    const odds = CONFIG.fishing.catchOdds;
+    const fish = CONFIG.fishing.fish;
+    const odds = { shrimp: fish.shrimp.odds, salmon: fish.salmon.odds, lobster: fish.lobster.odds };
     const total = odds.shrimp + odds.salmon + odds.lobster;
     expect(pickCatch(0.01, null, 0)).toBe('shrimp');
     expect(pickCatch((total - odds.lobster - 1) / total, null, 0)).toBe('salmon');
