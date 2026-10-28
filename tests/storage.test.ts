@@ -224,6 +224,14 @@ describe('save migration to the tackle shelf', () => {
     expect(on.tackle).toBe('bait');
     expect(on.baitOn).toBeUndefined();
     expect(migrate({ version: 38, state: { baitOn: false } }).state.tackle).toBeNull();
-    expect(SAVE_VERSION).toBe(39);
+  });
+});
+
+describe('save migration to kitchen items', () => {
+  it('gives old saves an empty kitchen', () => {
+    const out = migrate({ version: 39, state: { pet: { name: 'drip' }, recipesFound: ['bento'] } }).state;
+    expect(out.kitchen).toEqual([]);
+    expect(out.recipesFound).toEqual(['bento']);
+    expect(SAVE_VERSION).toBe(40);
   });
 });

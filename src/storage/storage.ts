@@ -21,7 +21,7 @@ const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 39;
+export const SAVE_VERSION = 40;
 
 export interface SaveFile {
   version: number;
@@ -464,6 +464,11 @@ export function migrate(save: SaveFile): SaveFile {
     st.tackle = st.baitOn ? 'bait' : null;
     delete st.baitOn;
     save.version = 39;
+  }
+  // Version 39 -> 40: kitchen items (none owned yet).
+  if (save.version === 39) {
+    save.state.kitchen = [];
+    save.version = 40;
   }
   return save;
 }

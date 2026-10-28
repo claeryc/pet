@@ -417,8 +417,34 @@ export const CONFIG = {
   // any other mix makes a Mushy mess. Each recipe's id is the dish it makes
   // (a food above). Every food used in a recipe can go in the pot, a cooked
   // dish too, and the pot's pantry shows them in the order of `foods`.
+  // A recipe can also say where it's made (`station`, the pot if not
+  // given), how many it makes (`makes`, 1 if not given), and a seasonal
+  // window it's open in (`unlock: { from: 'MM-DD', to: 'MM-DD' }`). See
+  // src/game/cooking.ts.
   cooking: {
     slots: 3,
+    // What a dish is worth: its ingredients' prices added up, times this
+    // by how many go in (rounded), shared out over the `makes` it makes.
+    // A `prep` station (cutting, milling) adds no worth: what it makes is
+    // worth just its ingredients, so it never makes gold by itself.
+    worth: { 1: 1.25, 2: 1.25, 3: 1.4, 4: 1.55 },
+    // Where recipes are made. Only the pot is in the game so far; the rest
+    // need the kitchen item of the same name. A `timed` station takes a
+    // while and keeps going while the game is closed (not built yet).
+    stations: {
+      pot: {},
+      oven: {},
+      board: { prep: true },
+      mill: { prep: true, timed: true },
+    },
+    // Things you can own for the kitchen (in `state.kitchen`). None are
+    // sold yet. The bigger pot takes `slots` foods.
+    kitchen: {
+      biggerPot: { slots: 4 },
+      oven: {},
+      board: {},
+      mill: {},
+    },
     recipes: [
       { id: 'grilledShrimp', ingredients: ['shrimp'] },
       { id: 'shrimpOnigiri', ingredients: ['riceBall', 'shrimp'] },

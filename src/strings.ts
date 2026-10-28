@@ -384,6 +384,9 @@ export const STRINGS = {
     unknown: '???',
     hint: (name: string) => `A secret recipe. Try something with ${name}...`,
     missing: (names: string) => `You still need: ${names}`,
+    // A recipe made somewhere you don't have yet, by its station.
+    needs: { pot: '', oven: 'Needs an oven', board: 'Needs a cutting board', mill: 'Needs a mill' },
+    outOfSeason: "That recipe is out of season. It'll be back!",
     emptySlot: 'Empty spot in the pot',
     inPot: (name: string) => `${name} in the pot. Tap to take it out`,
     addToPot: (name: string, count: string) => `${name} (${count}). Tap to put it in the pot`,
@@ -528,7 +531,7 @@ export const STRINGS = {
       cooking: {
         name: 'Cooking',
         pages: [
-          { title: 'Fill the pot', text: 'Tap food in your pantry to put it in the pot, up to three things. Then tap the bowl on the right to cook!' },
+          { title: 'Fill the pot', text: 'Tap food in your pantry to put it in the pot. Then tap the bowl on the right to cook!' },
           { title: 'Find secret recipes', text: 'Recipes lists every dish. The ??? ones are secret: the hint shows one thing that goes in.' },
           { title: 'Fresh from the pot', text: (pet: string) => `Feed your dish to ${pet} or pack it for a journey. Each new dish goes in your Recipes list.` },
           { title: 'Oops, a Mushy mess', text: 'A grey bowl means the mix makes no dish. Cook it anyway for a Mushy mess, then try another mix!' },

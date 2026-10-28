@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { CONFIG } from '../src/game/config';
 import type { Food } from '../src/game/actions';
 import { foodCount } from '../src/game/economy';
-import { cook, haveAll, ingredientsFor, INGREDIENTS, matchRecipe, RECIPES } from '../src/game/cooking';
+import {
+  cook, COUNTED_RECIPES, couldBeRecipe, hasStation, haveAll, ingredientsFor, INGREDIENTS, inSeason, matchRecipe,
+  MAX_POT_SLOTS, portions, potSlots, recipeOpen, RECIPES, stationOf, type Recipe,
+} from '../src/game/cooking';
 import { STRINGS } from '../src/strings';
 import { ITEM_ICONS } from '../src/ui/icons';
 import { newTeen } from './helpers';
@@ -22,7 +25,7 @@ describe('recipes', () => {
     for (const r of RECIPES) {
       expect(food(r.id).source).toBe('cooked');
       expect(r.ingredients.length).toBeGreaterThan(0);
-      expect(r.ingredients.length).toBeLessThanOrEqual(CONFIG.cooking.slots);
+      expect(r.ingredients.length).toBeLessThanOrEqual(MAX_POT_SLOTS);
       for (const id of r.ingredients) expect(INGREDIENTS).toContain(id);
     }
   });
@@ -46,6 +49,24 @@ describe('recipes', () => {
       const price = r.ingredients.reduce((t, id) => t + food(id).price, 0);
       expect(food(r.id).price, r.id).toBeGreaterThan(price);
     }
+  });
+
+  it('every dish is priced by the worth rule', () => {
+    // Ingredients' prices added up, times the rule for how many go in
+    // (nothing for a prep station), shared over how many it makes.
+    for (const r of RECIPES) {
+      const sum = r.ingredients.reduce((t, id) => t + food(id).price, 0);
+      const prep = (CONFIG.cooking.stations[stationOf(r)] as { prep?: boolean }).prep;
+      const times = prep ? 1 : CONFIG.cooking.worth[r.ingredients.length as 1 | 2 | 3 | 4];
+      expect(food(r.id).price, r.id).toBe(Math.round((sum * times) / (r.makes ?? 1)));
+    }
+  });
+
+  it('the worth rule pays more for every extra ingredient past two', () => {
+    const w = CONFIG.cooking.worth;
+    expect(w[1]).toBe(w[2]);
+    expect(w[3]).toBeGreaterThan(w[2]);
+    expect(w[4]).toBeGreaterThan(w[3]);
   });
 
   it('a 3-ingredient dish pays better than any smaller one', () => {
@@ -144,5 +165,64 @@ describe('cooking', () => {
     expect(haveAll(s, shortcake.ingredients)).toBe(false);
     expect(haveAll(s, ['cookie'])).toBe(true);
     expect(haveAll(s, ['cookie', 'riceBall'])).toBe(false);
+  });
+});
+
+describe('the kitchen', () => {
+  const fake = (more: Partial<Recipe>): Recipe => ({ id: 'grilledShrimp', ingredients: ['shrimp'], ...more });
+  const day = (m: number, d: number) => new Date(2026, m - 1, d, 12).getTime();
+
+  it('starts with just the pot', () => {
+    const s = withFood({});
+    expect(s.kitchen).toEqual([]);
+    expect(hasStation(s, 'pot')).toBe(true);
+    expect(hasStation(s, 'oven')).toBe(false);
+    expect(potSlots(s)).toBe(CONFIG.cooking.slots);
+  });
+
+  it('the bigger pot takes one more food', () => {
+    const s = { ...withFood({ shrimp: 1, salmon: 1, lobster: 1, cookie: 1 }), kitchen: ['biggerPot'] };
+    expect(potSlots(s)).toBe(4);
+    // Four foods that are no recipe make a Mushy mess instead of being refused.
+    const out = cook(s, ['shrimp', 'salmon', 'lobster', 'cookie']);
+    if (out.blocked) throw new Error(out.blocked);
+    expect(out.dish).toBe('mushyMess');
+  });
+
+  it('only matches recipes made at the station you cook at', () => {
+    expect(matchRecipe(['shrimp'], 'pot')?.id).toBe('grilledShrimp');
+    expect(matchRecipe(['shrimp'], 'oven')).toBeNull();
+    expect(couldBeRecipe(['shrimp'], 'oven')).toBe(false);
+  });
+
+  it('a recipe needs its station', () => {
+    const s = withFood({});
+    expect(recipeOpen(s, fake({}))).toBe(true);
+    expect(recipeOpen(s, fake({ station: 'oven' }))).toBe(false);
+    expect(recipeOpen({ ...s, kitchen: ['oven'] }, fake({ station: 'oven' }))).toBe(true);
+  });
+
+  it('a seasonal recipe is only open in its window, which can wrap round the new year', () => {
+    const spring = fake({ unlock: { from: '03-20', to: '04-10' } });
+    expect(inSeason(spring, day(3, 20))).toBe(true);
+    expect(inSeason(spring, day(4, 10))).toBe(true);
+    expect(inSeason(spring, day(4, 11))).toBe(false);
+    const winter = fake({ unlock: { from: '12-15', to: '01-05' } });
+    expect(inSeason(winter, day(12, 31))).toBe(true);
+    expect(inSeason(winter, day(1, 5))).toBe(true);
+    expect(inSeason(winter, day(2, 1))).toBe(false);
+  });
+
+  it('seasonal recipes are left out of the count', () => {
+    expect(COUNTED_RECIPES.every((r) => !r.unlock)).toBe(true);
+    expect(COUNTED_RECIPES.length).toBe(RECIPES.filter((r) => !r.unlock).length);
+  });
+
+  it('a recipe makes its own number, and Second helping adds one', () => {
+    const s = withFood({});
+    expect(portions(s, fake({}), 1)).toBe(1);
+    expect(portions(s, fake({ makes: 2 }), 1)).toBe(2);
+    const skilled = { ...s, keeper: { ...s.keeper, skills: { secondHelping: 1 } } };
+    expect(portions(skilled, fake({ makes: 2 }), 0)).toBe(3);
   });
 });

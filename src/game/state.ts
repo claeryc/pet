@@ -447,6 +447,8 @@ export interface GameState {
   // Dishes you've cooked at least once (food ids). They show up by name in
   // the recipe book; the rest stay "???".
   recipesFound: string[];
+  // Kitchen items you own (see CONFIG.cooking.kitchen).
+  kitchen: string[];
   // Foods fed to the pet, most recent first, so the Feed panel can put
   // your favourites at the top.
   recentFoods: string[];
@@ -588,6 +590,7 @@ export function createNewGame(now: number): GameState {
     inventory: { food: { ...CONFIG.economy.startingFood }, hats: [], seeds: {}, supplies: {}, decor: [], bags: [] },
     checkIn: { day: '', count: 0, lastAt: 0 },
     recipesFound: [],
+    kitchen: [],
     recentFoods: [],
     caught: [],
     charactersFound: [],
