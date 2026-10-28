@@ -21,9 +21,10 @@ export interface PetStats {
 export type Condition = 'healthy' | 'warning' | 'sick' | 'passed';
 
 // A timed effect from food, e.g. "tummy empties 20% slower until 6pm".
+// 'fishing' makes the green stripe wider instead.
 export interface Buff {
-  stat: 'hunger';
-  percent: number; // how much slower that stat drops, 0-100
+  stat: 'hunger' | 'happiness' | 'fishing';
+  percent: number; // how much slower that stat drops (or wider the stripe), 0-100
   until: number; // timestamp when the effect wears off
 }
 

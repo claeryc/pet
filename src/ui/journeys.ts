@@ -419,7 +419,7 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     const stamps = el('span', 'trip-pc-stamps');
     const lines: string[] = [o.night ? T.noteNight : T.noteHours(T.hours(hours))];
     if (place) {
-      const preview = tripPreview(place, o.rarity, boxes.get(who)?.charm ?? null);
+      const preview = tripPreview(place, o.rarity, boxes.get(who)?.charm ?? null, lunch());
       const food = STRINGS.foods[preview.ingredient as FoodId];
       lines.push(T.noteFind(food, preview.ingredientSure, preview.gold, preview.seeds));
       lines.push(preview.threeStar > 0 ? T.noteStar(Math.round(preview.threeStar * 100)) : T.noteFinds(preview.finds.min, preview.finds.max));

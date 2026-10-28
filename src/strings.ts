@@ -62,6 +62,15 @@ export const STRINGS = {
     mushroomSoup: 'Mushroom soup',
     glowSalmon: 'Glow-salt salmon',
     stardustPudding: 'Stardust pudding',
+    honeyMilk: 'Honey milk',
+    jamCookie: 'Jam cookie',
+    mushroomOnigiri: 'Mushroom onigiri',
+    honeySalmon: 'Honey-glazed salmon',
+    starCookies: 'Star cookies',
+    fruitPunch: 'Fruit punch',
+    saltBakedLobster: 'Salt-baked lobster',
+    lobsterFriedRice: 'Lobster fried rice',
+    bento: 'Bento',
   },
   activities: {
     cuddle: 'Cuddle',
@@ -71,6 +80,11 @@ export const STRINGS = {
     full: 'Full', // a stat that was already full, floating up from the pet
     slowHunger: (percent: number, hours: number) =>
       `Tummy empties ${percent}% slower for ${hours} hours`,
+    slowJoy: (percent: number, hours: number) =>
+      `Joy drops ${percent}% slower for ${hours} hours`,
+    steadyPaws: (percent: number, hours: number) =>
+      `Fishing's green stripe ${percent}% wider for ${hours} hours`,
+    placeFind: (place: string) => `Packed for a trip to ${place}: one more find there`,
   },
   minigames: {
     fishing: 'Fishing',

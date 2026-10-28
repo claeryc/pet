@@ -222,6 +222,12 @@ export const CONFIG = {
   // and that's on purpose: an effect should feel special.
   //  - `slowHunger`: the tummy empties more slowly (by `percent`) for a
   //    number of `hours`.
+  //  - `slowJoy`: the same for joy.
+  //  - `steadyPaws`: fishing's green stripe is `percent` wider for `hours`.
+  //  - `placeFind`: packed in the lunchbox for a trip to `place`, the pet
+  //    finds one more thing there (only one such bonus counts per pet).
+  // A pet has one timed effect at a time: eating another replaces it.
+  // Nothing cooked gives energy: that's the energy drink's job.
   foods: [
     { id: 'riceBall', source: 'staple', price: 3, hunger: 15, happiness: 0, health: 0, tags: ['grain'] },
     { id: 'strawberry', source: 'shop', price: 10, hunger: 10, happiness: 6, health: 0, tags: ['fruit', 'sweet'] },
@@ -239,7 +245,7 @@ export const CONFIG = {
     { id: 'grilledSalmon', source: 'cooked', price: 25, hunger: 25, happiness: 7, health: 4, stars: 2, tags: ['seafood'] },
     { id: 'salmonSushi', source: 'cooked', price: 29, hunger: 41, happiness: 9, health: 5, stars: 2, tags: ['seafood', 'grain'] },
     { id: 'fishSoup', source: 'cooked', price: 40, hunger: 37, happiness: 8, health: 10, stars: 2, tags: ['soup', 'seafood'], effects: [{ kind: 'slowHunger', percent: 15, hours: 4 }] },
-    { id: 'berryShortcake', source: 'cooked', price: 42, hunger: 34, happiness: 29, health: 2, stars: 2, tags: ['sweet'] },
+    { id: 'berryShortcake', source: 'cooked', price: 42, hunger: 34, happiness: 29, health: 2, stars: 2, tags: ['sweet'], effects: [{ kind: 'slowJoy', percent: 20, hours: 4 }] },
     { id: 'lobsterBisque', source: 'cooked', price: 65, hunger: 46, happiness: 20, health: 12, stars: 3, tags: ['soup', 'seafood'], effects: [{ kind: 'slowHunger', percent: 20, hours: 6 }] },
     { id: 'veggieOnigiri', source: 'cooked', price: 16, hunger: 31, happiness: 0, health: 4, stars: 1, tags: ['veg', 'grain'] },
     { id: 'carrotSoup', source: 'cooked', price: 28, hunger: 26, happiness: 0, health: 9, stars: 1, tags: ['soup', 'veg'] },
@@ -259,10 +265,21 @@ export const CONFIG = {
     { id: 'glowSalt', source: 'found', price: 20, hunger: 2, happiness: 4, health: 6, stars: 2, tags: ['seasoning'] },
     { id: 'stardustSugar', source: 'found', price: 25, hunger: 4, happiness: 14, health: 0, stars: 2, tags: ['sweet'] },
     // Dishes made with what journeys bring home.
-    { id: 'honeyCake', source: 'cooked', price: 49, hunger: 34, happiness: 30, health: 5, stars: 2, tags: ['sweet'] },
-    { id: 'mushroomSoup', source: 'cooked', price: 52, hunger: 40, happiness: 7, health: 15, stars: 2, tags: ['soup', 'veg'], effects: [{ kind: 'slowHunger', percent: 15, hours: 4 }] },
-    { id: 'glowSalmon', source: 'cooked', price: 50, hunger: 30, happiness: 11, health: 11, stars: 2, tags: ['seafood'] },
-    { id: 'stardustPudding', source: 'cooked', price: 66, hunger: 30, happiness: 33, health: 6, stars: 3, tags: ['sweet'] },
+    { id: 'honeyCake', source: 'cooked', price: 49, hunger: 34, happiness: 30, health: 5, stars: 2, tags: ['sweet'], effects: [{ kind: 'placeFind', place: 'market' }] },
+    { id: 'mushroomSoup', source: 'cooked', price: 52, hunger: 40, happiness: 7, health: 15, stars: 2, tags: ['soup', 'veg'], effects: [{ kind: 'slowHunger', percent: 15, hours: 4 }, { kind: 'placeFind', place: 'woods' }] },
+    { id: 'glowSalmon', source: 'cooked', price: 50, hunger: 30, happiness: 11, health: 11, stars: 2, tags: ['seafood'], effects: [{ kind: 'placeFind', place: 'caves' }] },
+    { id: 'stardustPudding', source: 'cooked', price: 66, hunger: 30, happiness: 33, health: 6, stars: 3, tags: ['sweet'], effects: [{ kind: 'placeFind', place: 'hill' }] },
+    // More dishes: second uses for what journeys bring home, the mixes
+    // people try first, and the Bento, made partly from other dishes.
+    { id: 'honeyMilk', source: 'cooked', price: 34, hunger: 18, happiness: 15, health: 8, stars: 1, tags: ['drink', 'sweet'] },
+    { id: 'jamCookie', source: 'cooked', price: 23, hunger: 16, happiness: 22, health: 2, stars: 1, tags: ['sweet', 'fruit'] },
+    { id: 'mushroomOnigiri', source: 'cooked', price: 23, hunger: 30, happiness: 2, health: 7, stars: 1, tags: ['veg', 'grain'] },
+    { id: 'honeySalmon', source: 'cooked', price: 44, hunger: 32, happiness: 18, health: 9, stars: 2, tags: ['seafood', 'sweet'] },
+    { id: 'starCookies', source: 'cooked', price: 41, hunger: 12, happiness: 30, health: 1, stars: 2, tags: ['sweet'] },
+    { id: 'fruitPunch', source: 'cooked', price: 63, hunger: 24, happiness: 34, health: 10, stars: 3, tags: ['drink', 'fruit'] },
+    { id: 'saltBakedLobster', source: 'cooked', price: 75, hunger: 40, happiness: 20, health: 14, stars: 3, tags: ['seafood'], effects: [{ kind: 'steadyPaws', percent: 20, hours: 2 }] },
+    { id: 'lobsterFriedRice', source: 'cooked', price: 74, hunger: 70, happiness: 20, health: 15, stars: 3, tags: ['seafood', 'grain', 'veg'] },
+    { id: 'bento', source: 'cooked', price: 71, hunger: 80, happiness: 22, health: 18, stars: 3, tags: ['grain', 'seafood', 'veg'] },
     // What you get when the pot holds a mix that isn't a recipe.
     { id: 'mushyMess', source: 'cooked', price: 1, hunger: 8, happiness: 0, health: 0, tags: [] },
   ],
@@ -403,6 +420,16 @@ export const CONFIG = {
       { id: 'mushroomSoup', ingredients: ['wildMushroom', 'carrot', 'warmMilk'] },
       { id: 'glowSalmon', ingredients: ['glowSalt', 'salmon'] },
       { id: 'stardustPudding', ingredients: ['stardustSugar', 'warmMilk', 'strawberry'] },
+      { id: 'honeyMilk', ingredients: ['honey', 'warmMilk'] },
+      { id: 'jamCookie', ingredients: ['strawberry', 'cookie'] },
+      { id: 'mushroomOnigiri', ingredients: ['wildMushroom', 'riceBall'] },
+      { id: 'honeySalmon', ingredients: ['honey', 'salmon'] },
+      { id: 'starCookies', ingredients: ['stardustSugar', 'cookie'] },
+      { id: 'fruitPunch', ingredients: ['strawberry', 'dragonFruit'] },
+      { id: 'saltBakedLobster', ingredients: ['glowSalt', 'lobster'] },
+      { id: 'lobsterFriedRice', ingredients: ['lobster', 'riceBall', 'carrot'] },
+      // Made from two other dishes and a carrot.
+      { id: 'bento', ingredients: ['shrimpOnigiri', 'grilledSalmon', 'carrot'] },
     ],
     mess: 'mushyMess',
   },

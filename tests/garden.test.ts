@@ -348,7 +348,8 @@ describe('less mushy mess', () => {
   it('knows when a mix can still become a recipe', () => {
     expect(couldBeRecipe(['carrot'])).toBe(true);
     expect(couldBeRecipe(['carrot', 'pumpkin'])).toBe(true); // hearty stew needs salmon too
-    expect(couldBeRecipe(['carrot', 'lobster'])).toBe(false);
+    expect(couldBeRecipe(['carrot', 'lobster'])).toBe(true); // lobster fried rice needs rice too
+    expect(couldBeRecipe(['carrot', 'dragonFruit'])).toBe(false);
     expect(couldBeRecipe(['shrimp', 'shrimp'])).toBe(false);
   });
 

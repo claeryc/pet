@@ -12,7 +12,7 @@ import { createMenu, type MenuCallbacks } from './menu';
 import { baitCount, foodCount, revivalStars } from '../game/economy';
 import { createDrawer, type DrawerOption, type Effect } from './drawer';
 import { ITEM_ICONS, STAT_ICONS } from './icons';
-import { effectOf, type ActivityId, type Food, type FoodId } from '../game/actions';
+import type { ActivityId, Food, FoodId } from '../game/actions';
 import type { CatchGrade } from '../game/fishing';
 import { createFishing, DRAIN_MS, type FishingPhase } from './fishing';
 import { createCooking, KITCHEN_OUT_MS } from './cooking';
@@ -444,15 +444,24 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const foodRow = (i: number) => i + 1; // the foods come after the pot
   for (const f of CONFIG.foods as readonly Food[]) {
     const effects = statEffects({ hunger: f.hunger, happiness: f.happiness, health: f.health, energy: f.energy });
-    const slowHunger = effectOf(f, 'slowHunger');
-    if (slowHunger) {
-      const { hours, percent } = slowHunger;
-      effects.push({
-        icon: STAT_ICONS.timer,
-        text: `${hours}h -${percent}%`,
-        title: STRINGS.effects.slowHunger(percent, hours),
-        kind: 'timer',
-      });
+    // What it does besides its stats, as chips after the stat ones.
+    for (const e of f.effects ?? []) {
+      if (e.kind === 'placeFind') {
+        effects.push({
+          icon: ITEM_ICONS.journey,
+          text: '+1',
+          title: STRINGS.effects.placeFind(STRINGS.journeys.places[e.place] ?? e.place),
+          kind: 'up',
+        });
+      } else {
+        const sign = e.kind === 'steadyPaws' ? '+' : '-';
+        effects.push({
+          icon: e.kind === 'steadyPaws' ? ITEM_ICONS.fishing : STAT_ICONS.timer,
+          text: `${e.hours}h ${sign}${e.percent}%`,
+          title: STRINGS.effects[e.kind](e.percent, e.hours),
+          kind: 'timer',
+        });
+      }
     }
     feedOptions.push({
       icon: ITEM_ICONS[f.id],

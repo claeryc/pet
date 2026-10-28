@@ -101,10 +101,9 @@ function tick(pet: Pet, t: number, wasNight: boolean, perks: CarePerks): void {
   const home = needsSpeed(pet);
   // Timed food effects: drop any that have worn off, then apply the rest.
   pet.buffs = pet.buffs.filter((b) => t <= b.until);
-  const hungerBuff = pet.buffs.find((b) => b.stat === 'hunger');
-  const slowHunger = hungerBuff ? 1 - hungerBuff.percent / 100 : 1;
-  s.hunger = clampStat(s.hunger - perTick(cfg.decayPerHour.hunger) * slow * slowHunger * home);
-  s.happiness = clampStat(s.happiness - perTick(cfg.decayPerHour.happiness) * slow * sickJoy * home);
+  const eased = (stat: 'hunger' | 'happiness') => 1 - (pet.buffs.find((b) => b.stat === stat)?.percent ?? 0) / 100;
+  s.hunger = clampStat(s.hunger - perTick(cfg.decayPerHour.hunger) * slow * eased('hunger') * home);
+  s.happiness = clampStat(s.happiness - perTick(cfg.decayPerHour.happiness) * slow * sickJoy * eased('happiness') * home);
   if (pet.asleep) {
     s.energy = clampStat(s.energy + perTick(cfg.sleep.energyPerHourAsleep));
   } else {

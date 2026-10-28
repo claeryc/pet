@@ -155,6 +155,13 @@ export function buyCharm(state: GameState, id: string): ShopResult {
   return { state: { ...state, gold: state.gold - charm.price, inventory: { ...state.inventory, supplies } } };
 }
 
+// One more find if the lunchbox holds a dish made with this place's own
+// ingredient (a `placeFind` effect, see CONFIG.foods). It doesn't add up:
+// two such dishes still give one.
+export function lunchFinds(lunch: readonly string[], placeId: string): number {
+  return lunch.some((id) => FOODS.find((f) => f.id === id)?.effects?.some((e) => e.kind === 'placeFind' && e.place === placeId)) ? 1 : 0;
+}
+
 // What a lunchbox adds up to.
 export function lunchValue(lunch: readonly string[]): { hunger: number; energy: number } {
   return lunch.reduce((sum, id) => {
@@ -194,7 +201,7 @@ export function potsDryingBy(state: GameState, until: number): number {
 // card: the place's own ingredient (always on rare and epic trips), whether
 // gold and seeds can turn up, how many finds, and the chance of a 3-star
 // find (epic trips only).
-export function tripPreview(place: Place, rarity: Rarity, charmId: string | null = null): {
+export function tripPreview(place: Place, rarity: Rarity, charmId: string | null = null, lunch: readonly string[] = []): {
   ingredient: string;
   ingredientSure: boolean;
   gold: boolean;
@@ -204,7 +211,7 @@ export function tripPreview(place: Place, rarity: Rarity, charmId: string | null
 } {
   const rule = J.finds[rarity];
   const charm = getCharm(charmId);
-  const extra = charm && 'extraFinds' in charm ? charm.extraFinds : 0;
+  const extra = (charm && 'extraFinds' in charm ? charm.extraFinds : 0) + lunchFinds(lunch, place.id);
   const twoStar = rule.twoStarChance + (charm && 'twoStar' in charm ? charm.twoStar : 0) > 0;
   const entries = [...place.finds[1], ...(twoStar ? place.finds[2] : []), ...(rarity === 'epic' ? place.finds[3] : [])] as string[];
   return {
@@ -238,13 +245,15 @@ function threeStarChance(rarity: Rarity, charm: Charm | undefined): number {
 // The place's own ingredient comes first, then finds of 1 or 2 stars (and
 // on an epic trip, sometimes one of 3 stars). The same finds of a kind are
 // put together.
-export function rollFinds(pet: Pet, place: Place, rarity: Rarity, startedAt: number, charmId: string | null = null): Find[] {
+export function rollFinds(
+  pet: Pet, place: Place, rarity: Rarity, startedAt: number, charmId: string | null = null, lunch: readonly string[] = [],
+): Find[] {
   const roll = (label: string) => seededRoll(pet.id, `trip:${startedAt}:${label}`);
   const rule = J.finds[rarity];
   const charm = getCharm(charmId);
   const home = (getCharacter(pet.character)?.theme === place.theme ? 1 : 0) +
     (pet.favouritePlace === place.id ? J.favourite.extraFinds : 0);
-  const extra = charm && 'extraFinds' in charm ? charm.extraFinds : 0;
+  const extra = (charm && 'extraFinds' in charm ? charm.extraFinds : 0) + lunchFinds(lunch, place.id);
   const twoStar = Math.min(1, rule.twoStarChance + (charm && 'twoStar' in charm ? charm.twoStar : 0));
   const count = rule.min + Math.floor(roll('count') * (rule.max - rule.min + 1)) + home + extra;
   const finds: Find[] = [];
@@ -464,7 +473,7 @@ export function goTogether(
       from: { hunger: pet.stats.hunger, energy: pet.stats.energy },
       to: plan.to,
       joy: J.joy[offer.rarity],
-      finds: rollFinds(pet, getPlace(offer.place)!, offer.rarity, now, m.charm),
+      finds: rollFinds(pet, getPlace(offer.place)!, offer.rarity, now, m.charm, m.lunch),
       percy: n === 0 && percy ? 'coming' : 'none',
       charm: m.charm,
       with: ids.find((id) => id !== pet.id) ?? null,

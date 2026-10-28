@@ -9,7 +9,7 @@ import { clampStat } from './stats';
 import { stageLengthMs } from './growth';
 import { revivalStars, useFood } from './economy';
 import { satisfyCraving } from './craving';
-import { newPet, type GameState, type Pet } from './state';
+import { newPet, type Buff, type GameState, type Pet } from './state';
 import { rememberPet } from './family';
 import { retire } from './friends';
 import { isAway } from './presence';
@@ -36,7 +36,12 @@ export function withPet(state: GameState, change: (pet: Pet) => void): GameState
 export type FoodSource = 'shop' | 'staple' | 'caught' | 'grown' | 'found' | 'cooked';
 export type FoodTag = 'drink' | 'soup' | 'sweet' | 'seafood' | 'veg' | 'fruit' | 'grain' | 'dairy' | 'seasoning';
 // What a food does besides its stats (see `foods` in config.ts).
-export type FoodEffect = { kind: 'slowHunger'; percent: number; hours: number };
+export type FoodEffect =
+  | { kind: 'slowHunger' | 'slowJoy' | 'steadyPaws'; percent: number; hours: number }
+  | { kind: 'placeFind'; place: string };
+
+// The timed effects, and the stat (or skill) each one eases.
+const TIMED: Record<string, Buff['stat']> = { slowHunger: 'hunger', slowJoy: 'happiness', steadyPaws: 'fishing' };
 
 export type Food = (typeof CONFIG.foods)[number] & {
   source: FoodSource;
@@ -48,10 +53,6 @@ export type Food = (typeof CONFIG.foods)[number] & {
 };
 export type FoodId = Food['id'];
 
-// A food's effect of this kind, if it has one.
-export function effectOf<K extends FoodEffect['kind']>(food: Food, kind: K): Extract<FoodEffect, { kind: K }> | undefined {
-  return food.effects?.find((e): e is Extract<FoodEffect, { kind: K }> => e.kind === kind);
-}
 export type ActivityId = (typeof CONFIG.activities)[number]['id'];
 
 export function feed(state: GameState, now: number, foodId: FoodId = 'riceBall'): ActionResult {
@@ -70,14 +71,12 @@ export function feed(state: GameState, now: number, foodId: FoodId = 'riceBall')
     pet.stats.happiness = clampStat(pet.stats.happiness + food.happiness);
     pet.stats.health = clampStat(pet.stats.health + food.health);
     if (food.energy) pet.stats.energy = clampStat(pet.stats.energy + food.energy);
-    const slowHunger = effectOf(food, 'slowHunger');
-    if (slowHunger) {
-      // Eating it again restarts the timer (effects don't stack).
-      const until = now + slowHunger.hours * 3_600_000;
-      pet.buffs = [
-        ...pet.buffs.filter((b) => b.stat !== 'hunger'),
-        { stat: 'hunger', percent: slowHunger.percent, until },
-      ];
+    // A timed effect replaces whatever the pet had (effects don't stack),
+    // and eating the same again restarts the timer.
+    for (const e of food.effects ?? []) {
+      if (e.kind in TIMED && 'hours' in e) {
+        pet.buffs = [{ stat: TIMED[e.kind], percent: e.percent, until: now + e.hours * 3_600_000 }];
+      }
     }
   });
   // Just what it was craving? A little extra on top.
