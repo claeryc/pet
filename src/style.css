@@ -2869,21 +2869,34 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 }
 
 /* The kitchen: it fills the stat bars' spot and reaches up over the room
-   (--kitchen-up is set from src/ui/cooking.ts), popping up when it opens
-   and dropping away when it closes. The tiled wall takes the top, the
-   counter the bottom, with a wooden edge between. */
+   (--kitchen-up and --kitchen-gap are set from src/ui/cooking.ts),
+   popping up when it opens and dropping away when it closes. Its room
+   covers the pet's panel: a tiled wall with a strip of counter along the
+   bottom. Its counter covers the stat bars and holds the controls. */
 .stat-slot:has(> .kitchen:not([hidden])) {
   overflow: visible;
 }
 
 .kitchen {
-  --counter: 60%;
   position: absolute;
   top: calc(-1 * var(--kitchen-up, 0px));
   left: 0;
   right: 0;
   bottom: 0;
   z-index: 4;
+  opacity: 0;
+  transform: translateY(24px) scale(0.96);
+  transition: transform 0.45s cubic-bezier(0.5, 0, 0.9, 0.6), opacity 0.3s ease 0.15s;
+}
+
+.kitchen-room {
+  --counter: 80%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(var(--kitchen-up, 0px) - var(--kitchen-gap, 0px));
+  box-sizing: border-box;
   overflow: hidden;
   border-radius: 20px;
   border: 4px solid var(--card);
@@ -2893,9 +2906,33 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
     repeating-linear-gradient(90deg, transparent 0 30px, rgba(166, 139, 201, 0.25) 30px 32px) 0 0 / 100% var(--counter) no-repeat,
     repeating-linear-gradient(0deg, transparent 0 30px, rgba(166, 139, 201, 0.25) 30px 32px) 0 0 / 100% var(--counter) no-repeat,
     linear-gradient(var(--card) 0 var(--counter), #ffc59e var(--counter));
-  opacity: 0;
-  transform: translateY(24px) scale(0.96);
-  transition: transform 0.45s cubic-bezier(0.5, 0, 0.9, 0.6), opacity 0.3s ease 0.15s;
+}
+
+/* The counter: a checked tablecloth with a wooden edge along its top. */
+.kitchen-counter {
+  position: absolute;
+  top: var(--kitchen-up, 0px);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 16px;
+  background:
+    linear-gradient(var(--cocoa) 0 4px, #b07a5c 4px 6px, transparent 6px),
+    repeating-conic-gradient(var(--card) 0 25%, #fbeedd 0 50%) 0 0 / 16px 16px;
+}
+
+.kitchen-controls {
+  position: absolute;
+  inset: 0;
+  padding: 10px 12px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.kitchen-controls[hidden] {
+  display: none;
 }
 
 .kitchen.is-in {
@@ -3206,10 +3243,9 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 
 /* The counter: [ ] + [ ] + [ ], and the Cook! button under it. */
 .pot-row {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  top: calc(var(--counter) + 16px);
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 290px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3281,25 +3317,24 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 }
 
 .kitchen-cook {
-  position: absolute;
-  left: 50%;
-  bottom: 14px;
-  transform: translateX(-50%);
+  flex: 0 0 auto;
+  width: clamp(66px, 21vw, 82px);
+  height: clamp(66px, 21vw, 82px);
+  padding: 0;
   font: inherit;
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 900;
   color: var(--plum);
   background: var(--butter);
   border: 3px solid var(--plum);
-  border-radius: 22px;
-  padding: 7px 36px;
+  border-radius: 50%;
   box-shadow: 0 4px 0 var(--plum);
   cursor: pointer;
   touch-action: manipulation;
 }
 
 .kitchen-cook:active {
-  transform: translate(-50%, 3px);
+  transform: translateY(3px);
   box-shadow: 0 1px 0 var(--plum);
 }
 
@@ -3307,11 +3342,14 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   opacity: 0.5;
 }
 
+/* Hidden while the pot cooks, keeping its place. */
+
 .kitchen-cook[hidden] {
-  display: none;
+  display: block;
+  visibility: hidden;
 }
 
-/* "Fish soup!", big and bubbly, where the Cook! button was. */
+/* "Fish soup!", big and bubbly, along the bottom of the room. */
 .kitchen-burst,
 .chop-burst {
   display: flex;
@@ -3324,7 +3362,7 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 .kitchen-burst {
   position: absolute;
   left: 50%;
-  bottom: 16px;
+  bottom: 6%;
   transform: translateX(-50%);
 }
 
@@ -3365,7 +3403,7 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   left: 12px;
   right: 12px;
   top: 50px;
-  bottom: 50px;
+  bottom: 12px;
   padding: 0;
   font: inherit;
   border-radius: 16px;
@@ -3380,12 +3418,12 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* The food, centred in the space left of the meter. */
+/* The food, centred on the board. */
 .cut-food {
   position: absolute;
-  top: 24%;
+  top: 30%;
   bottom: 16%;
-  left: calc((100% - 52px) / 2);
+  left: 50%;
   aspect-ratio: 1;
   transform: translateX(-50%);
 }
@@ -3396,7 +3434,7 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   top: 50%;
   bottom: auto;
   left: 6%;
-  right: 56px;
+  right: 6%;
   transform: translateY(-50%);
 }
 
@@ -3458,7 +3496,7 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   height: 26px;
   left: -42px;
   top: -13px;
-  transform: translateY(-44px) rotate(-90deg);
+  transform: translateY(-36px) rotate(-90deg);
   filter: drop-shadow(-3px 3px 0 rgba(43, 33, 64, 0.22));
 }
 
@@ -3467,9 +3505,9 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 }
 
 @keyframes knife-chop {
-  0% { transform: translateY(-44px) rotate(-90deg); }
+  0% { transform: translateY(-36px) rotate(-90deg); }
   35% { transform: translateY(-14px) rotate(-90deg); }
-  100% { transform: translateY(-44px) rotate(-90deg); }
+  100% { transform: translateY(-36px) rotate(-90deg); }
 }
 
 /* A white flash along the line that was just chopped, and the word. */
@@ -3523,14 +3561,13 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   100% { scale: 1; }
 }
 
-/* The meter: the marker runs up and down it; the green is a perfect chop. */
+/* The meter: the marker runs back and forth along it; the green is a
+   perfect chop. It fades while there's nothing to chop. */
 .cut-meter {
-  position: absolute;
-  right: 14px;
-  top: 16px;
-  bottom: 16px;
-  width: 24px;
-  border-radius: 12px;
+  position: relative;
+  display: block;
+  height: 26px;
+  border-radius: 13px;
   border: 3px solid var(--plum);
   background: var(--card);
   overflow: hidden;
@@ -3538,21 +3575,49 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 
 .cut-band {
   position: absolute;
-  left: 0;
-  right: 0;
+  top: 0;
+  bottom: 0;
   background: var(--good, #6cc19a);
 }
 
 .cut-mark {
   position: absolute;
-  left: 0;
-  right: 0;
-  height: 6px;
-  margin-bottom: -3px;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  margin-left: -3px;
   background: var(--ink);
 }
 
 /* One pip per chop: green for a perfect one, butter for the rest. */
+.cut-meter.idle {
+  opacity: 0.45;
+}
+
+/* The board's controls: the pips, what to do and what's on the board over
+   the meter, with Chop! beside them. */
+.chop-meter-box {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chop-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.board-slot {
+  flex: 0 0 44px;
+  height: 44px;
+  padding: 5px;
+  border-radius: 12px;
+}
+
 .chop-pips {
   display: flex;
   gap: 6px;
@@ -3574,19 +3639,14 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   background: var(--butter);
 }
 
-/* What to do on the board, in a bar along the bottom. */
+/* What to do on the board. */
 .kitchen-prompt {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 10px;
-  text-align: center;
-  font-size: 0.82rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.75rem;
   font-weight: 800;
-  color: white;
-  background: rgba(91, 63, 110, 0.92);
-  padding: 5px 10px;
-  border-radius: 12px;
+  line-height: 1.2;
+  color: var(--plum);
 }
 
 @media (prefers-reduced-motion: reduce) {

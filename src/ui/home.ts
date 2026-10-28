@@ -813,7 +813,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     onCook: cb.onCook,
     onExit: () => showActions(KITCHEN_OUT_MS),
     toast: showToast,
-    roomTop: () => roomWrap.getBoundingClientRect().top,
+    roomBox: () => roomWrap.getBoundingClientRect(),
   });
   function startCooking(): void {
     cb.onSeen('cooking');
