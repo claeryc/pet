@@ -1008,6 +1008,7 @@ const home = createHomeScreen(root, {
       blocked(
         result.blocked === 'noFood' ? STRINGS.blocked.noFood(state.pet.name)
         : result.blocked === 'needMore' ? STRINGS.cooking.needMore(STRINGS.foods[items[0]])
+        : result.blocked === 'closed' ? STRINGS.cooking.outOfSeason
         : STRINGS.cooking.emptyPot,
       );
       return null;

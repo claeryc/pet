@@ -215,6 +215,14 @@ describe('save migration to Coral Cove', () => {
     expect(Object.keys(out.journeys.journal)).toEqual(['cove', 'woods']);
     expect(out.journeys.journal.cove.found).toEqual(['seaweed', 'shrimp']);
     expect(out.journeys.journal.cove.postcards.map((p: any) => p.story.id)).toEqual(['place:cove:1', 'splash']);
-    expect(SAVE_VERSION).toBe(38);
+  });
+});
+
+describe('save migration to kitchen items', () => {
+  it('gives old saves an empty kitchen', () => {
+    const out = migrate({ version: 38, state: { pet: { name: 'drip' }, recipesFound: ['bento'] } }).state;
+    expect(out.kitchen).toEqual([]);
+    expect(out.recipesFound).toEqual(['bento']);
+    expect(SAVE_VERSION).toBe(39);
   });
 });

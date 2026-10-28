@@ -9,7 +9,7 @@
 import { CONFIG } from './config';
 import type { GameState } from './state';
 import { PLACES } from './journeys';
-import { RECIPES } from './cooking';
+import { COUNTED_RECIPES } from './cooking';
 import { getCharacter } from './growth';
 import { logMessage } from './messages';
 import { addXp } from './skills';
@@ -26,8 +26,8 @@ const RULES = {
   goldOrder: counted('goldOrders'),
   // A pet that grew up into a 3-star character.
   threeStar: (state: GameState) => state.charactersFound.some((key) => getCharacter(key.split(':')[0])?.stars === 3),
-  // Every recipe found.
-  allRecipes: (state: GameState) => RECIPES.every((r) => state.recipesFound.includes(r.id)),
+  // Every recipe found (seasonal ones don't count).
+  allRecipes: (state: GameState) => COUNTED_RECIPES.every((r) => state.recipesFound.includes(r.id)),
   // Every kind of fish caught.
   allFish: (state: GameState) => Object.keys(CONFIG.fishing.catchOdds.other).every((id) => state.caught.includes(id)),
   // A pet that moved into the Family Tree (not one that passed away).

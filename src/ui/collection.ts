@@ -109,7 +109,8 @@ export function collectionPage(state: GameState, cb: CollectionCallbacks, open: 
       return raised ? { ...e, tier: 'gold' } : e;
     });
   });
-  const recipes: Entry[] = RECIPES.map((r) =>
+  // Seasonal recipes only show once you've made one.
+  const recipes: Entry[] = RECIPES.filter((r) => !r.unlock || state.recipesFound.includes(r.id)).map((r) =>
     entry(state.recipesFound.includes(r.id), ITEM_ICONS[r.id], STRINGS.foods[r.id], '', foodStars(r.id)),
   );
   const fish = (Object.keys(CONFIG.fishing.catchOdds.other) as FoodId[]).map((id) =>

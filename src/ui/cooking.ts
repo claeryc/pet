@@ -2,7 +2,8 @@
 // [Close] [Food] [Recipes], and a kitchen counter slides up over the stat
 // bars into a panel of the same size, just like the pond does for fishing.
 //
-// The counter shows the pot: three spots for food, then "=" and the pot
+// The counter shows the pot: a spot for each food it takes (three, four
+// with the bigger pot), then "=" and the pot
 // itself. Tap the pot to cook. When the spots hold a recipe you know, the
 // pot shows the dish it will make. A mix that can't become any recipe,
 // even with more added, shows a Mushy mess as a warning; anything else
@@ -15,6 +16,8 @@
 //  - Recipes: every recipe, with what it needs and how many you have
 //    (missing food is greyed out). Recipes you haven't cooked yet show as
 //    "???" with one ingredient as a hint. Tap a recipe to fill the pot.
+//    Recipes for a kitchen item you don't have yet say what they need;
+//    seasonal ones only show in their season (or once you've made them).
 //
 // Cooking takes a moment: each ingredient plops into the pot in turn, the
 // lid rattles and steams while it cooks, and then the dish pops up.
@@ -26,7 +29,10 @@ import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import { foodCount } from '../game/economy';
 import { recipeHints } from '../game/skills';
-import { couldBeRecipe, haveAll, ingredientsFor, INGREDIENTS, knowsRecipe, matchRecipe, RECIPES } from '../game/cooking';
+import {
+  COUNTED_RECIPES, couldBeRecipe, haveAll, hasStation, inSeason, ingredientsFor, INGREDIENTS, knowsRecipe, matchRecipe,
+  MAX_POT_SLOTS, potSlots, recipeOpen, RECIPES, stationOf,
+} from '../game/cooking';
 import type { Food, FoodId } from '../game/actions';
 import type { GameState } from '../game/state';
 import { createDrawer } from './drawer';
@@ -91,7 +97,9 @@ export function createCooking(cb: CookingCallbacks): Cooking {
   kitchen.hidden = true;
   const potRow = document.createElement('div');
   potRow.className = 'pot-row';
-  const slots = Array.from({ length: CONFIG.cooking.slots }, (_, i) => {
+  // Spots for the biggest pot; the ones this pot doesn't have are hidden,
+  // with the "+" in front of them.
+  const slots = Array.from({ length: MAX_POT_SLOTS }, (_, i) => {
     const b = document.createElement('button');
     b.className = 'pot-slot';
     b.addEventListener('click', () => {
@@ -101,8 +109,9 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     });
     return b;
   });
+  const pluses: HTMLElement[] = [];
   slots.forEach((s, i) => {
-    if (i > 0) potRow.append(sign('+'));
+    if (i > 0) potRow.append(pluses[i] = sign('+'));
     potRow.append(s);
   });
   potRow.append(sign('='));
@@ -213,7 +222,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
 
   function addToPot(id: FoodId): void {
     if (busy()) return;
-    if (pot.length >= CONFIG.cooking.slots) return cb.toast(STRINGS.cooking.full);
+    if (pot.length >= potSlots(state!)) return cb.toast(STRINGS.cooking.full);
     if (left(id) <= 0) return cb.toast(STRINGS.cooking.noneLeft(foodName(id)), inShop(id) ? 'food' : undefined);
     clearDone();
     pot.push(id);
@@ -223,7 +232,9 @@ export function createCooking(cb: CookingCallbacks): Cooking {
   function pickRecipe(id: FoodId): void {
     if (!state || busy()) return;
     const recipe = RECIPES.find((r) => r.id === id)!;
+    if (!hasStation(state, stationOf(recipe))) return cb.toast(STRINGS.cooking.needs[stationOf(recipe)]);
     if (!knowsRecipe(state, id)) return cb.toast(STRINGS.cooking.hint(foodName(recipe.ingredients[0])));
+    if (!recipeOpen(state, recipe)) return cb.toast(STRINGS.cooking.outOfSeason);
     const missing = ingredientsFor(state, recipe).filter((i) => i.have < i.need);
     if (missing.length > 0) {
       return cb.toast(STRINGS.cooking.missing(missing.map((i) => foodName(i.id)).join(', ')));
@@ -326,7 +337,11 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     for (let i = pot.length - 1; i >= 0; i--) if (left(pot[i]) < 0) pot.splice(i, 1);
 
     const inSpots = plopping.length > 0 ? plopping : pot;
+    const size = potSlots(s);
     slots.forEach((slot, i) => {
+      // (Not `hidden`: .pot-slot sets its own display.)
+      slot.style.display = i >= size ? 'none' : '';
+      if (pluses[i]) pluses[i].style.display = i >= size ? 'none' : '';
       const id = inSpots[i];
       slot.innerHTML = id ? ITEM_ICONS[id] : '';
       slot.classList.toggle('filled', id !== undefined);
@@ -336,7 +351,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     // The pot: the dish you just made, the dish a known recipe will make,
     // a "?" for anything else, or the empty pot.
     const known = matchRecipe(pot);
-    const preview = justMade ?? (known && knowsRecipe(s, known.id) ? known.id : null);
+    const preview = justMade ?? (known && knowsRecipe(s, known.id) && recipeOpen(s, known) ? known.id : null);
     const mush = !preview && pot.length > 0 && !couldBeRecipe(pot);
     potIcon.innerHTML =
       simmering ? ITEM_ICONS.cooking
@@ -369,16 +384,20 @@ export function createCooking(cb: CookingCallbacks): Cooking {
       p.b.title = foodName(p.id);
     }
 
-    const found = RECIPES.filter((r) => knowsRecipe(s, r.id)).length;
-    bookHead.textContent = STRINGS.cooking.found(found, RECIPES.length);
+    const found = COUNTED_RECIPES.filter((r) => knowsRecipe(s, r.id)).length;
+    bookHead.textContent = STRINGS.cooking.found(found, COUNTED_RECIPES.length);
     const hints = recipeHints(s); // the Chef's nose skill
     for (const r of bookRows) {
       const isKnown = knowsRecipe(s, r.recipe.id);
+      r.b.style.display = !isKnown && !inSeason(r.recipe, s.lastUpdated) ? 'none' : '';
+      const station = stationOf(r.recipe);
+      const noStation = !hasStation(s, station);
       const needs = ingredientsFor(s, r.recipe);
-      r.b.classList.toggle('unknown', !isKnown);
-      r.b.classList.toggle('ready', isKnown && haveAll(s, r.recipe.ingredients));
+      r.b.classList.toggle('unknown', !isKnown || noStation);
+      r.b.classList.toggle('ready', isKnown && recipeOpen(s, r.recipe) && haveAll(s, r.recipe.ingredients));
       r.icon.innerHTML = isKnown ? ITEM_ICONS[r.recipe.id] : ITEM_ICONS.unknown;
-      r.label.textContent = isKnown || hints.name ? foodName(r.recipe.id) : STRINGS.cooking.unknown;
+      r.label.textContent = noStation ? STRINGS.cooking.needs[station]
+        : isKnown || hints.name ? foodName(r.recipe.id) : STRINGS.cooking.unknown;
       const n = stars(r.recipe.id);
       if (isKnown && n) {
         const st = document.createElement('small');
@@ -405,7 +424,9 @@ export function createCooking(cb: CookingCallbacks): Cooking {
       );
       r.b.setAttribute(
         'aria-label',
-        isKnown
+        noStation
+          ? STRINGS.cooking.needs[station]
+          : isKnown
           ? `${foodName(r.recipe.id)}. ${needs.map((x) => `${foodName(x.id)} ${countText(x.have)}/${x.need}`).join(', ')}`
           : STRINGS.cooking.hint(foodName(r.recipe.ingredients[0])),
       );
