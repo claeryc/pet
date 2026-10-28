@@ -530,6 +530,24 @@ export function drawRoom(
 
   if (!percys && !scene.note && !scene.build) drawPet(mix);
 
+  // Lights off: dim the room, but for the light coming in at the window.
+  // Only the room goes dark: the garden or Percy's meadow growing up over
+  // it stays lit, and the trip and shelf close-up fade in over the dark.
+  // Sleeping pets' Zzz glow over the dark.
+  if (scene.lightsOff && mix < 1) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, ROOM_WIDTH, Math.round((ROOM_HEIGHT + 3) * (1 - mix)));
+    ctx.clip();
+    ctx.fillStyle = PALETTE.ink;
+    ctx.globalAlpha = 0.45;
+    ctx.fillRect(0, 0, ROOM_WIDTH, ROOM_HEIGHT);
+    ctx.globalAlpha = 1;
+    if (!scene.room?.curtains) drawWindowLight(ctx, WINDOW, scene.night);
+    ctx.restore();
+  }
+  if (mix < 1) for (const p of sleepers) drawSleepZs(ctx, p.sheet, p.x, timeMs);
+
   const trip = stepTrip(scene, timeMs);
   if (trip > 0 && lastTrip) {
     ctx.globalAlpha = trip;
@@ -544,14 +562,4 @@ export function drawRoom(
     ctx.globalAlpha = 1;
   }
 
-  // Lights off: dim the whole room, but for the light coming in at the
-  // window. Sleeping pets' Zzz glow over the dark.
-  if (scene.lightsOff) {
-    ctx.fillStyle = PALETTE.ink;
-    ctx.globalAlpha = 0.45;
-    ctx.fillRect(0, 0, ROOM_WIDTH, ROOM_HEIGHT);
-    ctx.globalAlpha = 1;
-    if (mix < 1 && !scene.room?.curtains) drawWindowLight(ctx, WINDOW, scene.night);
-  }
-  if (mix < 1) for (const p of sleepers) drawSleepZs(ctx, p.sheet, p.x, timeMs);
 }
