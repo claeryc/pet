@@ -62,8 +62,8 @@ describe('achievement tiers', () => {
 describe('what counts', () => {
   it('a landed fish counts, one that gets away does not', () => {
     const s = newTeen(START);
-    expect(land(s, 'perfect', 0, 0.5).state.tally.fish).toBe(CONFIG.fishing.fishPerCatch);
-    expect(land(s, 'weak', 0.999, 0.5).state.tally.fish ?? 0).toBe(0);
+    expect(land(s, 'perfect', { fish: 'shrimp', bait: null }).state.tally.fish).toBe(CONFIG.fishing.fishPerCatch);
+    expect(land(s, 'miss', { fish: 'shrimp', bait: null }).state.tally.fish ?? 0).toBe(0);
   });
 
   it('a recipe counts as a dish, a Mushy mess does not', () => {

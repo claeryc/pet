@@ -29,7 +29,7 @@ const RULES = {
   // Every recipe found.
   allRecipes: (state: GameState) => RECIPES.every((r) => state.recipesFound.includes(r.id)),
   // Every kind of fish caught.
-  allFish: (state: GameState) => Object.keys(CONFIG.fishing.catchOdds.other).every((id) => state.caught.includes(id)),
+  allFish: (state: GameState) => Object.keys(CONFIG.fishing.catchOdds).every((id) => state.caught.includes(id)),
   // A pet that moved into the Family Tree (not one that passed away).
   retired: counted('retired'),
   // A Revival Star made from star fragments.

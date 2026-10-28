@@ -183,6 +183,36 @@ export const ITEM_ICONS: Record<string, string> = {
     '..kbbbbbbk..',
     '...kkkkkk...',
   ]),
+  // A slice of bread with crumbs falling off it.
+  crumbs: pixelIcon([
+    '............',
+    '...kkkkkk...',
+    '..kooooook..',
+    '.koeeeeeeok.',
+    '.koeeeeeeok.',
+    '..koeeeeok..',
+    '..koeeeeok..',
+    '..koooooook.',
+    '..kkkkkkkk..',
+    '.k.......k..',
+    'kok..k..kok.',
+    '.k..kok..k..',
+  ]),
+  // A little fish-shaped lure that glows, on a hook.
+  glowLure: pixelIcon([
+    '.....kk.....',
+    '.....kk.....',
+    '..w..kk..w..',
+    '....kkkk....',
+    '...kyyyyk...',
+    '.kkyywyyyk..',
+    'kyykyyyyyyk.',
+    '.kkyyyyyok..',
+    '...kooook.w.',
+    '.w..kkkk.k..',
+    '.....kk.kk..',
+    '......kkk...',
+  ]),
   // A wriggly worm on a hook.
   bait: pixelIcon([
     '.....kk.....',

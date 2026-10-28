@@ -5,6 +5,7 @@
 // (both can also be earned from good care, see fragments.ts); paying for
 // them is handled by src/payments.ts.
 
+import type { BaitId } from './fishing';
 import { CONFIG } from './config';
 import hatData from '../data/hats.json';
 import type { GameState } from './state';
@@ -147,14 +148,11 @@ export function grantPack(state: GameState, productId: string): GameState {
 
 // ---- Fishing bait, fortune cookies, the extra garden pot and room decorations ----
 
-export function baitCount(state: GameState): number {
-  return state.inventory.supplies.bait ?? 0;
-}
-
-export function buyBait(state: GameState): ShopResult {
-  const { price } = CONFIG.fishing.bait;
+// One bait from the tackle shelf (see CONFIG.fishing.baits).
+export function buyBait(state: GameState, id: BaitId): ShopResult {
+  const { price } = CONFIG.fishing.baits[id];
   if (!canAfford(state, price)) return { state, blocked: 'notEnoughGold' };
-  const supplies = { ...state.inventory.supplies, bait: baitCount(state) + 1 };
+  const supplies = { ...state.inventory.supplies, [id]: (state.inventory.supplies[id] ?? 0) + 1 };
   return { state: { ...state, gold: state.gold - price, inventory: { ...state.inventory, supplies } } };
 }
 

@@ -1,6 +1,7 @@
 // The shape of everything the game remembers. This whole object is what gets
 // saved, so keep it plain data (numbers, strings, arrays) with no functions.
 
+import type { BaitId } from './fishing';
 import { CONFIG } from './config';
 import type { Stage } from './growth';
 import { newGarden } from './garden';
@@ -491,8 +492,8 @@ export interface GameState {
   // it's decorated.
   familyHome: { owned: boolean; room: Room };
   stock: Stock;
-  // Whether fishing uses bait (switched on in the pond).
-  baitOn: boolean;
+  // The bait picked for fishing in the pond (null for none).
+  tackle: BaitId | null;
   // Fish landed today, for the daily limit on XP and seeds from fishing
   // (CONFIG.fishing.rewardedPerDay).
   pond: { day: string; fish: number };
@@ -609,7 +610,7 @@ export function createNewGame(now: number): GameState {
     room: { wallpaper: 'plain', curtains: null },
     familyHome: { owned: false, room: { wallpaper: 'plain', curtains: null } },
     stock: { day: '', bought: 0 },
-    baitOn: false,
+    tackle: null,
     pond: { day: '', fish: 0 },
     tally: {},
     badges: {},

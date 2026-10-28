@@ -4,7 +4,9 @@
 //
 // What's in it: water with a moving surface, the bait hanging on the line,
 // dark see-through fish swimming about, and bubbles. The bait splashes as it
-// goes in and out, and tugs down when a fish bites. While you reel in the
+// goes in and out, dips a little at a nibble, and tugs down when a fish
+// bites. The fish going for the bait is small for a shrimp, middling for
+// a salmon and big for a lobster, so you can see what's coming. While you reel in the
 // surface churns with bigger waves and foam. A landed fish leaves with a
 // splash; one that got off the hook darts away. The fish, bubbles and foam
 // each pick one of a few small sprites at random, so it never looks quite
@@ -12,6 +14,7 @@
 
 import { PALETTE } from './palette';
 import type { FishingPhase } from '../ui/fishing';
+import type { CatchId } from '../game/fishing';
 
 // The pond is always this many pixels wide; its height follows the shape
 // of the space it fills.
@@ -21,7 +24,7 @@ export const POND_WIDTH = 96;
 // letter is a pixel in the colour the sprite is drawn with.
 export type Sprite = string[];
 
-// Fish shadows (facing right; flipped when swimming left).
+// Fish shadows (facing right; flipped when swimming left), small to big.
 const FISH: Sprite[] = [
   ['k.kkkk.', '.kkkkkk', 'k.kkkk.'],
   ['k...kkkk..', 'kk.kkkkkkk', 'kkkkkkkkk.', 'k...kkk...'],
@@ -65,6 +68,7 @@ interface Fish {
   y: number;
   vx: number;
   turnIn: number; // seconds until it may change its mind
+  leaving?: boolean; // swimming off for good, to make room for a newcomer
 }
 interface Bubble {
   sprite: Sprite;
@@ -95,6 +99,7 @@ export interface Pond {
   canvas: HTMLCanvasElement;
   resize: () => void; // call after the pond's on-screen size changes
   draw: (phase: FishingPhase, timeMs: number) => void;
+  hook: (fish: CatchId) => void; // which fish will go for the bait this cast
   landed: (caught: boolean) => void; // the catch is over: the fish leaves, one way or the other
   baitAt: () => { x: number; y: number }; // where the bait is, as shares of the pond's size
 }
@@ -115,6 +120,7 @@ export function createPond(): Pond {
   let foamIn = 0;
   let bait = { x: 0, y: 0 }; // where the bait hangs (moves when sinking or reeling)
   let biter: Fish | null = null; // the fish going for the bait
+  let wanted: Sprite = FISH[0]; // the size of fish that will bite
   let letGo = false; // the catch is over, though the bar is still showing
   let tug = 0; // how far a biting fish pulls the bait down
   const ripples: Ripple[] = [];
@@ -168,6 +174,7 @@ export function createPond(): Pond {
     if (phase !== 'reeling') letGo = false;
     const reeling = phase === 'reeling' && !letGo;
     const biting = phase === 'bite';
+    const line = phase === 'waiting' || phase === 'nibble' || biting || reeling;
 
     // The bait sinks to about halfway down once cast, and comes back up
     // out of the water when the line is in. It splashes going in and out.
@@ -176,14 +183,15 @@ export function createPond(): Pond {
     bait.y += Math.sign(targetY - bait.y) * Math.min(Math.abs(targetY - bait.y), 14 * dt);
     if ((wasY < SURFACE) !== (bait.y < SURFACE)) splash(bait.x + 2);
     const jerk = biting || reeling ? Math.round(Math.sin(t / 60)) : 0;
-    // A bite tugs the bait down in sharp little pulls.
-    tug = biting ? [3, 3, 1, 0][Math.floor(t / 110) % 4] : 0;
+    // A bite tugs the bait down in sharp little pulls; a nibble just dips it.
+    tug = biting ? [3, 3, 1, 0][Math.floor(t / 110) % 4] : phase === 'nibble' ? 1 : 0;
 
-    // Pick a fish to go for the bait once it's in the water.
-    if (phase === 'waiting' || biting || reeling) biter ??= pick(fish);
+    // Pick a fish of the right size to go for the bait once it's in the
+    // water. If there's none about, one swims in from the side.
+    if (line) biter ??= biterOf(wanted);
     else biter = null;
 
-    for (const f of fish) {
+    for (const f of [...fish]) {
       const fw = f.sprite[0].length;
       if (f === biter) {
         // Swim to the bait, head first. Slowly while waiting, then right up
@@ -191,7 +199,7 @@ export function createPond(): Pond {
         const facingRight = f.x + fw / 2 < bait.x;
         const goalX = facingRight ? bait.x - fw + 2 : bait.x + 3;
         const goalY = bait.y + 2 - Math.floor(f.sprite.length / 2);
-        const speed = phase === 'waiting' ? 0.6 : 6;
+        const speed = phase === 'waiting' || phase === 'nibble' ? 0.6 : 6;
         f.x += (goalX - f.x) * Math.min(1, speed * dt);
         f.y += (goalY - f.y) * Math.min(1, speed * dt);
         f.vx = Math.abs(f.vx) * (facingRight ? 1 : -1);
@@ -205,6 +213,10 @@ export function createPond(): Pond {
       // that got off the hook darts away, then slows down again.
       f.x += f.vx * dt * (reeling ? 1.6 : 1); // the splashing spooks them
       if (Math.abs(f.vx) > 9) f.vx *= 1 - Math.min(1, dt * 1.5);
+      if (f.leaving) {
+        if (f.x < -fw || f.x > W) fish.splice(fish.indexOf(f), 1);
+        continue;
+      }
       f.turnIn -= dt;
       if (f.turnIn <= 0) {
         f.turnIn = rand(2, 5);
@@ -338,6 +350,27 @@ export function createPond(): Pond {
     }
   }
 
+  function biterOf(sprite: Sprite): Fish {
+    const free = fish.filter((f) => f.sprite === sprite && !f.leaving);
+    if (free.length > 0) return pick(free);
+    // The pond doesn't fill up: someone else swims off to make room.
+    const stay = fish.filter((f) => !f.leaving);
+    if (stay.length >= 4) {
+      const out = pick(stay);
+      out.leaving = true;
+      out.vx = out.x + out.sprite[0].length / 2 < W / 2 ? -12 : 12;
+    }
+    const f = newFish(sprite);
+    f.x = Math.random() < 0.5 ? -sprite[0].length - 6 : W + 6;
+    fish.push(f);
+    return f;
+  }
+
+  function hook(kind: CatchId): void {
+    wanted = FISH[kind === 'lobster' ? 2 : kind === 'salmon' ? 1 : 0];
+    biter = null;
+  }
+
   function landed(caught: boolean): void {
     letGo = true;
     const f = biter;
@@ -362,6 +395,7 @@ export function createPond(): Pond {
     canvas,
     resize,
     draw,
+    hook,
     landed,
     baitAt: () => ({ x: (bait.x + 2) / W, y: Math.max(0, bait.y + 3) / H }),
   };

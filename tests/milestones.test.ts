@@ -66,7 +66,7 @@ describe('milestones', () => {
     for (const p of PLACES) s.journeys.journal[p.id] = { trips: 1, postcards: [], found: [] };
     s.charactersFound = ['dumpling', 'starhoot'];
     s.recipesFound = RECIPES.map((r) => r.id);
-    s.caught = Object.keys(CONFIG.fishing.catchOdds.other);
+    s.caught = Object.keys(CONFIG.fishing.catchOdds);
     const out = updateMilestones(s);
     expect(out.earned).toEqual(['explorer', 'threeStar', 'allRecipes', 'allFish']);
     expect(out.state.messages.filter((m) => m.kind === 'milestone')).toHaveLength(4);

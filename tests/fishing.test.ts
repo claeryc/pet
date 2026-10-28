@@ -6,9 +6,11 @@ import {
   biteDelayMs,
   cast,
   gradeAt,
+  hook,
   justGotShy,
   land,
   nextCenter,
+  nibbleTimes,
   pickCatch,
   placeZones,
   reelGrade,
@@ -16,6 +18,8 @@ import {
   reelZones,
   startReel,
   stepReel,
+  type Bite,
+  type CatchId,
   type Reel,
 } from '../src/game/fishing';
 import { createNewGame } from '../src/game/state';
@@ -24,6 +28,8 @@ import { newTeen } from './helpers';
 const HOUR = 3_600_000;
 const START = new Date(2026, 0, 1, 10, 0).getTime();
 const f = CONFIG.fishing;
+const shrimp: Bite = { fish: 'shrimp', bait: null };
+const lobster: Bite = { fish: 'lobster', bait: null };
 
 describe('the catch bar', () => {
   it('always fits the zones fully on the bar, wherever they land', () => {
@@ -140,6 +146,72 @@ describe('reeling in', () => {
     expect(biteDelayMs(0)).toBe(f.biteAfterSeconds.min * 1000);
     expect(biteDelayMs(1)).toBe(f.biteAfterSeconds.max * 1000);
   });
+
+  it('fills the meter fastest on green and slowest on red', () => {
+    const r = startReel(0.5);
+    const z = reelZones(r);
+    const at = (spot: number) => stepReel({ ...r, marker: spot, speed: 0 }, false, 16, 0.5).meter;
+    const green = at((z.perfect.start + z.perfect.end) / 2);
+    const yellow = at((z.good.start + z.perfect.start) / 2);
+    const red = at((z.weak.start + z.good.start) / 2);
+    expect(green).toBeGreaterThan(yellow);
+    expect(yellow).toBeGreaterThan(red);
+    expect(red).toBeGreaterThan(r.meter);
+  });
+});
+
+describe('nibbles', () => {
+  it('come before the bite, never on top of it', () => {
+    const bite = 8000;
+    const times = nibbleTimes(bite, 0.999, [0, 1]);
+    expect(times).toHaveLength(f.nibbles.max);
+    for (const t of times) {
+      expect(t).toBeGreaterThanOrEqual(2000); // the bait has sunk by then
+      expect(t + f.nibbles.seconds * 1000).toBeLessThan(bite);
+    }
+    expect(times[1] - times[0]).toBeGreaterThan(f.nibbles.seconds * 1000);
+  });
+
+  it('sometimes none, and none when the bite comes quickly', () => {
+    expect(nibbleTimes(8000, 0, [0.5])).toEqual([]);
+    expect(nibbleTimes(2000, 0.999, [0.5, 0.5])).toEqual([]);
+  });
+});
+
+describe('how each fish fights', () => {
+  // Steps a reel with the dot parked on green, and counts the slides.
+  function slides(fish: CatchId, ms: number): number {
+    let r = startReel(0.5, undefined, fish);
+    let n = 0;
+    for (let t = 0; t < ms; t += 16) {
+      const before = r.nextShiftAt;
+      r = { ...stepReel(r, false, 16, 0.5), meter: 0.5 };
+      if (r.nextShiftAt !== before) n++;
+    }
+    return n;
+  }
+
+  it('salmon dart about more often than shrimp', () => {
+    expect(slides('salmon', 20_000)).toBeGreaterThan(slides('shrimp', 20_000));
+  });
+
+  it('lobster yank the dot back now and then', () => {
+    const still = (fish: CatchId) => {
+      let r = { ...startReel(0.5, undefined, fish), marker: 0.5 };
+      let lowest = 0;
+      for (let t = 0; t < 4000; t += 16) {
+        r = { ...stepReel({ ...r, speed: 0, marker: 0.5 }, false, 16, 0.5), meter: 0.5 };
+        lowest = Math.min(lowest, r.speed);
+      }
+      return lowest;
+    };
+    expect(still('lobster')).toBeLessThan(still('shrimp') - 0.5);
+  });
+
+  it('a lobster can still be landed by keeping on the green', () => {
+    const r = run(startReel(0.5, undefined, 'lobster'), 30_000, chase);
+    expect(reelOutcome(r)).toBe('landed');
+  });
 });
 
 describe('landing a fish', () => {
@@ -147,13 +219,13 @@ describe('landing a fish', () => {
     let s = newTeen(START);
     const limit = f.rewardedPerDay;
     for (let i = 0; i < limit; i++) {
-      const r = land(s, 'good', 0, 0);
+      const r = land(s, 'good', shrimp);
       expect(r.rewarded).toBe(true);
       s = r.state;
     }
     expect(justGotShy(s)).toBe(false);
     const xp = s.keeper.xp;
-    const over = land(s, 'perfect', 0, 0);
+    const over = land(s, 'perfect', shrimp);
     expect(over.rewarded).toBe(false);
     expect(over.caught).not.toBeNull();
     expect(justGotShy(over.state)).toBe(true);
@@ -163,32 +235,34 @@ describe('landing a fish', () => {
     expect(foodCount(over.state, 'shrimp')).toBe(foodCount(s, 'shrimp') + 1);
     // A new day starts the count again.
     const tomorrow = { ...over.state, lastUpdated: START + 24 * HOUR };
-    const next = land(tomorrow, 'good', 0, 0);
+    const next = land(tomorrow, 'good', shrimp);
     expect(next.rewarded).toBe(true);
     expect(next.state.keeper.xp).toBeGreaterThan(xp);
     expect(next.state.pond.fish).toBe(1);
   });
 
-  it('uses the chance for each kind of catch', () => {
+  it('a full meter always lands the fish, whatever the grade', () => {
     const s = newTeen(START);
-    expect(land(s, 'perfect', 0.999, 0).count).toBe(1);
-    expect(land(s, 'good', 0.74, 0).count).toBe(1);
-    expect(land(s, 'good', 0.75, 0).caught).toBeNull();
-    expect(land(s, 'weak', 0.29, 0).count).toBe(1);
-    expect(land(s, 'weak', 0.3, 0).caught).toBeNull();
-    expect(land(s, 'miss', 0, 0).caught).toBeNull();
+    for (const grade of ['perfect', 'good', 'weak'] as const) expect(land(s, grade, shrimp).caught).toBe('shrimp');
+    expect(land(s, 'miss', shrimp).caught).toBeNull();
   });
 
-  it('catches shrimp, salmon or lobster by the odds', () => {
-    const other = f.catchOdds.other;
-    expect(pickCatch('good', 0)).toBe('shrimp');
-    expect(pickCatch('good', (other.shrimp - 1) / 100)).toBe('shrimp');
-    expect(pickCatch('good', (other.shrimp + 1) / 100)).toBe('salmon');
-    expect(pickCatch('weak', 0.999)).toBe('lobster');
-    // A perfect catch makes lobster more likely.
-    const perfect = f.catchOdds.perfect;
-    expect(pickCatch('perfect', 1 - (perfect.lobster - 1) / 100)).toBe('lobster');
-    expect(pickCatch('good', 1 - (perfect.lobster - 1) / 100)).toBe('salmon');
+  it('decides which fish it is at the bite, by the odds', () => {
+    const odds = f.catchOdds;
+    expect(pickCatch(0)).toBe('shrimp');
+    expect(pickCatch((odds.shrimp - 1) / 100)).toBe('shrimp');
+    expect(pickCatch((odds.shrimp + 1) / 100)).toBe('salmon');
+    expect(pickCatch(0.999)).toBe('lobster');
+    expect(hook(newTeen(START), 0.999)).toEqual({ fish: 'lobster', bait: null });
+  });
+
+  it('perfect catches in a row make a lobster likelier, up to a point', () => {
+    const { percent, max } = f.streakLobster;
+    const lobsterAt = 1 - (f.catchOdds.lobster + percent - 1) / 100;
+    expect(pickCatch(lobsterAt, null, 0, 0)).toBe('salmon');
+    expect(pickCatch(lobsterAt, null, 0, 1)).toBe('lobster');
+    const cap = 1 - (f.catchOdds.lobster + percent * max + 1) / 100;
+    expect(pickCatch(cap, null, 0, max + 5)).not.toBe('lobster');
   });
 
   it('the three catches are 1, 2 and 3 stars and are not sold in the Shop', () => {
@@ -198,17 +272,17 @@ describe('landing a fish', () => {
 
   it('puts the catch in the inventory, where the pet can eat it', () => {
     let s = newTeen(START);
-    s = land(s, 'perfect', 0, 0.999).state; // a lobster
-    s = land(s, 'perfect', 0, 0.999).state;
+    s = land(s, 'perfect', lobster).state;
+    s = land(s, 'perfect', lobster).state;
     expect(foodCount(s, 'lobster')).toBe(2);
     const fed = feed(s, START, 'lobster');
     expect(fed.blocked).toBeUndefined();
     expect(foodCount(fed.state, 'lobster')).toBe(1);
   });
 
-  it('a slipped fish changes nothing', () => {
+  it('nothing landed changes nothing', () => {
     const s = newTeen(START);
-    expect(land(s, 'weak', 0.9, 0).state).toBe(s);
+    expect(land(s, 'miss', shrimp).state).toBe(s);
   });
 });
 

@@ -8,9 +8,13 @@
 // Holding Pull drags it right, letting go lets it drift back left, and the
 // coloured stripe slides a little to one side every few seconds. While the
 // dot is on a coloured stripe the catch meter fills; on blue it drains.
-// Fill it and the fish is landed, graded by where the dot spent its time
-// (see reelGrade and CONFIG.fishing.catchChance). Let it empty and the fish
-// swims off.
+// Green fills it fastest, yellow slower, red slowest. Fill it and the fish
+// is landed, graded by where the dot spent its time (see reelGrade). Let it
+// empty and the fish swims off.
+//
+// Which fish it is gets decided when it bites (see hook), and each kind
+// fights its own way (CONFIG.fishing.fights): salmon dart about, lobster
+// are heavy and yank the dot back now and then.
 
 import { CONFIG } from './config';
 import { addTally, countUp } from './achievements';
@@ -80,20 +84,30 @@ export interface Reel {
   meter: number; // the catch meter (0-1)
   widen: number; // how much wider the green stripe is (skills)
   timeIn: Record<CatchGrade, number>; // ms the dot spent in each zone
+  fish: CatchId; // what's on the line, which decides how it fights
+  nextTugAt: number; // when a strong fish next yanks the dot back (elapsedMs)
 }
 
-function shiftGap(random: number): number {
+const fightOf = (fish: CatchId) => CONFIG.fishing.fights[fish];
+
+function shiftGap(random: number, fish: CatchId = 'shrimp'): number {
   const { min, max } = CONFIG.fishing.reel.shiftEverySeconds;
+  return (min + random * (max - min)) * 1000 * fightOf(fish).shiftEvery;
+}
+
+function tugGap(random: number): number {
+  const { min, max } = CONFIG.fishing.tugEverySeconds;
   return (min + random * (max - min)) * 1000;
 }
 
 // Where the zones slide to next: a bit to the left or right of `center`
-// (`random` 0-1 picks the side and how far), staying on the bar.
-export function nextCenter(center: number, random: number, widen = 1): number {
+// (`random` 0-1 picks the side and how far), staying on the bar. `far`
+// stretches the slide (a darting fish).
+export function nextCenter(center: number, random: number, widen = 1, far = 1): number {
   const { min, max } = CONFIG.fishing.reel.shiftBy;
   const r = reaches(widen);
   const left = random < 0.5;
-  const by = min + ((left ? random : random - 0.5) * 2) * (max - min);
+  const by = (min + ((left ? random : random - 0.5) * 2) * (max - min)) * far;
   let to = center + (left ? -by : by);
   // Bounce off the ends instead of piling up against them.
   if (to < r.weak || to > 1 - r.weak) to = center + (left ? by : -by);
@@ -101,8 +115,12 @@ export function nextCenter(center: number, random: number, widen = 1): number {
 }
 
 // A fresh reel: the dot at the left end, the zones at a random spot.
-// `perks` are the fishing skills (none by default).
-export function startReel(random: number, perks: ReelPerks = { widen: 1, meterStart: CONFIG.fishing.reel.meterStart }): Reel {
+// `perks` are the fishing skills (none by default), and `fish` is what bit.
+export function startReel(
+  random: number,
+  perks: ReelPerks = { widen: 1, meterStart: CONFIG.fishing.reel.meterStart },
+  fish: CatchId = 'shrimp',
+): Reel {
   const r = reaches(perks.widen);
   const center = r.weak + random * (1 - 2 * r.weak);
   return {
@@ -113,10 +131,13 @@ export function startReel(random: number, perks: ReelPerks = { widen: 1, meterSt
     from: center,
     to: center,
     shiftedAt: 0,
-    nextShiftAt: shiftGap(random),
+    nextShiftAt: shiftGap(random, fish),
     meter: perks.meterStart,
     widen: perks.widen,
     timeIn: { perfect: 0, good: 0, weak: 0, miss: 0 },
+    fish,
+    // The first yank comes once the grace time is over.
+    nextTugAt: CONFIG.fishing.reel.graceSeconds * 1000 + tugGap(random),
   };
 }
 
@@ -125,15 +146,23 @@ export function reelZones(reel: Reel): CatchZones {
 }
 
 // Moves the reel on by `dtMs`. `held` is whether Pull is held down, and
-// `random` (0-1) is only used when the zones start a new slide.
+// `random` (0-1) is only used when the zones start a new slide or the fish
+// yanks.
 export function stepReel(reel: Reel, held: boolean, dtMs: number, random: number): Reel {
   const c = CONFIG.fishing.reel;
+  const fight = fightOf(reel.fish);
   const dt = Math.min(dtMs, 50) / 1000; // a long hiccup counts as one short step
   const elapsedMs = reel.elapsedMs + dt * 1000;
 
-  // The dot: pulled right while held, drifting back left when let go.
+  // The dot: pulled right while held, drifting back left when let go. A
+  // strong fish yanks it back left every so often.
   let speed = reel.speed + (held ? c.pull : -c.drift) * dt;
-  speed = Math.max(-c.maxSpeed, Math.min(c.maxSpeed, speed));
+  let nextTugAt = reel.nextTugAt;
+  if (fight.tug > 0 && elapsedMs >= nextTugAt) {
+    speed -= fight.tug;
+    nextTugAt = elapsedMs + tugGap(random);
+  }
+  speed = Math.max(-c.maxSpeed - fight.tug, Math.min(c.maxSpeed, speed));
   let marker = reel.marker + speed * dt;
   if (marker <= 0 || marker >= 1) {
     marker = Math.max(0, Math.min(1, marker));
@@ -144,25 +173,26 @@ export function stepReel(reel: Reel, held: boolean, dtMs: number, random: number
   let { from, to, shiftedAt, nextShiftAt } = reel;
   if (elapsedMs >= nextShiftAt) {
     from = reel.center;
-    to = nextCenter(reel.center, random, reel.widen);
+    to = nextCenter(reel.center, random, reel.widen, fight.shiftBy);
     shiftedAt = elapsedMs;
-    nextShiftAt = elapsedMs + shiftGap(random);
+    nextShiftAt = elapsedMs + shiftGap(random, reel.fish);
   }
-  const glide = Math.min(1, (elapsedMs - shiftedAt) / (c.glideSeconds * 1000));
+  const glide = Math.min(1, (elapsedMs - shiftedAt) / (c.glideSeconds * fight.glide * 1000));
   const eased = glide * glide * (3 - 2 * glide);
   const center = from + (to - from) * eased;
 
-  // The meter fills while the dot is on a coloured zone, drains on blue.
-  // For the first moments (while the dot travels over from the left end)
-  // it doesn't drain, and that time doesn't count against the grade.
+  // The meter fills while the dot is on a coloured zone (fastest on
+  // green), drains on blue. For the first moments (while the dot travels
+  // over from the left end) it doesn't drain, and that time doesn't count
+  // against the grade.
   const grade = gradeAt(zonesAround(center, reel.widen), marker);
   const grace = elapsedMs <= c.graceSeconds * 1000;
-  const change = grade !== 'miss' ? c.fill : grace ? 0 : -c.drain;
+  const change = grade !== 'miss' ? c.fill[grade] : grace ? 0 : -c.drain * fight.drain;
   const meter = Math.max(0, Math.min(1, reel.meter + change * dt));
   const counts = !grace || grade === 'perfect';
   const timeIn = counts ? { ...reel.timeIn, [grade]: reel.timeIn[grade] + dt * 1000 } : reel.timeIn;
 
-  return { ...reel, elapsedMs, marker, speed, center, from, to, shiftedAt, nextShiftAt, meter, timeIn };
+  return { ...reel, elapsedMs, marker, speed, center, from, to, shiftedAt, nextShiftAt, meter, timeIn, nextTugAt };
 }
 
 // 'landed' once the meter is full, 'lost' once it's empty, else null.
@@ -185,9 +215,26 @@ export function reelGrade(reel: Reel): CatchGrade {
 }
 
 // How long to wait for a bite, in milliseconds (random from 0 to 1).
-export function biteDelayMs(random: number): number {
+// Bread crumbs (or any bait that `bitesSooner`) shorten it.
+export function biteDelayMs(random: number, bait: BaitId | null = null): number {
   const { min, max } = CONFIG.fishing.biteAfterSeconds;
-  return (min + random * (max - min)) * 1000;
+  const sooner = bait ? (baitInfo(bait).bitesSooner ?? 1) : 1;
+  return (min + random * (max - min)) * 1000 * sooner;
+}
+
+// When the fake nibbles come, in ms after the cast, before a bite at
+// `biteMs`. `count` (0-1) picks how many and `spots` where they fall.
+// They wait until the bait has sunk, and keep clear of the real bite, so
+// a nibble never runs into it.
+export function nibbleTimes(biteMs: number, count: number, spots: number[]): number[] {
+  const { max, seconds } = CONFIG.fishing.nibbles;
+  const from = 2000;
+  const to = biteMs - 1000 - seconds * 1000;
+  if (to <= from) return [];
+  const n = Math.min(max, Math.floor(count * (max + 1)));
+  const gap = (to - from) / Math.max(1, n);
+  // One nibble per slice of the wait, so they never overlap.
+  return Array.from({ length: n }, (_, i) => from + gap * (i + (spots[i] ?? 0.5) * 0.8));
 }
 
 // Throws the line. Costs a little energy, and is refused when the pet
@@ -205,15 +252,35 @@ export function cast(state: GameState, now: number): ActionResult {
 }
 
 // The kinds of fish you can catch (ids of foods in CONFIG.foods).
-export type CatchId = keyof typeof CONFIG.fishing.catchOdds.other;
+export type CatchId = keyof typeof CONFIG.fishing.catchOdds;
 
-// Which kind of fish bit, from a random number (0-1). A perfect catch
-// makes the rarer ones more likely, and so does bait. `lucky` (the Lucky
-// line skill) moves that many percent from shrimp to lobster.
-export function pickCatch(grade: CatchGrade, random: number, baited = false, lucky = 0): CatchId {
-  const table = baited ? CONFIG.fishing.bait.catchOdds : CONFIG.fishing.catchOdds;
-  const odds: Record<CatchId, number> = { ...(grade === 'perfect' ? table.perfect : table.other) };
-  const moved = Math.min(lucky, odds.shrimp);
+// The baits on the tackle shelf (ids of supplies in the inventory).
+export type BaitId = keyof typeof CONFIG.fishing.baits;
+export const BAITS = Object.keys(CONFIG.fishing.baits) as BaitId[];
+
+interface BaitInfo {
+  price: number;
+  odds?: Record<CatchId, number>;
+  bitesSooner?: number;
+}
+export const baitInfo = (id: BaitId): BaitInfo => CONFIG.fishing.baits[id];
+
+export function baitCount(state: GameState, id: BaitId): number {
+  return state.inventory.supplies[id] ?? 0;
+}
+
+// The bait picked in the pond, if there's any of it left.
+export function baitInUse(state: GameState): BaitId | null {
+  return state.tackle && baitCount(state, state.tackle) > 0 ? state.tackle : null;
+}
+
+// Which kind of fish bit, from a random number (0-1). Bait changes the
+// odds. `lucky` (the Lucky line skill) and `streak` (perfect catches in a
+// row) each move some percent from shrimp to lobster.
+export function pickCatch(random: number, bait: BaitId | null = null, lucky = 0, streak = 0): CatchId {
+  const odds: Record<CatchId, number> = { ...((bait && baitInfo(bait).odds) || CONFIG.fishing.catchOdds) };
+  const { percent, max } = CONFIG.fishing.streakLobster;
+  const moved = Math.min(lucky + percent * Math.min(streak, max), odds.shrimp);
   odds.shrimp -= moved;
   odds.lobster += moved;
   const entries = Object.entries(odds) as [CatchId, number][];
@@ -226,25 +293,38 @@ export function pickCatch(grade: CatchGrade, random: number, baited = false, luc
   return entries[entries.length - 1][0];
 }
 
-// Tries to land the fish. `landRoll` (0-1) is rolled against the grade's
-// chance, and `kindRoll` picks which fish it was. A landed fish goes
-// into the inventory as food. With bait switched on, a landed fish uses one
-// up (a fish that gets away doesn't). Only the first
-// `rewardedPerDay` fish each day give Keeper XP (and a chance of a seed,
-// see findSeed): `rewarded` says whether this one did.
+// What's on the line: the fish that bit, and the bait it took (if any).
+export interface Bite {
+  fish: CatchId;
+  bait: BaitId | null;
+}
+
+// A fish takes the bait: which kind it is, from `random` (0-1), the bait
+// in use, the Lucky line skill and `streak` (perfect catches in a row).
+export function hook(state: GameState, random: number, streak = 0): Bite {
+  const bait = baitInUse(state);
+  return { fish: pickCatch(random, bait, perk(state, 'luckyLine'), streak), bait };
+}
+
+// Lands the fish once the catch meter is full: it goes into the inventory
+// as food, and the bait it took is used up (if there's still some). A
+// 'miss' (nothing landed) changes nothing. Only the first `rewardedPerDay`
+// fish each day give Keeper XP (and a chance of a seed, see findSeed):
+// `rewarded` says whether this one did.
 export function land(
   state: GameState,
   grade: CatchGrade,
-  landRoll: number,
-  kindRoll: number,
+  bite: Bite,
 ): { state: GameState; caught: CatchId | null; count: number; baited: boolean; rewarded: boolean } {
-  if (landRoll >= CONFIG.fishing.catchChance[grade]) return { state, caught: null, count: 0, baited: false, rewarded: false };
-  const bait = state.inventory.supplies.bait ?? 0;
-  const baited = state.baitOn && bait > 0;
-  const caught = pickCatch(grade, kindRoll, baited, perk(state, 'luckyLine'));
+  if (grade === 'miss') return { state, caught: null, count: 0, baited: false, rewarded: false };
+  const caught = bite.fish;
+  const left = bite.bait ? baitCount(state, bite.bait) : 0;
+  const baited = left > 0;
   const count = CONFIG.fishing.fishPerCatch;
   const food = { ...state.inventory.food, [caught]: (state.inventory.food[caught] ?? 0) + count };
-  const supplies = baited ? { ...state.inventory.supplies, bait: bait - 1 } : state.inventory.supplies;
+  const supplies = baited ? { ...state.inventory.supplies, [bite.bait!]: left - 1 } : state.inventory.supplies;
+  // The last of a bait used up: the pond goes back to no bait.
+  const tackle = baited && left === 1 && state.tackle === bite.bait ? null : state.tackle;
   const kinds = state.caught.includes(caught) ? state.caught : [...state.caught, caught];
   const today = localDay(state.lastUpdated);
   const before = state.pond.day === today ? state.pond.fish : 0;
@@ -252,6 +332,7 @@ export function land(
   let next: GameState = {
     ...state,
     inventory: { ...state.inventory, food, supplies },
+    tackle,
     caught: kinds,
     pond: { day: today, fish: before + count },
   };
@@ -268,7 +349,10 @@ export function justGotShy(state: GameState): boolean {
   return state.pond.fish === CONFIG.fishing.rewardedPerDay + CONFIG.fishing.fishPerCatch;
 }
 
-// Switches bait on or off for fishing (the little dot in the pond).
-export function toggleBait(state: GameState): GameState {
-  return { ...state, baitOn: !state.baitOn };
+// Picks the next bait for fishing (the chip in the pond's corner): no
+// bait, then each kind you have some of, in shelf order, and round again.
+export function nextBait(state: GameState): GameState {
+  const choices: (BaitId | null)[] = [null, ...BAITS.filter((id) => baitCount(state, id) > 0)];
+  const at = choices.indexOf(baitInUse(state));
+  return { ...state, tackle: choices[(at + 1) % choices.length] };
 }
