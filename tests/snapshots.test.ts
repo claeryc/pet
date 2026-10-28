@@ -8,9 +8,15 @@ const S = CONFIG.journeys.snapshots;
 const snap = (moment: string, at = 1) => ({ moment, at, name: 'Mochi', image: 'data:image/png;base64,' });
 
 describe('little moments on a trip', () => {
-  it('Mossy Woods has a set of six, other places the ones that happen anywhere', () => {
+  it('Mossy Woods has a set of six, Coral Cove five, other places the ones that happen anywhere', () => {
     expect(placeMoments('woods')).toHaveLength(6);
+    expect(placeMoments('cove')).toEqual(['butterfly', 'percy', 'crab', 'shell', 'jellies']);
     expect(placeMoments('market')).toEqual(['butterfly', 'percy']);
+  });
+
+  it('at the cove, shells wash up by day and moon jellies come out at night', () => {
+    expect(momentsNow('cove', false)).toEqual(['butterfly', 'percy', 'crab', 'shell']);
+    expect(momentsNow('cove', true)).toEqual(['percy', 'crab', 'jellies']);
   });
 
   it('butterflies come out by day and fireflies at night', () => {

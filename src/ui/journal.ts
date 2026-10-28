@@ -1,7 +1,7 @@
 // The travel journal (Collection > Travel journal, then a place): a little
 // book with a page for each place, in tabs along the top.
 //
-//   [market] [woods ♥] [caves] [?]
+//   [market] [woods ♥] [cove] [?]
 //   ┌ Mossy Woods  Regular · 7 trips ────── (pet) ┐
 //   8 more trips to become a Local [=====-----]
 //   ♥ Pip's favourite place

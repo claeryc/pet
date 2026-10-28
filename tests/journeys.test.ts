@@ -48,7 +48,7 @@ describe('the journey board', () => {
 
   it('puts different places on the board once more are open', () => {
     const s = newTeen(START);
-    // Every place open: the woods (a harvest), the caves (fish) and the hill (a grown-up).
+    // Every place open: the woods (a harvest), the cove (fish) and the hill (a grown-up).
     s.grown = ['carrot'];
     s.tally = { ...s.tally, fish: J.fishToOpen };
     s.charactersFound = ['dumpling'];

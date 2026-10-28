@@ -1,6 +1,6 @@
 // Snapshots: little moments on a journey. While you look in on a trip (tap
 // the note on the wall), the pets sometimes stop for a moment: a butterfly
-// flutters round them, Percy hurries by and waves, they sniff a mushroom...
+// flutters round them, Percy hurries by and waves, they sniff a mushroom, a crab scuttles up...
 // Snap it, and the picture goes on the place's page in the travel journal.
 // Each place has its own set to collect. Every look has a chance of a
 // moment, so none can be missed for good: the set fills up over many trips.
@@ -18,6 +18,9 @@ const MOMENTS: Record<string, { places: 'any' | readonly string[]; when?: 'day' 
   leaf: { places: ['woods'], when: 'day' },
   fireflies: { places: ['woods'], when: 'night' },
   squirrel: { places: ['woods'] },
+  crab: { places: ['cove'] },
+  shell: { places: ['cove'], when: 'day' },
+  jellies: { places: ['cove'], when: 'night' },
 };
 
 const at = (id: string, place: string) => {

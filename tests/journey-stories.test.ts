@@ -75,7 +75,7 @@ describe('story postcards', () => {
 
   it('every trait and place has its own lines', () => {
     for (const t of ['playful', 'greedy', 'shy', 'sleepy', 'cheery']) expect(STRINGS.journeys.stories[`trait:${t}`]).toBeTypeOf('function');
-    for (const p of ['market', 'woods', 'caves', 'hill']) {
+    for (const p of ['market', 'woods', 'cove', 'hill']) {
       expect(STRINGS.journeys.stories[`place:${p}:0`]).toBeTypeOf('function');
       expect(STRINGS.journeys.stories[`place:${p}:1`]).toBeTypeOf('function');
     }

@@ -109,6 +109,51 @@ function squirrel(ctx: CanvasRenderingContext2D, ms: number, w: number): void {
   paint(ctx, flick ? SQUIRREL_FLICK : SQUIRREL, x, GROUND - 6 - (running ? Math.floor(ms / 120) % 2 : 0));
 }
 
+// A little crab scuttles in sideways from the right, stops by the pet and
+// waves a claw, then scuttles off.
+const CRAB: Sprite = ['kk.....kk', 'krk...krk', '.kk.k.kk.', '..kwkwk..', '.krrrrrk.', 'krrrrrrrk', '.k.k.k.k.'];
+const CRAB_WAVE: Sprite = ['kk.......', 'krk...kk.', '.kk.k.krk', '..kwkwkk.', '.krrrrrk.', 'krrrrrrrk', '.k.k.k.k.'];
+function crab(ctx: CanvasRenderingContext2D, ms: number, w: number): void {
+  const stop = 47;
+  const x = ms < 1500 ? Math.round(w + 2 - (ms / 1500) * (w + 2 - stop)) : ms < 5500 ? stop : Math.round(stop + ((ms - 5500) / 1000) * (w - stop + 4));
+  const scuttle = (ms < 1500 || ms >= 5500) && Math.floor(ms / 90) % 2 ? 1 : 0;
+  const wave = ms >= 1500 && ms < 5500 && Math.floor(ms / 300) % 2 === 1;
+  paint(ctx, wave ? CRAB_WAVE : CRAB, x, GROUND + 1 - scuttle);
+}
+
+// A wave washes a shell up to the pet's feet, and it holds it up to listen
+// to the sea (little notes floating up).
+const SHELL: Sprite = ['..kkk..', '.kpwpk.', 'kpwpwpk', 'kppppk.', '.kkkk..'];
+function shell(ctx: CanvasRenderingContext2D, ms: number, petX: number): void {
+  if (ms < 1500) {
+    // The foam comes up the sand and leaves the shell behind.
+    const reach = Math.round((ms / 1500) * 10);
+    rect(ctx, PALETTE.white, petX + 34 - reach, GROUND + 6, reach + 6, 1);
+    paint(ctx, SHELL, petX + 34 - reach, GROUND + 3);
+    return;
+  }
+  const lift = Math.min(1, (ms - 1500) / 800);
+  paint(ctx, SHELL, petX + 24, Math.round(GROUND + 3 - lift * 16));
+  if (lift === 1) {
+    const note = Math.floor((ms - 2300) / 500) % 3;
+    rect(ctx, PALETTE.ocean, petX + 30 + note, GROUND - 16 - note * 3, 1, 3);
+    rect(ctx, PALETTE.ocean, petX + 29 + note, GROUND - 14 - note * 3, 1, 1);
+  }
+}
+
+// Moon jellies float up out of the sea and drift round the pet, glowing.
+const JELLY: Sprite = ['.www.', 'wvwvw', 'wvvvw', 'v.v.v', '.v.v.'];
+const JELLY_SWAY: Sprite = ['.www.', 'wvwvw', 'wvvvw', '.v.v.', 'v.v.v'];
+function jellies(ctx: CanvasRenderingContext2D, ms: number, petX: number): void {
+  for (let i = 0; i < 4; i++) {
+    const rise = Math.min(1, (ms - i * 500) / 3000);
+    if (rise <= 0) continue;
+    const x = Math.round(petX + 2 + i * 9 + Math.sin(ms / 700 + i) * 3);
+    const y = Math.round(28 - rise * (10 + (i % 2) * 6) + Math.sin(ms / 400 + i * 2) * 1);
+    paint(ctx, Math.floor(ms / 300 + i) % 2 ? JELLY : JELLY_SWAY, x, y);
+  }
+}
+
 export function drawSnapMoment(ctx: CanvasRenderingContext2D, id: string, ms: number, petX: number, w: number): void {
   if (id === 'butterfly') butterfly(ctx, ms, petX);
   else if (id === 'percy') percy(ctx, ms, w);
@@ -116,6 +161,9 @@ export function drawSnapMoment(ctx: CanvasRenderingContext2D, id: string, ms: nu
   else if (id === 'leaf') leaf(ctx, ms, petX);
   else if (id === 'fireflies') fireflies(ctx, ms, petX);
   else if (id === 'squirrel') squirrel(ctx, ms, w);
+  else if (id === 'crab') crab(ctx, ms, w);
+  else if (id === 'shell') shell(ctx, ms, petX);
+  else if (id === 'jellies') jellies(ctx, ms, petX);
 }
 
 // The camera's flash, fading out over a third of a second.

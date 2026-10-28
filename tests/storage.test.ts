@@ -192,3 +192,29 @@ describe('save migration to the daily fishing limit', () => {
     expect(out.state.pond).toEqual({ day: '', fish: 0 });
   });
 });
+
+describe('save migration to Coral Cove', () => {
+  it('swaps the caves and glow salt ids for the cove and seaweed everywhere', () => {
+    const state = {
+      pet: { name: 'drip', stage: 'teen' },
+      inventory: { food: { glowSalt: 2, glowSalmon: 1, saltBakedLobster: 1, honey: 3 } },
+      recipesKnown: ['glowSalmon', 'honeyCake'],
+      journeys: {
+        trips: [{ place: 'caves', lunch: ['glowSalmon'] }],
+        journal: {
+          caves: { trips: 4, found: ['glowSalt', 'shrimp'], postcards: [{ story: { id: 'place:caves:1' } }, { story: { id: 'drip' } }] },
+          woods: { trips: 1, found: ['wildMushroom'], postcards: [] },
+        },
+      },
+    };
+    const out = migrate({ version: 37, state }).state;
+    expect(out.pet.name).toBe('drip');
+    expect(out.inventory.food).toEqual({ seaweed: 2, seaweedSalmon: 1, seaweedLobster: 1, honey: 3 });
+    expect(out.recipesKnown).toEqual(['seaweedSalmon', 'honeyCake']);
+    expect(out.journeys.trips[0]).toEqual({ place: 'cove', lunch: ['seaweedSalmon'] });
+    expect(Object.keys(out.journeys.journal)).toEqual(['cove', 'woods']);
+    expect(out.journeys.journal.cove.found).toEqual(['seaweed', 'shrimp']);
+    expect(out.journeys.journal.cove.postcards.map((p: any) => p.story.id)).toEqual(['place:cove:1', 'splash']);
+    expect(SAVE_VERSION).toBe(38);
+  });
+});

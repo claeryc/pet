@@ -21,7 +21,7 @@ const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 37;
+export const SAVE_VERSION = 38;
 
 export interface SaveFile {
   version: number;
@@ -449,7 +449,38 @@ export function migrate(save: SaveFile): SaveFile {
     if (st.familyHome?.room) st.familyHome.room = hangKeepsakePieces(st.familyHome.room);
     save.version = 37;
   }
+  // Version 37 -> 38: Crystal Caves became Coral Cove, and its glow salt
+  // became seaweed (with the two dishes made from it). The old ids are
+  // swapped for the new ones everywhere in the save: food in the pantry,
+  // recipes, the journal's pages, postcards, trips and lunchboxes.
+  if (save.version === 37) {
+    save.state = renameIds(save.state, COVE_RENAMES);
+    save.version = 38;
+  }
   return save;
+}
+
+const COVE_RENAMES: Record<string, string> = {
+  caves: 'cove',
+  glowSalt: 'seaweed',
+  glowSalmon: 'seaweedSalmon',
+  saltBakedLobster: 'seaweedLobster',
+  'place:caves:0': 'place:cove:0',
+  'place:caves:1': 'place:cove:1',
+  drip: 'splash',
+};
+
+// A copy of `value` with every string, and every key, that's exactly one
+// of `renames` swapped for its new name. Names players typed (a pet called
+// "Drip") are left alone.
+function renameIds(value: any, renames: Record<string, string>): any {
+  const swap = (s: string) => (Object.hasOwn(renames, s) ? renames[s] : s);
+  if (typeof value === 'string') return swap(value);
+  if (Array.isArray(value)) return value.map((v) => renameIds(v, renames));
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [swap(k), k === 'name' ? v : renameIds(v, renames)]));
+  }
+  return value;
 }
 
 export function saveGame(state: GameState): void {
