@@ -100,6 +100,9 @@ const STATIONS_MIN = 170;
 const STATIONS_MAX = 280;
 const FRONT = 112;
 const BAND = 20;
+// How long a panel takes to grow open or fold away (drawer.ts's CSS),
+// with a little to spare.
+const RIDE_MS = 900;
 
 const foodName = (id: FoodId) => STRINGS.foods[id];
 const stars = (id: FoodId) => (CONFIG.foods as readonly Food[]).find((f) => f.id === id)?.stars ?? 0;
@@ -416,7 +419,6 @@ export function createCooking(cb: CookingCallbacks): Cooking {
   let lifting: HTMLElement | null = null;
   function fitPanel(drawer: HTMLElement): void {
     const list = drawer.querySelector<HTMLElement>('.drawer-options')!;
-    const inner = drawer.querySelector<HTMLElement>('.drawer-inner')!;
     const box = kitchen.getBoundingClientRect();
     const rowBottom = row.getBoundingClientRect().bottom;
     const keep = Math.min(STATIONS_MAX, Math.max(STATIONS_MIN, box.height * 0.36));
@@ -424,20 +426,35 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     const chrome = 52 + 6 + 16;
     const fit = Math.max(120, Math.floor(rowBottom - (box.top + keep + BAND + FRONT) - chrome));
     list.style.setProperty('--fit', `${fit}px`);
-    // The panel's full height, even while it's still growing open.
-    const panel = drawer.offsetHeight - inner.offsetHeight + inner.scrollHeight;
-    kitchen.style.setProperty('--lift', `${Math.max(0, box.bottom - (rowBottom - panel))}px`);
     kitchen.classList.add('lifted');
     lifting = drawer;
+    ride();
   }
   // ...and it all comes back down when the panel closes.
   new MutationObserver(() => {
     if (lifting && !lifting.classList.contains('is-open')) {
       lifting = null;
-      kitchen.style.setProperty('--lift', '0px');
       kitchen.classList.remove('lifted');
+      ride();
     }
   }).observe(row, { subtree: true, attributes: true, attributeFilter: ['class'] });
+
+  // The counter rides on the panel's top edge while it grows or folds,
+  // frame by frame, so the two can never drift apart (or show a gap).
+  let rideUntil = 0;
+  let rideFrame = 0;
+  function ride(): void {
+    rideUntil = performance.now() + RIDE_MS;
+    if (rideFrame) return;
+    const frame = () => {
+      const tops = [...row.children].map((c) => c.getBoundingClientRect()).filter((r) => r.height > 0).map((r) => r.top);
+      const panelTop = Math.min(Infinity, ...tops);
+      const lift = Math.max(0, kitchen.getBoundingClientRect().bottom - panelTop);
+      kitchen.style.setProperty('--lift', `${Math.round(lift)}px`);
+      rideFrame = performance.now() < rideUntil ? requestAnimationFrame(frame) : 0;
+    };
+    frame();
+  }
 
   // The batch size in use: the ×2 switch only counts on the pot, and only
   // while you have double batch.
