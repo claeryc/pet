@@ -2999,22 +2999,25 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   margin-left: auto;
 }
 
-/* The station switch (src/ui/stations.ts): a bar hanging just under the
+/* The station switch (src/ui/stations.ts): a shelf hanging just under the
    counter of the kitchen or the workbench, down where the thumb is, with a
-   tall button per station, its icon over its name. It comes and goes with
-   the kitchen, and fades away while a Food or Recipes panel is open over
-   it. */
+   tall button per station, its icon over its name. It's made of the
+   counter itself (the same cloth and wooden edge) so it adds no new colour:
+   the open station is a white card on it, the others are faded. It comes
+   and goes with the kitchen, and fades away while a Food or Recipes panel
+   is open over it. */
 .station-switch {
   position: absolute;
   left: 0;
   right: 0;
-  top: calc(100% + 12px);
+  top: calc(100% + 8px);
   display: flex;
   gap: 4px;
-  padding: 4px;
-  border-radius: 20px;
-  background: var(--card);
-  box-shadow: 0 4px 0 rgba(43, 33, 64, 0.18);
+  padding: 10px 6px 6px;
+  border-radius: 16px;
+  background:
+    linear-gradient(var(--cocoa) 0 4px, #b07a5c 4px 6px, transparent 6px),
+    repeating-conic-gradient(var(--card) 0 25%, #fbeedd 0 50%) 0 0 / 16px 16px;
   transition: opacity 0.2s ease;
 }
 
@@ -3031,16 +3034,16 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
 .station-tab {
   flex: 1;
   min-width: 0;
-  height: 56px;
+  height: 52px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
   border: 0;
-  border-radius: 16px;
+  border-radius: 12px;
   background: transparent;
-  color: var(--plum);
+  color: #9a7a68;
   font: inherit;
   font-size: 0.8rem;
   font-weight: 800;
@@ -3056,20 +3059,19 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   height: 26px;
 }
 
-.station-tab.on {
-  background: var(--plum);
-  color: white;
-  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.25);
+.station-tab:not(.on) .station-tab-icon {
+  opacity: 0.55;
+  filter: grayscale(0.7);
 }
 
-/* A thin white edge keeps the dark pixel outlines from sinking into the
-   plum. */
-.station-tab.on .station-tab-icon {
-  filter: drop-shadow(1px 0 0 white) drop-shadow(-1px 0 0 white) drop-shadow(0 1px 0 white) drop-shadow(0 -1px 0 white);
+.station-tab.on {
+  background: white;
+  color: var(--plum);
+  box-shadow: 0 3px 0 rgba(91, 63, 110, 0.35);
 }
 
 .station-tab:not(.on):active {
-  background: rgba(91, 63, 110, 0.1);
+  background: rgba(255, 255, 255, 0.5);
 }
 
 /* ---- The pot ---- */
