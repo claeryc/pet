@@ -139,6 +139,24 @@ function crackle(buf: Float32Array, at: number, length: number, count: number, g
   }
 }
 
+// Chewing: three quick chomps, each a short crunch (mid noise with crumbs
+// cracking in it), a soft thump of the jaw and a little wet smack. Each
+// chomp's pitch is scaled by its number in `pitches`. They use their own
+// random numbers (from `ownSeed`), so the other sounds don't change.
+function chomps(buf: Float32Array, ownSeed: number, pitches: number[]): void {
+  const saved = seed;
+  seed = ownSeed;
+  pitches.forEach((p, i) => {
+    const t = i * 0.17 + between(0, 0.02);
+    noise(buf, t, 0.09, 1700 * p, 900 * p, 0.75, hit(0.02, 0.25), 0.8);
+    noise(buf, t, 0.05, 4200 * p, 2600 * p, 0.35, hit(0.02, 0.3), 0.6);
+    crackle(buf, t, 0.06, 8, 0.45, 3200 * p);
+    knock(buf, t, 150 * p, 0.35, 0.015, [2.2]);
+    bubble(buf, t + 0.06, 520 * p, 0.04, 0.15, -0.3);
+  });
+  seed = saved;
+}
+
 const bell = (k: number) => Math.sin(Math.PI * k) ** 2; // swells up, then away
 const hit = (attack: number, decay: number) => (k: number) => Math.min(1, k / attack) * Math.exp(-k / decay);
 
@@ -321,13 +339,19 @@ const RECIPES: Record<string, { seconds: number; make: (buf: Float32Array) => vo
 
   // ---------- Looking after the pet ----------
 
-  // One bite of food: a soft crunch with crumbs. Plays on each bite.
+  // Eating: three quick, crunchy chomps, one bite's worth. A bite plays
+  // one of munch, munch-2 and munch-3 in turn, so the chewing runs on
+  // without repeating itself.
   munch: {
-    seconds: 0.2,
+    seconds: 0.6,
     make(buf) {
-      noise(buf, 0, 0.07, 1800, 900, 0.6, hit(0.05, 0.35), 1.1);
-      crackle(buf, 0.005, 0.08, 7, 0.35, 2800);
-      knock(buf, 0, 160, 0.35, 0.02, [2.2]);
+      // The first munch was a single softer crunch. It still runs (into
+      // nothing) so the random numbers the sounds after it get stay the
+      // same, and they come out exactly as before.
+      const old = new Float32Array(Math.round(0.2 * RATE));
+      noise(old, 0, 0.07, 1800, 900, 0.6, hit(0.05, 0.35), 1.1);
+      crackle(old, 0.005, 0.08, 7, 0.35, 2800);
+      chomps(buf, 101, [1, 0.92, 1.06]);
     },
   },
   // A cuddle: two soft squishes and a happy coo.
@@ -744,6 +768,19 @@ const RECIPES: Record<string, { seconds: number; make: (buf: Float32Array) => vo
       knock(buf, 0, 1200, 0.3, 0.008);
       noise(buf, 0.07, 0.03, 3500, 2500, 0.6, hit(0.05, 0.3), 0.6);
       knock(buf, 0.07, 900, 0.25, 0.01);
+    },
+  },
+  // Two more versions of the chomps, for the bites in between.
+  'munch-2': {
+    seconds: 0.6,
+    make(buf) {
+      chomps(buf, 202, [0.96, 1.08, 0.9]);
+    },
+  },
+  'munch-3': {
+    seconds: 0.6,
+    make(buf) {
+      chomps(buf, 303, [1.04, 0.95, 1.0]);
     },
   },
 };

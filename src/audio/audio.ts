@@ -38,7 +38,10 @@ const SOUNDS = {
   dishReady: { file: 'dish-ready', volume: 0.55 }, // the dish (or a fillet) pops up
   mushy: { file: 'dish-mushy', volume: 0.5 }, // it came out a Mushy mess
   // Looking after the pet
-  munch: { file: 'munch', volume: 0.4 }, // each bite of food
+  // Each bite of food: a few crunchy chomps, in three versions taken in turn.
+  munch: { file: 'munch', volume: 0.55 },
+  munch2: { file: 'munch-2', volume: 0.55 },
+  munch3: { file: 'munch-3', volume: 0.55 },
   cuddle: { file: 'cuddle', volume: 0.35 },
   giggle: { file: 'giggle', volume: 0.35 }, // a tickle, or playing with a friend
   lightsOff: { file: 'lights-off', volume: 0.35 },
