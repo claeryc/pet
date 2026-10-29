@@ -3,7 +3,8 @@
 // room (the bench, or the meadow with the projects) and the stat bars (the
 // controls).
 //
-// Tabs at the top switch between the bench and the projects.
+// Swipe the counter, or tap ‹ › on the switch under it, to go between the
+// bench and the projects (see src/ui/stations.ts).
 //
 // The bench: a pegboard of tools on the wall, the bench under it, and the
 // picked pattern pinned up on a card. Below, a spot for each material it
@@ -34,6 +35,7 @@ import { CRAFT_ART, ITEM_ICONS, STAT_ICONS } from './icons';
 import { placeName } from './dig';
 import { formatDayClock } from './time';
 import { KITCHEN_OUT_MS } from './cooking';
+import { createStationSwitch } from './stations';
 
 const T = STRINGS.crafting;
 
@@ -60,6 +62,7 @@ export interface Workbench {
 
 type Tab = 'bench' | 'projects';
 const TABS: readonly Tab[] = ['bench', 'projects'];
+const TAB_ICONS: Record<Tab, string> = { bench: ITEM_ICONS.workbench, projects: CRAFT_ART.windmill };
 const TAPS = 3;
 const PANEL_GAP = 12;
 
@@ -95,17 +98,6 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
   // ---- The workbench ----
   const bench = el('div', 'kitchen workbench');
   bench.hidden = true;
-  const top = el('div', 'kitchen-top');
-  const tabs = el('div', 'kitchen-tabs');
-  tabs.setAttribute('role', 'tablist');
-  const tabButtons = TABS.map((t) => {
-    const b = el('button', 'kitchen-tab', T.tabs[t]);
-    b.setAttribute('role', 'tab');
-    b.addEventListener('click', () => switchTo(t));
-    tabs.append(b);
-    return { t, b };
-  });
-  top.append(tabs);
   const room = el('div', 'kitchen-room bench-room');
   const counter = el('div', 'kitchen-counter');
 
@@ -186,9 +178,17 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
   buildBtn.addEventListener('click', buildIt);
   projectControls.append(pj, buildBtn);
 
-  room.append(top, benchScene, meadow);
+  room.append(benchScene, meadow);
   counter.append(benchControls, projectControls);
-  bench.append(room, counter);
+  const stations = createStationSwitch({
+    items: TABS.map((t) => ({ id: t, icon: TAB_ICONS[t], label: T.tabs[t] })),
+    pick: (t) => switchTo(t),
+    current: () => tab,
+    moving: () => (tab === 'bench' ? [benchScene, benchControls] : [meadow, projectControls]),
+    swipeOn: [room, counter],
+    frame: bench,
+  });
+  bench.append(room, counter, stations.el);
 
   // ---- The buttons: [Close] [Materials] [Patterns] ----
   const row = el('div', 'actions cooking-row');
@@ -328,10 +328,7 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
   function render(): void {
     if (!state) return;
     const s = state;
-    for (const t of tabButtons) {
-      t.b.classList.toggle('on', t.t === tab);
-      t.b.setAttribute('aria-selected', String(t.t === tab));
-    }
+    stations.render(tab);
     bench.dataset.tab = tab;
     benchScene.hidden = benchControls.hidden = tab !== 'bench';
     meadow.hidden = projectControls.hidden = tab !== 'projects';

@@ -3,21 +3,27 @@
 // (the stove or the board) and the stat bars (the counter, with the
 // controls).
 //
-// Tabs at the top switch between the pot and the cutting board.
+// The kitchen is one long counter you walk along (see src/ui/walk.ts):
+// the stations stand on the back counter, the board on the left of the
+// pot, with more (the oven, the mill) to come. Swipe, or tap the tab on
+// the scene's edge, to go to the next one. Your controls sit on the front
+// counter, just over the buttons.
 //
 // The pot sits on the stove against the tiled wall, with a recipe card
-// pinned up beside it. Below, on the counter, is a spot for each food it
-// takes (three, four with the bigger pot), and a round Cook! button
-// (tapping the pot cooks too). When the spots hold a recipe you know, the card shows
-// the dish it will make. A mix that can't become any recipe, even with
-// more added, shows a Mushy mess as a warning; anything else shows a "?".
-// With double batch, a ×2 switch at the top cooks two of a dish at once
-// from two of everything.
+// pinned up beside it: it says what to do, and once the plates hold a
+// recipe you know, the dish it will make. A mix that can't become any
+// recipe, even with more added, shows a Mushy mess as a warning; anything
+// else shows a "?". On the front counter is a plate for each food the pot
+// takes (three, four with the bigger pot) and a round Cook! button
+// (tapping the pot cooks too). With double batch, a ×2 stamp on Cook!
+// cooks two of a dish at once from two of everything.
 //
-// Food and Recipes open upward like Feed and Play, stopping short of the
-// kitchen so you can watch it fill:
-//  - Food: every ingredient with how many you have. Tap one to put it in
-//    the pot; tap it in the pot to take it back out.
+// Food and Recipes open upward like Feed and Play. The front counter rides
+// up on top of the open panel and the stations shift up with it, so you
+// watch the plates fill and can cook without closing it:
+//  - Food: the pantry, a grid of the foods this station takes that you
+//    have, with tabs (seafood, garden, pantry, made) once there are lots.
+//    Tap one to put it on a plate; tap it on the plate to take it back.
 //  - Recipes: every recipe, with what it needs and how many you have
 //    (missing food is greyed out). Recipes you haven't cooked yet show as
 //    "???" with one ingredient as a hint. Tap a recipe to fill the pot.
@@ -50,6 +56,7 @@ import type { GameState } from '../game/state';
 import { createDrawer } from './drawer';
 import { BOARD_ART, ITEM_ICONS, KITCHEN_ART, SKILL_POINT_ICON } from './icons';
 import { soldInShop, type ShopCategory } from './shop';
+import { createWalk } from './walk';
 
 export interface CookingCallbacks {
   // Cooks what's on the station. Returns the dish made, or null if the
@@ -84,14 +91,23 @@ export const DISH_MS = PLOPS_MS + SIMMER_MS;
 export const DONE_MS = DISH_MS + 1400;
 
 const reduced = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-// Space kept between the kitchen and an open Food or Recipes panel.
-const PANEL_GAP = 12;
+// Space kept between the kitchen and the buttons under it.
+const ROW_GAP = 12;
+// How much of the kitchen the stations keep while a panel is open, at
+// least and at most (px), and the front counter and back counter strip
+// (match --front and --band in style.css).
+const STATIONS_MIN = 170;
+const STATIONS_MAX = 280;
+const FRONT = 112;
+const BAND = 20;
 
 const foodName = (id: FoodId) => STRINGS.foods[id];
 const stars = (id: FoodId) => (CONFIG.foods as readonly Food[]).find((f) => f.id === id)?.stars ?? 0;
 const inShop = (id: FoodId) => (CONFIG.foods as readonly Food[]).some((f) => f.id === id && soldInShop(f));
 const countText = (n: number) => (n === Infinity ? '∞' : String(n));
-const STATION_TABS: readonly Station[] = ['pot', 'board'];
+// The stations along the counter, left to right.
+const STATION_TABS: readonly Station[] = ['board', 'pot'];
+const STATION_ICONS: Partial<Record<Station, string>> = { pot: ITEM_ICONS.cooking, board: ITEM_ICONS.cuttingBoard };
 // Where the chops go across the food on the board, as shares of its width.
 const CHOP_LINES = [0.32, 0.5, 0.68].slice(0, CONFIG.cooking.cutting.chops);
 // How far apart the pieces slide after each chop, in px.
@@ -101,6 +117,24 @@ const el = (tag: string, className: string): HTMLElement => {
   e.className = className;
   return e;
 };
+// The Food panel's tabs, once a station takes lots of foods: what's in
+// each (by the food's tags or where it comes from).
+type Shelf = 'all' | 'seafood' | 'garden' | 'pantry' | 'made';
+const SHELVES: readonly Shelf[] = ['all', 'seafood', 'garden', 'pantry', 'made'];
+const SHELF_ICONS: Record<Shelf, string> = {
+  all: '', seafood: ITEM_ICONS.salmon, garden: ITEM_ICONS.carrot, pantry: ITEM_ICONS.riceBall, made: ITEM_ICONS.cooking,
+};
+const SHELF_TAGS: Partial<Record<Shelf, readonly string[]>> = {
+  seafood: ['seafood'], garden: ['veg', 'fruit'], pantry: ['grain', 'dairy', 'sweet', 'seasoning', 'drink'],
+};
+function onShelf(id: FoodId, shelf: Shelf): boolean {
+  const f = (CONFIG.foods as readonly Food[]).find((x) => x.id === id);
+  if (!f || shelf === 'all') return true;
+  if (shelf === 'made') return f.source === 'cooked' || f.source === 'prepped';
+  return (f.tags ?? []).some((tag) => SHELF_TAGS[shelf]!.includes(tag));
+}
+// Tabs show once a station takes more foods than this.
+const SHELF_FROM = 12;
 // Every food that can go on any station, in the order of CONFIG.foods.
 const ALL_INGREDIENTS: readonly FoodId[] = (CONFIG.foods as readonly Food[])
   .map((f) => f.id as FoodId)
@@ -127,20 +161,9 @@ export function createCooking(cb: CookingCallbacks): Cooking {
   let chopTimer = 0;
 
   // ---- The kitchen ----
-  const kitchen = el('div', 'kitchen');
+  const kitchen = el('div', 'kitchen cook-kitchen');
   kitchen.hidden = true;
-  // The top: the station tabs, and the ×2 switch.
-  const top = el('div', 'kitchen-top');
-  const tabs = el('div', 'kitchen-tabs');
-  tabs.setAttribute('role', 'tablist');
-  const tabButtons = STATION_TABS.map((st) => {
-    const b = el('button', 'kitchen-tab');
-    b.setAttribute('role', 'tab');
-    b.textContent = STRINGS.cooking.stations[st];
-    b.addEventListener('click', () => switchTo(st));
-    tabs.append(b);
-    return { st, b };
-  });
+  // The ×2 switch: a stamp on the Cook! button.
   const batchBtn = el('button', 'kitchen-batch');
   batchBtn.textContent = '×2';
   batchBtn.addEventListener('click', () => {
@@ -148,11 +171,12 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     batch = batch === 2 ? 1 : 2;
     render();
   });
-  top.append(tabs, batchBtn);
-  // The kitchen has two parts: the room, over the pet's panel, holds the
-  // stove or the board; the counter, in the stat bars' place, holds the
-  // spots and the big round button.
+  // The kitchen fills the room, the stat bars and the space down to the
+  // buttons: the room is the tiled wall with the back counter, where the
+  // stations stand; the front counter, at the bottom, holds the controls.
   const room = el('div', 'kitchen-room');
+  const backCounter = el('div', 'back-counter');
+  backCounter.setAttribute('aria-hidden', 'true');
   const counter = el('div', 'kitchen-counter');
 
   // ---- The pot: the stove and the recipe card on the wall, the spots and
@@ -200,13 +224,15 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     potRow.append(s);
   });
   const cookBtn = el('button', 'kitchen-cook');
-  cookBtn.textContent = STRINGS.cooking.cook;
+  cookBtn.innerHTML = `${KITCHEN_ART.flame}<span>${STRINGS.cooking.cook}</span>`;
   cookBtn.addEventListener('click', cookIt);
   // "Fish soup!" along the bottom of the room, once it's made.
   const burst = el('div', 'kitchen-burst');
   burst.setAttribute('aria-live', 'polite');
-  potScene.append(card, stove, burst);
-  potControls.append(potRow, cookBtn);
+  potScene.append(wall('cabinets'), wall('jars'), card, stove, burst);
+  const cookWrap = el('span', 'cook-wrap');
+  cookWrap.append(cookBtn, batchBtn);
+  potControls.append(potRow, cookWrap);
 
   // ---- The board: the food with its dotted chop lines and the knife over
   // the next one. On the counter: the chop pips, what's on the board, the
@@ -243,31 +269,58 @@ export function createCooking(cb: CookingCallbacks): Cooking {
   meterBand.style.width = `${(bandEnd - bandStart) * 100}%`;
   const marker = el('span', 'cut-mark');
   meter.append(meterBand, marker);
-  boardBtn.append(cutFood);
-  boardScene.append(boardBtn);
-  // How the chops have gone, one pip each, then what to do.
-  const chopInfo = el('div', 'chop-info');
-  const pips = el('span', 'chop-pips');
-  pips.setAttribute('aria-hidden', 'true');
-  const pipDots = CHOP_LINES.map(() => pips.appendChild(el('b', 'chop-pip')));
-  const prompt = el('span', 'kitchen-prompt');
-  // What's on the board: tap it to take it off (before the first chop).
+  // An empty board says what goes on it.
+  const boardHint = el('span', 'board-hint');
+  boardHint.textContent = STRINGS.cooking.boardHint;
+  boardBtn.append(cutFood, boardHint);
+  boardScene.append(wall('cabinets'), wall('rail'), boardBtn);
+  // On the front counter: what's on the board (tap it to take it off,
+  // before the first chop), how the chops have gone over the meter, and
+  // Chop!.
   const boardSlot = el('button', 'pot-slot board-slot');
   boardSlot.addEventListener('click', () => {
     if (pot.length === 0 || busy() || chops.length > 0) return;
     pot.length = 0;
     render();
   });
-  chopInfo.append(pips, prompt, boardSlot);
+  const pips = el('span', 'chop-pips');
+  pips.setAttribute('aria-hidden', 'true');
+  const pipDots = CHOP_LINES.map(() => pips.appendChild(el('b', 'chop-pip')));
   const meterBox = el('div', 'chop-meter-box');
-  meterBox.append(chopInfo, meter);
+  meterBox.append(pips, meter);
   const chopBtn = el('button', 'kitchen-cook');
-  chopBtn.textContent = STRINGS.cooking.chop;
+  chopBtn.innerHTML = `${KITCHEN_ART.knife}<span>${STRINGS.cooking.chop}</span>`;
   chopBtn.addEventListener('click', chop);
-  boardControls.append(meterBox, chopBtn);
-  room.append(top, potScene, boardScene);
+  boardControls.append(boardSlot, meterBox, chopBtn);
   counter.append(potControls, boardControls);
+  room.append(backCounter);
+  const scenes: Partial<Record<Station, HTMLElement>> = { pot: potScene, board: boardScene };
+  const walk = createWalk({
+    stations: STATION_TABS.map((st) => ({ id: st, icon: STATION_ICONS[st] ?? '', label: STRINGS.cooking.stations[st], scene: scenes[st]! })),
+    pick: (st) => switchTo(st),
+    current: () => station,
+    frame: kitchen,
+    room,
+    swipeOn: [room, counter],
+  });
   kitchen.append(room, counter);
+
+  // A bit of the wall behind a station: cabinets along the top (as tall as
+  // there's room for), a shelf of jars or a rail of knives.
+  function wall(kind: 'cabinets' | 'jars' | 'rail'): HTMLElement {
+    const w = el('div', `kitchen-wall wall-${kind}`);
+    w.setAttribute('aria-hidden', 'true');
+    if (kind === 'cabinets') w.append(el('i', ''), el('i', ''), el('i', ''));
+    if (kind === 'jars') {
+      for (const id of ['honey', 'seaweed', 'stardustSugar']) {
+        const jar = el('span', 'wall-jar');
+        jar.innerHTML = ITEM_ICONS[id];
+        w.append(jar);
+      }
+    }
+    if (kind === 'rail') w.innerHTML = KITCHEN_ART.knife.repeat(2) + `<span class="wall-plant">${ITEM_ICONS.plantGrowing}</span>`;
+    return w;
+  }
 
   function sign(text: string): HTMLElement {
     const s = el('span', 'pot-sign');
@@ -284,9 +337,25 @@ export function createCooking(cb: CookingCallbacks): Cooking {
   close.className = 'btn btn-soft';
   close.textContent = STRINGS.cooking.close;
 
-  // Food: a grid of every ingredient and how many are left out of the pot.
-  const pantry = document.createElement('div');
-  pantry.className = 'pantry';
+  // Food: the pantry, a grid of the foods this station takes and how many
+  // are left off the plates, with tabs over it once there are lots.
+  const pantryBox = el('div', 'pantry-box');
+  const shelfTabs = el('div', 'shop-tabs pantry-tabs');
+  let shelf: Shelf = 'all';
+  const shelfButtons = SHELVES.map((sh) => {
+    const b = el('button', 'shop-tab');
+    b.innerHTML = SHELF_ICONS[sh] || `<b>${STRINGS.cooking.shelves[sh]}</b>`;
+    b.setAttribute('aria-label', STRINGS.cooking.shelves[sh]);
+    b.addEventListener('click', () => {
+      shelf = sh;
+      render();
+    });
+    shelfTabs.append(b);
+    return { sh, b };
+  });
+  const pantry = el('div', 'pantry');
+  const pantryEmpty = el('p', 'pantry-empty');
+  pantryBox.append(shelfTabs, pantry, pantryEmpty);
   const pantryItems = ALL_INGREDIENTS.map((id) => {
     const b = document.createElement('button');
     b.className = 'pantry-item';
@@ -330,7 +399,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     ...drawerSetup,
     id: 'cook-food',
     label: STRINGS.cooking.food,
-    content: pantry,
+    content: pantryBox,
     onOpen: () => fitPanel(foodDrawer.el),
   });
   const recipeDrawer = createDrawer({
@@ -342,15 +411,32 @@ export function createCooking(cb: CookingCallbacks): Cooking {
   });
   row.append(close, foodDrawer.el, recipeDrawer.el);
 
-  // Keeps an open panel below the pot, so the pot stays in view. The
-  // panel's list scrolls if it doesn't all fit.
+  // An open panel takes the bottom of the kitchen: the front counter rides
+  // up on top of it (--lift), and the stations keep the rest. The panel's
+  // list scrolls if it doesn't all fit.
+  let lifting: HTMLElement | null = null;
   function fitPanel(drawer: HTMLElement): void {
     const list = drawer.querySelector<HTMLElement>('.drawer-options')!;
-    const room = row.getBoundingClientRect().bottom - kitchen.getBoundingClientRect().bottom - PANEL_GAP;
+    const box = kitchen.getBoundingClientRect();
+    const rowBottom = row.getBoundingClientRect().bottom;
+    const keep = Math.min(STATIONS_MAX, Math.max(STATIONS_MIN, box.height * 0.36));
     // The panel's button, frame and padding take about this much.
     const chrome = 52 + 6 + 16;
-    list.style.setProperty('--fit', `${Math.max(120, Math.floor(room - chrome))}px`);
+    const fit = Math.max(120, Math.floor(rowBottom - (box.top + keep + BAND + FRONT) - chrome));
+    list.style.setProperty('--fit', `${fit}px`);
+    const panel = Math.min(list.scrollHeight, fit) + chrome;
+    kitchen.style.setProperty('--lift', `${Math.max(0, panel - (rowBottom - box.bottom))}px`);
+    kitchen.classList.add('lifted');
+    lifting = drawer;
   }
+  // ...and it all comes back down when the panel closes.
+  new MutationObserver(() => {
+    if (lifting && !lifting.classList.contains('is-open')) {
+      lifting = null;
+      kitchen.style.setProperty('--lift', '0px');
+      kitchen.classList.remove('lifted');
+    }
+  }).observe(row, { subtree: true, attributes: true, attributeFilter: ['class'] });
 
   // The batch size in use: the ×2 switch only counts on the pot, and only
   // while you have double batch.
@@ -373,7 +459,9 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     clearDone();
     pot.length = 0;
     render();
-    cb.toast(onBoard() ? STRINGS.cooking.boardStart : STRINGS.cooking.start);
+    if (onBoard()) cb.toast(STRINGS.cooking.boardStart);
+    // An open panel now shows this station's foods or recipes.
+    if (lifting) fitPanel(lifting);
   }
 
   function addToPot(id: FoodId): void {
@@ -590,13 +678,9 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     // Drop anything from the pot you no longer have (e.g. eaten meanwhile).
     for (let i = pot.length - 1; i >= 0; i--) if (left(pot[i]) < 0) pot.splice(i, 1);
 
-    // The top: which station is open, and the ×2 switch (on the pot, once
-    // you have double batch).
-    for (const t of tabButtons) {
-      t.b.classList.toggle('on', t.st === station);
-      t.b.setAttribute('aria-selected', String(t.st === station));
-      t.b.hidden = !hasStation(s, t.st);
-    }
+    // Which station you're at, and the ×2 switch (on the pot, once you
+    // have double batch).
+    walk.render(station, (st) => hasStation(s, st));
     const canBatch = maxBatch(s, station) > 1;
     batchBtn.hidden = !canBatch;
     batchBtn.classList.toggle('on', batchNow() === 2);
@@ -604,9 +688,31 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     batchBtn.setAttribute('aria-label', STRINGS.cooking.batch(batchNow() === 2));
     kitchen.dataset.station = station;
     kitchen.dataset.slots = String(stationSlots(s, station));
-    potScene.hidden = potControls.hidden = onBoard();
-    boardScene.hidden = boardControls.hidden = !onBoard();
-    return onBoard() ? renderBoard(s) : renderPot(s);
+    potControls.hidden = onBoard();
+    boardControls.hidden = !onBoard();
+    if (onBoard()) {
+      restPot();
+      renderBoard(s);
+    } else {
+      restBoard();
+      renderPot(s);
+    }
+  }
+
+  // The station you're not at stands empty and still.
+  function restPot(): void {
+    cardArt.innerHTML = ITEM_ICONS.cooking;
+    cardName.textContent = STRINGS.cooking.cardEmpty;
+    cardNote.textContent = STRINGS.cooking.cardEmptyHint;
+    potDish.innerHTML = burst.innerHTML = '';
+    batchTag.hidden = true;
+  }
+
+  function restBoard(): void {
+    for (const p of pieces) p.innerHTML = '';
+    for (const line of lines) line.hidden = true;
+    knife.hidden = true;
+    boardHint.hidden = false;
   }
 
   function renderPot(s: GameState): void {
@@ -699,12 +805,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
       cancelAnimationFrame(cutFrame);
       cutStart = 0;
     }
-    const leftToChop = CHOP_LINES.length - chops.length;
-    prompt.textContent = justMade ? STRINGS.cooking.made(foodName(justMade))
-      : !food ? STRINGS.cooking.boardHint
-      : chops.length === 0 ? STRINGS.cooking.chopPrompt
-      : leftToChop > 0 ? `${chops[chops.length - 1] ? STRINGS.cooking.perfectChop : STRINGS.cooking.goodChop} ${STRINGS.cooking.chopsLeft(leftToChop)}`
-      : chops.every(Boolean) ? STRINGS.cooking.perfectCut : STRINGS.cooking.goodCut;
+    boardHint.hidden = shown !== undefined;
     const label = justMade ? foodName(justMade) : food ? STRINGS.cooking.chopNow(foodName(food)) : STRINGS.cooking.boardEmpty;
     boardBtn.setAttribute('aria-label', label);
     chopBtn.setAttribute('aria-label', label);
@@ -713,9 +814,18 @@ export function createCooking(cb: CookingCallbacks): Cooking {
 
   // The Food and Recipes panels.
   function renderLists(s: GameState): void {
-    const here = ingredientsAt(station);
+    // Only what this station takes and you have (or have on a plate).
+    const here = ingredientsAt(station).filter((id) => foodCount(s, id) > 0);
+    const tabbed = here.length > SHELF_FROM;
+    if (!tabbed) shelf = 'all';
+    shelfTabs.hidden = !tabbed;
+    for (const t of shelfButtons) {
+      t.b.hidden = !here.some((id) => onShelf(id, t.sh));
+      t.b.setAttribute('aria-pressed', String(t.sh === shelf));
+    }
+    pantryEmpty.textContent = here.length === 0 ? (onBoard() ? STRINGS.cooking.noFish : STRINGS.cooking.noFood) : '';
     for (const p of pantryItems) {
-      p.b.style.display = here.includes(p.id) ? '' : 'none';
+      p.b.style.display = here.includes(p.id) && onShelf(p.id, shelf) ? '' : 'none';
       const n = left(p.id);
       p.count.textContent = countText(n);
       p.b.classList.toggle('faded', n <= 0);
@@ -771,15 +881,18 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     }
   }
 
-  // The kitchen reaches up from the stat bars over the room, leaving the
-  // usual gap between the two.
+  // The kitchen reaches up from the stat bars over the room, and down to
+  // just over the buttons.
   function reach(): void {
     const slot = kitchen.parentElement;
     if (!slot) return;
-    const top = slot.getBoundingClientRect().top;
+    const { top } = slot.getBoundingClientRect();
     const box = cb.roomBox();
     kitchen.style.setProperty('--kitchen-up', `${Math.max(0, top - box.top)}px`);
     kitchen.style.setProperty('--kitchen-gap', `${Math.max(0, top - box.bottom)}px`);
+    // (offsetTop: the row may still be rising in.)
+    const rowTop = row.offsetTop - slot.offsetTop - slot.offsetHeight;
+    kitchen.style.setProperty('--kitchen-down', `${Math.max(0, rowTop - ROW_GAP)}px`);
   }
 
   close.addEventListener('click', () => {
@@ -817,7 +930,6 @@ export function createCooking(cb: CookingCallbacks): Cooking {
       // Start small and low, then pop up on the next frame.
       void kitchen.offsetHeight;
       kitchen.classList.add('is-in');
-      cb.toast(STRINGS.cooking.start);
     },
     stop,
     active: () => active,
