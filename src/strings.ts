@@ -99,8 +99,8 @@ export const STRINGS = {
     dig: 'Sniff and dig',
     workbench: 'Workbench',
   },
-  // The switch between the kitchen's or the workbench's stations (see
-  // src/ui/stations.ts).
+  // Walking between the kitchen's or the workbench's stations (see
+  // src/ui/walk.ts).
   stations: {
     goTo: (name: string) => `Go to the ${name}`,
   },
