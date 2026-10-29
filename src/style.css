@@ -2957,29 +2957,22 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   display: none;
 }
 
-/* The top: the chop pips in the middle, ×2 on the right. */
-.kitchen-top {
-  position: absolute;
-  z-index: 2;
-  left: 10px;
-  right: 10px;
-  top: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-}
-
+/* The ×2 switch: a little stamp on the Cook! button's corner. */
 .kitchen-batch {
+  position: absolute;
+  z-index: 1;
+  top: -6px;
+  left: -10px;
+  height: 28px;
+  padding: 0 8px;
   font: inherit;
   font-size: 0.8rem;
-  font-weight: 800;
-  height: 28px;
-  padding: 0 12px;
+  font-weight: 900;
   border-radius: 14px;
-  border: 2px solid var(--plum);
+  border: 3px solid var(--plum);
   background: white;
   color: var(--plum);
+  transform: rotate(-8deg);
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -2992,11 +2985,6 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 .kitchen-batch.on {
   background: var(--plum);
   color: white;
-}
-
-/* Keeps ×2 on the right even when the pips are hidden. */
-.kitchen-batch {
-  margin-left: auto;
 }
 
 /* The station switch (src/ui/stations.ts): a card just under the counter
@@ -3108,16 +3096,442 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   overflow: hidden;
 }
 
+/* ---- The kitchen: one long counter ----
+
+   One tall scene from the top of the room down to just over the buttons
+   (--kitchen-down is set from src/ui/cooking.ts). The room is the tiled
+   wall with the back counter along it, where the stations stand side by
+   side (src/ui/walk.ts); the front counter at the bottom holds the
+   controls. While a Food or Recipes panel is open, the front counter rides
+   up on top of it (--lift) and the stations shift up with it. */
+.cook-kitchen {
+  --front: 112px;
+  --band: 20px;
+  --lift: 0px;
+  --walk: cubic-bezier(0.2, 0.8, 0.3, 1);
+  bottom: calc(-1 * var(--kitchen-down, 0px));
+}
+
+.cook-kitchen .kitchen-room {
+  bottom: 0;
+  height: auto;
+  background:
+    radial-gradient(120% 50% at 50% 0%, rgba(255, 255, 255, 0.7), transparent 70%),
+    repeating-linear-gradient(90deg, transparent 0 30px, rgba(166, 139, 201, 0.22) 30px 32px),
+    repeating-linear-gradient(0deg, transparent 0 30px, rgba(166, 139, 201, 0.22) 30px 32px),
+    var(--card);
+}
+
+/* The back counter: a peach worktop with a dark edge. */
+.back-counter {
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--front) + var(--lift));
+  height: var(--band);
+  background: linear-gradient(var(--wood-dark) 0 4px, #ffc59e 4px calc(100% - 5px), #e9a982 calc(100% - 5px));
+  transition: bottom 0.35s var(--walk);
+}
+
+/* The stations: each one a spot three quarters of the room wide, the one
+   you're at in the middle (--at), the rest in line on either side (--k).
+   --drag moves them all with your finger. */
+.walk-track {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: calc(var(--front) + var(--band) + var(--lift) - 4px);
+  transition: bottom 0.35s var(--walk);
+}
+
+.walk-spot {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 12%;
+  width: 76%;
+  container-type: size;
+  transform: translateX(calc((var(--k, 0) - var(--at, 0)) * 100% + var(--drag, 0px)));
+  transition: transform 0.4s var(--walk), opacity 0.3s ease, filter 0.3s ease;
+}
+
+.walk-spot[hidden] {
+  display: none;
+}
+
+/* The neighbours peeking in: faded, and a tap walks there. */
+.walk-spot.away {
+  opacity: 0.5;
+  filter: saturate(0.5);
+  cursor: pointer;
+}
+
+.cook-kitchen .kitchen-scene {
+  position: absolute;
+  inset: 0;
+}
+
+/* The sign hanging at the top: where you are, and a pip per station. */
+.walk-sign {
+  position: absolute;
+  z-index: 4;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 5px 14px 6px;
+  border-radius: 8px;
+  background: #6b4434;
+  color: var(--card);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.2), 0 3px 0 rgba(43, 33, 64, 0.25);
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.walk-sign::before,
+.walk-sign::after {
+  content: '';
+  position: absolute;
+  top: -14px;
+  width: 2px;
+  height: 14px;
+  background: var(--wood-dark);
+}
+
+.walk-sign::before {
+  left: 20%;
+}
+
+.walk-sign::after {
+  right: 20%;
+}
+
+.walk-sign b {
+  font-weight: 900;
+  font-size: 0.9rem;
+}
+
+.walk-pips {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 3px;
+}
+
+.walk-pips i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 247, 236, 0.35);
+}
+
+.walk-pips i.on {
+  background: var(--butter);
+  box-shadow: 0 0 6px var(--butter);
+}
+
+/* The neighbours' names, on smaller signs over their edges. */
+.walk-peek {
+  position: absolute;
+  z-index: 4;
+  top: 20px;
+  padding: 3px 7px 4px;
+  border-radius: 6px;
+  background: #8a6a5a;
+  color: var(--card);
+  font-size: 0.7rem;
+  font-weight: 900;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.walk-peek.l {
+  left: 6px;
+  transform: rotate(-3deg);
+}
+
+.walk-peek.r {
+  right: 6px;
+  transform: rotate(3deg);
+}
+
+/* Tabs on the scene's edges, at the back counter: the way to the next
+   station, with its icon. */
+.walk-edge {
+  position: absolute;
+  z-index: 5;
+  bottom: calc(var(--front) + var(--band) + var(--lift) + 14px);
+  width: 36px;
+  height: 64px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--plum);
+  background: white;
+  border: 3px solid var(--plum);
+  box-shadow: 0 3px 0 rgba(91, 63, 110, 0.35);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: opacity 0.25s ease, bottom 0.35s var(--walk);
+}
+
+.walk-edge svg {
+  width: 22px;
+  height: 22px;
+}
+
+.walk-edge.l {
+  left: 0;
+  border-left: 0;
+  border-radius: 0 16px 16px 0;
+}
+
+.walk-edge.r {
+  right: 0;
+  border-right: 0;
+  border-radius: 16px 0 0 16px;
+}
+
+.walk-peek[hidden],
+.walk-edge[hidden],
+.walk-sign[hidden] {
+  display: none;
+}
+
+/* With a panel open the stations are short on room: just the station. */
+.cook-kitchen.lifted :is(.walk-sign, .walk-peek, .walk-edge) {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* The front counter: a wooden edge and planks, the controls on it. */
+.cook-kitchen .kitchen-counter {
+  z-index: 3;
+  top: auto;
+  left: 4px;
+  right: 4px;
+  bottom: calc(4px + var(--lift));
+  height: var(--front);
+  overflow: hidden;
+  border-radius: 0 0 16px 16px;
+  background:
+    linear-gradient(var(--cocoa) 0 6px, #b07a5c 6px 8px, transparent 8px),
+    repeating-linear-gradient(90deg, transparent 0 calc(25% - 2px), rgba(138, 90, 68, 0.12) calc(25% - 2px) 25%),
+    linear-gradient(#fbe3cc, #f6d3b4);
+  transition: bottom 0.35s var(--walk), border-radius 0.35s ease;
+}
+
+.cook-kitchen.lifted .kitchen-counter {
+  border-radius: 0;
+}
+
+.cook-kitchen .kitchen-controls {
+  padding: 14px 12px 6px;
+  gap: 8px;
+  transform: translateX(var(--drag, 0px));
+  transition: transform 0.35s var(--walk);
+}
+
+.cook-kitchen.is-dragging :is(.walk-spot, .kitchen-controls) {
+  transition: none;
+}
+
+/* Walking to a station: its controls slide in from that side. */
+.cook-kitchen.arrive-r .kitchen-controls:not([hidden]) {
+  animation: arrive-r 0.36s var(--walk);
+}
+
+.cook-kitchen.arrive-l .kitchen-controls:not([hidden]) {
+  animation: arrive-l 0.36s var(--walk);
+}
+
+@keyframes arrive-r {
+  from { transform: translateX(40%); opacity: 0; }
+}
+
+@keyframes arrive-l {
+  from { transform: translateX(-40%); opacity: 0; }
+}
+
+/* ---- The wall behind the stations ---- */
+
+/* Cabinets along the top, as tall as the screen has room for (none on a
+   small phone), and a shelf of jars or a rail of knives under them. */
+.kitchen-wall {
+  position: absolute;
+  pointer-events: none;
+}
+
+.wall-cabinets {
+  --cab: clamp(0px, calc(100cqh - 340px), 150px);
+  top: 0;
+  left: 2%;
+  right: 2%;
+  height: var(--cab);
+  display: flex;
+  gap: 3px;
+  padding: 0 3px 3px;
+  box-sizing: border-box;
+  border: 3px solid var(--cocoa);
+  border-top: 0;
+  border-radius: 0 0 10px 10px;
+  background: #f6d3b4;
+  box-shadow: 0 4px 0 rgba(92, 58, 46, 0.25);
+}
+
+.wall-cabinets i {
+  position: relative;
+  flex: 1;
+  border: 3px solid #c9906d;
+  border-top: 0;
+  border-radius: 0 0 6px 6px;
+  background: linear-gradient(#ffe2c8, #fbd4b1);
+}
+
+.wall-cabinets i::after {
+  content: '';
+  position: absolute;
+  bottom: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cocoa);
+}
+
+.wall-cabinets i:nth-child(odd)::after {
+  right: 8px;
+}
+
+.wall-cabinets i:nth-child(even)::after {
+  left: 8px;
+}
+
+.wall-jars,
+.wall-rail {
+  top: calc(clamp(0px, calc(100cqh - 340px), 150px) + 60px);
+}
+
+.wall-jars {
+  left: 4%;
+  width: 46%;
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  padding-bottom: 8px;
+  border-bottom: 8px solid var(--cocoa);
+  box-shadow: 0 3px 0 var(--wood-dark);
+  border-radius: 0 0 3px 3px;
+}
+
+.wall-jar {
+  position: relative;
+  width: 30px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 3px solid var(--plum);
+  border-radius: 6px 6px 8px 8px;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.wall-jar::before {
+  content: '';
+  position: absolute;
+  top: -9px;
+  left: 3px;
+  right: 3px;
+  height: 6px;
+  border: 3px solid var(--plum);
+  border-radius: 3px;
+  background: var(--rose, #e05a7a);
+}
+
+.wall-jar svg {
+  width: 20px;
+  height: 20px;
+}
+
+.wall-rail {
+  left: 14%;
+  right: 10%;
+  height: 46px;
+  display: flex;
+  gap: 16px;
+  padding-left: 8%;
+  border-top: 5px solid var(--lilac);
+  border-radius: 3px;
+}
+
+.wall-rail > svg {
+  width: 34px;
+  height: 34px;
+  transform: rotate(90deg);
+}
+
+.wall-plant {
+  margin-left: auto;
+  margin-top: -30px;
+  width: 40px;
+}
+
+.wall-plant svg {
+  width: 100%;
+  height: auto;
+}
+
+/* Too short for cabinets worth the name: a bare wall reads better than a
+   sliver of doors. */
+@container (height < 420px) {
+  .wall-cabinets {
+    display: none;
+  }
+}
+
+@container (height < 360px) {
+  .wall-jars,
+  .wall-rail {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .walk-spot,
+  .walk-track,
+  .back-counter,
+  .walk-edge,
+  .cook-kitchen .kitchen-counter,
+  .cook-kitchen .kitchen-controls {
+    transition: none;
+  }
+
+  .cook-kitchen.arrive-r .kitchen-controls:not([hidden]),
+  .cook-kitchen.arrive-l .kitchen-controls:not([hidden]) {
+    animation: none;
+  }
+}
+
 /* ---- The pot ---- */
 
 /* The stove: the pot over two flames, on a wooden hob at the counter's
    edge. The pot is a button: tapping it cooks. */
 .stove {
   position: absolute;
-  left: 5%;
-  width: min(46%, 190px);
-  top: 50px;
-  bottom: calc(100% - var(--counter) + 2px);
+  left: 2%;
+  width: min(54%, 200px);
+  bottom: 0;
+  height: min(78%, 220px);
 }
 
 .stove::after {
@@ -3170,13 +3584,13 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
 }
 
 /* Something's in the pot: it wiggles to say "tap me to cook". */
-.kitchen[data-kind='known'] .stove-pot,
-.kitchen[data-kind='mystery'] .stove-pot {
+.kitchen[data-station='pot'][data-kind='known'] .stove-pot,
+.kitchen[data-station='pot'][data-kind='mystery'] .stove-pot {
   animation: pot-ready 1.2s ease-in-out infinite;
 }
 
 /* A mix that can only make a Mushy mess wobbles slowly instead. */
-.kitchen[data-kind='mush'] .stove-pot {
+.kitchen[data-station='pot'][data-kind='mush'] .stove-pot {
   animation: pot-mush 2.4s ease-in-out infinite;
 }
 
@@ -3193,7 +3607,7 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
 }
 
 /* Just cooked: the pot hops, steams, and the dish pops up out of it. */
-.kitchen.cooked .stove-pot {
+.kitchen.cooked[data-station='pot'] .stove-pot {
   animation: pot-hop 0.5s cubic-bezier(0.34, 1.6, 0.64, 1);
 }
 
@@ -3223,7 +3637,7 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   height: 100%;
 }
 
-.kitchen.cooked .pot-dish {
+.kitchen.cooked[data-station='pot'] .pot-dish {
   display: block;
   animation: pop-in 0.35s cubic-bezier(0.34, 1.6, 0.64, 1);
 }
@@ -3242,7 +3656,7 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   pointer-events: none;
 }
 
-.kitchen.cooked .pot-steam {
+.kitchen.cooked[data-station='pot'] .pot-steam {
   animation: steam 1.1s ease-out 0.15s 2;
 }
 
@@ -3269,12 +3683,13 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   display: none;
 }
 
-/* The recipe card pinned up beside the pot: what the pot will make. */
+/* The recipe card pinned up beside the pot: what to do, and what the pot
+   will make. */
 .recipe-card {
   position: absolute;
-  right: 5%;
-  top: 52px;
-  width: min(38%, 132px);
+  right: 3%;
+  bottom: 18%;
+  width: min(40%, 132px);
   box-sizing: border-box;
   padding: 12px 8px 8px;
   background: white;
@@ -3330,7 +3745,7 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   opacity: 0.55;
 }
 
-.kitchen.cooked .recipe-card {
+.kitchen.cooked[data-station='pot'] .recipe-card {
   animation: card-flap 0.5s ease-out;
 }
 
@@ -3341,7 +3756,8 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   100% { transform: rotate(3deg); }
 }
 
-/* The counter: [ ] + [ ] + [ ], and the Cook! button under it. */
+/* The front counter: a plate for each food, + between them, and the
+   Cook! button. */
 .pot-row {
   flex: 1 1 auto;
   min-width: 0;
@@ -3356,20 +3772,20 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   flex: 0 0 auto;
   font-weight: 900;
   font-size: 1.2rem;
-  color: var(--plum);
+  color: #c9a58d;
   width: 14px;
   text-align: center;
 }
 
 .pot-slot {
   font: inherit;
-  flex: 0 1 66px;
+  flex: 0 1 62px;
   aspect-ratio: 1;
   min-width: 0;
-  padding: 9px;
-  border: 3px dashed var(--lavender);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.55);
+  padding: 12px;
+  border: 3px dashed #c9b3dd;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3382,11 +3798,12 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   height: 100%;
 }
 
-/* An empty spot is a dashed outline, a filled one a little white dish. */
+/* An empty plate is a dashed outline, a filled one a white plate with a
+   rim. */
 .pot-slot.filled {
   border: 3px solid var(--plum);
   background: white;
-  box-shadow: 0 3px 0 var(--plum);
+  box-shadow: inset 0 0 0 4px var(--seg-empty), 0 3px 0 var(--plum);
   animation: pop-in 0.25s cubic-bezier(0.34, 1.6, 0.64, 1);
 }
 
@@ -3412,30 +3829,55 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
 }
 
 .kitchen[data-slots='4'] .pot-slot {
-  padding: 7px;
-  border-radius: 12px;
+  padding: 9px;
+}
+
+.cook-wrap {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
 }
 
 .kitchen-cook {
   flex: 0 0 auto;
-  width: clamp(66px, 21vw, 82px);
-  height: clamp(66px, 21vw, 82px);
+  width: clamp(70px, 22vw, 86px);
+  height: clamp(70px, 22vw, 86px);
   padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   font: inherit;
   font-size: 1rem;
   font-weight: 900;
+  line-height: 1.1;
   color: var(--plum);
   background: var(--butter);
-  border: 3px solid var(--plum);
+  border: 4px solid var(--plum);
   border-radius: 50%;
-  box-shadow: 0 4px 0 var(--plum);
+  box-shadow: 0 5px 0 var(--plum), inset 0 -6px 0 rgba(224, 160, 60, 0.35), inset 0 4px 0 rgba(255, 255, 255, 0.6);
   cursor: pointer;
   touch-action: manipulation;
 }
 
+.kitchen-cook svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* A dish you know is on the plates: Cook! glows. */
+.kitchen[data-station='pot'][data-kind='known'] .pot-controls .kitchen-cook {
+  animation: cook-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes cook-glow {
+  0%, 100% { box-shadow: 0 5px 0 var(--plum), 0 0 0 0 rgba(255, 229, 150, 0.9), inset 0 -6px 0 rgba(224, 160, 60, 0.35), inset 0 4px 0 rgba(255, 255, 255, 0.6); }
+  50% { box-shadow: 0 5px 0 var(--plum), 0 0 0 7px rgba(255, 229, 150, 0.6), inset 0 -6px 0 rgba(224, 160, 60, 0.35), inset 0 4px 0 rgba(255, 255, 255, 0.6); }
+}
+
 .kitchen-cook:active {
   transform: translateY(3px);
-  box-shadow: 0 1px 0 var(--plum);
+  box-shadow: 0 2px 0 var(--plum);
 }
 
 .kitchen-cook.faded {
@@ -3485,7 +3927,7 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   paint-order: stroke fill;
 }
 
-.kitchen.cooked .kitchen-burst {
+.kitchen.cooked[data-station='pot'] .kitchen-burst {
   animation: burst-in 0.4s cubic-bezier(0.34, 1.6, 0.64, 1);
 }
 
@@ -3500,10 +3942,10 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
    button: each tap is a chop. */
 .cut-board {
   position: absolute;
-  left: 12px;
-  right: 12px;
-  top: 50px;
-  bottom: 12px;
+  left: 4%;
+  right: 4%;
+  bottom: 0;
+  height: min(72%, 62cqw, 230px);
   padding: 0;
   font: inherit;
   border-radius: 16px;
@@ -3516,6 +3958,23 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* An empty board says what goes on it. */
+.board-hint {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 0 16%;
+  font-weight: 900;
+  font-size: 0.9rem;
+  color: rgba(92, 58, 46, 0.5);
+  pointer-events: none;
+}
+
+.board-hint[hidden] {
+  display: none;
 }
 
 /* The food, centred on the board. */
@@ -3651,7 +4110,7 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
 }
 
 /* Just cut: the fillet pops up on the board. */
-.kitchen.cooked .cut-food {
+.kitchen.cooked[data-station='board'] .cut-food {
   animation: board-pop 0.5s cubic-bezier(0.34, 1.6, 0.64, 1);
 }
 
@@ -3694,32 +4153,25 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   opacity: 0.45;
 }
 
-/* The board's controls: the pips, what to do and what's on the board over
-   the meter, with Chop! beside them. */
+/* The board's controls: what's on the board on its plate, the pips over
+   the meter, and Chop!. */
 .chop-meter-box {
   flex: 1 1 auto;
   min-width: 0;
-  max-width: 260px;
+  max-width: 220px;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.chop-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.board-slot {
-  flex: 0 0 44px;
-  height: 44px;
-  padding: 5px;
-  border-radius: 12px;
+.cook-kitchen .board-slot {
+  flex: 0 0 54px;
+  height: 54px;
 }
 
 .chop-pips {
   display: flex;
+  justify-content: center;
   gap: 6px;
 }
 
@@ -3737,16 +4189,6 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
 
 .chop-pip[data-chop='good'] {
   background: var(--butter);
-}
-
-/* What to do on the board. */
-.kitchen-prompt {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: 0.75rem;
-  font-weight: 800;
-  line-height: 1.2;
-  color: var(--plum);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3769,8 +4211,47 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   }
 }
 
-/* The Food panel: a grid of tiles, each with how many are left out of the
-   pot. More ingredients just add more rows. */
+/* The Food panel: tabs once a station takes lots of foods (they stay put
+   while the grid scrolls), then a grid of tiles, each with how many are
+   left off the plates. */
+.pantry-tabs {
+  position: sticky;
+  z-index: 1;
+  top: -8px;
+  margin: -8px -8px 8px;
+  padding: 8px 8px 0;
+  background: #fff5f8;
+  border-bottom: 2px solid #f6eaf2;
+}
+
+.pantry-tabs[hidden],
+.pantry-tabs .shop-tab[hidden] {
+  display: none;
+}
+
+.pantry-tabs .shop-tab svg {
+  width: 24px;
+  height: 24px;
+}
+
+.pantry-tabs .shop-tab b {
+  font-size: 0.75rem;
+  font-weight: 900;
+  color: var(--plum);
+}
+
+.pantry-empty {
+  margin: 0;
+  padding: 4px 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--plum);
+}
+
+.pantry-empty:empty {
+  display: none;
+}
+
 .pantry {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));

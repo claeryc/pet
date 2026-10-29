@@ -541,7 +541,11 @@ export const STRINGS = {
     close: 'Close',
     food: 'Food',
     recipes: 'Recipes',
-    start: 'Pick food under Food, then tap the pot to cook!',
+    // The Food panel's tabs (read out on the icon ones) and what it says
+    // when there's nothing for this station.
+    shelves: { all: 'All', seafood: 'Seafood', garden: 'Garden', pantry: 'Pantry', made: 'Made' },
+    noFood: 'Nothing for the pot yet. Get food in the Shop, the garden or the pond.',
+    noFish: 'No fish yet. Catch one at the pond!',
     emptyPot: 'Put some food in the pot first. Tap Food to pick some.',
     full: 'The pot is full. Tap something in it to take it out.',
     noneLeft: (name: string) => `No ${name} left.`,
@@ -565,8 +569,6 @@ export const STRINGS = {
     // The chopping game: a marker runs up and down a meter beside the
     // board; each tap chops on the next dotted line.
     chopNow: (name: string) => `Chop the ${name}. Tap when the marker is in the green`,
-    chopPrompt: 'Tap in the green to chop',
-    chopsLeft: (n: number) => (n === 1 ? 'One more chop' : n === 2 ? 'Two more chops' : `${n} more chops`),
     perfectChop: 'Perfect!',
     goodChop: 'Chop!',
     perfectCut: 'Perfect cut!',
