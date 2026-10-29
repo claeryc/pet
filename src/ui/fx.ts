@@ -9,6 +9,7 @@ import { CONFIG } from '../game/config';
 import type { PetStats } from '../game/state';
 import { STAT_ICONS } from './icons';
 import { goldPill } from './shop';
+import { sound } from '../audio/audio';
 
 // How much each stat changed, or 'full' for one that would have gone up
 // but was already full.
@@ -120,6 +121,7 @@ export function createFx(petSpot: () => { x: number; head: number; mouth: number
           return Math.hypot(p.x - cx, p.y - cy) < radius + jag;
         });
         crumbs(food, gone, w, h);
+        sound('munch');
         for (const p of gone) p.r.remove();
         food.classList.remove('bite');
         void food.offsetWidth;

@@ -1,6 +1,8 @@
 // Music and sound effects. The background music plays all the time, and
-// fishing and cooking have their own sounds. The game just says what
-// happened, sound('bite'), and this file does the rest.
+// each part of the game has its own sounds: fishing, cooking, looking
+// after the pet, the bath, the garden, sniff and dig, the workbench,
+// journeys and the rewards. Buttons and menus stay quiet on purpose. The
+// game just says what happened, sound('bite'), and this file does the rest.
 //
 // The files live in public/audio/ (see public/audio/CREDITS.md for where
 // they came from). To swap a sound, drop in a new MP3 with the same name, or
@@ -35,6 +37,57 @@ const SOUNDS = {
   simmer: { file: 'pot-simmer', volume: 0.45 }, // the burner, bubbling and the lid rattling
   dishReady: { file: 'dish-ready', volume: 0.55 }, // the dish (or a fillet) pops up
   mushy: { file: 'dish-mushy', volume: 0.5 }, // it came out a Mushy mess
+  // Looking after the pet
+  munch: { file: 'munch', volume: 0.4 }, // each bite of food
+  cuddle: { file: 'cuddle', volume: 0.35 },
+  giggle: { file: 'giggle', volume: 0.35 }, // a tickle, or playing with a friend
+  lightsOff: { file: 'lights-off', volume: 0.35 },
+  lightsOn: { file: 'lights-on', volume: 0.35 },
+  medicine: { file: 'medicine', volume: 0.45 }, // spoon, gulp, bleh, better
+  scoop: { file: 'scoop', volume: 0.4 }, // a poop picked up
+  gift: { file: 'gift', volume: 0.4 }, // a present for a friend
+  // Bath time
+  scrub: { file: 'scrub', volume: 0.25 }, // over and over while you rub
+  rinse: { file: 'rinse', volume: 0.45 },
+  dryer: { file: 'dryer', volume: 0.2 }, // over and over while drying
+  clean: { file: 'clean', volume: 0.4 },
+  // The garden
+  plant: { file: 'plant', volume: 0.5 },
+  water: { file: 'water', volume: 0.4 },
+  waterPerfect: { file: 'water-perfect', volume: 0.4 },
+  fertilize: { file: 'fertilize', volume: 0.5 },
+  cure: { file: 'cure', volume: 0.4 },
+  harvest: { file: 'harvest', volume: 0.55 },
+  clear: { file: 'clear', volume: 0.45 },
+  // Sniff and dig
+  sniff: { file: 'sniff', volume: 0.45 },
+  dig: { file: 'dig', volume: 0.55 },
+  digSplash: { file: 'dig-splash', volume: 0.5 }, // a flooded square at the cove
+  // The workbench
+  hammer: { file: 'hammer', volume: 0.5 },
+  crafted: { file: 'crafted', volume: 0.5 }, // the last tap, and the piece pops up
+  build: { file: 'build', volume: 0.4 }, // a project's next stage started
+  starLock: { file: 'star-lock', volume: 0.4 }, // fragments locking into a Revival Star
+  starMade: { file: 'star-made', volume: 0.45 }, // ...and the star (also when one brings a pet back)
+  // Rewards (played as each one shows, see src/ui/reveal.ts)
+  found: { file: 'found', volume: 0.4 },
+  badge: { file: 'badge', volume: 0.45 },
+  levelUp: { file: 'level-up', volume: 0.45 },
+  fragment: { file: 'fragment', volume: 0.4 },
+  growFlash: { file: 'grow-flash', volume: 0.5 }, // a pet growing up
+  starPop: { file: 'star-pop', volume: 0.35 }, // each of a grown-up's stars
+  hearts: { file: 'hearts', volume: 0.35 }, // two pets spending time together
+  hatch: { file: 'hatch', volume: 0.45 },
+  // Shop, Percy and visitors
+  coins: { file: 'coins', volume: 0.4 }, // buying something, or the check-in gold
+  goldBox: { file: 'gold-box', volume: 0.4 }, // every box of Percy's order full
+  bell: { file: 'bell', volume: 0.3 }, // Percy's bicycle bell: news from him
+  knock: { file: 'knock', volume: 0.5 }, // a visitor at the door
+  cookie: { file: 'cookie', volume: 0.5 }, // a fortune cookie cracked open
+  // Journeys
+  setOff: { file: 'set-off', volume: 0.4 },
+  unzip: { file: 'unzip', volume: 0.45 }, // a backpack opened
+  camera: { file: 'camera', volume: 0.45 }, // a snapshot for the journal
 } as const;
 export type SoundId = keyof typeof SOUNDS;
 

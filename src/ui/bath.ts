@@ -23,6 +23,7 @@ import { CONFIG } from '../game/config';
 import { ITEM_ICONS } from './icons';
 import { SPARKLE_MS, type BathScene } from '../render/hygiene';
 import { createBathFx, FX_HEADROOM, FX_PX, type FxBar } from '../render/bathfx';
+import { sound } from '../audio/audio';
 
 export interface BathCallbacks {
   onClean: () => boolean; // it's dry: wash the smell off (false if refused)
@@ -60,6 +61,10 @@ const FOAM_EVERY = 5; // room pixels of rubbing per new bubble
 const DRY_MOVING = 1.6;
 // The suds bar fizzes for this long after the sponge last moved.
 const FIZZ_MS = 180;
+// While scrubbing or drying, a squeak of suds or a puff of the dryer this
+// often (each overlaps the last, so they run together).
+const SCRUB_EVERY_MS = 150;
+const DRYER_EVERY_MS = 200;
 // The little bubbles rising inside the suds bar: [left %, bottom px, size px].
 const SUDS_BUBBLES = [[6, 2, 6], [19, 6, 4], [32, 1, 5], [45, 7, 3], [58, 3, 6], [71, 5, 4], [84, 2, 5]];
 
@@ -88,6 +93,7 @@ export function createBath(cb: BathCallbacks): Bath {
   let pointer: { x: number; y: number; down: boolean; onPet: boolean } | null = null;
   let movedAt = 0; // when the dryer last moved, for drying faster
   let rubbedAt = 0; // when the sponge last scrubbed, for the fizz
+  let soundAt = 0; // when the last scrub or dryer sound played
   let lastFrame = 0;
   let sparkleFrom = 0;
   // After closing early: wet (and smell-free) until this time.
@@ -233,6 +239,10 @@ export function createBath(cb: BathCallbacks): Bath {
     if (!pointer.down || !inside(x, y, box) || tool !== 'sponge' || phase !== 'wash') return;
     rubbed += d;
     if (d > 0) rubbedAt = performance.now();
+    if (d > 0 && rubbedAt - soundAt >= SCRUB_EVERY_MS) {
+      soundAt = rubbedAt;
+      sound('scrub');
+    }
     travel += d;
     while (travel >= FOAM_EVERY) {
       travel -= FOAM_EVERY;
@@ -248,6 +258,7 @@ export function createBath(cb: BathCallbacks): Bath {
       tool = null;
       foam = [];
       fx.burst('suds');
+      sound('rinse');
       navigator.vibrate?.(15);
     }
     render();
@@ -317,6 +328,10 @@ export function createBath(cb: BathCallbacks): Bath {
       if (drying) {
         const moving = performance.now() - movedAt < 150;
         dried += dt * (moving ? DRY_MOVING : 1);
+        if (performance.now() - soundAt >= DRYER_EVERY_MS) {
+          soundAt = performance.now();
+          sound('dryer');
+        }
         if (dried >= H.dryMs) {
           fx.burst('dry');
           if (cb.onClean()) {
