@@ -117,8 +117,8 @@ const el = (tag: string, className: string): HTMLElement => {
   e.className = className;
   return e;
 };
-// The Food panel's tabs, once a station takes lots of foods: what's in
-// each (by the food's tags or where it comes from).
+// The Food panel's tabs at the pot: what's in each (by the food's tags or
+// where it comes from).
 type Shelf = 'all' | 'seafood' | 'garden' | 'pantry' | 'made';
 const SHELVES: readonly Shelf[] = ['all', 'seafood', 'garden', 'pantry', 'made'];
 const SHELF_ICONS: Record<Shelf, string> = {
@@ -133,8 +133,6 @@ function onShelf(id: FoodId, shelf: Shelf): boolean {
   if (shelf === 'made') return f.source === 'cooked' || f.source === 'prepped';
   return (f.tags ?? []).some((tag) => SHELF_TAGS[shelf]!.includes(tag));
 }
-// Tabs show once a station takes more foods than this.
-const SHELF_FROM = 12;
 // Every food that can go on any station, in the order of CONFIG.foods.
 const ALL_INGREDIENTS: readonly FoodId[] = (CONFIG.foods as readonly Food[])
   .map((f) => f.id as FoodId)
@@ -338,12 +336,12 @@ export function createCooking(cb: CookingCallbacks): Cooking {
   close.textContent = STRINGS.cooking.close;
 
   // Food: the pantry, a grid of the foods this station takes and how many
-  // are left off the plates, with tabs over it once there are lots.
+  // are left off the plates, with shelf tabs over it at the pot.
   const pantryBox = el('div', 'pantry-box');
   const shelfTabs = el('div', 'shop-tabs pantry-tabs');
   let shelf: Shelf = 'all';
   const shelfButtons = SHELVES.map((sh) => {
-    const b = el('button', 'shop-tab');
+    const b = el('button', 'shop-tab') as HTMLButtonElement;
     b.innerHTML = SHELF_ICONS[sh] || `<b>${STRINGS.cooking.shelves[sh]}</b>`;
     b.setAttribute('aria-label', STRINGS.cooking.shelves[sh]);
     b.addEventListener('click', () => {
@@ -412,11 +410,13 @@ export function createCooking(cb: CookingCallbacks): Cooking {
   row.append(close, foodDrawer.el, recipeDrawer.el);
 
   // An open panel takes the bottom of the kitchen: the front counter rides
-  // up on top of it (--lift), and the stations keep the rest. The panel's
-  // list scrolls if it doesn't all fit.
+  // up and sits right on top of it (--lift), and the stations keep the
+  // rest. Both panels are always the same height, so the counter doesn't
+  // jump between them or as food runs out; the list scrolls inside.
   let lifting: HTMLElement | null = null;
   function fitPanel(drawer: HTMLElement): void {
     const list = drawer.querySelector<HTMLElement>('.drawer-options')!;
+    const inner = drawer.querySelector<HTMLElement>('.drawer-inner')!;
     const box = kitchen.getBoundingClientRect();
     const rowBottom = row.getBoundingClientRect().bottom;
     const keep = Math.min(STATIONS_MAX, Math.max(STATIONS_MIN, box.height * 0.36));
@@ -424,8 +424,9 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     const chrome = 52 + 6 + 16;
     const fit = Math.max(120, Math.floor(rowBottom - (box.top + keep + BAND + FRONT) - chrome));
     list.style.setProperty('--fit', `${fit}px`);
-    const panel = Math.min(list.scrollHeight, fit) + chrome;
-    kitchen.style.setProperty('--lift', `${Math.max(0, panel - (rowBottom - box.bottom))}px`);
+    // The panel's full height, even while it's still growing open.
+    const panel = drawer.offsetHeight - inner.offsetHeight + inner.scrollHeight;
+    kitchen.style.setProperty('--lift', `${Math.max(0, box.bottom - (rowBottom - panel))}px`);
     kitchen.classList.add('lifted');
     lifting = drawer;
   }
@@ -816,13 +817,15 @@ export function createCooking(cb: CookingCallbacks): Cooking {
   function renderLists(s: GameState): void {
     // Only what this station takes and you have (or have on a plate).
     const here = ingredientsAt(station).filter((id) => foodCount(s, id) > 0);
-    const tabbed = here.length > SHELF_FROM;
-    if (!tabbed) shelf = 'all';
-    shelfTabs.hidden = !tabbed;
+    // The pot gets shelves; the board only ever takes a few fish.
+    shelfTabs.hidden = onBoard();
+    if (onBoard()) shelf = 'all';
     for (const t of shelfButtons) {
-      t.b.hidden = !here.some((id) => onShelf(id, t.sh));
-      t.b.setAttribute('aria-pressed', String(t.sh === shelf));
+      // An empty shelf stays (so the shelves don't shift about), faded.
+      t.b.disabled = t.sh !== 'all' && !here.some((id) => onShelf(id, t.sh));
+      if (t.b.disabled && t.sh === shelf) shelf = 'all';
     }
+    for (const t of shelfButtons) t.b.setAttribute('aria-pressed', String(t.sh === shelf));
     pantryEmpty.textContent = here.length === 0 ? (onBoard() ? STRINGS.cooking.noFish : STRINGS.cooking.noFood) : '';
     for (const p of pantryItems) {
       p.b.style.display = here.includes(p.id) && onShelf(p.id, shelf) ? '' : 'none';

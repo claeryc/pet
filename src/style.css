@@ -2855,11 +2855,12 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   flex-shrink: 1;
 }
 
-/* The Food and Recipes panels stop short of the pot (--fit is set when
-   they open), and scroll if there's more inside than fits. */
+/* The Food and Recipes panels are always the same height (--fit is set
+   when they open), so the counter sits on them in the same place, and
+   scroll if there's more inside than fits. */
 .cooking-row .drawer-content {
-  height: auto;
-  max-height: var(--fit, 268px);
+  height: var(--fit, 268px);
+  max-height: none;
   overflow-y: auto;
 }
 
@@ -3310,11 +3311,6 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   display: none;
 }
 
-/* With a panel open the stations are short on room: just the station. */
-.cook-kitchen.lifted :is(.walk-sign, .walk-peek, .walk-edge) {
-  opacity: 0;
-  pointer-events: none;
-}
 
 /* The front counter: a wooden edge and planks, the controls on it. */
 .cook-kitchen .kitchen-counter {
@@ -4211,7 +4207,7 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   }
 }
 
-/* The Food panel: tabs once a station takes lots of foods (they stay put
+/* The Food panel: shelf tabs at the pot (they stay put
    while the grid scrolls), then a grid of tiles, each with how many are
    left off the plates. */
 .pantry-tabs {
@@ -4227,6 +4223,12 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
 .pantry-tabs[hidden],
 .pantry-tabs .shop-tab[hidden] {
   display: none;
+}
+
+.pantry-tabs .shop-tab:disabled {
+  opacity: 0.4;
+  filter: saturate(0.3);
+  cursor: default;
 }
 
 .pantry-tabs .shop-tab svg {
