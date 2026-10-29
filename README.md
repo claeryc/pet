@@ -12,7 +12,6 @@ npm run dev      # starts the game; open the link it prints
 npm test         # runs the automated checks
 npm run build    # makes a finished version in the dist/ folder
 npm run sprites  # makes any missing placeholder art (needs Node 22.18+)
-npm run music    # remakes the background music (needs Node 22.18+ and ffmpeg)
 npm run sfx      # remakes the fishing sound effects (needs Node 22.18+ and ffmpeg)
 ```
 
@@ -29,6 +28,6 @@ Want to draw your own pet? See [docs/ART_GUIDE.md](docs/ART_GUIDE.md), and open 
 - `src/ui/` — the screens and buttons.
 - `public/guides/` — the pictures on the "How it works" guide cards, cut from screenshots of the game (see `src/ui/guidePages.ts`).
 - `src/storage/` — saving and loading.
-- `src/audio/` — music and sound effects. The files are in `public/audio/`, and `public/audio/CREDITS.md` says where each came from and its licence.
+- `src/audio/` — sound effects (only the fishing mini-game has them for now). The files are in `public/audio/`, and `public/audio/CREDITS.md` says where each came from and its licence.
 - `src/strings.ts` — all the text the player sees.
 - `tests/` — automated checks.

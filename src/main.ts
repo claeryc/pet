@@ -99,7 +99,7 @@ import { createNamingBox } from './ui/naming';
 import { STRINGS } from './strings';
 import { FRAGMENT_ICON, ITEM_ICONS } from './ui/icons';
 import { DISH_MS, DONE_MS as COOKED_MS } from './ui/cooking';
-import { music, sound, startAudio } from './audio/audio';
+import { sound, startAudio } from './audio/audio';
 import { dig, digToday, sniff, type DigBlock } from './game/dig';
 import { placeName as digPlaceName } from './ui/dig';
 import { buildStage, craft, getProject } from './game/crafting';
@@ -172,8 +172,6 @@ function setState(next: GameState): void {
   }
   showLevels(progress.levels);
   showFragments(progress.fragments);
-  if (progress.badges.length > 0 || progress.milestones.length > 0) sound('badge');
-  else if (progress.unlocked.length > 0) sound('unlock');
   const notices = progress.unlocked.map((id) => STRINGS.unlocked[id]);
   if (needsName(state)) {
     afterNaming.push(
@@ -187,7 +185,6 @@ function setState(next: GameState): void {
     for (const message of notices) home.notice(message);
   }
   announceMail(oldMessages);
-  playMusic();
   for (const id of guides) showGuide(id);
 }
 
@@ -215,16 +212,11 @@ function openedGuide(id: GuideId): void {
   showGuide(id);
 }
 
-// Daytime music, or the night song once it's dark or the pet is asleep.
-function playMusic(): void {
-  music(isNight(gameNow()) || state.pet.asleep ? 'night' : 'day');
-}
 
 // Star fragments just found.
 function showFragments(pieces: number): void {
   if (pieces === 0) return;
   const { perStar } = CONFIG.fragments;
-  sound('got');
   home.reveal({
     icon: FRAGMENT_ICON, name: STRINGS.shop.fragment, count: pieces, stars: 0,
     caption: STRINGS.shop.fragmentsCount(state.fragments.pieces, perStar),
@@ -247,7 +239,6 @@ function showAwards({ badges, milestones }: Pick<ReturnType<typeof updateProgres
 // A new Keeper level: a skill point to spend.
 function showLevels(levels: number[]): void {
   for (const level of levels) {
-    sound('levelUp');
     home.reveal({ icon: SKILL_POINT_ICON, name: STRINGS.skills.point, count: 1, stars: 0, caption: STRINGS.skills.levelUp(level) });
   }
 }
@@ -256,7 +247,6 @@ function showLevels(levels: number[]): void {
 // order (maybe while the game was closed), or brought a new one.
 function announceMail(old: Message[]): void {
   const news = state.messages.filter((m) => !old.includes(m));
-  if (news.length > 0) sound('mail');
   for (const m of news.reverse()) {
     if (m.kind === 'order') {
       const items = m.boxes.map((b) => STRINGS.delivery.item(b.want, STRINGS.foods[b.food as FoodId]));
@@ -294,7 +284,6 @@ function showRegularReward(id: RegularId, hearts: number): void {
   const reward = rewards(id)[hearts - 1];
   if (!reward) return;
   const name = STRINGS.regulars.names[id] ?? id;
-  sound('levelUp');
   home.reveal({ icon: rewardIcon(reward), name: rewardName(reward), count: 1, stars: 0, caption: `${name} ${'♥'.repeat(hearts)}` });
   home.notice(`${STRINGS.regulars.gave(name, hearts, rewardName(reward))} ${rewardNote(reward)}.`);
 }
@@ -368,7 +357,6 @@ function askName(): void {
       if (!first) home.toast(STRINGS.naming.renamed(named));
       else home.toast(pet.stage === 'baby' ? STRINGS.growth.baby(named) : STRINGS.naming.hello(named));
       for (const message of afterNaming.splice(0)) home.notice(message);
-      sound('done');
       react('happy');
       return null;
     },
@@ -411,9 +399,8 @@ function runAction(
   return !result.blocked;
 }
 
-// A "can't do that" message, with its sound.
+// A "can't do that" message.
 function blocked(message: string): void {
-  sound('blocked');
   home.toast(message);
 }
 
@@ -426,7 +413,6 @@ function runShop(result: ShopResult, success?: string): void {
   else if (result.blocked === 'egg') blocked(STRINGS.wardrobe.eggNoHat);
   else if (result.blocked === 'soldOut') blocked(STRINGS.shop.soldOutToday);
   else if (!result.blocked && success) {
-    sound('purchase');
     home.toast(success);
   }
 }
@@ -440,7 +426,6 @@ const starCount = (id: string) => (CONFIG.foods as readonly Food[]).find((f) => 
 // Shows off something you just got (a food, or its seed) over the stat bars.
 function showGot(id: string, count: number, caption?: string, seed = false): void {
   const name = STRINGS.foods[id as FoodId] ?? id;
-  sound('got');
   home.reveal({
     icon: ITEM_ICONS[seed ? `seed_${id}` : id] ?? '',
     name: seed ? STRINGS.garden.seedName(name) : name,
@@ -470,7 +455,6 @@ function findLabel(f: Find): string {
 
 // Shows off something a pet found on a journey.
 function showFind(f: Find, caption: string): void {
-  sound('got');
   home.reveal({
     icon: findIconOf(f),
     name: findLabel(f),
@@ -509,7 +493,6 @@ function playWith(activity: 'cuddle' | 'tickle'): void {
   setState(result.state);
   if (result.blocked) return blocked(STRINGS.blocked[result.blocked](state.pet.name));
   showGains(before, CONFIG.activities.find((a) => a.id === activity)!);
-  sound('cuddle');
   react('happy', CONFIG.reactionMs, result.felt === 'loved' ? 'inLove' : undefined);
   playMoment(activity);
   luckySeed('play');
@@ -523,7 +506,6 @@ function runGarden(action: (s: GameState, now: number) => GardenResult, success?
   if (result.blocked) {
     const message = STRINGS.garden.blocked[result.blocked];
     const fromShop = result.blocked === 'noFertilizer' || result.blocked === 'noCure';
-    sound('blocked');
     if (message) home.toast(message, fromShop ? 'garden' : undefined);
     return false;
   }
@@ -540,10 +522,8 @@ function runBox(action: (s: GameState) => BoxResult, food?: string): void {
   const name = food ? STRINGS.foods[food as FoodId] : '';
   if (result.blocked === 'noFood') blocked(food ? STRINGS.delivery.noneLeft(name) : STRINGS.delivery.nothingToFill);
   else if (result.blocked === 'full') blocked(STRINGS.delivery.full);
-  else if (!result.blocked) sound('place');
   const order = state.delivery.order;
   if (!result.blocked && order && !wasGold && orderTier(order.boxes) === 'gold') {
-    sound('done');
     home.toast(STRINGS.delivery.allFull(orderPay(order.boxes, percyPerks(state).payShare).bonus));
     react('happy');
   }
@@ -567,7 +547,6 @@ function buyPack(productId: ProductId): Promise<boolean> {
   return purchase(productId, confirmPay).then((paid) => {
     if (!paid) return false;
     setState(grantPack(state, productId));
-    sound('purchase');
     home.reveal({
       icon: FRAGMENT_ICON, name: STRINGS.shop.fragment, count: pack.fragments, stars: 0,
       caption: STRINGS.shop.fragmentsCount(state.fragments.pieces, CONFIG.fragments.perStar),
@@ -586,7 +565,6 @@ function askRevive(): void {
     setState(result.state);
     if (result.blocked) return blocked(STRINGS.blocked[result.blocked](name));
     home.toast(STRINGS.revival.back(name));
-    sound('grewUp');
     react('happy');
   };
   const have = revivalStars(state);
@@ -726,7 +704,6 @@ function greetMeadowVisitor(): void {
   const M = STRINGS.meadow;
   const name = m.pet.name;
   if (greeted.food) {
-    sound('got');
     pullFace('happy');
   }
   const spot = !!roomWithSpace(state);
@@ -743,7 +720,6 @@ function greetMeadowVisitor(): void {
         const result = welcomeHome(simulate(state, gameNow()), gameNow());
         setState(result.state);
         if (result.blocked) return blocked(M.blocked[result.blocked](name));
-        sound('grewUp');
         home.toast(M.cameHome(name));
       } }] : []),
       { label: M.byeForNow, soft: spot, onPick: () => {} },
@@ -785,7 +761,6 @@ function moveTo(id: string, to: string, swapWith?: string): void {
   const result = movePet(s, id, swapWith);
   setState(result.state);
   if (result.blocked) return blockedRoom(result.blocked, name);
-  sound('place');
   home.toast(STRINGS.familyHome.moved(name, to));
 }
 
@@ -798,7 +773,6 @@ function onBuyFamilyHome(): void {
   if (ownsFamilyHome(state)) return;
   const got = (s: GameState) => {
     setState(s);
-    sound('purchase');
     home.reveal({ icon: ITEM_ICONS.familyHome, name: STRINGS.familyHome.name, count: 1, stars: 0 });
     home.toast(STRINGS.familyHome.bought);
   };
@@ -849,7 +823,6 @@ function openFortune(id: string): void {
   const friend = getFriend(now, id);
   if (!used || !friend) return;
   setState(used);
-  sound('place');
   const fortune = fortuneOf(forecast(now.pet, friend), `${now.pet.id}:${friend.id}`);
   const S = STRINGS.friends;
   const likely = (fortune.likely && S.fortuneLikely[fortune.likely]) || S.fortuneSomething;
@@ -934,7 +907,6 @@ const home = createHomeScreen(root, {
     const result = feed(state, gameNow(), food);
     setState(result.state);
     if (result.blocked) return blocked(STRINGS.blocked[result.blocked](state.pet.name));
-    sound('eat');
     showGains(before, (CONFIG.foods as readonly Food[]).find((f) => f.id === food)!);
     // Eating takes a while (the food goes in bites); a craving it loved
     // gets a happy wiggle after.
@@ -954,7 +926,6 @@ const home = createHomeScreen(root, {
   onPetTap: () => playWith('cuddle'),
   onCollectPoop: (petId, slot) => {
     setState(collectPoop(simulate(state, gameNow()), petId, slot));
-    sound('place');
     lastTouched = performance.now();
     home.toast(STRINGS.bath.keptPoop(poopCount(state), CONFIG.garden.poopPerFertilizer));
   },
@@ -963,7 +934,6 @@ const home = createHomeScreen(root, {
     const result = bathe(simulate(state, gameNow()), gameNow());
     setState(result.state);
     if (result.blocked) return false;
-    sound('done');
     showGains(before, { happiness: CONFIG.hygiene.bathJoy });
     // Most pets love a bath; one that doesn't is grumpy after.
     if (result.felt === 'disliked') pullFace('grumpy');
@@ -974,7 +944,6 @@ const home = createHomeScreen(root, {
   petSheet: () => sprites.get(sheetFor(state.pet)),
   onLights: () => {
     if (!runAction(toggleLights)) return;
-    sound(state.pet.asleep ? 'lightsOff' : 'lightsOn');
     playMoment(state.pet.asleep ? 'doze' : 'wake');
     if (!state.pet.asleep && (getTrait(state.pet.trait)?.grumpyWhenWoken || feeling(state.pet, 'woken') === 'disliked')) pullFace('grumpy');
   },
@@ -1031,7 +1000,7 @@ const home = createHomeScreen(root, {
     if (result.find) {
       showFind(result.find, result.find.kind === 'part' ? STRINGS.crafting.partFound : STRINGS.dig.found(digPlaceName(place)));
       react('happy');
-    } else sound(result.flooded ? 'water' : 'place');
+    }
     return result;
   },
   onSniff: (place) => {
@@ -1078,10 +1047,8 @@ const home = createHomeScreen(root, {
       return null;
     }
     const p = result.pattern;
-    sound('place');
     // The piece pops up on the bench first, then the reveal.
     window.setTimeout(() => {
-      sound('got');
       home.reveal({ icon: patternIcon(p), name: STRINGS.crafting.patterns[p.id], count: p.count ?? 1, stars: 0 });
       react('happy');
     }, 700);
@@ -1096,20 +1063,15 @@ const home = createHomeScreen(root, {
     }
     const p = getProject(id)!;
     const stage = STRINGS.crafting.stages[id][result.state.crafting.projects[id]?.built ?? 0];
-    sound('purchase');
     home.toast(STRINGS.crafting.startBuild(stage ?? STRINGS.crafting.projects[p.id]));
     return true;
   },
   onPlant: (pot, crop) => {
-    const planted = runGarden((s, now) => plant(s, pot, crop, now, Math.random()), STRINGS.garden.planted(STRINGS.foods[crop]));
-    if (planted) sound('place');
-    return planted;
+    return runGarden((s, now) => plant(s, pot, crop, now, Math.random()), STRINGS.garden.planted(STRINGS.foods[crop]));
   },
   onWater: (pot, perfect) => {
-    const watered = runGarden((s, now) => water(s, pot, now, perfect, Math.random()),
+    return runGarden((s, now) => water(s, pot, now, perfect, Math.random()),
       perfect ? STRINGS.garden.perfectPour : STRINGS.garden.watered);
-    if (watered) sound('water');
-    return watered;
   },
   onFertilize: (pot) => {
     // Out of bags, it makes one from your poop first, and says so.
@@ -1143,7 +1105,6 @@ const home = createHomeScreen(root, {
     if (result.blocked === 'locked') blocked(STRINGS.skills.locked(STRINGS.skills.names[skillBefore(skill)!]));
     else if (result.blocked === 'noPoints') blocked(STRINGS.skills.needPoints(nextCostOf(skill)));
     else if (!result.blocked) {
-      sound('unlock');
       home.toast(STRINGS.skills.learned(STRINGS.skills.names[skill], rankOf(state, skill)));
     }
   },
@@ -1161,7 +1122,6 @@ const home = createHomeScreen(root, {
       friendBlocked(result.blocked);
       return false;
     }
-    sound('cuddle');
     react('happy');
     const name = friend?.name ?? '';
     home.toast(result.gained ? STRINGS.friends.met(state.pet.name, name, result.gained) : STRINGS.friends.tiredOfMeeting(name));
@@ -1171,7 +1131,6 @@ const home = createHomeScreen(root, {
     const result = giveGift(simulate(state, gameNow()), id, food, gameNow());
     setState(result.state);
     if (result.blocked) return friendBlocked(result.blocked);
-    sound('give');
     playMoment('gift');
     home.toast(STRINGS.friends.gave(STRINGS.foods[food], getFriend(state, id)?.name ?? '', result.gained ?? 0));
   },
@@ -1273,7 +1232,6 @@ const home = createHomeScreen(root, {
     const result = placeFurniture(state, spot, id);
     if (result.blocked) return;
     setState(result.state);
-    sound('place');
   },
   onBuyBigJar: () => {
     const buy = () => runShop(buyBigJar(state), STRINGS.shop.bought(STRINGS.shop.bigJar));
@@ -1299,7 +1257,6 @@ const home = createHomeScreen(root, {
     setState(result.state);
     if (result.blocked === 'notEnoughGold') blocked(STRINGS.shop.notEnoughGold);
     else if (!result.blocked) {
-      sound('purchase');
       home.toast(STRINGS.journeys.percyWoke);
     }
   },
@@ -1324,7 +1281,6 @@ const home = createHomeScreen(root, {
         return;
       }
       setState(result.state);
-      sound('done');
       const [a, b] = party.map((m) => nameOf(s, m.pet));
       const place = placeName(offer?.place ?? '');
       home.toast(b ? STRINGS.journeys.leftTogether(a, b, place) : STRINGS.journeys.leftFor(a, place));
@@ -1333,7 +1289,6 @@ const home = createHomeScreen(root, {
     // The pet you're looking after puts its bag on, waves and hops out.
     if (party.some((m) => m.pet === state.pet.id) && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
       playMoment('setOff');
-      sound('cuddle');
       setTimeout(leave, MOMENT_MS.setOff);
     } else {
       leave();
@@ -1348,7 +1303,6 @@ const home = createHomeScreen(root, {
       return false;
     }
     setState(result.state);
-    sound('done');
     home.toast(STRINGS.journeys.holidayLeft);
     return true;
   },
@@ -1381,7 +1335,6 @@ const home = createHomeScreen(root, {
     const pet = allPets(state).find((p) => p.id === petId);
     const result = takeSnapshot(state, place, { moment, at: gameNow(), name: pet?.name ?? '', image: home.canvas.toDataURL('image/png') });
     setState(result.state);
-    sound('got');
     home.toast(STRINGS.journeys.snapped(STRINGS.journeys.moments[moment] ?? moment, result.isNew));
   },
   onMakeRoom: askToMakeRoom,
@@ -1394,20 +1347,17 @@ const home = createHomeScreen(root, {
       return false;
     }
     setState(result.state);
-    sound('cuddle');
     home.toast(STRINGS.meadow.hi(name));
     return true;
   },
   onGoodbyeCard: (id) => showGoodbyeCard(id),
   onHang: (id) => {
     setState(hangPortrait(state, id));
-    sound('place');
   },
   onShelf: (id) => {
     const result = toggleShelf(state, id);
     if (result.blocked) return blocked(STRINGS.meadow.shelfFull);
     setState(result.state);
-    sound('place');
   },
   meadowLook: (m) => ({
     sheet: sprites.get(sheetFor(m.pet)),
@@ -1491,13 +1441,12 @@ const home = createHomeScreen(root, {
     const result = makeStar(state);
     setState(result.state);
     if (result.blocked) return blocked(STRINGS.shop.notEnoughFragments);
-    home.craft({ fragment: FRAGMENT_ICON, star: ITEM_ICONS.revivalStar, onLock: () => sound('place'), onStar: () => sound('grewUp') });
+    home.craft({ fragment: FRAGMENT_ICON, star: ITEM_ICONS.revivalStar });
   },
   onCompost: () => {
     const result = compost(state);
     setState(result.state);
     if (result.blocked) return blocked(STRINGS.shop.notEnoughPoop(CONFIG.garden.poopPerFertilizer));
-    sound('place');
     home.toast(STRINGS.shop.composted);
   },
   onWearHat: (id) => runShop(wearHat(state, id)),
@@ -1565,21 +1514,15 @@ const home = createHomeScreen(root, {
 // Made after the home screen, which clears the page when it starts.
 const naming = createNamingBox(root);
 const choice = createChoiceBox(root);
-const littleOne = createLittleOneReveal(root, (moment) => {
-  if (moment === 'egg') sound('grewUp');
-  else if (moment === 'hearts') sound('cuddle');
-});
+const littleOne = createLittleOneReveal(root, () => {});
 const growUp = createGrowUpReveal(root, (moment) => {
-  if (moment === 'flash') sound('grewUp');
-  else if (moment === 'star') sound('place');
-  else react('happy');
+  if (moment === 'done') react('happy');
 });
 skipFortuneOnTap();
 const away = createAwayCard(root);
 const guide = createGuideCard(root);
 home.update(state, gameNow());
 startAudio();
-playMusic();
 announceMail(lastVisitMessages);
 for (const pet of allPets(state)) {
   const was = stagesAtClose.get(pet.id);
