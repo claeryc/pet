@@ -121,7 +121,7 @@ export function createFx(petSpot: () => { x: number; head: number; mouth: number
           return Math.hypot(p.x - cx, p.y - cy) < radius + jag;
         });
         crumbs(food, gone, w, h);
-        sound('munch');
+        sound((['munch', 'munch2', 'munch3'] as const)[i % 3]);
         for (const p of gone) p.r.remove();
         food.classList.remove('bite');
         void food.offsetWidth;
