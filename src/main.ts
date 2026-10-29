@@ -1011,7 +1011,7 @@ const home = createHomeScreen(root, {
       }, LEAP_MS);
       react('happy');
     } else {
-      sound('missed');
+      sound('escape');
       home.toast(grade === 'miss' ? label : STRINGS.fishing.slipped(label));
     }
     return caught;
@@ -1171,7 +1171,7 @@ const home = createHomeScreen(root, {
     const result = giveGift(simulate(state, gameNow()), id, food, gameNow());
     setState(result.state);
     if (result.blocked) return friendBlocked(result.blocked);
-    sound('cast');
+    sound('give');
     playMoment('gift');
     home.toast(STRINGS.friends.gave(STRINGS.foods[food], getFriend(state, id)?.name ?? '', result.gained ?? 0));
   },

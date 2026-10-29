@@ -27,10 +27,17 @@ const SOUNDS = {
   unlock: { file: 'unlock', volume: 0.6 }, // a new feature opened up, a skill learned
   grewUp: { file: 'achievement', volume: 0.75 },
   mail: { file: 'notification', volume: 0.55 }, // news from Percy or a visitor
-  bite: { file: 'mention', volume: 0.65 }, // a fish is biting
-  nibble: { file: 'mention', volume: 0.2 }, // only a nibble: a much quieter blip
-  missed: { file: 'cancel', volume: 0.5 },
-  cast: { file: 'send', volume: 0.55 }, // casting the line, giving a gift
+  give: { file: 'send', volume: 0.55 }, // giving a gift
+  // Fishing (made by scripts/make-sfx.ts)
+  cast: { file: 'fish-cast', volume: 0.5 }, // the line whooshes out, the bait plops in
+  nibble: { file: 'fish-nibble', volume: 0.3 }, // only a nibble: a small bloop
+  bite: { file: 'fish-bite', volume: 0.65 }, // a fish is biting: splash and a ping
+  reel: { file: 'fish-reel', volume: 0.22 }, // one ratchet tick, over and over while you pull
+  splash: { file: 'fish-splash', volume: 0.6 }, // a fish leaps out of the water
+  perfect: { file: 'fish-perfect', volume: 0.5 },
+  escape: { file: 'fish-escape', volume: 0.5 }, // the fish swims off
+  pondIn: { file: 'pond-fill', volume: 0.4 },
+  pondOut: { file: 'pond-drain', volume: 0.35 },
   place: { file: 'drop', volume: 0.6 }, // planting, filling a box
   water: { file: 'swipe', volume: 0.5 },
   done: { file: 'success', volume: 0.65 }, // naming the pet, a full order

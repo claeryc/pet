@@ -14,6 +14,10 @@
 // it's shown to you, and a perfect catch gets a big "Perfect!" with a count
 // of perfects in a row.
 //
+// Each step has its own watery sound (see src/audio/audio.ts): the pond
+// filling and draining, the cast, nibbles, the bite, the reel ticking while
+// you pull, a splash for a catch and a swish when one gets away.
+//
 // Only the timing lives here. What a catch is worth, and what casting costs,
 // is decided in src/game/fishing.ts.
 
@@ -76,6 +80,8 @@ export const DRAIN_MS = 450;
 export const LEAP_MS = 650;
 // How long "Perfect!" stays up.
 const PERFECT_MS = 1100;
+// How often the reel ticks while you hold Pull.
+const REEL_TICK_MS = 90;
 
 const reduced = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -244,6 +250,7 @@ export function createFishing(cb: FishingCallbacks): Fishing {
     navigator.vibrate?.([30, 40, 30]);
     sound('bite');
     timer = window.setTimeout(() => {
+      sound('escape');
       cb.toast(STRINGS.fishing.gotAway);
       backToReady();
     }, CONFIG.fishing.biteWindowSeconds * 1000);
@@ -253,6 +260,7 @@ export function createFishing(cb: FishingCallbacks): Fishing {
     clearTimers();
     if (phase === 'waiting' || phase === 'nibble') {
       cb.toast(phase === 'nibble' ? STRINGS.fishing.onlyNibble : STRINGS.fishing.tooSoon);
+      sound('escape');
       pondView.landed(false); // it swims off
       return backToReady();
     }
@@ -264,12 +272,18 @@ export function createFishing(cb: FishingCallbacks): Fishing {
     setPhase('reeling');
     cb.toast(STRINGS.fishing.hold[fish]);
     let last = performance.now();
+    let lastClick = -Infinity;
     const tick = (t: number) => {
       reel = stepReel(reel!, held, t - last, Math.random());
       last = t;
+      if (held && t - lastClick >= REEL_TICK_MS) {
+        sound('reel');
+        lastClick = t;
+      }
       showReel(reel);
       const outcome = reelOutcome(reel);
       if (outcome === 'lost') {
+        sound('escape');
         cb.toast(STRINGS.fishing.slack);
         return backToReady();
       }
@@ -293,10 +307,14 @@ export function createFishing(cb: FishingCallbacks): Fishing {
     const caught = hooked ? cb.onLand(grade, hooked) : null;
     hooked = null;
     pondView.landed(caught !== null);
-    if (caught) leap(ITEM_ICONS[caught] ?? '');
+    if (caught) {
+      sound('splash');
+      leap(ITEM_ICONS[caught] ?? '');
+    }
     if (grade === 'perfect') {
       lastPerfect = true;
       streak++;
+      sound('perfect');
       cheer();
     }
     backToReady(RESULT_MS);
@@ -378,6 +396,7 @@ export function createFishing(cb: FishingCallbacks): Fishing {
   });
 
   function stop(): void {
+    if (phase !== 'off') sound('pondOut');
     clearTimers();
     hooked = null;
     phase = 'off';
@@ -424,6 +443,7 @@ export function createFishing(cb: FishingCallbacks): Fishing {
       void pond.offsetHeight;
       pond.classList.add('is-in');
       fizz(RISE_MS);
+      sound('pondIn');
       cb.toast(STRINGS.fishing.start);
     },
     stop,
