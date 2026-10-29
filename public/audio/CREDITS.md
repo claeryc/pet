@@ -10,6 +10,7 @@ page from the day you downloaded it.
 | --- | --- | --- |
 | `fish-cast.mp3`, `fish-nibble.mp3`, `fish-bite.mp3`, `fish-reel.mp3`, `fish-splash.mp3`, `fish-escape.mp3`, `fish-perfect.mp3`, `pond-fill.mp3`, `pond-drain.mp3` | Made for this game by `scripts/make-sfx.ts` (`npm run sfx`), synthesized from scratch with no samples | Original work, owned by the game |
 | `kitchen-place.mp3`, `kitchen-lift.mp3`, `chop.mp3`, `chop-perfect.mp3`, `pot-plop.mp3`, `pot-simmer.mp3`, `dish-ready.mp3`, `dish-mushy.mp3` | Made for this game by `scripts/make-sfx.ts` (`npm run sfx`), synthesized from scratch with no samples | Original work, owned by the game |
+| Looking after the pet: `munch.mp3`, `cuddle.mp3`, `giggle.mp3`, `lights-off.mp3`, `lights-on.mp3`, `medicine.mp3`, `scoop.mp3`, `gift.mp3`; bath: `scrub.mp3`, `rinse.mp3`, `dryer.mp3`, `clean.mp3`; garden: `plant.mp3`, `water.mp3`, `water-perfect.mp3`, `fertilize.mp3`, `cure.mp3`, `harvest.mp3`, `clear.mp3`; sniff and dig: `sniff.mp3`, `dig.mp3`, `dig-splash.mp3`; workbench: `hammer.mp3`, `crafted.mp3`, `build.mp3`, `star-lock.mp3`, `star-made.mp3`; rewards: `found.mp3`, `badge.mp3`, `level-up.mp3`, `fragment.mp3`, `grow-flash.mp3`, `star-pop.mp3`, `hearts.mp3`, `hatch.mp3`; shop, Percy and visitors: `coins.mp3`, `gold-box.mp3`, `bell.mp3`, `knock.mp3`, `cookie.mp3`; journeys: `set-off.mp3`, `unzip.mp3`, `camera.mp3` | Made for this game by `scripts/make-sfx.ts` (`npm run sfx`), synthesized from scratch with no samples | Original work, owned by the game |
 
 ## Music (`music/`)
 
