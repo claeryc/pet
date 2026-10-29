@@ -539,20 +539,21 @@ export function clearSave(): void {
   }
 }
 
-// Sound on or off. Kept apart from the game save, so starting a new game
-// keeps it as it was.
+// Music and sound on or off. Kept apart from the game save, so starting a
+// new game keeps them as they were.
 const AUDIO_KEY = 'cozy-pixel-pet-audio';
 
 export interface AudioSettings {
+  music: boolean;
   sounds: boolean;
 }
 
 export function loadAudioSettings(): AudioSettings {
   try {
     const saved = JSON.parse(localStorage.getItem(AUDIO_KEY) ?? '{}');
-    return { sounds: saved.sounds !== false };
+    return { music: saved.music !== false, sounds: saved.sounds !== false };
   } catch {
-    return { sounds: true };
+    return { music: true, sounds: true };
   }
 }
 

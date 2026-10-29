@@ -1457,6 +1457,7 @@ export const STRINGS = {
     owner: 'Your name',
     ownerHint: 'Optional. Shown in the Family Tree.',
     ownerPlaceholder: 'Your name',
+    music: 'Music',
     sounds: 'Sounds',
   },
   family: {

@@ -1,9 +1,10 @@
-// Makes the fishing mini-game's sound effects: little watery plops,
-// splashes and reel clicks made from scratch for this game, so there's
-// nothing to license or credit. Each sound is a short recipe below, built
-// from two ingredients: bubbles (a quick sine whose pitch slides up, which
-// is what a real bubble popping sounds like) and filtered noise (for
-// splashes and the whoosh of the line).
+// Makes the game's sound effects: the fishing mini-game's watery plops,
+// splashes and reel clicks, and the kitchen's chops, plops and bubbling
+// pot. All made from scratch for this game, so there's nothing to license
+// or credit. Each sound is a short recipe below, built from a few
+// ingredients: bubbles (a quick sine whose pitch slides up, which is what a
+// real bubble popping sounds like), filtered noise (for splashes, sizzles
+// and whooshes), knocks (wood and pots being hit) and pings.
 //
 //   npm run sfx
 //
@@ -82,6 +83,27 @@ function ping(buf: Float32Array, at: number, f: number, gain: number, ring = 0.3
       Math.sin(2 * Math.PI * f * t) * Math.exp(-t / ring)
       + 0.2 * Math.sin(2 * Math.PI * 2 * f * t) * Math.exp(-t / (ring / 3))
     );
+  }
+}
+
+// A knock: something solid being hit, like a knife on a board or a bowl
+// set down. A low thump that drops in pitch, with a few higher ringing
+// partials (`partials`, as multiples of `f`) that die away faster. Low and
+// short sounds wooden; more partials and a longer `ring` sound like metal.
+function knock(buf: Float32Array, at: number, f: number, gain: number, ring = 0.05, partials: number[] = [2.3, 3.9]): void {
+  const from = Math.round(at * RATE);
+  const n = Math.min(Math.round(ring * 6 * RATE), buf.length - from);
+  let phase = 0;
+  const phases = partials.map(() => 0);
+  for (let i = 0; i < n; i++) {
+    const t = i / RATE;
+    phase += (2 * Math.PI * f * (1 + 0.6 * Math.exp(-t / 0.01))) / RATE;
+    let x = Math.sin(phase) * Math.exp(-t / ring);
+    partials.forEach((m, j) => {
+      phases[j] += (2 * Math.PI * f * m) / RATE;
+      x += (0.5 / (j + 1)) * Math.sin(phases[j]) * Math.exp(-t / (ring / (1.5 + j)));
+    });
+    buf[from + i] += gain * Math.min(1, t / 0.0008) * x;
   }
 }
 
@@ -175,6 +197,93 @@ const RECIPES: Record<string, { seconds: number; make: (buf: Float32Array) => vo
     make(buf) {
       noise(buf, 0, 0.5, 1000, 300, 0.2, (k) => Math.min(1, k / 0.1) * (1 - k), 0.8);
       for (let i = 0; i < 8; i++) bubble(buf, i * 0.055 + between(0, 0.015), 800 - i * 70, 0.06, 0.22, 0.5);
+    },
+  },
+
+  // ---------- The kitchen ----------
+
+  // Food set down on a plate or the board: a soft wooden tok.
+  'kitchen-place': {
+    seconds: 0.2,
+    make(buf) {
+      knock(buf, 0, 520, 0.8, 0.025, [2.7]);
+      noise(buf, 0, 0.02, 3000, 1500, 0.25, hit(0.05, 0.3));
+    },
+  },
+  // Food taken back off a plate: a lighter, higher tik.
+  'kitchen-lift': {
+    seconds: 0.15,
+    make(buf) {
+      knock(buf, 0, 900, 0.6, 0.015, [2.4]);
+    },
+  },
+  // A chop: the knife's quick swish, then a thunk into the wooden board.
+  chop: {
+    seconds: 0.32,
+    make(buf) {
+      noise(buf, 0, 0.06, 2500, 6000, 0.25, bell, 0.6);
+      knock(buf, 0.055, 190, 1, 0.045, [2.1, 3.7, 5.3]);
+      noise(buf, 0.055, 0.05, 5000, 2000, 0.4, hit(0.02, 0.15), 0.8);
+    },
+  },
+  // A chop right in the green: the same thunk with a bright ping on top.
+  'chop-perfect': {
+    seconds: 0.55,
+    make(buf) {
+      noise(buf, 0, 0.06, 2500, 6000, 0.25, bell, 0.6);
+      knock(buf, 0.055, 190, 1, 0.045, [2.1, 3.7, 5.3]);
+      noise(buf, 0.055, 0.05, 5000, 2000, 0.4, hit(0.02, 0.15), 0.8);
+      ping(buf, 0.07, hz(93), 0.3, 0.12); // A6
+      ping(buf, 0.07, hz(100), 0.12, 0.08); // E7
+    },
+  },
+  // An ingredient dropping into the pot: a thick, soupy blorp with a
+  // little splash.
+  'pot-plop': {
+    seconds: 0.35,
+    make(buf) {
+      bubble(buf, 0, 210, 0.16, 0.9, 1.8);
+      noise(buf, 0, 0.12, 1800, 500, 0.3, hit(0.03, 0.3));
+      bubble(buf, 0.07, 520, 0.06, 0.25, 1.2);
+      bubble(buf, 0.12, 760, 0.05, 0.15);
+    },
+  },
+  // The pot cooking: the burner catches with a soft whoomph, the stew
+  // bubbles and sizzles, and the lid rattles as it comes to the boil.
+  'pot-simmer': {
+    seconds: 1.75,
+    make(buf) {
+      noise(buf, 0, 0.35, 200, 900, 0.5, hit(0.15, 0.4), 1.2); // whoomph
+      noise(buf, 0.1, 1.6, 4500, 6500, 0.12, (k) => Math.min(1, k / 0.3) * Math.min(1, (1 - k) / 0.15), 1.4); // sizzle
+      // Bubbles, coming faster as it heats up.
+      for (let t = 0.2, gap = 0.12; t < 1.6; t += gap * between(0.6, 1.3), gap = Math.max(0.035, gap * 0.9)) {
+        bubble(buf, t, between(180, 420), between(0.05, 0.1), between(0.25, 0.5), between(0.8, 1.6));
+      }
+      // The lid hopping on the pot: little metal clinks.
+      for (let t = 0.85; t < 1.55; t += between(0.07, 0.12)) {
+        knock(buf, t, between(1150, 1300), between(0.12, 0.22), 0.03, [2.76, 5.4, 8.9]);
+      }
+    },
+  },
+  // A dish ready: the lid lifts with a ting, and a happy little run up.
+  'dish-ready': {
+    seconds: 1.2,
+    make(buf) {
+      knock(buf, 0, 1240, 0.3, 0.12, [2.76, 5.4, 8.9]);
+      noise(buf, 0, 0.35, 800, 3000, 0.12, hit(0.05, 0.4), 0.9); // steam puffing out
+      [77, 81, 84, 89].forEach((note, i) => ping(buf, 0.12 + i * 0.08, hz(note), 0.32, 0.3)); // F5 A5 C6 F6
+      for (let i = 0; i < 4; i++) ping(buf, between(0.4, 0.7), between(3500, 5500), between(0.03, 0.05), 0.07);
+    },
+  },
+  // A Mushy mess: a sad, sloppy squelch going down.
+  'dish-mushy': {
+    seconds: 0.9,
+    make(buf) {
+      bubble(buf, 0, 260, 0.25, 0.8, -0.5);
+      noise(buf, 0, 0.3, 900, 250, 0.35, hit(0.05, 0.4), 1.3);
+      bubble(buf, 0.18, 200, 0.2, 0.5, -0.4);
+      ping(buf, 0.3, hz(67), 0.22, 0.12); // G4
+      ping(buf, 0.48, hz(63), 0.22, 0.2); // Eb4
     },
   },
 };
