@@ -213,12 +213,14 @@ body {
   flex-shrink: 1;
   white-space: nowrap;
   overflow: hidden;
-  /* Closing: wait for the panel to fold up, then slide back. */
+  /* Closing: wait for the panel to fold all the way down, then slide
+     back, so it never shrinks sideways and down at once. */
   transition:
-    flex-grow 0.32s var(--snap) 0.16s,
-    flex-basis 0.32s var(--snap) 0.16s,
-    margin 0.32s var(--snap) 0.16s,
-    opacity 0.2s ease 0.2s;
+    flex-grow 0.32s var(--snap) 0.2s,
+    flex-basis 0.32s var(--snap) 0.2s,
+    margin 0.32s var(--snap) 0.2s,
+    padding 0.32s var(--snap) 0.2s,
+    opacity 0.2s ease 0.26s;
 }
 
 .actions > * + * {
@@ -231,6 +233,7 @@ body {
     flex-grow 0.32s var(--snap),
     flex-basis 0.32s var(--snap),
     margin 0.32s var(--snap),
+    padding 0.32s var(--snap),
     opacity 0.12s ease;
 }
 
@@ -479,7 +482,7 @@ body {
 .drawer-body {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 0.22s ease-in;
+  transition: grid-template-rows 0.2s cubic-bezier(0.4, 0, 0.6, 1);
 }
 
 .drawer.is-open .drawer-body {
@@ -3338,7 +3341,7 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
 /* Everything rises with the panel as it grows open (the drawer's own
    timing), and comes down with it as it folds. */
 .cook-kitchen {
-  --rise: 0.22s ease-in;
+  --rise: 0.2s cubic-bezier(0.4, 0, 0.6, 1);
 }
 
 .cook-kitchen.lifted {
@@ -3383,6 +3386,16 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
 .kitchen-wall {
   position: absolute;
   pointer-events: none;
+  /* Back once the counter has come down. */
+  transition: opacity 0.25s ease 0.22s, visibility 0s linear 0.22s;
+}
+
+/* With a panel open there's only room for the station: the wall steps
+   aside before the counter rises past it. */
+.cook-kitchen.lifted .kitchen-wall {
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.12s ease, visibility 0s linear 0.12s;
 }
 
 .wall-cabinets {
@@ -3503,17 +3516,19 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
 }
 
 /* Too short for cabinets worth the name: a bare wall reads better than a
-   sliver of doors. */
+   sliver of doors. (Hidden, not display: none, so they can fade back.) */
 @container (height < 420px) {
   .wall-cabinets {
-    display: none;
+    visibility: hidden;
+    opacity: 0;
   }
 }
 
 @container (height < 360px) {
   .wall-jars,
   .wall-rail {
-    display: none;
+    visibility: hidden;
+    opacity: 0;
   }
 }
 
