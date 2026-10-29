@@ -216,11 +216,11 @@ body {
   /* Closing: wait for the panel to fold all the way down, then slide
      back, so it never shrinks sideways and down at once. */
   transition:
-    flex-grow 0.32s var(--snap) 0.2s,
-    flex-basis 0.32s var(--snap) 0.2s,
-    margin 0.32s var(--snap) 0.2s,
-    padding 0.32s var(--snap) 0.2s,
-    opacity 0.2s ease 0.26s;
+    flex-grow 0.32s var(--snap) 0.24s,
+    flex-basis 0.32s var(--snap) 0.24s,
+    margin 0.32s var(--snap) 0.24s,
+    padding 0.32s var(--snap) 0.24s,
+    opacity 0.2s ease 0.3s;
 }
 
 .actions > * + * {
@@ -482,7 +482,7 @@ body {
 .drawer-body {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 0.2s cubic-bezier(0.4, 0, 0.6, 1);
+  transition: grid-template-rows 0.28s cubic-bezier(0.32, 0, 0.18, 1);
 }
 
 .drawer.is-open .drawer-body {
@@ -3135,7 +3135,6 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   bottom: calc(var(--front) + var(--lift));
   height: var(--band);
   background: linear-gradient(var(--wood-dark) 0 4px, #ffc59e 4px calc(100% - 5px), #e9a982 calc(100% - 5px));
-  transition: bottom var(--rise);
 }
 
 /* The stations: each one a spot three quarters of the room wide, the one
@@ -3148,7 +3147,6 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   right: 0;
   top: 0;
   bottom: calc(var(--front) + var(--band) + var(--lift) - 4px);
-  transition: bottom var(--rise);
 }
 
 .walk-spot {
@@ -3288,7 +3286,7 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   box-shadow: 0 3px 0 rgba(91, 63, 110, 0.35);
   cursor: pointer;
   touch-action: manipulation;
-  transition: opacity 0.25s ease, bottom var(--rise);
+  transition: opacity 0.25s ease;
 }
 
 .walk-edge svg {
@@ -3331,21 +3329,11 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
     linear-gradient(var(--cocoa) 0 6px, #b07a5c 6px 8px, transparent 8px),
     repeating-linear-gradient(90deg, transparent 0 calc(25% - 2px), rgba(138, 90, 68, 0.12) calc(25% - 2px) 25%),
     linear-gradient(#fbe3cc, #f6d3b4);
-  transition: height var(--rise), border-radius 0.35s ease;
+  transition: border-radius 0.35s ease;
 }
 
 .cook-kitchen.lifted .kitchen-counter {
   border-radius: 0;
-}
-
-/* Everything rises with the panel as it grows open (the drawer's own
-   timing), and comes down with it as it folds. */
-.cook-kitchen {
-  --rise: 0.2s cubic-bezier(0.4, 0, 0.6, 1);
-}
-
-.cook-kitchen.lifted {
-  --rise: 0.34s cubic-bezier(0.34, 1.4, 0.64, 1) 0.26s;
 }
 
 .cook-kitchen .kitchen-controls {
@@ -3387,7 +3375,7 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   position: absolute;
   pointer-events: none;
   /* Back once the counter has come down. */
-  transition: opacity 0.25s ease 0.22s, visibility 0s linear 0.22s;
+  transition: opacity 0.25s ease 0.28s, visibility 0s linear 0.28s;
 }
 
 /* With a panel open there's only room for the station: the wall steps
@@ -3856,6 +3844,26 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
 
 .kitchen[data-slots='4'] .pot-slot {
   padding: 9px;
+}
+
+/* In the walking kitchen the plates take their size from the room the row
+   has, the same both ways, so they're always round (aspect-ratio on a
+   shrinking flex item can come out oval in Safari). */
+.cook-kitchen .pot-row {
+  container-type: inline-size;
+  --plate: min(62px, calc((100cqi - 44px) / 3));
+}
+
+.cook-kitchen[data-slots='4'] .pot-row {
+  --plate: min(56px, calc((100cqi - 39px) / 4));
+}
+
+.cook-kitchen .pot-slot {
+  flex: none;
+  aspect-ratio: auto;
+  width: var(--plate);
+  height: var(--plate);
+  padding: calc(var(--plate) * 0.2);
 }
 
 .cook-wrap {
