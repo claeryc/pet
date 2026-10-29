@@ -57,6 +57,9 @@ export interface FishingCallbacks {
   onExit: () => void;
   onPickBait: () => void; // the next bait (or none)
   toast: (message: string) => void;
+  // Where the rod's line comes down out of the room, in screen pixels
+  // across, so the pond's line carries on right under it.
+  lineAt: () => number;
 }
 
 export interface Fishing {
@@ -152,6 +155,15 @@ export function createFishing(cb: FishingCallbacks): Fishing {
     froth.draw(t); // cheap, and keeps fizzing while it fades out
     pondFrame = requestAnimationFrame(animatePond);
   };
+
+  // Lines the pond's line up under the room's, wherever the two sit.
+  function alignLine(): void {
+    const box = pond.getBoundingClientRect();
+    if (box.width > 0) pondView.setLine((cb.lineAt() - box.left) / box.width);
+  }
+  window.addEventListener('resize', () => {
+    if (phase !== 'off') alignLine();
+  });
 
   let phase: FishingPhase = 'off';
   let timer = 0;
@@ -435,6 +447,7 @@ export function createFishing(cb: FishingCallbacks): Fishing {
       cancelAnimationFrame(pondFrame);
       pond.hidden = false;
       pondView.resize();
+      alignLine();
       setPhase('ready');
       streak = 0;
       lastPerfect = false;

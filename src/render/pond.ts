@@ -105,6 +105,9 @@ export interface Pond {
   hook: (fish: CatchId) => void; // which fish will go for the bait this cast
   landed: (caught: boolean) => void; // the catch is over: the fish leaves, one way or the other
   baitAt: () => { x: number; y: number }; // where the bait is, as shares of the pond's size
+  // Where the line comes down, as a share of the pond's width, so it meets
+  // the line hanging off the rod in the room above.
+  setLine: (share: number) => void;
 }
 
 export function createPond(): Pond {
@@ -122,6 +125,7 @@ export function createPond(): Pond {
   let bubbleIn = 0;
   let foamIn = 0;
   let bait = { x: 0, y: 0 }; // where the bait hangs (moves when sinking or reeling)
+  let lineX = Math.round(W * 0.62) + 2; // the pixel column the line runs down
   let biter: Fish | null = null; // the fish going for the bait
   let wanted: Sprite = FISH[0]; // the size of fish that will bite
   let letGo = false; // the catch is over, though the bar is still showing
@@ -151,7 +155,7 @@ export function createPond(): Pond {
     fish = [pick(FISH), pick(FISH), FISH[0], FISH[1]].map(newFish);
     bubbles.length = 0;
     foam.length = 0;
-    bait = { x: Math.round(W * 0.62), y: SURFACE - 6 };
+    bait = { x: lineX - 2, y: SURFACE - 6 };
     biter = null;
   }
 
@@ -264,7 +268,7 @@ export function createPond(): Pond {
       if (ripples[i].age >= RIPPLE_SECONDS) ripples.splice(i, 1);
     }
     crown.life -= dt;
-    bait.x = Math.round(W * 0.62) + jerk;
+    bait.x = lineX - 2 + jerk;
   }
 
   function drawWater(phase: FishingPhase, t: number): void {
@@ -401,6 +405,11 @@ export function createPond(): Pond {
     hook,
     landed,
     baitAt: () => ({ x: (bait.x + 2) / W, y: Math.max(0, bait.y + 3) / H }),
+    setLine(share) {
+      // Keep the bait (and the fish around it) inside the pond.
+      lineX = Math.min(W - 4, Math.max(4, Math.floor(share * W)));
+      bait.x = lineX - 2;
+    },
   };
 }
 

@@ -130,6 +130,10 @@ function drawWindow(ctx: CanvasRenderingContext2D, night: boolean, timeMs: numbe
   ctx.fillRect(x, y + h / 2, w, 1);
 }
 
+// The pixel column the fishing line hangs down from the rod tip. The pond
+// below lines its own line up with it (see src/ui/home.ts).
+export const FISHING_LINE_X = 51;
+
 // While fishing, the pet holds a rod with the line running down out of
 // the room into the pond below it (drawn in src/render/pond.ts). A "!"
 // pops up when a fish bites, and the rod tip shakes while reeling in.
@@ -139,7 +143,7 @@ function drawFishing(ctx: CanvasRenderingContext2D, phase: FishingPhase, timeMs:
   for (let i = 0; i < 9; i++) ctx.fillRect(42 + i, 29 - i + (i > 5 ? shake : 0), 1, 1);
   if (phase === 'ready') return;
   // The line, from the rod tip straight down past the bottom of the room.
-  const tipX = 51, tipY = 21 + shake;
+  const tipX = FISHING_LINE_X, tipY = 21 + shake;
   ctx.fillStyle = PALETTE.ink;
   ctx.fillRect(tipX, tipY, 1, ROOM_HEIGHT - tipY);
   if (phase === 'bite') {

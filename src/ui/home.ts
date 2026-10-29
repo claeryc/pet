@@ -25,7 +25,7 @@ import { unreadMail } from '../game/messages';
 import { needsTending, type CropId } from '../game/garden';
 import { isNew, isUnlocked } from '../game/unlocks';
 import { pointsToSpend, reelPerks } from '../game/skills';
-import { petAt, ROOM_HEIGHT, ROOM_WIDTH } from '../render/canvas';
+import { FISHING_LINE_X, petAt, ROOM_HEIGHT, ROOM_WIDTH } from '../render/canvas';
 import { createMeet, MEET_OUT_MS } from './meet';
 import { petStandsLeft } from '../game/friends';
 import { needsYou, otherRoom, petsIn, roommates } from '../game/rooms';
@@ -831,6 +831,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     onPickBait: cb.onPickBait,
     onExit: () => showActions(DRAIN_MS),
     toast: (msg) => showToast(msg),
+    // The middle of the line's pixel column, inside the room's border.
+    lineAt: () => canvas.getBoundingClientRect().left + canvas.clientLeft + ((FISHING_LINE_X + 0.5) / ROOM_WIDTH) * canvas.clientWidth,
   });
   // The latest state, so Fishing can check the pet is up for it.
   let latest: { state: GameState; now: number } | null = null;
