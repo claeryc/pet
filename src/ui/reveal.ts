@@ -11,6 +11,7 @@
 // instead, out of the way of the counter. Tapping the reveal skips it.
 
 import { STRINGS } from '../strings';
+import { sound, type SoundId } from '../audio/audio';
 
 export interface RevealItem {
   icon: string; // SVG markup
@@ -19,6 +20,9 @@ export interface RevealItem {
   stars: number; // 0 for none
   caption?: string; // a small line on top, e.g. "Perfect catch!" or "New recipe!"
   tier?: 'bronze' | 'silver' | 'gold'; // a badge: the beams take its colour
+  // Played as it shows. Left out when what made it already has its own
+  // sound (a catch's splash, a dish coming out of the pot).
+  sound?: SoundId;
 }
 
 // How long one reveal stays (the CSS animations are timed to fit).
@@ -79,6 +83,7 @@ export function createReveal(): Reveal {
     el.classList.remove('in', 'out');
     void el.offsetHeight;
     el.classList.add('in');
+    if (item.sound) sound(item.sound);
     clearTimeout(timer);
     timer = window.setTimeout(leave, REVEAL_MS);
   }

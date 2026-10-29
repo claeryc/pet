@@ -36,6 +36,7 @@ import { placeName } from './dig';
 import { formatDayClock } from './time';
 import { KITCHEN_OUT_MS } from './cooking';
 import { createStationSwitch } from './stations';
+import { sound } from '../audio/audio';
 
 const T = STRINGS.crafting;
 
@@ -301,6 +302,7 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
     clearTimeout(hitTimer);
     hitTimer = window.setTimeout(() => bench.classList.remove('hit'), 350);
     if (taps < TAPS) {
+      sound('hammer');
       cb.toast(T.oneMore(TAPS - taps));
       return render();
     }
