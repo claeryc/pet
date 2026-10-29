@@ -10,12 +10,16 @@
 //      opens. Tapping a spot turns it over: a note from your pet on what
 //      might be buried there, the finds as stamps and the digs left as the
 //      postmark. Buttons: [Back] [Start digging].
-//   2. The patch of ground: six by six squares. Tap one to pick it, then
-//      Dig. A hole shows how many treasures are buried right next to it,
-//      warmer colours for more. Sniff has the pet point at a treasure (a
-//      paw on the square). At the cove a bar says when the tide comes in
-//      next, and the line it covers next looks wet. The day's digs are the
-//      little trowels under it. Buttons: [Back] [Sniff (1)] [Dig].
+//   2. The patch of ground: six by six squares, as big as fits on the
+//      screen. The place's name is at the top, with the day's digs as
+//      little spades on the right (a hole for each one used). Tap a square
+//      to pick it, then Dig. A hole shows how many treasures are buried
+//      right next to it, warmer colours for more. Sniff has the pet point
+//      at a treasure (a paw on the square). At the cove a chip says when
+//      the tide comes in next, and the line it covers next looks wet. The
+//      rules are on the "How it works" card, so the line under the ground
+//      only says what the last dig or sniff turned up.
+//      Buttons: [Back] [Sniff (1)] [Dig].
 //
 // The rules live in src/game/dig.ts.
 
@@ -301,27 +305,38 @@ export function createDig(cb: DigSetup): DigScene {
       const at = spotOf(s, place);
       rack.append(at ? postcard(s, at) : locked(place));
     }
-    return [head, rack, el('p', 'trip-note', T.rackNote)];
+    return [head, rack];
   }
 
   // ---- 2. The patch of ground ----
 
   function field(s: GameState, sp: DigSpot): HTMLElement[] {
+    // The place, and the day's digs top right: a spade for each one left,
+    // a hole for each one used.
     const head = el('div', 'dig-head');
     const kicker = el('span', 'dig-kicker');
     kicker.append(icon(placeIcon(sp.place), 'dig-kicker-icon'), T.kicker(placeName(sp.place)));
-    const left = reachable(sp).length;
-    head.append(kicker, el('span', 'dig-pill', left ? T.left(left) : T.allFound));
-    const out: HTMLElement[] = [head];
+    const digs = el('span', 'dig-digs');
+    digs.setAttribute('role', 'img');
+    digs.setAttribute('aria-label', T.digsChip(digsLeft(s), D.digsPerDay));
+    for (let i = 0; i < D.digsPerDay; i++) {
+      digs.append(i < s.dig.used ? icon(ITEM_ICONS.digUsed, 'dig-spade is-used') : icon(ITEM_ICONS.digLeft, 'dig-spade'));
+    }
+    head.append(kicker, digs);
 
-    // The tide: how many digs here until it comes in again.
+    // What's still buried here, and at the cove how many digs until the
+    // tide comes in again.
+    const sub = el('div', 'dig-sub');
+    const left = reachable(sp).length;
+    sub.append(el('span', 'dig-pill', left ? T.left(left) : T.allFound));
     if (sp.tide) {
       const n = tideIn(sp);
-      const bar = el('div', 'dig-tide');
+      const bar = el('span', 'dig-tide');
       bar.append(el('span', '', n === null ? T.tideFull : `${T.arrows[sp.tide]} ${T.tideIn(n)}`));
       if (n !== null) for (let i = 0; i < D.tideEvery; i++) bar.append(el('i', i < D.tideEvery - n ? 'is-on' : ''));
-      out.push(bar);
+      sub.append(bar);
     }
+    const out: HTMLElement[] = [head, sub];
 
     const grid = el('div', `dig-field${sp.tide ? ` is-sand is-tide-${sp.tide}` : ''}${sp.place === 'woods' ? ' is-woods' : ''}`);
     grid.setAttribute('role', 'grid');
@@ -372,21 +387,15 @@ export function createDig(cb: DigSetup): DigScene {
       }
       grid.append(sq);
     }
-    out.push(grid);
+    // The ground takes whatever room is left on the screen.
+    const fit = el('div', 'dig-fit');
+    fit.append(grid);
+    out.push(fit);
     fresh = null;
 
-    const hint = message || (sp.tide ? T.hintCove(T.sides[sp.tide]) : sp.place === 'woods' ? T.hintWoods : T.hint);
-    const p = el('p', 'trip-note dig-hint', hint);
+    const p = el('p', 'trip-note dig-hint', message || T.hint);
     p.setAttribute('aria-live', 'polite');
     out.push(p);
-
-    // The day's digs, as little trowels (used ones dimmed).
-    const digs = el('div', 'dig-digs');
-    digs.append(el('span', '', T.digsToday));
-    const used = s.dig.used;
-    for (let i = 0; i < D.digsPerDay; i++) digs.append(icon(ITEM_ICONS.dig, `dig-trowel${i < used ? ' is-used' : ''}`));
-    digs.setAttribute('aria-label', T.digsChip(digsLeft(s), D.digsPerDay));
-    out.push(digs);
     return out;
   }
 

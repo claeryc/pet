@@ -11519,7 +11519,40 @@ button.trip-bars-name.is-on {
   height: 100%;
 }
 
-/* "DIG · CORAL COVE" and what's left there. */
+/* One screen tall, no scrolling: the room shrinks (keeping its shape) to
+   leave room for the spots, or for the patch of ground and the buttons.
+   --dig-rest is everything on the screen but the room: on the board the
+   postcards (which grow with the screen's width), on the ground the rows
+   around it plus the ground at up to 280px, so on a short phone the
+   ground gets the room it needs and the room gets what's left. */
+#app:has(> .stat-slot > .dig:not([hidden])) {
+  --dig-w: min(100vw, 420px);
+  --dig-rest: calc(217px + 0.625 * var(--dig-w));
+}
+
+#app:has(> .stat-slot > .dig[data-stage='field']:not([hidden])) {
+  --dig-rest: calc(222px + min(var(--dig-w) - 32px, 280px));
+}
+
+#app:has(> .stat-slot > .dig:not([hidden])) > .room-wrap {
+  align-self: center;
+  width: max(150px, min(100%, (100vh - var(--dig-rest)) * 4 / 3));
+  width: max(150px, min(100%, (100dvh - var(--dig-rest)) * 4 / 3));
+}
+
+#app:has(> .stat-slot > .dig[data-stage='field']:not([hidden])) > .stat-slot {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-slot > .dig[data-stage='field'] {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+/* The place's name, and the day's digs top right. */
 .dig-head {
   display: flex;
   align-items: center;
@@ -11551,13 +11584,12 @@ button.trip-bars-name.is-on {
 
 .dig-kicker-icon svg,
 .dig-cell-icon svg,
-.dig-trowel svg {
+.dig-spade svg {
   width: 100%;
   height: 100%;
 }
 
 .dig-pill {
-  margin-left: auto;
   padding: 2px 9px;
   border-radius: 999px;
   background: var(--butter);
@@ -11567,24 +11599,33 @@ button.trip-bars-name.is-on {
   white-space: nowrap;
 }
 
+/* "4 left here", and at the cove the tide. */
+.dig-sub {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 /* The tide: "← Tide in: 1 more dig" with a pip per dig. */
 .dig-tide {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: fit-content;
-  margin: 0 auto;
-  padding: 4px 12px;
+  gap: 5px;
+  min-width: 0;
+  padding: 2px 10px;
   border-radius: 999px;
   background: #e3f3fb;
   color: #3b7ea6;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .dig-tide i {
-  width: 14px;
+  flex: none;
+  width: 12px;
   height: 10px;
   border-radius: 3px;
   background: #cfe6f2;
@@ -11594,13 +11635,23 @@ button.trip-bars-name.is-on {
   background: #6fb6dd;
 }
 
-/* The patch of ground: six by six squares, as big as fits. */
+/* The patch of ground: six by six squares, as big as fits in the room
+   that's left (it's as tall as it is wide). */
+.dig-fit {
+  flex: 1 1 0;
+  min-height: 0;
+  container-type: size;
+  display: grid;
+  place-items: center;
+}
+
 .dig-field {
   --dig-gap: 4px;
+  box-sizing: border-box;
   display: grid;
   grid-template-columns: repeat(var(--dig-size), 1fr);
   gap: var(--dig-gap);
-  width: min(100%, 300px);
+  width: min(100cqw, 100cqh, 340px);
   margin: 0 auto;
   padding: 8px;
   border: 3px solid #4a9a76;
@@ -11745,31 +11796,34 @@ button.trip-bars-name.is-on {
 }
 
 .dig-hint {
-  min-height: 2.4em;
+  min-height: 2.5em;
+  display: grid;
+  place-items: center;
   font-weight: 600;
+  line-height: 1.25;
 }
 
-/* "Digs today" and a trowel per dig, used ones faded. */
+/* The day's digs: a spade for each one left, a hole for each one used. */
 .dig-digs {
+  flex: none;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font-size: 0.8rem;
-  font-weight: 800;
-  color: var(--plum);
-  white-space: nowrap;
+  gap: 2px;
+  margin-left: auto;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: 0 2px 0 rgba(43, 33, 64, 0.1);
 }
 
-.dig-trowel {
+.dig-spade {
   display: inline-flex;
-  width: 20px;
-  height: 20px;
+  width: 14px;
+  height: 22px;
 }
 
-.dig-trowel.is-used {
-  opacity: 0.3;
-  filter: grayscale(1);
+.dig-spade.is-used {
+  opacity: 0.75;
 }
 
 @media (prefers-reduced-motion: reduce) {

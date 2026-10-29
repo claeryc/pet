@@ -713,6 +713,34 @@ export const ITEM_ICONS: Record<string, string> = {
     'kcoocck.....',
     'kkkkkkkk....',
   ]),
+  // A dig still to use today: a little spade standing up.
+  digLeft: pixelIcon([
+    '.kkkkk.',
+    'kyyyyyk',
+    '.kkckk.',
+    '..kck..',
+    '..kck..',
+    '.kkkkk.',
+    'kwwwwsk',
+    'kwwwssk',
+    'kwwwssk',
+    '.kwssk.',
+    '..kkk..',
+  ]),
+  // A dig used today: the hole it left.
+  digUsed: pixelIcon([
+    '.......',
+    '.......',
+    '.......',
+    '.......',
+    '.......',
+    '.......',
+    '.......',
+    '.kkkkk.',
+    'kcooock',
+    'kuuuuuk',
+    '.kkkkk.',
+  ]),
   // A paw print, where the pet sniffed something.
   paw: pixelIcon([
     '............',
