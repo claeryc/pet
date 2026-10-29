@@ -3,7 +3,8 @@
 // (the stove or the board) and the stat bars (the counter, with the
 // controls).
 //
-// Tabs at the top switch between the pot and the cutting board.
+// A switch bar under the counter swaps between the pot and the cutting
+// board (see src/ui/stations.ts).
 //
 // The pot sits on the stove against the tiled wall, with a recipe card
 // pinned up beside it. Below, on the counter, is a spot for each food it
@@ -50,6 +51,7 @@ import type { GameState } from '../game/state';
 import { createDrawer } from './drawer';
 import { BOARD_ART, ITEM_ICONS, KITCHEN_ART, SKILL_POINT_ICON } from './icons';
 import { soldInShop, type ShopCategory } from './shop';
+import { createStationSwitch } from './stations';
 
 export interface CookingCallbacks {
   // Cooks what's on the station. Returns the dish made, or null if the
@@ -92,6 +94,7 @@ const stars = (id: FoodId) => (CONFIG.foods as readonly Food[]).find((f) => f.id
 const inShop = (id: FoodId) => (CONFIG.foods as readonly Food[]).some((f) => f.id === id && soldInShop(f));
 const countText = (n: number) => (n === Infinity ? '∞' : String(n));
 const STATION_TABS: readonly Station[] = ['pot', 'board'];
+const STATION_ICONS: Partial<Record<Station, string>> = { pot: ITEM_ICONS.cooking, board: ITEM_ICONS.cuttingBoard };
 // Where the chops go across the food on the board, as shares of its width.
 const CHOP_LINES = [0.32, 0.5, 0.68].slice(0, CONFIG.cooking.cutting.chops);
 // How far apart the pieces slide after each chop, in px.
@@ -129,18 +132,13 @@ export function createCooking(cb: CookingCallbacks): Cooking {
   // ---- The kitchen ----
   const kitchen = el('div', 'kitchen');
   kitchen.hidden = true;
-  // The top: the station tabs, and the ×2 switch.
+  // The top: the ×2 switch (and the chop pips on the board).
   const top = el('div', 'kitchen-top');
-  const tabs = el('div', 'kitchen-tabs');
-  tabs.setAttribute('role', 'tablist');
-  const tabButtons = STATION_TABS.map((st) => {
-    const b = el('button', 'kitchen-tab');
-    b.setAttribute('role', 'tab');
-    b.textContent = STRINGS.cooking.stations[st];
-    b.addEventListener('click', () => switchTo(st));
-    tabs.append(b);
-    return { st, b };
-  });
+  // Under the counter: the switch between the stations.
+  const stations = createStationSwitch(
+    STATION_TABS.map((st) => ({ id: st, icon: STATION_ICONS[st] ?? '', label: STRINGS.cooking.stations[st] })),
+    (st) => switchTo(st),
+  );
   const batchBtn = el('button', 'kitchen-batch');
   batchBtn.textContent = '×2';
   batchBtn.addEventListener('click', () => {
@@ -148,7 +146,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     batch = batch === 2 ? 1 : 2;
     render();
   });
-  top.append(tabs, batchBtn);
+  top.append(batchBtn);
   // The kitchen has two parts: the room, over the pet's panel, holds the
   // stove or the board; the counter, in the stat bars' place, holds the
   // spots and the big round button.
@@ -267,7 +265,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
   boardControls.append(meterBox, chopBtn);
   room.append(top, potScene, boardScene);
   counter.append(potControls, boardControls);
-  kitchen.append(room, counter);
+  kitchen.append(room, counter, stations.el);
 
   function sign(text: string): HTMLElement {
     const s = el('span', 'pot-sign');
@@ -590,13 +588,9 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     // Drop anything from the pot you no longer have (e.g. eaten meanwhile).
     for (let i = pot.length - 1; i >= 0; i--) if (left(pot[i]) < 0) pot.splice(i, 1);
 
-    // The top: which station is open, and the ×2 switch (on the pot, once
-    // you have double batch).
-    for (const t of tabButtons) {
-      t.b.classList.toggle('on', t.st === station);
-      t.b.setAttribute('aria-selected', String(t.st === station));
-      t.b.hidden = !hasStation(s, t.st);
-    }
+    // Which station is open, and the ×2 switch (on the pot, once you have
+    // double batch).
+    stations.render(station, (st) => hasStation(s, st));
     const canBatch = maxBatch(s, station) > 1;
     batchBtn.hidden = !canBatch;
     batchBtn.classList.toggle('on', batchNow() === 2);

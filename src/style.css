@@ -2957,8 +2957,7 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   display: none;
 }
 
-/* The top: [Pot] [Board] on the left, the chop pips in the middle, ×2 on
-   the right. */
+/* The top: the chop pips in the middle, ×2 on the right. */
 .kitchen-top {
   position: absolute;
   z-index: 2;
@@ -2971,12 +2970,6 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   gap: 6px;
 }
 
-.kitchen-tabs {
-  display: flex;
-  gap: 4px;
-}
-
-.kitchen-tab,
 .kitchen-batch {
   font: inherit;
   font-size: 0.8rem;
@@ -2991,13 +2984,11 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   touch-action: manipulation;
 }
 
-.kitchen-tab[hidden],
 .kitchen-batch[hidden],
 .chop-pips[hidden] {
   display: none;
 }
 
-.kitchen-tab.on,
 .kitchen-batch.on {
   background: var(--plum);
   color: white;
@@ -3006,6 +2997,79 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 /* Keeps ×2 on the right even when the pips are hidden. */
 .kitchen-batch {
   margin-left: auto;
+}
+
+/* The station switch (src/ui/stations.ts): a bar hanging just under the
+   counter of the kitchen or the workbench, down where the thumb is, with a
+   tall button per station, its icon over its name. It comes and goes with
+   the kitchen, and fades away while a Food or Recipes panel is open over
+   it. */
+.station-switch {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 12px);
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 20px;
+  background: var(--card);
+  box-shadow: 0 4px 0 rgba(43, 33, 64, 0.18);
+  transition: opacity 0.2s ease;
+}
+
+body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.station-switch[hidden],
+.station-tab[hidden] {
+  display: none;
+}
+
+.station-tab {
+  flex: 1;
+  min-width: 0;
+  height: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--plum);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.station-tab-icon,
+.station-tab-icon > svg {
+  display: block;
+  width: 26px;
+  height: 26px;
+}
+
+.station-tab.on {
+  background: var(--plum);
+  color: white;
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.25);
+}
+
+/* A thin white edge keeps the dark pixel outlines from sinking into the
+   plum. */
+.station-tab.on .station-tab-icon {
+  filter: drop-shadow(1px 0 0 white) drop-shadow(-1px 0 0 white) drop-shadow(0 1px 0 white) drop-shadow(0 -1px 0 white);
+}
+
+.station-tab:not(.on):active {
+  background: rgba(91, 63, 110, 0.1);
 }
 
 /* ---- The pot ---- */
