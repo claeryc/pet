@@ -12,7 +12,15 @@ licence page from the day you downloaded it.
 
 ## Sound effects (`sfx/`)
 
-All from the **"soft" pack of UI SFX** version 0.4.0 by Yuki Capital
+### Fishing
+
+| File | Source | Licence |
+| --- | --- | --- |
+| `fish-cast.mp3`, `fish-nibble.mp3`, `fish-bite.mp3`, `fish-reel.mp3`, `fish-splash.mp3`, `fish-escape.mp3`, `fish-perfect.mp3`, `pond-fill.mp3`, `pond-drain.mp3` | Made for this game by `scripts/make-sfx.ts` (`npm run sfx`), synthesized from scratch with no samples | Original work, owned by the game |
+
+### Everything else
+
+All the other sound effects are from the **"soft" pack of UI SFX** version 0.4.0 by Yuki Capital
 (https://uisfx.com, npm package `uisfx`, https://github.com/romainsimon/uisfx),
 downloaded on 2026-10-20. The sounds are synthesized by the pack's own
 recipes, not recorded from anyone else's work.
