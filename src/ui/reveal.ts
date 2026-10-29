@@ -1,12 +1,14 @@
 // The item reveal: when you get something (a fish, a harvest, a dish, a
-// seed), it shows off over the stat bars for a moment. A soft cloudy fog
-// rolls in, light beams turn slowly behind the item, and its name and count
-// sit underneath. It fades away by itself, or sooner if you tap it. Several
-// in a row (a fish and a lucky seed) take turns.
+// seed), it shows off for a moment. The item pops up on a round plate (like
+// the kitchen's) in a warm glow, with light turning slowly behind it, its
+// name on a pink ribbon underneath and a little tag on top ("New recipe!").
+// It fades away by itself, or sooner if you tap it. Several in a row (a
+// fish and a lucky seed) take turns.
 //
-// It only covers the stat bars' spot (or the pond, counter or garden
-// panel sitting there), so the buttons below keep working: you can cast
-// again straight away. Tapping the reveal skips it.
+// It only covers the stat bars' spot (or the pond or garden panel sitting
+// there), so the buttons below keep working: you can cast again straight
+// away. In the kitchen or at the workbench it floats over the wall
+// instead, out of the way of the counter. Tapping the reveal skips it.
 
 import { STRINGS } from '../strings';
 
@@ -34,13 +36,15 @@ export function createReveal(): Reveal {
   el.hidden = true;
   el.setAttribute('role', 'status');
   el.innerHTML = `
-    <div class="reveal-fog" aria-hidden="true">
-      <span></span><span></span><span></span><span></span><span></span>
-    </div>
-    <div class="reveal-beams" aria-hidden="true"></div>
+    <div class="reveal-veil" aria-hidden="true"></div>
+    <div class="reveal-glow" aria-hidden="true"></div>
+    <div class="reveal-rays" aria-hidden="true"></div>
     <div class="reveal-body">
       <p class="reveal-caption"></p>
-      <div class="reveal-icon" aria-hidden="true"></div>
+      <div class="reveal-plate" aria-hidden="true">
+        <div class="reveal-icon"></div>
+        <i class="reveal-spark">✦</i><i class="reveal-spark">✦</i><i class="reveal-spark">✦</i><i class="reveal-spark">✦</i>
+      </div>
       <p class="reveal-name"></p>
       <p class="reveal-stars" aria-hidden="true"></p>
     </div>`;
@@ -69,6 +73,7 @@ export function createReveal(): Reveal {
     stars.hidden = item.stars === 0;
     if (item.tier) el.dataset.tier = item.tier;
     else delete el.dataset.tier;
+    place();
     // Restart the animations for this item.
     el.hidden = false;
     el.classList.remove('in', 'out');
@@ -76,6 +81,25 @@ export function createReveal(): Reveal {
     el.classList.add('in');
     clearTimeout(timer);
     timer = window.setTimeout(leave, REVEAL_MS);
+  }
+
+  // In the kitchen (or at the workbench) the stat bars' spot is the front
+  // counter, so the reveal floats over the wall above it instead.
+  function place(): void {
+    const wall = el.parentElement?.querySelector<HTMLElement>(':scope > .kitchen:not([hidden]) .kitchen-room');
+    const free = !!wall && wall.offsetHeight > 0;
+    el.classList.toggle('is-free', free);
+    if (!free) {
+      el.style.cssText = '';
+      return;
+    }
+    const box = wall.getBoundingClientRect();
+    const slot = el.parentElement!.getBoundingClientRect();
+    el.style.inset = 'auto';
+    el.style.left = `${box.left - slot.left}px`;
+    el.style.top = `${box.top - slot.top}px`;
+    el.style.width = `${box.width}px`;
+    el.style.height = `${box.height}px`;
   }
 
   function leave(): void {

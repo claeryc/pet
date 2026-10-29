@@ -5654,6 +5654,11 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
 
 /* ---- The item reveal, over the stat bars ---- */
 
+/* The item on a round plate (like the kitchen's), in a warm glow with
+   light turning slowly behind it, its name on a pink ribbon underneath and
+   a little tag on top ("New recipe!"). Over the stat bars it fills their
+   card; in the kitchen or at the workbench it floats over the wall
+   instead, with no box around it (src/ui/reveal.ts places it). */
 .reveal {
   position: absolute;
   inset: 0;
@@ -5663,9 +5668,16 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #e9defa;
+  background: var(--card);
   cursor: pointer;
   opacity: 0;
+  --glow: 255, 229, 150;
+  --rays: 255, 255, 255;
+}
+
+.reveal.is-free {
+  overflow: visible;
+  background: none;
 }
 
 .reveal[hidden] {
@@ -5673,7 +5685,7 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
 }
 
 .reveal.in {
-  animation: reveal-in 0.35s ease-out forwards;
+  animation: reveal-in 0.25s ease-out forwards;
 }
 
 .reveal.out {
@@ -5690,30 +5702,232 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   to { opacity: 0; }
 }
 
-/* Soft clouds drifting slowly across. */
-.reveal-fog span {
+/* Floating over the kitchen wall: a soft cream cloud keeps the wall's
+   tiles and jars from showing through, with no edge to it. */
+.reveal-veil {
+  display: none;
   position: absolute;
-  width: 46%;
-  aspect-ratio: 1;
+  left: 50%;
+  top: 50%;
+  width: 340px;
+  height: 230px;
+  margin: -115px 0 0 -170px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 247, 236, 0.97) 0 60%, rgba(255, 247, 236, 0.75) 78%, rgba(255, 247, 236, 0));
+}
+
+.reveal.is-free .reveal-veil {
+  display: block;
+}
+
+.reveal-glow,
+.reveal-rays {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 300px;
+  height: 300px;
+  margin: -150px 0 0 -150px;
+}
+
+.reveal-glow {
+  background: radial-gradient(circle, rgba(var(--glow), 0.95) 0 20%, rgba(var(--glow), 0.5) 32%, rgba(var(--glow), 0) 52%);
+}
+
+.reveal-rays {
+  background: repeating-conic-gradient(rgba(var(--rays), 0.85) 0deg 7deg, rgba(var(--rays), 0) 7deg 22deg);
+  -webkit-mask-image: radial-gradient(circle, black 20%, transparent 55%);
+  mask-image: radial-gradient(circle, black 20%, transparent 55%);
+  animation: reveal-spin 12s linear infinite;
+}
+
+/* A new badge or milestone: the glow in its colour. */
+.reveal[data-tier='bronze'] { --glow: 240, 184, 140; }
+.reveal[data-tier='silver'] { --glow: 226, 216, 245; }
+.reveal[data-tier='gold'] { --glow: 255, 205, 90; --rays: 255, 246, 210; }
+
+.reveal-body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  color: var(--plum);
+}
+
+.reveal-body p {
+  margin: 0;
+}
+
+.reveal.in .reveal-body {
+  animation: reveal-pop 0.5s cubic-bezier(0.34, 1.5, 0.64, 1) both;
+}
+
+@keyframes reveal-pop {
+  0% { transform: translateY(24px) scale(0.3, 0.2); }
+  55% { transform: translateY(-4px) scale(1.06, 0.94); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+/* "New recipe!": a white tag tipped over the top of the plate. */
+.reveal-caption {
+  position: relative;
+  z-index: 2;
+  margin-bottom: -9px !important;
+  padding: 2px 10px;
+  max-width: 260px;
+  background: white;
+  border: 3px solid var(--plum);
+  border-radius: 999px;
+  box-shadow: 0 3px 0 var(--plum);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.3;
+  color: var(--accent-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transform: rotate(-4deg);
+}
+
+.reveal-plate {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 50%;
   background: white;
-  filter: blur(14px);
-  opacity: 0.85;
-  animation: reveal-drift 2.4s ease-in-out forwards;
+  border: 4px solid var(--plum);
+  box-shadow: inset 0 0 0 5px var(--card), inset 0 0 0 7px #e7dbf3, 0 5px 0 var(--plum);
 }
 
-.reveal-fog span:nth-child(1) { left: -12%; top: -30%; }
-.reveal-fog span:nth-child(2) { right: -14%; top: -20%; animation-direction: reverse; }
-.reveal-fog span:nth-child(3) { left: -8%; bottom: -45%; animation-direction: reverse; }
-.reveal-fog span:nth-child(4) { right: -10%; bottom: -40%; }
-.reveal-fog span:nth-child(5) { left: 30%; top: 55%; width: 40%; opacity: 0.6; }
-
-@keyframes reveal-drift {
-  from { transform: translateX(-10px) scale(0.9); }
-  to { transform: translateX(10px) scale(1.05); }
+.reveal.is-free .reveal-plate {
+  width: 92px;
+  height: 92px;
 }
 
-/* Light beams turning slowly behind the item, fading out towards the edges. */
+.reveal-icon {
+  width: 46px;
+  height: 46px;
+}
+
+.reveal.is-free .reveal-icon {
+  width: 60px;
+  height: 60px;
+}
+
+.reveal.in .reveal-icon {
+  animation: reveal-bob 1.6s ease-in-out 0.5s infinite;
+}
+
+.reveal-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Little sparkles twinkling around the plate. */
+.reveal-spark {
+  position: absolute;
+  font-style: normal;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--butter);
+  -webkit-text-stroke: 1.5px var(--plum);
+  paint-order: stroke fill;
+  pointer-events: none;
+}
+
+.reveal.in .reveal-spark {
+  animation: reveal-twinkle 1.2s ease-in-out 0.3s infinite both;
+}
+
+.reveal-spark:nth-of-type(1) { left: -30px; top: 22px; }
+.reveal-spark:nth-of-type(2) { right: -34px; top: 8px; font-size: 22px; animation-delay: 0.6s !important; }
+.reveal-spark:nth-of-type(3) { right: -22px; bottom: 4px; font-size: 13px; animation-delay: 0.9s !important; }
+.reveal-spark:nth-of-type(4) { left: -20px; bottom: -2px; font-size: 13px; animation-delay: 0.45s !important; }
+
+@keyframes reveal-twinkle {
+  0%, 100% { transform: scale(0.6) rotate(0deg); opacity: 0.4; }
+  50% { transform: scale(1.1) rotate(20deg); opacity: 1; }
+}
+
+/* The name on a pink ribbon across the bottom of the plate. */
+.reveal-name {
+  position: relative;
+  z-index: 2;
+  margin-top: -14px !important;
+  padding: 3px 16px 4px;
+  max-width: 240px;
+  background: var(--accent);
+  border: 3px solid var(--plum);
+  border-radius: 8px;
+  box-shadow: 0 4px 0 var(--plum);
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1.25;
+  color: white;
+  -webkit-text-stroke: 4px var(--low-dark);
+  paint-order: stroke fill;
+  white-space: nowrap;
+}
+
+.reveal-name::before,
+.reveal-name::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  z-index: -1;
+  width: 16px;
+  height: 20px;
+  background: var(--accent-dark);
+  border: 3px solid var(--plum);
+}
+
+.reveal-name::before {
+  left: -14px;
+  border-right: none;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 40% 50%);
+}
+
+.reveal-name::after {
+  right: -14px;
+  border-left: none;
+  clip-path: polygon(0 0, 100% 0, 60% 50%, 100% 100%, 0 100%);
+}
+
+.reveal-stars {
+  margin-top: 4px !important;
+  font-size: 15px;
+  line-height: 1;
+  letter-spacing: 1px;
+  color: #ffd45e;
+  -webkit-text-stroke: 1.5px var(--plum);
+  paint-order: stroke fill;
+}
+
+/* Over the stat bars it's all a little smaller, to fit their card. */
+.reveal:not(.is-free) .reveal-name {
+  margin-top: -12px !important;
+  font-size: 15px;
+}
+
+.reveal:not(.is-free) .reveal-stars {
+  margin-top: 1px !important;
+  font-size: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-rays,
+  .reveal.in .reveal-body,
+  .reveal.in .reveal-icon,
+  .reveal.in .reveal-spark {
+    animation: none;
+  }
+}
+
 /* A backpack home from a journey, over the stat bars until it's tapped
    open (see src/ui/backpack.ts). */
 .pack-open {
@@ -5886,87 +6100,13 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   }
 }
 
-.reveal-beams {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 420px;
-  height: 420px;
-  margin: -210px 0 0 -210px;
-  background: repeating-conic-gradient(rgba(255, 229, 150, 0.75) 0deg 10deg, rgba(255, 229, 150, 0) 10deg 30deg);
-  -webkit-mask-image: radial-gradient(circle, black 12%, transparent 48%);
-  mask-image: radial-gradient(circle, black 12%, transparent 48%);
-  animation: reveal-spin 9s linear infinite;
-}
-
 @keyframes reveal-spin {
   to { transform: rotate(360deg); }
-}
-
-.reveal-body {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  text-align: center;
-}
-
-.reveal-body p {
-  margin: 0;
-}
-
-.reveal-caption {
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--accent-dark);
-}
-
-.reveal-icon {
-  width: 64px;
-  height: 64px;
-  margin: 2px 0;
-  filter: drop-shadow(0 3px 0 rgba(43, 33, 64, 0.15));
-}
-
-.reveal.in .reveal-icon {
-  animation: reveal-pop 0.5s cubic-bezier(0.34, 1.6, 0.64, 1) both, reveal-bob 1.6s ease-in-out 0.5s infinite;
-}
-
-.reveal-icon svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-@keyframes reveal-pop {
-  from { transform: scale(0.2); }
-  to { transform: scale(1); }
 }
 
 @keyframes reveal-bob {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-3px); }
-}
-
-.reveal-name {
-  font-size: 17px;
-  font-weight: 800;
-  color: var(--ink);
-}
-
-.reveal-stars {
-  font-size: 13px;
-  color: #d9a520;
-  letter-spacing: 2px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .reveal-beams,
-  .reveal-fog span,
-  .reveal.in .reveal-icon {
-    animation: none;
-  }
 }
 
 /* The heart on the craved food's icon in the Feed panel. */
@@ -11423,19 +11563,6 @@ button.trip-bars-name.is-on {
   .littleone.is-revealed .littleone-egg {
     animation: none;
   }
-}
-
-/* A new badge or milestone: the beams in its colour. */
-.reveal[data-tier='bronze'] .reveal-beams {
-  background: repeating-conic-gradient(rgba(232, 160, 110, 0.75) 0deg 10deg, rgba(232, 160, 110, 0) 10deg 30deg);
-}
-
-.reveal[data-tier='silver'] .reveal-beams {
-  background: repeating-conic-gradient(rgba(255, 255, 255, 0.95) 0deg 10deg, rgba(255, 255, 255, 0) 10deg 30deg);
-}
-
-.reveal[data-tier='gold'] .reveal-beams {
-  background: repeating-conic-gradient(rgba(255, 200, 80, 0.9) 0deg 6deg, rgba(255, 229, 150, 0) 6deg 18deg);
 }
 
 /* ---- Sniff and dig ---- */
