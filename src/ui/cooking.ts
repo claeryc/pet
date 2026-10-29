@@ -3,8 +3,8 @@
 // (the stove or the board) and the stat bars (the counter, with the
 // controls).
 //
-// A switch bar under the counter swaps between the pot and the cutting
-// board (see src/ui/stations.ts).
+// Swipe the counter, or tap ‹ › on the switch under it, to go between the
+// pot and the cutting board (see src/ui/stations.ts).
 //
 // The pot sits on the stove against the tiled wall, with a recipe card
 // pinned up beside it. Below, on the counter, is a spot for each food it
@@ -134,11 +134,6 @@ export function createCooking(cb: CookingCallbacks): Cooking {
   kitchen.hidden = true;
   // The top: the ×2 switch (and the chop pips on the board).
   const top = el('div', 'kitchen-top');
-  // Under the counter: the switch between the stations.
-  const stations = createStationSwitch(
-    STATION_TABS.map((st) => ({ id: st, icon: STATION_ICONS[st] ?? '', label: STRINGS.cooking.stations[st] })),
-    (st) => switchTo(st),
-  );
   const batchBtn = el('button', 'kitchen-batch');
   batchBtn.textContent = '×2';
   batchBtn.addEventListener('click', () => {
@@ -265,6 +260,14 @@ export function createCooking(cb: CookingCallbacks): Cooking {
   boardControls.append(meterBox, chopBtn);
   room.append(top, potScene, boardScene);
   counter.append(potControls, boardControls);
+  const stations = createStationSwitch({
+    items: STATION_TABS.map((st) => ({ id: st, icon: STATION_ICONS[st] ?? '', label: STRINGS.cooking.stations[st] })),
+    pick: (st) => switchTo(st),
+    current: () => station,
+    moving: () => (onBoard() ? [boardScene, boardControls] : [potScene, potControls]),
+    swipeOn: [room, counter],
+    frame: kitchen,
+  });
   kitchen.append(room, counter, stations.el);
 
   function sign(text: string): HTMLElement {

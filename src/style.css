@@ -2999,25 +2999,25 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   margin-left: auto;
 }
 
-/* The station switch (src/ui/stations.ts): a shelf hanging just under the
-   counter of the kitchen or the workbench, down where the thumb is, with a
-   tall button per station, its icon over its name. It's made of the
-   counter itself (the same cloth and wooden edge) so it adds no new colour:
-   the open station is a white card on it, the others are faded. It comes
-   and goes with the kitchen, and fades away while a Food or Recipes panel
-   is open over it. */
+/* The station switch (src/ui/stations.ts): a card just under the counter
+   of the kitchen or the workbench, down where the thumb is:
+   [‹] the open station's icon and name over a dot per station [›]. It
+   comes and goes with the kitchen, and fades away while a Food or Recipes
+   panel is open over it. */
 .station-switch {
   position: absolute;
   left: 0;
   right: 0;
-  top: calc(100% + 8px);
+  top: calc(100% + 12px);
+  height: 56px;
+  box-sizing: border-box;
   display: flex;
-  gap: 4px;
-  padding: 10px 6px 6px;
-  border-radius: 16px;
-  background:
-    linear-gradient(var(--cocoa) 0 4px, #b07a5c 4px 6px, transparent 6px),
-    repeating-conic-gradient(var(--card) 0 25%, #fbeedd 0 50%) 0 0 / 16px 16px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px;
+  border-radius: 20px;
+  background: var(--card);
+  box-shadow: 0 4px 0 rgba(43, 33, 64, 0.12);
   transition: opacity 0.2s ease;
 }
 
@@ -3026,52 +3026,86 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   pointer-events: none;
 }
 
-.station-switch[hidden],
-.station-tab[hidden] {
+.station-switch[hidden] {
   display: none;
 }
 
-.station-tab {
+.station-step {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 3px solid var(--plum);
+  background: white;
+  color: var(--plum);
+  font: inherit;
+  font-size: 1.3rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.station-step:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.station-now {
   flex: 1;
   min-width: 0;
-  height: 52px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 2px;
-  border: 0;
-  border-radius: 12px;
-  background: transparent;
-  color: #9a7a68;
-  font: inherit;
-  font-size: 0.8rem;
-  font-weight: 800;
-  cursor: pointer;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
+  gap: 4px;
 }
 
-.station-tab-icon,
-.station-tab-icon > svg {
-  display: block;
-  width: 26px;
-  height: 26px;
-}
-
-.station-tab:not(.on) .station-tab-icon {
-  opacity: 0.55;
-  filter: grayscale(0.7);
-}
-
-.station-tab.on {
-  background: white;
+.station-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   color: var(--plum);
-  box-shadow: 0 3px 0 rgba(91, 63, 110, 0.35);
+  font-size: 0.95rem;
+  font-weight: 800;
 }
 
-.station-tab:not(.on):active {
-  background: rgba(255, 255, 255, 0.5);
+.station-name > svg {
+  width: 24px;
+  height: 24px;
+  flex: none;
+}
+
+.station-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.station-dots > i {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--lavender);
+  transition: width 0.2s ease, background 0.2s ease;
+}
+
+.station-dots > i.on {
+  width: 18px;
+  background: var(--plum);
+}
+
+/* The room and the counter swipe sideways between stations; the page
+   still scrolls up and down. While a station slides, the counter clips it
+   like the room does. */
+.kitchen-room,
+.kitchen-counter {
+  touch-action: pan-y;
+}
+
+.kitchen.is-swiping .kitchen-counter {
+  overflow: hidden;
 }
 
 /* ---- The pot ---- */

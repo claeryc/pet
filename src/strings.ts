@@ -99,6 +99,11 @@ export const STRINGS = {
     dig: 'Sniff and dig',
     workbench: 'Workbench',
   },
+  // The switch between the kitchen's or the workbench's stations (see
+  // src/ui/stations.ts).
+  stations: {
+    goTo: (name: string) => `Go to the ${name}`,
+  },
   // The workbench and projects (Play > Workbench, see src/game/crafting.ts).
   crafting: {
     tabs: { bench: 'Bench', projects: 'Projects' } as Record<string, string>,

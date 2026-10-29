@@ -3,8 +3,8 @@
 // room (the bench, or the meadow with the projects) and the stat bars (the
 // controls).
 //
-// A switch bar under the counter swaps between the bench and the projects
-// (see src/ui/stations.ts).
+// Swipe the counter, or tap ‹ › on the switch under it, to go between the
+// bench and the projects (see src/ui/stations.ts).
 //
 // The bench: a pegboard of tools on the wall, the bench under it, and the
 // picked pattern pinned up on a card. Below, a spot for each material it
@@ -98,10 +98,6 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
   // ---- The workbench ----
   const bench = el('div', 'kitchen workbench');
   bench.hidden = true;
-  const stations = createStationSwitch(
-    TABS.map((t) => ({ id: t, icon: TAB_ICONS[t], label: T.tabs[t] })),
-    (t) => switchTo(t),
-  );
   const room = el('div', 'kitchen-room bench-room');
   const counter = el('div', 'kitchen-counter');
 
@@ -184,6 +180,14 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
 
   room.append(benchScene, meadow);
   counter.append(benchControls, projectControls);
+  const stations = createStationSwitch({
+    items: TABS.map((t) => ({ id: t, icon: TAB_ICONS[t], label: T.tabs[t] })),
+    pick: (t) => switchTo(t),
+    current: () => tab,
+    moving: () => (tab === 'bench' ? [benchScene, benchControls] : [meadow, projectControls]),
+    swipeOn: [room, counter],
+    frame: bench,
+  });
   bench.append(room, counter, stations.el);
 
   // ---- The buttons: [Close] [Materials] [Patterns] ----
