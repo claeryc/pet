@@ -3311,11 +3311,6 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   display: none;
 }
 
-/* With a panel open the stations are short on room: just the station. */
-.cook-kitchen.lifted :is(.walk-sign, .walk-peek, .walk-edge) {
-  opacity: 0;
-  pointer-events: none;
-}
 
 /* The front counter: a wooden edge and planks, the controls on it. */
 .cook-kitchen .kitchen-counter {
