@@ -4725,7 +4725,7 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   opacity: 0.7;
 }
 
-/* ---- Settings: Sounds switch ---- */
+/* ---- Settings: Music and Sounds switches ---- */
 
 .settings-toggle {
   display: flex;

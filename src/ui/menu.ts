@@ -543,21 +543,23 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     return field;
   }
 
-  // Sounds, switched on or off.
+  // Music and Sounds, each switched on or off.
   function audioToggles(): HTMLElement {
     const field = document.createElement('div');
     field.className = 'settings-field';
-    const row = document.createElement('label');
-    row.className = 'settings-toggle';
-    const name = document.createElement('b');
-    name.textContent = STRINGS.settings.sounds;
-    const box = document.createElement('input');
-    box.type = 'checkbox';
-    box.setAttribute('role', 'switch');
-    box.checked = audioSettings().sounds;
-    box.addEventListener('change', () => setAudioSettings({ ...audioSettings(), sounds: box.checked }));
-    row.append(name, box);
-    field.append(row);
+    for (const key of ['music', 'sounds'] as const) {
+      const row = document.createElement('label');
+      row.className = 'settings-toggle';
+      const name = document.createElement('b');
+      name.textContent = STRINGS.settings[key];
+      const box = document.createElement('input');
+      box.type = 'checkbox';
+      box.setAttribute('role', 'switch');
+      box.checked = audioSettings()[key];
+      box.addEventListener('change', () => setAudioSettings({ ...audioSettings(), [key]: box.checked }));
+      row.append(name, box);
+      field.append(row);
+    }
     return field;
   }
 

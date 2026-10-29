@@ -33,6 +33,10 @@
 // Cooking takes a moment: each ingredient plops into the pot in turn, the
 // lid rattles and steams while it cooks, and then the dish pops up.
 //
+// Each step has its own kitchen sound (see src/audio/audio.ts): food set
+// down on a plate or the board, each chop, every plop into the pot, the
+// pot bubbling away, and the dish (or a Mushy mess) at the end.
+//
 // The cutting board takes one fish, with dotted lines across it where the
 // chops go. On the counter, a marker runs back and forth along a meter;
 // tap Chop! (or the board) to chop on the next line. A chop while the marker is in the green
@@ -57,6 +61,7 @@ import { createDrawer } from './drawer';
 import { BOARD_ART, ITEM_ICONS, KITCHEN_ART, SKILL_POINT_ICON } from './icons';
 import { soldInShop, type ShopCategory } from './shop';
 import { createWalk } from './walk';
+import { sound } from '../audio/audio';
 
 export interface CookingCallbacks {
   // Cooks what's on the station. Returns the dish made, or null if the
@@ -215,6 +220,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     b.addEventListener('click', () => {
       if (pot[i] === undefined || busy()) return;
       pot.splice(i, 1);
+      sound('lift');
       render();
     });
     return b;
@@ -494,6 +500,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     if (left(id) < batchNow()) return cb.toast(STRINGS.cooking.noneLeft(foodName(id)), inShop(id) ? 'food' : undefined);
     clearDone();
     pot.push(id);
+    sound('place');
     render();
   }
 
@@ -523,6 +530,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     }
     clearDone();
     pot.splice(0, pot.length, ...recipe.ingredients);
+    sound('place');
     recipeDrawer.close();
     render();
   }
@@ -565,6 +573,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     const hit = at >= start && at <= end;
     knife.style.left = `${CHOP_LINES[chops.length] * 100}%`;
     chops.push(hit);
+    sound(hit ? 'chopPerfect' : 'chop');
     chopBurst.innerHTML = hit ? `${SKILL_POINT_ICON}<b>${STRINGS.cooking.perfectChop}</b>` : `<b>${STRINGS.cooking.goodChop}</b>`;
     chopBurst.style.left = whoosh.style.left = `${CHOP_LINES[chops.length - 1] * 100}%`;
     // Replay the chop: knife down, a flash along the line, the word.
@@ -594,6 +603,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
       plopping = [];
       stopCut();
       justMade = dish;
+      sound('dishReady');
       kitchen.classList.add('cooked');
       render();
     });
@@ -617,6 +627,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     recipeDrawer.close();
     plopping = items;
     simmering = true;
+    sound('simmer');
     kitchen.classList.add('simmering');
     // In they go, one by one from the left.
     items.forEach((id, i) => later(i * PLOP_EVERY_MS, () => plop(id)));
@@ -626,6 +637,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
       plopping = [];
       kitchen.classList.remove('simmering');
       justMade = dish;
+      sound(dish === CONFIG.cooking.mess ? 'mushy' : 'dishReady');
       kitchen.classList.add('cooked');
       render();
     });
@@ -648,7 +660,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     const to = potBtn.getBoundingClientRect();
     plopping = plopping.slice(1);
     render();
-    if (reduced() || from.width === 0) return;
+    if (reduced() || from.width === 0) return sound('potPlop');
     const bit = document.createElement('span');
     bit.className = 'pot-plop';
     bit.innerHTML = ITEM_ICONS[id];
@@ -667,6 +679,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
       { duration: 280, easing: 'cubic-bezier(0.4, 0, 0.6, 1)' },
     ).onfinish = () => {
       bit.remove();
+      sound('potPlop');
       potBtn.classList.remove('plop');
       void potBtn.offsetWidth;
       potBtn.classList.add('plop');
