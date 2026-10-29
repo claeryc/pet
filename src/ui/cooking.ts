@@ -60,6 +60,7 @@ import type { GameState } from '../game/state';
 import { createDrawer } from './drawer';
 import { BOARD_ART, ITEM_ICONS, KITCHEN_ART, SKILL_POINT_ICON } from './icons';
 import { soldInShop, type ShopCategory } from './shop';
+import { createLift } from './lift';
 import { createWalk } from './walk';
 import { sound } from '../audio/audio';
 
@@ -96,19 +97,6 @@ export const DISH_MS = PLOPS_MS + SIMMER_MS;
 export const DONE_MS = DISH_MS + 1400;
 
 const reduced = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-// Space kept between the kitchen and the buttons under it.
-const ROW_GAP = 12;
-// How much of the kitchen the stations keep while a panel is open, at
-// least and at most (px), and the front counter and back counter strip
-// (match --front and --band in style.css).
-const STATIONS_MIN = 170;
-const STATIONS_MAX = 280;
-const FRONT = 112;
-const BAND = 20;
-// How long a panel takes to grow open or fold away (drawer.ts's CSS),
-// with a little to spare.
-const RIDE_MS = 900;
-
 const foodName = (id: FoodId) => STRINGS.foods[id];
 const stars = (id: FoodId) => (CONFIG.foods as readonly Food[]).find((f) => f.id === id)?.stars ?? 0;
 const inShop = (id: FoodId) => (CONFIG.foods as readonly Food[]).some((f) => f.id === id && soldInShop(f));
@@ -167,7 +155,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
   let chopTimer = 0;
 
   // ---- The kitchen ----
-  const kitchen = el('div', 'kitchen cook-kitchen');
+  const kitchen = el('div', 'kitchen walk-kitchen');
   kitchen.hidden = true;
   // The ×2 switch: a stamp on the Cook! button.
   const batchBtn = el('button', 'kitchen-batch');
@@ -407,60 +395,17 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     id: 'cook-food',
     label: STRINGS.cooking.food,
     content: pantryBox,
-    onOpen: () => fitPanel(foodDrawer.el),
+    onOpen: () => lift.fit(foodDrawer.el),
   });
   const recipeDrawer = createDrawer({
     ...drawerSetup,
     id: 'cook-recipes',
     label: STRINGS.cooking.recipes,
     content: book,
-    onOpen: () => fitPanel(recipeDrawer.el),
+    onOpen: () => lift.fit(recipeDrawer.el),
   });
   row.append(close, foodDrawer.el, recipeDrawer.el);
-
-  // An open panel takes the bottom of the kitchen: the front counter rides
-  // up and sits right on top of it (--lift), and the stations keep the
-  // rest. Both panels are always the same height, so the counter doesn't
-  // jump between them or as food runs out; the list scrolls inside.
-  let lifting: HTMLElement | null = null;
-  function fitPanel(drawer: HTMLElement): void {
-    const list = drawer.querySelector<HTMLElement>('.drawer-options')!;
-    const box = kitchen.getBoundingClientRect();
-    const rowBottom = row.getBoundingClientRect().bottom;
-    const keep = Math.min(STATIONS_MAX, Math.max(STATIONS_MIN, box.height * 0.36));
-    // The panel's button, frame and padding take about this much.
-    const chrome = 52 + 6 + 16;
-    const fit = Math.max(120, Math.floor(rowBottom - (box.top + keep + BAND + FRONT) - chrome));
-    list.style.setProperty('--fit', `${fit}px`);
-    kitchen.classList.add('lifted');
-    lifting = drawer;
-    ride();
-  }
-  // ...and it all comes back down when the panel closes.
-  new MutationObserver(() => {
-    if (lifting && !lifting.classList.contains('is-open')) {
-      lifting = null;
-      kitchen.classList.remove('lifted');
-      ride();
-    }
-  }).observe(row, { subtree: true, attributes: true, attributeFilter: ['class'] });
-
-  // The counter rides on the panel's top edge while it grows or folds,
-  // frame by frame, so the two can never drift apart (or show a gap).
-  let rideUntil = 0;
-  let rideFrame = 0;
-  function ride(): void {
-    rideUntil = performance.now() + RIDE_MS;
-    if (rideFrame) return;
-    const frame = () => {
-      const tops = [...row.children].map((c) => c.getBoundingClientRect()).filter((r) => r.height > 0).map((r) => r.top);
-      const panelTop = Math.min(Infinity, ...tops);
-      const lift = Math.max(0, kitchen.getBoundingClientRect().bottom - panelTop);
-      kitchen.style.setProperty('--lift', `${Math.round(lift)}px`);
-      rideFrame = performance.now() < rideUntil ? requestAnimationFrame(frame) : 0;
-    };
-    frame();
-  }
+  const lift = createLift(kitchen, row);
 
   // The batch size in use: the ×2 switch only counts on the pot, and only
   // while you have double batch.
@@ -485,7 +430,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     render();
     if (onBoard()) cb.toast(STRINGS.cooking.boardStart);
     // An open panel now shows this station's foods or recipes.
-    if (lifting) fitPanel(lifting);
+    lift.refit();
   }
 
   function addToPot(id: FoodId): void {
@@ -914,19 +859,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     }
   }
 
-  // The kitchen reaches up from the stat bars over the room, and down to
-  // just over the buttons.
-  function reach(): void {
-    const slot = kitchen.parentElement;
-    if (!slot) return;
-    const { top } = slot.getBoundingClientRect();
-    const box = cb.roomBox();
-    kitchen.style.setProperty('--kitchen-up', `${Math.max(0, top - box.top)}px`);
-    kitchen.style.setProperty('--kitchen-gap', `${Math.max(0, top - box.bottom)}px`);
-    // (offsetTop: the row may still be rising in.)
-    const rowTop = row.offsetTop - slot.offsetTop - slot.offsetHeight;
-    kitchen.style.setProperty('--kitchen-down', `${Math.max(0, rowTop - ROW_GAP)}px`);
-  }
+  const reach = () => lift.reach(cb.roomBox());
 
   close.addEventListener('click', () => {
     stop();

@@ -3,17 +3,20 @@
 // room (the bench, or the meadow with the projects) and the stat bars (the
 // controls).
 //
-// Swipe the counter, or tap ‹ › on the switch under it, to go between the
-// bench and the projects (see src/ui/stations.ts).
+// It's built like the kitchen: one long workshop you walk along (swipe, or
+// tap the tab at the edge or the station peeking in; see src/ui/walk.ts),
+// with the bench and the projects window side by side, and the front
+// counter under them holding the controls. An open panel lifts the counter
+// on top of it (src/ui/lift.ts).
 //
 // The bench: a pegboard of tools on the wall, the bench under it, and the
-// picked pattern pinned up on a card. Below, a spot for each material it
+// picked pattern pinned up on a card. Below, a plate for each material it
 // takes (with how many, red when you're short) and a round Make! button.
 // Making takes three taps of the hammer; then the piece pops up. A room
 // piece can go straight up in the room.
 //
-// The projects: the meadow, with the project in it as far as it's built
-// (the rest is a faint outline). Below, arrows to switch project, a pip
+// The projects: a big window onto the meadow, with the project out there
+// as far as it's built (the rest is a faint outline). Below, arrows to switch project, a pip
 // per stage, what the next stage needs and a round Build button. A stage
 // takes a few real hours; while it builds, it says when it's ready.
 //
@@ -35,7 +38,8 @@ import { CRAFT_ART, ITEM_ICONS, STAT_ICONS } from './icons';
 import { placeName } from './dig';
 import { formatDayClock } from './time';
 import { KITCHEN_OUT_MS } from './cooking';
-import { createStationSwitch } from './stations';
+import { createLift } from './lift';
+import { createWalk } from './walk';
 import { sound } from '../audio/audio';
 
 const T = STRINGS.crafting;
@@ -65,7 +69,6 @@ type Tab = 'bench' | 'projects';
 const TABS: readonly Tab[] = ['bench', 'projects'];
 const TAB_ICONS: Record<Tab, string> = { bench: ITEM_ICONS.workbench, projects: CRAFT_ART.windmill };
 const TAPS = 3;
-const PANEL_GAP = 12;
 
 const el = (tag: string, className: string, text?: string): HTMLElement => {
   const e = document.createElement(tag);
@@ -97,9 +100,11 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
   let hitTimer = 0;
 
   // ---- The workbench ----
-  const bench = el('div', 'kitchen workbench');
+  const bench = el('div', 'kitchen walk-kitchen workbench');
   bench.hidden = true;
   const room = el('div', 'kitchen-room bench-room');
+  const floor = el('div', 'back-counter');
+  floor.setAttribute('aria-hidden', 'true');
   const counter = el('div', 'kitchen-counter');
 
   // The bench scene: pegboard, bench, the hammer, and the card.
@@ -125,13 +130,20 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
   card.append(el('i', 'recipe-card-pin'), cardArt, cardName, cardNote);
   const burst = el('div', 'kitchen-burst');
   burst.setAttribute('aria-live', 'polite');
-  benchScene.append(peg, table, card, burst);
+  // Tool cabinets along the top, as tall as there's room for (styled with
+  // the kitchen's).
+  const cabinets = el('div', 'kitchen-wall wall-cabinets');
+  cabinets.setAttribute('aria-hidden', 'true');
+  cabinets.append(el('i', ''), el('i', ''), el('i', ''));
+  benchScene.append(cabinets, peg, table, card, burst);
 
   // The bench controls: the material spots and Make!, or what you made.
   const benchControls = el('div', 'kitchen-controls bench-controls');
   const spots = el('div', 'pot-row bench-spots');
-  const prompt = el('span', 'kitchen-prompt bench-prompt');
   const makeBtn = el('button', 'kitchen-cook');
+  const makeText = el('span', '');
+  makeBtn.innerHTML = CRAFT_ART.hammer;
+  makeBtn.append(makeText);
   makeBtn.addEventListener('click', hammer);
   const madeBox = el('div', 'bench-made');
   const madeIcon = el('span', 'bench-made-icon');
@@ -144,10 +156,11 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
   });
   madeText.append(madeName, hangBtn);
   madeBox.append(madeIcon, madeText);
-  benchControls.append(spots, prompt, madeBox, makeBtn);
+  benchControls.append(spots, madeBox, makeBtn);
 
   // The projects scene: sky, grass, the project and its sign.
-  const meadow = el('div', 'kitchen-scene meadow-scene');
+  const meadow = el('div', 'kitchen-scene project-scene');
+  const view = el('div', 'project-window');
   const build = el('div', 'project-art');
   const ghost = el('span', 'project-ghost');
   const done = el('span', 'project-built');
@@ -157,7 +170,8 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
   const signName = el('b', '');
   const signNote = el('small', '');
   signBoard.append(signName, signNote);
-  meadow.append(build, signBoard);
+  view.append(build);
+  meadow.append(view, signBoard);
 
   const projectControls = el('div', 'kitchen-controls project-controls');
   const pj = el('div', 'pj');
@@ -175,21 +189,23 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
   const pjStage = el('div', 'pj-stage');
   const pjNeeds = el('div', 'pj-needs');
   pj.append(pjHead, pips, pjStage, pjNeeds);
-  const buildBtn = el('button', 'kitchen-cook', T.build);
+  const buildBtn = el('button', 'kitchen-cook');
+  buildBtn.innerHTML = `${CRAFT_ART.hammer}<span>${T.build}</span>`;
   buildBtn.addEventListener('click', buildIt);
   projectControls.append(pj, buildBtn);
 
-  room.append(benchScene, meadow);
+  room.append(floor);
   counter.append(benchControls, projectControls);
-  const stations = createStationSwitch({
-    items: TABS.map((t) => ({ id: t, icon: TAB_ICONS[t], label: T.tabs[t] })),
+  const scenes: Record<Tab, HTMLElement> = { bench: benchScene, projects: meadow };
+  const walk = createWalk({
+    stations: TABS.map((t) => ({ id: t, icon: TAB_ICONS[t], label: T.tabs[t], scene: scenes[t] })),
     pick: (t) => switchTo(t),
     current: () => tab,
-    moving: () => (tab === 'bench' ? [benchScene, benchControls] : [meadow, projectControls]),
-    swipeOn: [room, counter],
     frame: bench,
+    room,
+    swipeOn: [room, counter],
   });
-  bench.append(room, counter, stations.el);
+  bench.append(room, counter);
 
   // ---- The buttons: [Close] [Materials] [Patterns] ----
   const row = el('div', 'actions cooking-row');
@@ -254,22 +270,16 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
   book.append(cats, catName, list);
 
   const drawerSetup = { row, comingSoon: STRINGS.menu.comingSoon, beforeOpen: () => null, onBlocked: cb.toast };
-  const pouchDrawer = createDrawer({ ...drawerSetup, id: 'bench-materials', label: T.materialsButton, content: pouch, onOpen: () => fitPanel(pouchDrawer.el) });
-  const patternDrawer = createDrawer({ ...drawerSetup, id: 'bench-patterns', label: T.patternsButton, content: book, onOpen: () => fitPanel(patternDrawer.el) });
+  const pouchDrawer = createDrawer({ ...drawerSetup, id: 'bench-materials', label: T.materialsButton, content: pouch, onOpen: () => lift.fit(pouchDrawer.el) });
+  const patternDrawer = createDrawer({ ...drawerSetup, id: 'bench-patterns', label: T.patternsButton, content: book, onOpen: () => lift.fit(patternDrawer.el) });
   row.append(close, pouchDrawer.el, patternDrawer.el);
-
-  function fitPanel(drawer: HTMLElement): void {
-    const box = drawer.querySelector<HTMLElement>('.drawer-options')!;
-    const space = row.getBoundingClientRect().bottom - bench.getBoundingClientRect().bottom - PANEL_GAP;
-    box.style.setProperty('--fit', `${Math.max(120, Math.floor(space - 74))}px`);
-  }
+  const lift = createLift(bench, row);
 
   function switchTo(t: Tab): void {
     if (t === tab || hammering()) return;
     tab = t;
     justMade = null;
-    pouchDrawer.close();
-    patternDrawer.close();
+    bench.classList.remove('made');
     render();
   }
 
@@ -330,12 +340,13 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
   function render(): void {
     if (!state) return;
     const s = state;
-    stations.render(tab);
+    walk.render(tab);
     bench.dataset.tab = tab;
-    benchScene.hidden = benchControls.hidden = tab !== 'bench';
-    meadow.hidden = projectControls.hidden = tab !== 'projects';
-    if (tab === 'bench') renderBench(s);
-    else renderProject(s, PROJECTS[project]);
+    benchControls.hidden = tab !== 'bench';
+    projectControls.hidden = tab !== 'projects';
+    // Both show along the workshop: the one you're not at peeks in.
+    renderBench(s);
+    renderProject(s, PROJECTS[project]);
     renderLists(s);
   }
 
@@ -351,7 +362,7 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
     burst.innerHTML = justMade ? `<b>${T.madeIt(T.patterns[justMade.id])}</b>` : '';
 
     madeBox.hidden = !justMade;
-    spots.hidden = prompt.hidden = !!justMade;
+    spots.hidden = !!justMade;
     makeBtn.hidden = !!justMade;
     if (justMade) {
       madeIcon.innerHTML = patternIcon(justMade);
@@ -359,8 +370,16 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
       hangBtn.hidden = !justMade.makes.startsWith('furniture:');
       return;
     }
-    // A spot per material: its icon and "have/need".
-    const needs = p ? needList(p.needs) : [];
+    // A plate per material: its icon and "have/need". Nothing picked yet:
+    // two empty plates (the card says to pick a pattern).
+    if (!p) {
+      spots.replaceChildren(el('span', 'pot-slot'), sign('+'), el('span', 'pot-slot'));
+      makeText.textContent = T.make;
+      makeBtn.classList.add('faded');
+      makeBtn.setAttribute('aria-label', T.pick);
+      return;
+    }
+    const needs = needList(p.needs);
     spots.replaceChildren(
       ...needs.flatMap((x, i) => {
         const spot = el('span', 'pot-slot filled bench-spot');
@@ -372,12 +391,10 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
         return i > 0 ? [sign('+'), spot] : [spot];
       }),
     );
-    prompt.hidden = !!p;
-    prompt.textContent = T.start;
-    const ready = !!p && haveMaterials(s, p.needs);
-    makeBtn.textContent = taps > 0 ? T.tap : T.make;
+    const ready = haveMaterials(s, p.needs);
+    makeText.textContent = taps > 0 ? T.tap : T.make;
     makeBtn.classList.toggle('faded', !ready);
-    makeBtn.setAttribute('aria-label', taps > 0 ? T.oneMore(TAPS - taps) : p ? `${T.make} ${T.patterns[p.id]}` : T.pick);
+    makeBtn.setAttribute('aria-label', taps > 0 ? T.oneMore(TAPS - taps) : `${T.make} ${T.patterns[p.id]}`);
   }
 
   function sign(text: string): HTMLElement {
@@ -497,14 +514,7 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
     }
   }
 
-  function reach(): void {
-    const slot = bench.parentElement;
-    if (!slot) return;
-    const y = slot.getBoundingClientRect().top;
-    const box = cb.roomBox();
-    bench.style.setProperty('--kitchen-up', `${Math.max(0, y - box.top)}px`);
-    bench.style.setProperty('--kitchen-gap', `${Math.max(0, y - box.bottom)}px`);
-  }
+  const reach = () => lift.reach(cb.roomBox());
 
   close.addEventListener('click', () => {
     stop();

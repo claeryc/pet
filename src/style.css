@@ -2991,124 +2991,22 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   color: white;
 }
 
-/* The station switch (src/ui/stations.ts): a card just under the counter
-   of the kitchen or the workbench, down where the thumb is:
-   [‹] the open station's icon and name over a dot per station [›]. It
-   comes and goes with the kitchen, and fades away while a Food or Recipes
-   panel is open over it. */
-.station-switch {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(100% + 12px);
-  height: 56px;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 6px;
-  border-radius: 20px;
-  background: var(--card);
-  box-shadow: 0 4px 0 rgba(43, 33, 64, 0.12);
-  transition: opacity 0.2s ease;
-}
-
-body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.station-switch[hidden] {
-  display: none;
-}
-
-.station-step {
-  flex: none;
-  width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  border: 3px solid var(--plum);
-  background: white;
-  color: var(--plum);
-  font: inherit;
-  font-size: 1.3rem;
-  font-weight: 900;
-  line-height: 1;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-.station-step:disabled {
-  opacity: 0.3;
-  cursor: default;
-}
-
-.station-now {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.station-name {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--plum);
-  font-size: 0.95rem;
-  font-weight: 800;
-}
-
-.station-name > svg {
-  width: 24px;
-  height: 24px;
-  flex: none;
-}
-
-.station-dots {
-  display: flex;
-  gap: 6px;
-}
-
-.station-dots > i {
-  width: 8px;
-  height: 8px;
-  border-radius: 4px;
-  background: var(--lavender);
-  transition: width 0.2s ease, background 0.2s ease;
-}
-
-.station-dots > i.on {
-  width: 18px;
-  background: var(--plum);
-}
-
-/* The room and the counter swipe sideways between stations; the page
-   still scrolls up and down. While a station slides, the counter clips it
-   like the room does. */
+/* The room and the counter swipe sideways between stations (see
+   src/ui/walk.ts); the page still scrolls up and down. */
 .kitchen-room,
 .kitchen-counter {
   touch-action: pan-y;
 }
 
-.kitchen.is-swiping .kitchen-counter {
-  overflow: hidden;
-}
-
 /* ---- The kitchen: one long counter ----
 
    One tall scene from the top of the room down to just over the buttons
-   (--kitchen-down is set from src/ui/cooking.ts). The room is the tiled
+   (--kitchen-down is set from src/ui/lift.ts). The room is the tiled
    wall with the back counter along it, where the stations stand side by
    side (src/ui/walk.ts); the front counter at the bottom holds the
    controls. While a Food or Recipes panel is open, the front counter rides
    up on top of it (--lift) and the stations shift up with it. */
-.cook-kitchen {
+.walk-kitchen {
   --front: 112px;
   --band: 20px;
   --lift: 0px;
@@ -3116,7 +3014,7 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   bottom: calc(-1 * var(--kitchen-down, 0px));
 }
 
-.cook-kitchen .kitchen-room {
+.walk-kitchen .kitchen-room {
   bottom: 0;
   height: auto;
   background:
@@ -3171,7 +3069,7 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   cursor: pointer;
 }
 
-.cook-kitchen .kitchen-scene {
+.walk-kitchen .kitchen-scene {
   position: absolute;
   inset: 0;
 }
@@ -3314,7 +3212,7 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
 
 
 /* The front counter: a wooden edge and planks, the controls on it. */
-.cook-kitchen .kitchen-counter {
+.walk-kitchen .kitchen-counter {
   z-index: 3;
   top: auto;
   left: 4px;
@@ -3332,11 +3230,11 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   transition: border-radius 0.35s ease;
 }
 
-.cook-kitchen.lifted .kitchen-counter {
+.walk-kitchen.lifted .kitchen-counter {
   border-radius: 0;
 }
 
-.cook-kitchen .kitchen-controls {
+.walk-kitchen .kitchen-controls {
   bottom: auto;
   height: var(--front);
   box-sizing: border-box;
@@ -3346,16 +3244,16 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   transition: transform 0.35s var(--walk);
 }
 
-.cook-kitchen.is-dragging :is(.walk-spot, .kitchen-controls) {
+.walk-kitchen.is-dragging :is(.walk-spot, .kitchen-controls) {
   transition: none;
 }
 
 /* Walking to a station: its controls slide in from that side. */
-.cook-kitchen.arrive-r .kitchen-controls:not([hidden]) {
+.walk-kitchen.arrive-r .kitchen-controls:not([hidden]) {
   animation: arrive-r 0.36s var(--walk);
 }
 
-.cook-kitchen.arrive-l .kitchen-controls:not([hidden]) {
+.walk-kitchen.arrive-l .kitchen-controls:not([hidden]) {
   animation: arrive-l 0.36s var(--walk);
 }
 
@@ -3380,7 +3278,7 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
 
 /* With a panel open there's only room for the station: the wall steps
    aside before the counter rises past it. */
-.cook-kitchen.lifted .kitchen-wall {
+.walk-kitchen.lifted .kitchen-wall {
   visibility: hidden;
   opacity: 0;
   transition: opacity 0.12s ease, visibility 0s linear 0.12s;
@@ -3525,13 +3423,13 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   .walk-track,
   .back-counter,
   .walk-edge,
-  .cook-kitchen .kitchen-counter,
-  .cook-kitchen .kitchen-controls {
+  .walk-kitchen .kitchen-counter,
+  .walk-kitchen .kitchen-controls {
     transition: none;
   }
 
-  .cook-kitchen.arrive-r .kitchen-controls:not([hidden]),
-  .cook-kitchen.arrive-l .kitchen-controls:not([hidden]) {
+  .walk-kitchen.arrive-r .kitchen-controls:not([hidden]),
+  .walk-kitchen.arrive-l .kitchen-controls:not([hidden]) {
     animation: none;
   }
 }
@@ -3754,6 +3652,23 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   color: var(--lilac, #a68bc9);
 }
 
+/* Short on room (a panel open, a small phone): a smaller card. */
+@container (height < 260px) {
+  .walk-kitchen .recipe-card {
+    bottom: 10%;
+    padding: 9px 6px 6px;
+  }
+
+  .walk-kitchen .recipe-card-art {
+    width: 34px;
+    height: 34px;
+  }
+
+  .walk-kitchen .recipe-card-note {
+    display: none;
+  }
+}
+
 .kitchen[data-kind='empty'] .recipe-card-art,
 .kitchen[data-kind='mush'] .recipe-card-art {
   opacity: 0.55;
@@ -3849,16 +3764,16 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
 /* In the walking kitchen the plates take their size from the room the row
    has, the same both ways, so they're always round (aspect-ratio on a
    shrinking flex item can come out oval in Safari). */
-.cook-kitchen .pot-row {
+.walk-kitchen .pot-row {
   container-type: inline-size;
   --plate: min(62px, calc((100cqi - 44px) / 3));
 }
 
-.cook-kitchen[data-slots='4'] .pot-row {
+.walk-kitchen[data-slots='4'] .pot-row {
   --plate: min(56px, calc((100cqi - 39px) / 4));
 }
 
-.cook-kitchen .pot-slot {
+.walk-kitchen .pot-slot {
   flex: none;
   aspect-ratio: auto;
   width: var(--plate);
@@ -4198,7 +4113,7 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   gap: 8px;
 }
 
-.cook-kitchen .board-slot {
+.walk-kitchen .board-slot {
   flex: 0 0 54px;
   height: 54px;
 }
@@ -11864,23 +11779,39 @@ button.trip-bars-name.is-on {
 }
 
 /* ---- The workbench (src/ui/workbench.ts) ----
-   The same frame as the kitchen: the bench (or the meadow with the
-   projects) over the pet's room, the controls over the stat bars. */
-.kitchen.workbench .kitchen-room {
-  --counter: 82%;
+   Built like the kitchen (.walk-kitchen): a workshop you walk along, the
+   bench and the projects window side by side on a plank wall, standing on
+   a wooden floor, with the front counter and its controls below. */
+.walk-kitchen.workbench .kitchen-room {
   background:
-    linear-gradient(var(--cocoa) 0 0) 0 var(--counter) / 100% 4px no-repeat,
-    linear-gradient(#f1e3dc 1px, transparent 1px) 0 0 / 22px 22px,
-    linear-gradient(90deg, #f1e3dc 1px, transparent 1px) 0 0 / 22px 22px,
-    linear-gradient(var(--card) 0 var(--counter), #ffc59e var(--counter));
+    radial-gradient(120% 50% at 50% 0%, rgba(255, 255, 255, 0.6), transparent 70%),
+    repeating-linear-gradient(90deg, transparent 0 46px, rgba(176, 122, 92, 0.16) 46px 48px),
+    #fbefe2;
+}
+
+.walk-kitchen.workbench .back-counter {
+  background: linear-gradient(var(--wood-dark) 0 4px, #e3b089 4px calc(100% - 5px), #c98f66 calc(100% - 5px));
+}
+
+/* The bench grows with the room it has; the pegboard hangs over it. */
+.bench-scene {
+  --bench-w: clamp(56cqw, 44cqh, 72cqw);
 }
 
 .bench-peg {
   position: absolute;
-  left: 5%;
-  top: 48px;
-  width: min(44%, 170px);
+  left: 4%;
+  bottom: calc(var(--bench-w) * 0.58 + 10px);
+  width: calc(var(--bench-w) * 0.62);
   pointer-events: none;
+}
+
+/* Short on room (a panel open, a small phone): the pegboard steps aside. */
+@container (height < 300px) {
+  .bench-peg {
+    visibility: hidden;
+    opacity: 0;
+  }
 }
 
 .bench-peg svg,
@@ -11892,9 +11823,10 @@ button.trip-bars-name.is-on {
 
 .bench-table {
   position: absolute;
+  z-index: 1;
   left: 3%;
-  bottom: 10%;
-  width: min(54%, 200px);
+  bottom: 0;
+  width: var(--bench-w);
   padding: 0;
   border: 0;
   background: none;
@@ -11977,7 +11909,8 @@ button.trip-bars-name.is-on {
 }
 
 .kitchen.workbench .kitchen-burst {
-  bottom: 4%;
+  z-index: 3;
+  bottom: calc(var(--bench-w) * 0.36 + 8px);
 }
 
 .kitchen.made .kitchen-burst {
@@ -12016,7 +11949,6 @@ button.trip-bars-name.is-on {
   border-color: var(--low-dark);
 }
 
-.bench-prompt[hidden],
 .bench-spots[hidden],
 .bench-made[hidden] {
   display: none;
@@ -12041,8 +11973,15 @@ button.trip-bars-name.is-on {
   height: 100%;
 }
 
+.bench-made-text {
+  min-width: 0;
+}
+
 .bench-made-text b {
   display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 1.05rem;
   font-weight: 900;
   color: var(--ink);
@@ -12051,6 +11990,7 @@ button.trip-bars-name.is-on {
 
 .bench-hang {
   font: inherit;
+  white-space: nowrap;
   font-size: 0.8rem;
   font-weight: 900;
   padding: 6px 14px;
@@ -12066,12 +12006,22 @@ button.trip-bars-name.is-on {
   display: none;
 }
 
-/* ---- The projects: a meadow with the project in it ---- */
-.meadow-scene {
+/* ---- The projects: a big window onto the meadow, the project out
+   there ---- */
+.project-window {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  top: min(64px, 14%);
+  bottom: 10%;
+  overflow: hidden;
+  border: 6px solid #c9906d;
+  border-radius: 14px;
   background: linear-gradient(#cdeafa 0 74%, var(--good) 74%);
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.5), 0 4px 0 rgba(92, 58, 46, 0.25);
 }
 
-.meadow-scene::after {
+.project-window::after {
   content: '';
   position: absolute;
   left: 0;
@@ -12149,8 +12099,8 @@ button.trip-bars-name.is-on {
 
 .project-sign {
   position: absolute;
-  right: 5%;
-  top: 48px;
+  right: 0;
+  bottom: 14%;
   z-index: 2;
   padding: 5px 10px;
   border: 3px solid var(--plum);
