@@ -3132,7 +3132,7 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   bottom: calc(var(--front) + var(--lift));
   height: var(--band);
   background: linear-gradient(var(--wood-dark) 0 4px, #ffc59e 4px calc(100% - 5px), #e9a982 calc(100% - 5px));
-  transition: bottom 0.35s var(--walk);
+  transition: bottom var(--rise);
 }
 
 /* The stations: each one a spot three quarters of the room wide, the one
@@ -3145,7 +3145,7 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   right: 0;
   top: 0;
   bottom: calc(var(--front) + var(--band) + var(--lift) - 4px);
-  transition: bottom 0.35s var(--walk);
+  transition: bottom var(--rise);
 }
 
 .walk-spot {
@@ -3285,7 +3285,7 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   box-shadow: 0 3px 0 rgba(91, 63, 110, 0.35);
   cursor: pointer;
   touch-action: manipulation;
-  transition: opacity 0.25s ease, bottom 0.35s var(--walk);
+  transition: opacity 0.25s ease, bottom var(--rise);
 }
 
 .walk-edge svg {
@@ -3318,22 +3318,37 @@ body:has(.cooking-row:not([hidden]) .is-open) .station-switch {
   top: auto;
   left: 4px;
   right: 4px;
-  bottom: calc(4px + var(--lift));
-  height: var(--front);
+  /* It reaches all the way down, so as it rises over an open panel its
+     cupboards go on under it instead of leaving a gap. */
+  bottom: 4px;
+  height: calc(var(--front) + var(--lift));
   overflow: hidden;
   border-radius: 0 0 16px 16px;
   background:
     linear-gradient(var(--cocoa) 0 6px, #b07a5c 6px 8px, transparent 8px),
     repeating-linear-gradient(90deg, transparent 0 calc(25% - 2px), rgba(138, 90, 68, 0.12) calc(25% - 2px) 25%),
     linear-gradient(#fbe3cc, #f6d3b4);
-  transition: bottom 0.35s var(--walk), border-radius 0.35s ease;
+  transition: height var(--rise), border-radius 0.35s ease;
 }
 
 .cook-kitchen.lifted .kitchen-counter {
   border-radius: 0;
 }
 
+/* Everything rises with the panel as it grows open (the drawer's own
+   timing), and comes down with it as it folds. */
+.cook-kitchen {
+  --rise: 0.22s ease-in;
+}
+
+.cook-kitchen.lifted {
+  --rise: 0.34s cubic-bezier(0.34, 1.4, 0.64, 1) 0.26s;
+}
+
 .cook-kitchen .kitchen-controls {
+  bottom: auto;
+  height: var(--front);
+  box-sizing: border-box;
   padding: 14px 12px 6px;
   gap: 8px;
   transform: translateX(var(--drag, 0px));
