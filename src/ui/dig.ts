@@ -10,16 +10,17 @@
 //      opens. Tapping a spot turns it over: a note from your pet on what
 //      might be buried there, the finds as stamps and the digs left as the
 //      postmark. Buttons: [Back] [Start digging].
-//   2. The patch of ground: six by six squares, as big as fits on the
-//      screen. The place's name is at the top, with the day's digs as
-//      little spades on the right (a hole for each one used). Tap a square
-//      to pick it, then Dig. A hole shows how many treasures are buried
-//      right next to it, warmer colours for more. Sniff has the pet point
-//      at a treasure (a paw on the square). At the cove a chip says when
-//      the tide comes in next, and the line it covers next looks wet. The
-//      rules are on the "How it works" card, so the line under the ground
-//      only says what the last dig or sniff turned up.
-//      Buttons: [Back] [Sniff (1)] [Dig].
+//   2. The patch of ground: six by six squares, in whatever space is left
+//      between the room and the buttons (the room keeps its size). Over it
+//      a row of signs, no words: the place, a chest with how many
+//      treasures are still buried, at the cove the side the tide comes
+//      from and a pip per dig until it does, and the day's digs top right
+//      (a spade for each one left, a hole for each one used, as on the
+//      spots). Tap a square to pick it, then Dig. A hole shows how many
+//      treasures are buried right next to it, warmer colours for more.
+//      Sniff has the pet point at a treasure (a paw on the square). The
+//      line the tide covers next looks wet. The rules are on the "How it
+//      works" card. Buttons: [Back] [Sniff (1)] [Dig].
 //
 // The rules live in src/game/dig.ts.
 
@@ -107,7 +108,6 @@ export function createDig(cb: DigSetup): DigScene {
   let picked: string | null = null; // the place picked (its card turned over)
   let flipped: string | null = null; // the card already turned over, so a redraw doesn't flip it again
   let cell: number | null = null; // the square picked to dig
-  let message = ''; // what the last dig or sniff turned up
   let fresh: number | null = null; // the hole just dug, to pop in
   let shownKey = '';
 
@@ -130,7 +130,6 @@ export function createDig(cb: DigSetup): DigScene {
     if (stage === 'field') {
       stage = 'board';
       cell = null;
-      message = '';
       render(true);
       return;
     }
@@ -148,7 +147,6 @@ export function createDig(cb: DigSetup): DigScene {
     if (!picked || !spot()) return cb.toast(T.blocked.noSpot);
     stage = 'field';
     cell = null;
-    message = '';
     render(true);
   });
   sniffBtn.addEventListener('click', () => {
@@ -157,7 +155,6 @@ export function createDig(cb: DigSetup): DigScene {
     const at = cb.onSniff(sp.place);
     if (at === null) return;
     cell = at;
-    message = T.sniffed(state.pet.name);
     render(true);
   });
   digBtn.addEventListener('click', () => {
@@ -169,15 +166,8 @@ export function createDig(cb: DigSetup): DigScene {
     fresh = cell;
     cell = null;
     const after = state && spotOf(state, sp.place);
-    message = result.flooded
-      ? T.splash
-      : result.find
-        ? ''
-        : result.warmth
-          ? T.warm(result.warmth)
-          : T.cold;
-    if (state && digsLeft(state) === 0 && after && reachable(after).length) message = T.lastDig;
     render(true);
+    if (state && digsLeft(state) === 0 && after && reachable(after).length) cb.toast(T.lastDig);
   });
 
   // ---- 1. Where to dig ----
@@ -284,20 +274,25 @@ export function createDig(cb: DigSetup): DigScene {
     if (flipped === sp.place) card.classList.add('is-flipped');
     else requestAnimationFrame(() => requestAnimationFrame(() => card.classList.add('is-flipped')));
     flipped = sp.place;
-    wrap.append(card, el('p', 'trip-note', T.flipBack));
+    wrap.append(card);
     return wrap;
   }
 
-  // The digs left, top right.
-  function digsChip(s: GameState): HTMLElement {
-    const chip = el('span', 'trip-holiday-chip dig-chip');
-    chip.append(icon(ITEM_ICONS.dig, 'trip-cost-icon'), T.digsChip(digsLeft(s), D.digsPerDay));
-    return chip;
+  // The day's digs, top right: a spade for each one left, a hole for
+  // each one used.
+  function spades(s: GameState): HTMLElement {
+    const digs = el('span', 'dig-digs');
+    digs.setAttribute('role', 'img');
+    digs.setAttribute('aria-label', T.digsChip(digsLeft(s), D.digsPerDay));
+    for (let i = 0; i < D.digsPerDay; i++) {
+      digs.append(i < s.dig.used ? icon(ITEM_ICONS.digUsed, 'dig-spade is-used') : icon(ITEM_ICONS.digLeft, 'dig-spade'));
+    }
+    return digs;
   }
 
   function board(s: GameState): HTMLElement[] {
     const head = el('div', 'trip-head');
-    head.append(el('b', '', T.rackTitle), digsChip(s));
+    head.append(el('b', '', T.rackTitle), spades(s));
     const sp = spot();
     if (sp) return [head, postcardBack(s, sp)];
     const rack = el('div', 'trip-rack');
@@ -311,32 +306,30 @@ export function createDig(cb: DigSetup): DigScene {
   // ---- 2. The patch of ground ----
 
   function field(s: GameState, sp: DigSpot): HTMLElement[] {
-    // The place, and the day's digs top right: a spade for each one left,
-    // a hole for each one used.
+    // One row of little signs over the ground, no words: the place, how
+    // many treasures are still buried (a chest), at the cove the side the
+    // tide comes from and the digs until it does (a pip per dig), and the
+    // day's digs top right (a spade for each one left, a hole for each one
+    // used).
     const head = el('div', 'dig-head');
-    const kicker = el('span', 'dig-kicker');
-    kicker.append(icon(placeIcon(sp.place), 'dig-kicker-icon'), T.kicker(placeName(sp.place)));
-    const digs = el('span', 'dig-digs');
-    digs.setAttribute('role', 'img');
-    digs.setAttribute('aria-label', T.digsChip(digsLeft(s), D.digsPerDay));
-    for (let i = 0; i < D.digsPerDay; i++) {
-      digs.append(i < s.dig.used ? icon(ITEM_ICONS.digUsed, 'dig-spade is-used') : icon(ITEM_ICONS.digLeft, 'dig-spade'));
-    }
-    head.append(kicker, digs);
-
-    // What's still buried here, and at the cove how many digs until the
-    // tide comes in again.
-    const sub = el('div', 'dig-sub');
+    head.append(icon(placeIcon(sp.place), 'dig-kicker-icon'));
     const left = reachable(sp).length;
-    sub.append(el('span', 'dig-pill', left ? T.left(left) : T.allFound));
+    const chest = el('span', `dig-pill${left ? '' : ' is-done'}`);
+    chest.append(icon(ITEM_ICONS.digChest, 'dig-pill-icon'), left ? `×${left}` : '✓');
+    chest.setAttribute('role', 'img');
+    chest.setAttribute('aria-label', left ? T.left(left) : T.allFound);
+    head.append(chest);
     if (sp.tide) {
       const n = tideIn(sp);
-      const bar = el('span', 'dig-tide');
-      bar.append(el('span', '', n === null ? T.tideFull : `${T.arrows[sp.tide]} ${T.tideIn(n)}`));
-      if (n !== null) for (let i = 0; i < D.tideEvery; i++) bar.append(el('i', i < D.tideEvery - n ? 'is-on' : ''));
-      sub.append(bar);
+      const bar = el('span', `dig-tide${n === null ? ' is-full' : ''}`);
+      bar.append(el('b', '', T.arrows[sp.tide]));
+      for (let i = 0; i < D.tideEvery; i++) bar.append(el('i', n === null || i < D.tideEvery - n ? 'is-on' : ''));
+      bar.setAttribute('role', 'img');
+      bar.setAttribute('aria-label', n === null ? T.tideFull : T.tideIn(n));
+      head.append(bar);
     }
-    const out: HTMLElement[] = [head, sub];
+    head.append(spades(s));
+    const out: HTMLElement[] = [head];
 
     const grid = el('div', `dig-field${sp.tide ? ` is-sand is-tide-${sp.tide}` : ''}${sp.place === 'woods' ? ' is-woods' : ''}`);
     grid.setAttribute('role', 'grid');
@@ -392,10 +385,6 @@ export function createDig(cb: DigSetup): DigScene {
     fit.append(grid);
     out.push(fit);
     fresh = null;
-
-    const p = el('p', 'trip-note dig-hint', message || T.hint);
-    p.setAttribute('aria-live', 'polite');
-    out.push(p);
     return out;
   }
 
@@ -412,7 +401,7 @@ export function createDig(cb: DigSetup): DigScene {
     }
     if (picked && !spotOf(s, picked)) picked = null;
     if (stage === 'field' && !picked) stage = 'board';
-    const key = JSON.stringify([stage, picked, cell, message, s.dig, allPets(s).map((p) => [p.id, p.favouritePlace, isAway(p)])]);
+    const key = JSON.stringify([stage, picked, cell, s.dig, allPets(s).map((p) => [p.id, p.favouritePlace, isAway(p)])]);
     if (!force && key === shownKey) return;
     shownKey = key;
     panel.dataset.stage = stage;
@@ -447,7 +436,6 @@ export function createDig(cb: DigSetup): DigScene {
       picked = null;
       flipped = null;
       cell = null;
-      message = '';
       row.hidden = false;
       panel.hidden = false;
       render(true);

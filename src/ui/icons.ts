@@ -713,6 +713,18 @@ export const ITEM_ICONS: Record<string, string> = {
     'kcoocck.....',
     'kkkkkkkk....',
   ]),
+  // Treasure still buried at a dig spot: a little chest.
+  digChest: pixelIcon([
+    '.kkkkkkkk.',
+    'kcccyyccck',
+    'kcccyyccck',
+    'kkkkkkkkkk',
+    'kcccyyccck',
+    'kccckkccck',
+    'kcccyyccck',
+    'kcccccccck',
+    'kkkkkkkkkk',
+  ]),
   // A dig still to use today: a little spade standing up.
   digLeft: pixelIcon([
     '.kkkkk.',
