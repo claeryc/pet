@@ -11493,10 +11493,6 @@ button.trip-bars-name.is-on {
   color: var(--plum);
 }
 
-.dig-chip {
-  cursor: default;
-}
-
 /* [Back] [Sniff (1)] [Dig] */
 .dig-row > .dig-sniff:not([hidden]) {
   background: var(--lilac);
@@ -11510,6 +11506,7 @@ button.trip-bars-name.is-on {
 
 .dig-btn-icon {
   display: inline-flex;
+  flex: none;
   width: 20px;
   height: 20px;
 }
@@ -11519,73 +11516,139 @@ button.trip-bars-name.is-on {
   height: 100%;
 }
 
-/* "DIG · CORAL COVE" and what's left there. */
+/* One screen tall, no scrolling, and the room stays the size it always
+   is: the spots and the patch of ground take the space between it and the
+   buttons, and shrink to fit it. */
+#app:has(> .stat-slot > .dig:not([hidden])) > .stat-slot {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+
+.stat-slot > .dig {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+/* The spots: two by two, their usual size when there's room, and on a
+   short screen in whatever height is left, the pictures giving way first
+   (cropped, never squashed). */
+.dig[data-stage='board'] > .trip-rack {
+  flex: 0 1 auto;
+  min-height: 0;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+.dig .trip-pc {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dig .trip-pc > b,
+.dig .trip-pc > small {
+  flex: none;
+}
+
+.dig .trip-pc:not(.is-epic) > .trip-pc-art {
+  flex: 0 1 auto;
+  min-height: 24px;
+  height: auto;
+  object-fit: cover;
+}
+
+.dig .trip-pc-locked,
+.dig .dig-pc-locked {
+  justify-content: center;
+}
+
+/* The picked spot, turned over, in the middle of the space. */
+.dig[data-stage='board'] > .trip-flip {
+  flex: 1 1 0;
+  min-height: 0;
+  display: grid;
+  align-content: center;
+}
+
+/* Signs over the ground: the place, a chest with what's still buried, at
+   the cove the tide, and the day's digs on the right. */
 .dig-head {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  min-height: 28px;
   padding: 0 2px;
-}
-
-.dig-kicker {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  font-size: 0.8rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--plum);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .dig-kicker-icon {
   display: inline-flex;
-  flex: 0 0 18px;
-  width: 18px;
-  height: 18px;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
 }
 
 .dig-kicker-icon svg,
 .dig-cell-icon svg,
-.dig-trowel svg {
+.dig-spade svg,
+.dig-pill-icon svg {
   width: 100%;
   height: 100%;
 }
 
 .dig-pill {
-  margin-left: auto;
-  padding: 2px 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 9px 0 6px;
   border-radius: 999px;
   background: var(--butter);
+  box-shadow: 0 2px 0 rgba(138, 90, 68, 0.25);
   color: #8a5a44;
-  font-size: 0.78rem;
-  font-weight: 800;
+  font-size: 0.85rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-/* The tide: "← Tide in: 1 more dig" with a pip per dig. */
+.dig-pill.is-done {
+  background: #c9ecc4;
+  color: #3f7d5f;
+  box-shadow: 0 2px 0 rgba(63, 125, 95, 0.25);
+}
+
+.dig-pill-icon {
+  display: inline-flex;
+  width: 20px;
+  height: 18px;
+}
+
+/* The tide: the side it comes from, and a pip per dig, filling up until it
+   comes in. */
 .dig-tide {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: fit-content;
-  margin: 0 auto;
-  padding: 4px 12px;
+  gap: 3px;
+  height: 24px;
+  padding: 0 8px;
   border-radius: 999px;
   background: #e3f3fb;
+  box-shadow: 0 2px 0 rgba(59, 126, 166, 0.2);
   color: #3b7ea6;
-  font-size: 0.8rem;
-  font-weight: 800;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.dig-tide > b {
+  margin-right: 2px;
+  font-weight: 900;
 }
 
 .dig-tide i {
-  width: 14px;
-  height: 10px;
+  flex: none;
+  width: 9px;
+  height: 12px;
   border-radius: 3px;
   background: #cfe6f2;
 }
@@ -11594,15 +11657,25 @@ button.trip-bars-name.is-on {
   background: #6fb6dd;
 }
 
-/* The patch of ground: six by six squares, as big as fits. */
+/* The patch of ground: six by six squares, as big as fits in the room
+   that's left (it's as tall as it is wide). */
+.dig-fit {
+  flex: 1 1 0;
+  min-height: 0;
+  container-type: size;
+  display: grid;
+  place-items: center;
+}
+
 .dig-field {
-  --dig-gap: 4px;
+  --dig-gap: clamp(3px, 1.3cqmin, 5px);
+  box-sizing: border-box;
   display: grid;
   grid-template-columns: repeat(var(--dig-size), 1fr);
   gap: var(--dig-gap);
-  width: min(100%, 300px);
+  width: min(100cqw, 100cqh, 340px);
   margin: 0 auto;
-  padding: 8px;
+  padding: calc(var(--dig-gap) + 3px);
   border: 3px solid #4a9a76;
   border-radius: 16px;
   background: #8fd19e;
@@ -11744,32 +11817,28 @@ button.trip-bars-name.is-on {
   box-shadow: 5px 7px 0 #e8f6fd;
 }
 
-.dig-hint {
-  min-height: 2.4em;
-  font-weight: 600;
-}
-
-/* "Digs today" and a trowel per dig, used ones faded. */
+/* The day's digs: a spade for each one left, a hole for each one used. */
 .dig-digs {
+  flex: none;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font-size: 0.8rem;
-  font-weight: 800;
-  color: var(--plum);
-  white-space: nowrap;
+  gap: 2px;
+  height: 24px;
+  margin-left: auto;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: 0 2px 0 rgba(43, 33, 64, 0.1);
 }
 
-.dig-trowel {
+.dig-spade {
   display: inline-flex;
-  width: 20px;
-  height: 20px;
+  width: 14px;
+  height: 22px;
 }
 
-.dig-trowel.is-used {
-  opacity: 0.3;
-  filter: grayscale(1);
+.dig-spade.is-used {
+  opacity: 0.75;
 }
 
 @media (prefers-reduced-motion: reduce) {
