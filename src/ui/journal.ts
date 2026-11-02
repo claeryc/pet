@@ -1,14 +1,20 @@
-// The travel journal (Collection > Travel journal, then a place): a little
-// book with a page for each place, in tabs along the top.
+// The travel journal (Menu > Journal, or Journal on the trip board): a
+// little book with a page for each place, turned with the tabs in a bar
+// along the bottom or a swipe.
 //
-//   [market] [woods ♥] [cove] [?]
-//   ┌ Mossy Woods  Regular · 7 trips ────── (pet) ┐
-//   8 more trips to become a Local [=====-----]
+//   ┌ Mossy Woods ─────────────────────────────┐
+//   │  (a little scene of the place)            │
+//   │  o────o────(pet)- - - o- - - - o          │
+//   │  Visitor Regular   Local     Legend       │
+//   └───────────────────────────────────────────┘
+//   8 more trips to become a Local
 //   ♥ Pip's favourite place
 //   Stamps        [Stroll] [Hike] [Adventure] [Night trip]
-//   Found here    everything the place can give, found ones in colour
+//   Found here    the ones found, a couple of '?' and "+5"
 //   Snapshots     little moments snapped on trips here (see snapshots.ts)
 //   Postcards     the pets' postcards, newest first, two to a row
+//   ─────────────────────────────────────────────
+//        (market) (woods♥) [cove] (?)      <- held at the bottom
 //
 // The same postcard, bigger, comes up after a backpack is opened (see
 // postcardArt). The rules are in src/game/journeys.ts.
@@ -20,6 +26,7 @@ import { PLACES, placeFinds, placeLevel, type Place } from '../game/journeys';
 import type { GameState, Pet, Postcard } from '../game/state';
 import { HEART_ICONS, ITEM_ICONS } from './icons';
 import { placeMoments } from '../game/snapshots';
+import { banner } from './journal-banner';
 
 export interface JournalCallbacks {
   characterImage: (sheet: string) => string | undefined;
@@ -54,6 +61,14 @@ function findLook(entry: string): { svg: string; name: string } {
     return { svg: ITEM_ICONS[`seed_${crop}`] ?? ITEM_ICONS.unknown, name: STRINGS.journeys.seedName(foodName(crop)) };
   }
   return { svg: ITEM_ICONS[entry] ?? ITEM_ICONS.unknown, name: foodName(entry) };
+}
+
+// Where the journal opens from the Menu or the board: the place with the
+// newest postcard (or none yet).
+export function newestPlace(state: GameState): string | undefined {
+  return Object.entries(state.journeys.journal)
+    .filter(([, p]) => p.trips > 0)
+    .sort((a, b) => (b[1].postcards[0]?.at ?? 0) - (a[1].postcards[0]?.at ?? 0))[0]?.[0];
 }
 
 // The line on a postcard. Older postcards, from before stories, say the
@@ -128,13 +143,28 @@ export function postcardArt(
   return wrap.outerHTML;
 }
 
-// The tabs along the top: a place you've been to, with a heart if it's a
-// pet's favourite; '?' for one you haven't.
+// The places you can turn to: the ones been to, in order.
+function turnable(state: GameState): string[] {
+  return PLACES.filter((p) => (state.journeys.journal[p.id]?.trips ?? 0) > 0).map((p) => p.id);
+}
+
+// The tabs, in a bar along the bottom of the panel where a thumb can
+// reach them: a round icon for each place been to (with a heart if it's
+// a pet's favourite), then a '?' for the next one. Round icons stay small,
+// so a fifth or sixth place still fits (past seven or so, they scroll).
+//
+//   (market) (woods♥) [ cove ] (?)
 function tabs(state: GameState, showing: string, cb: JournalCallbacks): HTMLElement {
   const row = el('div', 'jr-tabs');
   const pets: Pet[] = [state.pet, ...state.housemates];
-  for (const p of PLACES) {
-    const visited = (state.journeys.journal[p.id]?.trips ?? 0) > 0;
+  // Only the places been to, and the next one still to find: a row of
+  // question marks would make a new book look empty.
+  const been = (id: string) => (state.journeys.journal[id]?.trips ?? 0) > 0;
+  const next = PLACES.find((p) => !been(p.id) && p.id !== showing);
+  // The '?' goes last, after the places been to.
+  const shown = PLACES.filter((p) => been(p.id) || p.id === showing);
+  for (const p of next ? [...shown, next] : shown) {
+    const visited = been(p.id);
     const b = el('button', `jr-tab${p.id === showing ? ' is-on' : ''}${visited ? '' : ' is-new'}`);
     b.append(icon(visited ? placeIcon(p.id) : ITEM_ICONS.unknown, 'jr-tab-icon'));
     b.setAttribute('aria-label', visited ? placeName(p.id) : STRINGS.collection.unknown);
@@ -144,8 +174,41 @@ function tabs(state: GameState, showing: string, cb: JournalCallbacks): HTMLElem
     else b.disabled = true;
     row.append(b);
   }
-  return row;
+  const bar = el('div', 'jr-pager');
+  bar.append(row);
+  return bar;
 }
+
+// A swipe across the page turns to the place before or after, like the
+// arrows. Mostly sideways and far enough, so scrolling down doesn't.
+function swipeable(book: HTMLElement, state: GameState, showing: string, cb: JournalCallbacks): void {
+  let from: { x: number; y: number } | null = null;
+  book.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    from = e.touches.length === 1 && t ? { x: t.clientX, y: t.clientY } : null;
+  }, { passive: true });
+  book.addEventListener('touchend', (e) => {
+    const t = e.changedTouches[0];
+    if (!from || !t) return;
+    const dx = t.clientX - from.x;
+    const dy = t.clientY - from.y;
+    from = null;
+    const to = swipeTo(turnable(state), showing, dx, dy);
+    if (to) cb.onPlace(to);
+  });
+}
+
+// Where a swipe of (dx, dy) pixels goes from `showing`, if anywhere: left
+// is the next place, right the one before.
+export function swipeTo(order: string[], showing: string, dx: number, dy: number): string | undefined {
+  if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return undefined;
+  const at = order.indexOf(showing);
+  if (at < 0) return undefined;
+  return order[at + (dx < 0 ? 1 : -1)];
+}
+
+// How many question marks to show among the finds still to find.
+const TEASERS = 2;
 
 // A place's page.
 export function journalPage(state: GameState, placeId: string, cb: JournalCallbacks): HTMLElement[] {
@@ -159,33 +222,14 @@ export function journalPage(state: GameState, placeId: string, cb: JournalCallba
 
   // The picture at the top, with a pet that loves it (or the one you're
   // looking after) standing there.
-  const hero = el('div', 'jr-hero');
-  hero.dataset.place = place.id;
-  hero.append(icon(placeIcon(place.id), 'jr-hero-place'), el('b', 'jr-hero-name', placeName(place.id)));
-  if (level > 0) hero.append(el('span', 'jr-hero-level', T.levelLine(T.levels[level], T.tripCount(page.trips))));
   const fans = pets.filter((p) => p.favouritePlace === place.id);
   const shown = fans[0] ?? state.pet;
-  const url = cb.characterImage(sheetFor(shown));
-  if (url) {
-    const pet = el('span', 'jr-hero-pet');
-    pet.style.backgroundImage = `url('${url}')`;
-    hero.append(pet);
-  }
-  book.append(tabs(state, place.id, cb), hero);
-
-  // How far to the next level.
-  const next = J.levels[level];
-  const prog = el('div', 'jr-prog');
-  if (next !== undefined) {
-    const from = J.levels[level - 1] ?? 0;
-    prog.append(el('span', '', T.toNext(next - page.trips, T.levels[level + 1])));
-    const bar = el('span', 'jr-bar');
-    const fill = el('i', '');
-    fill.style.width = `${Math.round(((page.trips - from) / (next - from)) * 100)}%`;
-    bar.append(fill);
-    prog.append(bar);
-  } else prog.append(el('span', '', T.topLevel));
-  book.append(prog);
+  // The banner: the place as a little scene, with the path from Visitor to
+  // Legend along the bottom (see journal-banner.ts).
+  book.append(...banner({
+    place: place.id, name: placeName(place.id),
+    trips: page.trips, level, pet: cb.characterImage(sheetFor(shown)),
+  }));
   if (fans.length) {
     const loved = el('p', 'jr-loved');
     loved.append(icon(HEART_ICONS.full, 'jr-loved-icon'), T.loved(STRINGS.list(fans.map((p) => p.name))));
@@ -203,9 +247,12 @@ export function journalPage(state: GameState, placeId: string, cb: JournalCallba
   book.append(head(T.stamps, got.filter((g) => (STAMPS as readonly string[]).includes(g)).length, STAMPS.length), stamps);
 
   // Found here: everything the place can give.
+  // The ones found, then just a couple still to find and a count of the
+  // rest, so a new page isn't a wall of question marks.
   const all = placeFinds(place);
   const finds = el('div', 'jr-finds');
-  for (const entry of all) {
+  const missing = all.filter((e) => !page.found.includes(e));
+  for (const entry of [...all.filter((e) => page.found.includes(e)), ...missing.slice(0, TEASERS)]) {
     const found = page.found.includes(entry);
     const look = findLook(entry);
     const tile = el('span', `jr-find${found ? '' : ' is-none'}${place.finds[3].includes(entry as never) ? ' is-star3' : ''}`);
@@ -213,13 +260,18 @@ export function journalPage(state: GameState, placeId: string, cb: JournalCallba
     tile.title = found ? look.name : STRINGS.collection.unknown;
     finds.append(tile);
   }
+  if (missing.length > TEASERS) finds.append(el('span', 'jr-find is-more', T.moreToFind(missing.length - TEASERS)));
   book.append(head(T.foundHere, all.filter((e) => page.found.includes(e)).length, all.length), finds);
 
   // Snapshots: the place's set, the ones snapped with their picture.
   const moments = placeMoments(place.id);
   const snaps = page.snaps ?? [];
   const album = el('div', 'jr-snaps');
-  for (const id of moments) {
+  // The ones snapped, then one empty frame for the next.
+  const taken = moments.filter((id) => snaps.some((x) => x.moment === id));
+  const toSnap = moments.filter((id) => !taken.includes(id));
+  // None yet: just the line on how to snap one, no empty frames.
+  for (const id of taken.length ? [...taken, ...toSnap.slice(0, 1)] : []) {
     const snap = snaps.find((x) => x.moment === id);
     const frame = el('figure', `jr-snap${snap ? '' : ' is-none'}`);
     if (snap) {
@@ -230,9 +282,10 @@ export function journalPage(state: GameState, placeId: string, cb: JournalCallba
     } else frame.append(el('span', 'jr-snap-none', '?'), el('figcaption', '', STRINGS.collection.unknown));
     album.append(frame);
   }
-  book.append(head(T.snapshots, moments.filter((id) => snaps.some((x) => x.moment === id)).length, moments.length));
+  book.append(head(T.snapshots, taken.length, moments.length));
   if (!snaps.length) book.append(el('p', 'jr-empty', T.noSnapshots));
-  book.append(album);
+  if (taken.length) book.append(album);
+  if (taken.length && toSnap.length > 1) book.append(el('p', 'jr-more', T.moreToSnap(toSnap.length - 1)));
 
   // Postcards, newest first.
   book.append(head(T.postcards, page.postcards.length));
@@ -242,7 +295,8 @@ export function journalPage(state: GameState, placeId: string, cb: JournalCallba
     for (const p of page.postcards) cards.append(postcardCard(p, place.id, level, p.look ? cb.characterImage(p.look) : undefined));
     book.append(cards);
   }
-  return [book];
+  swipeable(book, state, place.id, cb);
+  return [book, tabs(state, place.id, cb)];
 }
 
 // "Stamps        2 of 4"

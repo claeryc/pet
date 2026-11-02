@@ -936,9 +936,21 @@ body {
   min-width: 0;
 }
 
+/* The middle tiles: rows of two or three sharing the width evenly (see
+   menuRows in src/ui/menu.ts), so none is left alone at the end of a row. */
 .menu-grid.is-mid {
-  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
-  grid-auto-rows: 1fr; /* every tile as tall as the tallest */
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-row {
+  display: flex;
+  gap: 8px;
+}
+
+.menu-row > .menu-tile {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .menu-grid.is-quiet {
@@ -1137,7 +1149,7 @@ body {
   /* Stays at the top while the list scrolls, so the gold is always in view. */
   position: sticky;
   top: -8px; /* the list's top padding */
-  z-index: 1;
+  z-index: 2; /* above the journal's level badge, which sits at 1 */
   margin-top: -8px;
   padding-top: 8px;
   background: #fff5f8;
@@ -1153,6 +1165,27 @@ body {
    buttons in the rows below (row border + padding = 10px). */
 .menu-header-btn {
   justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  width: auto;
+  height: 32px;
+  padding: 0 10px 0 6px;
+  border-radius: 999px;
+  background: #f3e6f7;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--plum);
+}
+
+.menu-header-arrow {
+  font-size: 1.3rem;
+  line-height: 1;
+  margin-top: -2px;
+}
+
+.menu-header-btn:active {
+  background: var(--lavender);
 }
 
 .menu-header-end {
@@ -10479,24 +10512,34 @@ button.trip-bars-name.is-on {
 }
 
 .jr-tabs {
+  flex: 1;
+  min-width: 0;
   display: flex;
+  align-items: center;
+  justify-content: center;
   gap: 6px;
-  margin-bottom: 8px;
+  padding: 4px 2px;
+  overflow-x: auto; /* past seven or so places, it scrolls */
+  scrollbar-width: none;
 }
+
+.jr-tabs::-webkit-scrollbar { display: none; }
 
 .jr-tab {
   position: relative;
-  flex: 1;
-  height: 42px;
+  flex: 0 0 36px;
+  height: 36px;
   display: grid;
   place-items: center;
   border: 0;
-  border-radius: 12px 12px 4px 4px;
+  border-radius: 50%;
   background: var(--lavender);
   cursor: pointer;
 }
 
 .jr-tab.is-on {
+  flex-basis: 44px;
+  height: 44px;
   background: #cbe7d6;
   box-shadow: inset 0 0 0 3px var(--good);
 }
@@ -10508,6 +10551,11 @@ button.trip-bars-name.is-on {
 }
 
 .jr-tab-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.jr-tab.is-on .jr-tab-icon {
   width: 26px;
   height: 26px;
 }
@@ -10522,7 +10570,6 @@ button.trip-bars-name.is-on {
 
 .jr-tab-icon svg,
 .jr-tab-heart svg,
-.jr-hero-place svg,
 .jr-loved-icon svg,
 .jr-find-icon svg,
 .jr-pic-place svg,
@@ -10540,50 +10587,10 @@ button.trip-bars-name.is-on {
 [data-place='cove'] { --sky: #c9ecf7; --ground: #ffe9b3; }
 [data-place='hill'] { --sky: #d6c8f2; --ground: #b5a4e4; }
 
-.jr-hero {
-  position: relative;
-  height: 112px;
-  border: 3px solid var(--ink);
-  border-radius: 14px;
-  overflow: hidden;
-  background: linear-gradient(var(--sky) 0 62%, var(--ground) 62%);
-}
 
-.jr-hero-place {
-  position: absolute;
-  left: 12px;
-  bottom: 10px;
-  width: 64px;
-  height: 64px;
-}
 
-.jr-hero-name {
-  position: absolute;
-  left: 88px;
-  right: 12px;
-  top: 12px;
-  z-index: 1;
-  font-size: clamp(1rem, 5vw, 1.25rem);
-  font-weight: 900;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 
-.jr-hero-level {
-  position: absolute;
-  left: 88px;
-  top: 42px;
-  z-index: 1;
-  padding: 1px 8px;
-  border: 2px solid var(--ink);
-  border-radius: 999px;
-  background: var(--butter);
-  font-size: 0.78rem;
-  font-weight: 800;
-}
 
-.jr-hero-pet,
 .jr-pic-pet {
   position: absolute;
   bottom: 4px;
@@ -10592,34 +10599,9 @@ button.trip-bars-name.is-on {
   image-rendering: pixelated;
 }
 
-.jr-hero-pet {
-  right: 12px;
-  width: 60px;
-  height: 60px;
-}
 
-.jr-prog {
-  margin: 10px 2px 0;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--plum);
-}
 
-.jr-bar {
-  display: block;
-  height: 11px;
-  margin-top: 4px;
-  border: 2px solid var(--ink);
-  border-radius: 6px;
-  background: #efe6f7;
-  overflow: hidden;
-}
 
-.jr-bar i {
-  display: block;
-  height: 100%;
-  background: var(--good);
-}
 
 .jr-loved {
   display: flex;
@@ -10653,6 +10635,7 @@ button.trip-bars-name.is-on {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr)); /* long names wrap, not widen */
   gap: 8px;
+  padding: 0 3px; /* room for the tilt */
 }
 
 .jr-stamp {
@@ -10777,7 +10760,8 @@ button.trip-bars-name.is-on {
 .jr-cards {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 14px;
+  padding: 4px 6px 6px; /* room for the tilt and the lace frames */
 }
 
 .jr-card {
@@ -11480,45 +11464,14 @@ button.trip-bars-name.is-on {
   }
 }
 
-/* ---- Sniff and dig ---- */
-
-/* The spots use the Journeys postcards, a rare one in the 3-star frame.
-   One that's all dug up fades a little. */
-.trip-pc.dig-pc.is-done {
-  opacity: 0.6;
+/* ---- Sniff and dig (src/ui/dig.ts) ----
+   The whole screen, the room stepping aside: the board (a strip of the
+   place over its patch of ground) as big as fits, the day's digs, today's
+   places, then [Back] [Sniff]. One screen, no scrolling. */
+#app:has(> .stat-slot > .dig:not([hidden])) > .room-wrap {
+  display: none;
 }
 
-.dig-pc-locked > b {
-  font-size: 0.9rem;
-  color: var(--plum);
-}
-
-/* [Back] [Sniff (1)] [Dig] */
-.dig-row > .dig-sniff:not([hidden]) {
-  background: var(--lilac);
-  box-shadow: 0 4px 0 var(--plum);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  white-space: nowrap;
-}
-
-.dig-btn-icon {
-  display: inline-flex;
-  flex: none;
-  width: 20px;
-  height: 20px;
-}
-
-.dig-btn-icon svg {
-  width: 100%;
-  height: 100%;
-}
-
-/* One screen tall, no scrolling, and the room stays the size it always
-   is: the spots and the patch of ground take the space between it and the
-   buttons, and shrink to fit it. */
 #app:has(> .stat-slot > .dig:not([hidden])) > .stat-slot {
   flex: 1 1 0;
   min-height: 0;
@@ -11530,175 +11483,192 @@ button.trip-bars-name.is-on {
 .stat-slot > .dig {
   flex: 1 1 0;
   min-height: 0;
+  gap: 12px;
 }
 
-/* The spots: two by two, their usual size when there's room, and on a
-   short screen in whatever height is left, the pictures giving way first
-   (cropped, never squashed). */
-.dig[data-stage='board'] > .trip-rack {
-  flex: 0 1 auto;
-  min-height: 0;
-  grid-template-rows: repeat(2, minmax(0, 1fr));
-}
-
-.dig .trip-pc {
-  min-height: 0;
-  overflow: hidden;
-}
-
-.dig .trip-pc > b,
-.dig .trip-pc > small {
-  flex: none;
-}
-
-.dig .trip-pc:not(.is-epic) > .trip-pc-art {
-  flex: 0 1 auto;
-  min-height: 24px;
-  height: auto;
-  object-fit: cover;
-}
-
-.dig .trip-pc-locked,
-.dig .dig-pc-locked {
-  justify-content: center;
-}
-
-/* The picked spot, turned over, in the middle of the space. */
-.dig[data-stage='board'] > .trip-flip {
-  flex: 1 1 0;
-  min-height: 0;
-  display: grid;
-  align-content: center;
-}
-
-/* Signs over the ground: the place, a chest with what's still buried, at
-   the cove the tide, and the day's digs on the right. */
-.dig-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 28px;
-  padding: 0 2px;
-}
-
-.dig-kicker-icon {
+/* [Back] [Sniff 1] */
+.dig-row > .btn {
   display: inline-flex;
-  flex: 0 0 24px;
-  width: 24px;
-  height: 24px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
 }
 
-.dig-kicker-icon svg,
+.dig-row > .btn-soft {
+  flex: 0 0 auto;
+  padding: 0 20px;
+}
+
+.dig-row > .dig-sniff {
+  flex: 1 1 0;
+  background: var(--lilac);
+  box-shadow: 0 4px 0 var(--plum);
+  white-space: nowrap;
+}
+
+.dig-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.3);
+  font-size: 0.85rem;
+}
+
+.dig-btn-icon {
+  display: inline-flex;
+  flex: none;
+  width: 22px;
+  height: 22px;
+}
+
+.dig-btn-icon svg,
+.dig-chip-icon svg,
 .dig-cell-icon svg,
 .dig-spade svg,
-.dig-pill-icon svg {
+.dig-pop svg,
+.dig-heart svg,
+.dig-tab-lock svg,
+.dig-tab-fan svg {
   width: 100%;
   height: 100%;
 }
 
-.dig-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 24px;
-  padding: 0 9px 0 6px;
-  border-radius: 999px;
-  background: var(--butter);
-  box-shadow: 0 2px 0 rgba(138, 90, 68, 0.25);
-  color: #8a5a44;
-  font-size: 0.85rem;
-  font-weight: 900;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+/* ---- The board: as big as fits, and square under the strip ---- */
+.dig-board {
+  flex: 1 1 0;
+  min-height: 0;
+  container-type: size;
+  display: grid;
+  place-items: start center;
 }
 
-.dig-pill.is-done {
-  background: #c9ecc4;
-  color: #3f7d5f;
-  box-shadow: 0 2px 0 rgba(63, 125, 95, 0.25);
+.dig-board > * {
+  grid-area: 1 / 1;
 }
 
-.dig-pill-icon {
-  display: inline-flex;
-  width: 20px;
-  height: 18px;
+.dig-strip,
+.dig-fit {
+  width: min(100cqw, 100cqh / (1 + 18 / 64), 380px);
 }
 
-/* The tide: the side it comes from, and a pip per dig, filling up until it
-   comes in. */
-.dig-tide {
+.dig-strip {
+  position: relative;
+  box-sizing: border-box;
+  border: 4px solid var(--card);
+  border-bottom: none;
+  border-radius: 22px 22px 0 0;
+  overflow: hidden;
+}
+
+.dig-strip-art {
+  display: block;
+  width: 100%;
+  aspect-ratio: 64 / 18;
+  image-rendering: pixelated;
+}
+
+/* Signs in the strip's corners: what's still buried, and the tide. */
+.dig-chip {
+  position: absolute;
+  top: 7px;
   display: inline-flex;
   align-items: center;
   gap: 3px;
   height: 24px;
-  padding: 0 8px;
+  padding: 0 8px 0 6px;
   border-radius: 999px;
-  background: #e3f3fb;
-  box-shadow: 0 2px 0 rgba(59, 126, 166, 0.2);
-  color: #3b7ea6;
-  font-size: 0.9rem;
-  white-space: nowrap;
+  background: rgba(255, 247, 236, 0.94);
+  box-shadow: 0 2px 0 rgba(43, 33, 64, 0.15);
+  color: #8a5a44;
+  font-size: 0.82rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
 }
 
-.dig-tide > b {
-  margin-right: 2px;
-  font-weight: 900;
+.dig-chip[hidden] {
+  display: none;
+}
+
+.dig-chest {
+  left: 8px;
+}
+
+.dig-chest.is-done {
+  color: #3f7d5f;
+}
+
+.dig-tide {
+  right: 8px;
 }
 
 .dig-tide i {
-  flex: none;
-  width: 9px;
-  height: 12px;
+  width: 8px;
+  height: 11px;
   border-radius: 3px;
   background: #cfe6f2;
 }
 
 .dig-tide i.is-on {
-  background: #6fb6dd;
+  background: #5a8fd6;
 }
 
-/* The patch of ground: six by six squares, as big as fits in the room
-   that's left (it's as tall as it is wide). */
+.dig-chip.is-bump {
+  animation: dig-bump 0.4s cubic-bezier(0.34, 1.6, 0.64, 1);
+}
+
+@keyframes dig-bump {
+  40% { transform: scale(1.18); }
+}
+
+.dig-chip-icon {
+  display: inline-flex;
+}
+
+.dig-chip-chest { width: 20px; height: 18px; }
+.dig-chip-wave { width: 18px; height: 10px; margin-right: 2px; }
+
+/* The patch of ground, joined to the strip: one card. The pet and the
+   things that float up are laid over it. */
 .dig-fit {
-  flex: 1 1 0;
-  min-height: 0;
-  container-type: size;
-  display: grid;
-  place-items: center;
+  position: relative;
+  margin-top: calc(min(100cqw, 100cqh / (1 + 18 / 64), 380px) * 18 / 64);
 }
 
 .dig-field {
-  --dig-gap: clamp(3px, 1.3cqmin, 5px);
+  --dig-gap: clamp(3px, 1.2cqmin, 5px);
   box-sizing: border-box;
   display: grid;
   grid-template-columns: repeat(var(--dig-size), 1fr);
   gap: var(--dig-gap);
-  width: min(100cqw, 100cqh, 340px);
-  margin: 0 auto;
-  padding: calc(var(--dig-gap) + 3px);
-  border: 3px solid #4a9a76;
-  border-radius: 16px;
+  width: 100%;
+  padding: calc(var(--dig-gap) + 4px);
+  border: 4px solid var(--card);
+  border-top: none;
+  border-radius: 0 0 22px 22px;
   background: #8fd19e;
-  box-shadow: inset 0 -4px 0 #6cc19a;
+  box-shadow: 0 4px 0 rgba(43, 33, 64, 0.12), inset 0 4px 0 rgba(43, 33, 64, 0.08);
 }
 
 .dig-field.is-woods {
-  border-color: #3f7d5f;
   background: #6cb488;
-  box-shadow: inset 0 -4px 0 #4a9a76;
 }
 
 .dig-field.is-sand {
-  border-color: #c9a35e;
   background: #f0d79a;
-  box-shadow: inset 0 -4px 0 #e2c27e;
+}
+
+/* Starlit Hill: lavender ground under the stars. */
+.dig-field.is-hill {
+  background: #c9b5e6;
 }
 
 /* Waves along the side the sea comes from. */
-.dig-field.is-tide-left { border-left: 6px solid #9ad3f0; }
-.dig-field.is-tide-right { border-right: 6px solid #9ad3f0; }
-.dig-field.is-tide-top { border-top: 6px solid #9ad3f0; }
-.dig-field.is-tide-bottom { border-bottom: 6px solid #9ad3f0; }
+.dig-field.is-tide-left { box-shadow: inset 6px 0 0 #9ad3f0, 0 4px 0 rgba(43, 33, 64, 0.12); }
+.dig-field.is-tide-right { box-shadow: inset -6px 0 0 #9ad3f0, 0 4px 0 rgba(43, 33, 64, 0.12); }
+.dig-field.is-tide-top { box-shadow: inset 0 6px 0 #9ad3f0, 0 4px 0 rgba(43, 33, 64, 0.12); }
+.dig-field.is-tide-bottom { box-shadow: inset 0 -6px 0 #9ad3f0, 0 4px 0 rgba(43, 33, 64, 0.12); }
 
 .dig-cell {
   position: relative;
@@ -11716,6 +11686,11 @@ button.trip-bars-name.is-on {
   box-shadow: inset 0 -3px 0 #8fd19e;
   cursor: pointer;
   touch-action: manipulation;
+  transition: transform 0.08s;
+}
+
+.dig-cell:not(:disabled):active {
+  transform: translateY(2px) scale(0.94);
 }
 
 /* A few tufts on untouched grass (sand gets specks instead). */
@@ -11745,24 +11720,23 @@ button.trip-bars-name.is-on {
   box-shadow: 9px 4px 0 #d9b878, 4px 10px 0 #d9b878;
 }
 
-.dig-cell.is-wet {
-  box-shadow: inset 0 0 0 3px #9ad3f0, inset 0 -3px 0 #ecd49c;
+.is-hill .dig-cell {
+  background: #e4d9f5;
+  box-shadow: inset 0 -3px 0 #c9b5e6;
 }
 
-.dig-cell.is-picked {
-  outline: 3px solid var(--accent-dark);
-  outline-offset: 1px;
-  transform: translateY(-2px);
+.is-hill .dig-cell:not(:disabled):not(.is-sniffed)::before {
+  background: #a68bc9;
+  box-shadow: 8px 5px 0 #a68bc9, 3px 10px 0 #a68bc9;
+}
+
+.dig-cell.is-wet {
+  box-shadow: inset 0 0 0 3px #9ad3f0, inset 0 -3px 0 #ecd49c;
 }
 
 .dig-cell.is-sniffed {
   outline: 3px dashed var(--accent);
   outline-offset: 1px;
-}
-
-.dig-cell.is-sniffed.is-picked {
-  outline-style: solid;
-  outline-color: var(--accent-dark);
 }
 
 .dig-cell-icon {
@@ -11817,33 +11791,292 @@ button.trip-bars-name.is-on {
   box-shadow: 5px 7px 0 #e8f6fd;
 }
 
-/* The day's digs: a spade for each one left, a hole for each one used. */
+/* Switching places slides the board in from that side. */
+.dig-board.is-switch .dig-fit,
+.dig-board.is-switch .dig-strip {
+  animation: dig-switch 0.32s cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+
+@keyframes dig-switch {
+  0% { transform: translateX(calc(var(--dir, 1) * 18px)); opacity: 0.4; }
+  100% { transform: none; opacity: 1; }
+}
+
+/* ---- The pet out on the ground, and what floats up ---- */
+.dig-pet,
+.dig-shadow,
+.dig-target,
+.dig-dirt,
+.dig-heart,
+.dig-pop {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+
+.dig-pet {
+  z-index: 3;
+  transform-origin: 50% 50%;
+  will-change: transform;
+  transition: opacity 0.15s;
+}
+
+.dig-pet-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.9)) drop-shadow(0 1px 0 rgba(43, 33, 64, 0.25));
+}
+
+.dig-shadow {
+  z-index: 2;
+  aspect-ratio: 3 / 1;
+  border-radius: 50%;
+  background: rgba(43, 33, 64, 0.22);
+}
+
+/* The square it's on its way to dig. */
+.dig-target {
+  z-index: 1;
+  box-sizing: border-box;
+  border-radius: 10px;
+  border: 3px dashed rgba(255, 255, 255, 0.95);
+  animation: dig-target 0.7s ease-in-out infinite alternate;
+}
+
+.dig-target[hidden] {
+  display: none;
+}
+
+@keyframes dig-target {
+  from { transform: scale(0.9); opacity: 0.6; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.dig-dirt {
+  z-index: 4;
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  background: #8a5a44;
+  opacity: 0;
+  animation: dig-dirt 0.42s cubic-bezier(0.2, 0.8, 0.4, 1) forwards;
+}
+
+.dig-dirt:nth-child(odd) {
+  width: 4px;
+  height: 4px;
+  background: #b07a55;
+}
+
+@keyframes dig-dirt {
+  0% { transform: translate(0, 0); opacity: 1; }
+  60% { transform: translate(var(--dx), var(--dy)); opacity: 1; }
+  100% { transform: translate(calc(var(--dx) * 1.2), calc(var(--dy) * 0.4)); opacity: 0; }
+}
+
+.dig-heart {
+  z-index: 5;
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  opacity: 0;
+  animation: dig-heart 1.2s ease-out forwards;
+}
+
+@keyframes dig-heart {
+  0% { transform: translateY(0) scale(0.5); opacity: 0; }
+  20% { transform: translateY(-6px) scale(1); opacity: 1; }
+  100% { transform: translateY(-34px) scale(0.9); opacity: 0; }
+}
+
+/* A find pops out of its square. */
+.dig-pop {
+  z-index: 6;
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  filter: drop-shadow(0 2px 0 rgba(43, 33, 64, 0.2));
+  animation: dig-pop 1.1s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+}
+
+@keyframes dig-pop {
+  0% { transform: translateY(0) scale(0.4); opacity: 0; }
+  25% { transform: translateY(-34px) scale(1.15); opacity: 1; }
+  70% { transform: translateY(-40px) scale(1); opacity: 1; }
+  100% { transform: translateY(-56px) scale(0.8); opacity: 0; }
+}
+
+/* ---- The day's digs: a spade for each one left, a hole for each one used ---- */
 .dig-digs {
   flex: none;
+  align-self: center;
   display: flex;
-  align-items: center;
-  gap: 2px;
-  height: 24px;
-  margin-left: auto;
-  padding: 0 7px;
+  align-items: flex-end;
+  gap: 5px;
+  height: 34px;
+  padding: 0 14px;
   border-radius: 999px;
   background: var(--card);
-  box-shadow: 0 2px 0 rgba(43, 33, 64, 0.1);
+  box-shadow: 0 3px 0 var(--lavender);
 }
 
 .dig-spade {
   display: inline-flex;
   width: 14px;
   height: 22px;
+  margin-bottom: 6px;
 }
 
-.dig-spade.is-used {
-  opacity: 0.75;
+.dig-spade.is-used-now {
+  animation: dig-used 0.45s cubic-bezier(0.34, 1.6, 0.64, 1);
+}
+
+@keyframes dig-used {
+  0% { transform: translateY(-8px) rotate(-20deg); }
+  100% { transform: none; }
+}
+
+.dig-digs.is-shake {
+  animation: dig-shake 0.3s;
+}
+
+@keyframes dig-shake {
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+/* ---- Today's places: a little picture each, the one you're at raised ---- */
+.dig-tabs {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding: 2px 0 6px;
+}
+
+.dig-tab {
+  position: relative;
+  padding: 3px;
+  border: none;
+  border-radius: 13px;
+  background: white;
+  box-shadow: 0 3px 0 var(--lavender);
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  touch-action: manipulation;
+}
+
+.dig-tab-art {
+  display: block;
+  width: 100%;
+  aspect-ratio: 64 / 40;
+  border-radius: 10px;
+  image-rendering: pixelated;
+}
+
+.dig-tab:not(.is-on) .dig-tab-art {
+  filter: saturate(0.75) brightness(0.97);
+}
+
+.dig-tab.is-on {
+  transform: translateY(-4px);
+  box-shadow: 0 0 0 3px var(--accent), 0 6px 0 var(--accent-dark);
+}
+
+.dig-tab.is-rare {
+  background: linear-gradient(135deg, var(--lilac), var(--accent));
+}
+
+.dig-tab:focus-visible {
+  outline: 3px solid var(--plum);
+  outline-offset: 3px;
+}
+
+.dig-tab-stars {
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  transform: translateX(-50%);
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--plum);
+  font-size: 0.6rem;
+  line-height: 1.55;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  box-shadow: 0 1px 0 var(--lavender);
+}
+
+.dig-tab-done {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #6cc19a;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 900;
+  line-height: 18px;
+  text-align: center;
+  box-shadow: 0 0 0 2px white;
+}
+
+/* A pet at home loves this place: one more sniff here. */
+.dig-tab-fan {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  padding: 2px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 0 var(--lavender);
+}
+
+/* Not open yet: greyed out, with a lock. */
+.dig-tab.is-locked {
+  cursor: default;
+}
+
+.dig-tab.is-locked .dig-tab-art {
+  filter: grayscale(1) brightness(1.1) opacity(0.55);
+}
+
+.dig-tab-lock {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  transform: translate(-50%, -50%);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dig-cell.is-fresh {
+  .dig-cell.is-fresh,
+  .dig-board.is-switch .dig-fit,
+  .dig-board.is-switch .dig-strip,
+  .dig-target,
+  .dig-pop,
+  .dig-heart,
+  .dig-spade.is-used-now {
     animation: none;
+  }
+
+  .dig-heart,
+  .dig-pop {
+    opacity: 0;
   }
 }
 
@@ -12368,4 +12601,235 @@ button.trip-bars-name.is-on {
   .project-art.is-building .project-ghost {
     animation: none;
   }
+}
+
+/* ---- The Collection's tabs (src/ui/collection.ts) ---- */
+.coll-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.coll-tab {
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 8px 2px 7px;
+  border: 2px solid var(--lavender);
+  border-radius: 12px;
+  background: white;
+  color: var(--ink);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.coll-tab b {
+  font-size: 0.85rem;
+}
+
+.coll-tab small {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--plum);
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+.coll-tab[aria-pressed='true'] {
+  border-color: var(--lilac);
+  background: var(--lilac);
+  color: white;
+  box-shadow: 0 3px 0 var(--plum);
+}
+
+.coll-tab[aria-pressed='true'] small {
+  color: white;
+}
+
+/* ---- The Journal button on the Journeys board ---- */
+.trip-board-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.trip-board-foot .trip-pick-hint {
+  margin: 0;
+  text-align: left;
+}
+
+.trip-journal-btn {
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 6px 12px 6px 8px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--butter);
+  color: var(--ink);
+  box-shadow: 0 3px 0 var(--ink);
+  cursor: pointer;
+}
+
+.trip-journal-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--ink);
+}
+
+.trip-journal-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.trip-journal-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* "+12": the finds still to find, counted, after a couple of question marks. */
+.jr-find.is-more {
+  border-style: dashed;
+  background: #f6f0fa;
+  color: #9b86b5;
+  font-weight: 900;
+  font-size: 0.85rem;
+}
+
+.jr-more {
+  margin: -4px 2px 12px;
+  font-size: 0.8rem;
+  color: #9b86b5;
+}
+
+/* ---- The journal's banner: the place's scene and the path through its
+   levels (see src/ui/journal-banner.ts). ---- */
+
+.jb {
+  position: relative;
+  height: 172px;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--sky, #cdeedb);
+}
+
+.jb-land {
+  position: absolute;
+  inset: 0;
+}
+
+.jb-land svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.jb-title {
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  font-size: 1.2rem;
+  font-weight: 900;
+  color: #fff7ec;
+  /* A pixel outline, so it reads on any sky. */
+  text-shadow: 2px 0 var(--ink), -2px 0 var(--ink), 0 2px var(--ink), 0 -2px var(--ink), 2px 2px var(--ink), -2px 2px var(--ink), 2px -2px var(--ink), -2px -2px var(--ink);
+}
+
+.jb-track {
+  position: absolute;
+  left: 30px;
+  right: 30px;
+  bottom: 26px;
+  height: 4px;
+}
+
+/* Dashes for the way still to go, a solid line for the way walked. */
+.jb-track-line {
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  background: repeating-linear-gradient(90deg, #fff7ec 0 6px, transparent 6px 10px);
+}
+
+.jb-track-line i {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: #fff7ec;
+  box-shadow: 0 0 0 2px var(--ink);
+}
+
+.jb-flag {
+  position: absolute;
+  top: 50%;
+  width: 0;
+}
+
+.jb-flag i {
+  position: absolute;
+  left: -8px;
+  top: -8px;
+  width: 16px;
+  height: 16px;
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+  background: #efe6f7;
+}
+
+.jb-flag.is-on i { background: var(--butter); }
+
+.jb-flag small {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  transform: translateX(-50%);
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgb(255 247 236 / 0.92);
+  font-size: 0.62rem;
+  font-weight: 900;
+  white-space: nowrap;
+  color: #9b86b5;
+}
+
+.jb-flag.is-on small { color: var(--ink); }
+
+.jb-walker {
+  position: absolute;
+  bottom: 4px;
+  width: 52px;
+  height: 52px;
+  margin-left: -26px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: bottom center;
+  image-rendering: pixelated;
+}
+
+.jb-under {
+  margin: 8px 2px 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--plum);
+}
+
+/* The tabs, in a bar docked to the bottom of the panel like the header at
+   the top: full width, so nothing shows round it while the page scrolls. */
+.jr-pager {
+  position: sticky;
+  bottom: -8px; /* the scrolling list's bottom padding */
+  z-index: 2;
+  margin: 10px -8px -8px; /* out to the panel's edges */
+  padding: 6px 8px 8px;
+  border-top: 2px solid #f0dce8;
+  background: #fff5f8;
 }

@@ -37,7 +37,7 @@ import {
   placeLevel, PLACES, potsDryingBy, tripPreview, type Packed,
 } from '../game/journeys';
 import { hasBackpack, isAway } from '../game/presence';
-import { HEART_ICONS, ITEM_ICONS, STAT_ICONS } from './icons';
+import { HEART_ICONS, ITEM_ICONS, MENU_ICONS, STAT_ICONS } from './icons';
 import { drawPlace, drawPlaceSparkle } from '../render/places';
 import { BENTO_HEIGHT, BENTO_WIDTH, drawBento, LID_FRAMES, lidCover } from './bento';
 import { category, type Entry } from './shop';
@@ -56,6 +56,7 @@ export interface JourneysSetup extends JourneysCallbacks {
   onExit: () => void;
   onWater: () => void; // out to the garden, to water before going
   onShop: () => void; // to the Shop's Journeys tab, for a Holiday ticket
+  onJournal: () => void; // the travel journal
   toast: (message: string) => void;
   characterImage: (sheet: string) => string | undefined;
 }
@@ -924,7 +925,18 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     panel.dataset.stage = stage;
     if (stage === 'board') {
       panel.replaceChildren(...others(s), ...board(s));
-      if (!o && slot !== HOLIDAY) panel.append(el('p', 'trip-note trip-pick-hint', T.pickHint));
+      if (!o && slot !== HOLIDAY) {
+        // The hint, with the journal beside it.
+        const foot = el('div', 'trip-board-foot');
+        const book = el('button', 'trip-journal-btn');
+        book.append(icon(MENU_ICONS.journal, 'trip-journal-icon'), T.openJournal);
+        book.addEventListener('click', () => {
+          stop();
+          cb.onJournal();
+        });
+        foot.append(el('p', 'trip-note trip-pick-hint', T.pickHint), book);
+        panel.append(foot);
+      }
       sheet.replaceChildren();
     } else if (o) {
       if (!going.includes(who)) who = going[0] ?? s.pet.id;

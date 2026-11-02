@@ -185,50 +185,19 @@ export const STRINGS = {
   },
   // Sniff and dig (Play > Sniff and dig).
   dig: {
-    rackTitle: 'Where to dig?',
     digsChip: (left: number, total: number) => `${left} of ${total} digs`,
     places: { meadow: 'Meadow', market: 'Market Town', woods: 'Mossy Woods', cove: 'Coral Cove', hill: 'Starlit Hill' } as Record<string, string>,
-    sides: { top: 'top', right: 'right', bottom: 'bottom', left: 'left' } as Record<string, string>,
-    arrows: { top: '↑', right: '→', bottom: '↓', left: '←' } as Record<string, string>,
-    // The line under a place's name on its card.
-    twist: {
-      meadow: 'Warm and cold',
-      market: 'Lost coins about',
-      woods: 'Roots in the way',
-      cove: (side: string) => `Tide from the ${side}`,
-      hill: 'Stars help sniff',
-    },
-    rareTwist: 'Rare spot today',
-    dugUp: 'All dug up',
+    placesLabel: "Today's places",
     locked: {
       harvest: 'Opens after your first harvest',
       fish: 'Opens after 10 fish',
       grownUp: 'Opens when a pet grows up',
     } as Record<string, string>,
-    fanShort: (name: string) => `${name} +1 sniff`,
-    pickHint: 'Tap a card to see what might be buried there.',
-    flipBack: 'Tap the card to see all the spots again.',
-    // The back of a card: a note from your pet.
-    noteKind: 'Dig',
-    noteTwist: {
-      meadow: 'Plain soft ground. Every hole helps find the next one.',
-      market: 'Someone dropped some coins around here!',
-      woods: "Roots everywhere. We can't dig through those.",
-      cove: (side: string) => `The tide comes from the ${side} today. Dig that side first!`,
-      hill: 'The stars help me sniff: one more sniff here.',
-    },
-    noteSure: (food: string) => `There's ${food} here for sure.`,
-    noteMaybe: (things: string) => `I might find ${things}.`,
-    or: 'or',
+    fan: (name: string) => `${name}'s favourite: one more sniff`,
     gold: 'gold',
-    seeds: 'seeds',
-    noteLeft: (n: number) => (n === 1 ? 'Something is still buried from last time.' : `${n} things are still buried from last time.`),
-    noteSign: (name: string) => `${name} ♡`,
-    postmark: 'Digs left',
     back: 'Back',
-    start: 'Start digging',
-    dig: 'Dig',
-    sniff: (n: number) => `Sniff (${n})`,
+    sniffBtn: 'Sniff',
+    sniff: (n: number) => `Sniff, ${n} left`,
     left: (n: number) => (n === 1 ? '1 left here' : `${n} left here`),
     allFound: 'All found!',
     tideIn: (n: number) => `Tide in: ${n} more ${n === 1 ? 'dig' : 'digs'}`,
@@ -245,8 +214,7 @@ export const STRINGS = {
       noDigs: 'No digs left today. New ones tomorrow!',
       cantDig: "You can't dig there.",
       noSniffs: (name: string) => `${name} can't smell anything more here.`,
-      noSpot: 'Pick a spot first.',
-      pickCell: 'Tap a square to dig first.',
+      noSpot: 'Pick a place first.',
     },
   },
   // Sending a pet out on a journey (Play > Journeys).
@@ -261,6 +229,7 @@ export const STRINGS = {
     // "Adventure · 10 hours"
     tripLine: (trip: string, length: string) => `${trip} · ${length}`,
     pickHint: 'Tap a postcard to see what it might bring home.',
+    openJournal: 'Journal',
     rackTitle: 'Where to today?',
     // The night trip's spot in the daytime: "A night trip at 20:00"
     nightSoon: (time: string) => `A night trip at ${time}`,
@@ -366,6 +335,8 @@ export const STRINGS = {
     // Little moments on a trip, snapped for the travel journal.
     snap: 'Snap!',
     snapshots: 'Snapshots',
+    moreToFind: (n: number) => `+${n}`,
+    moreToSnap: (n: number) => `${n} more moments to snap here, one trip at a time.`,
     noSnapshots: 'Look in on a trip here: now and then the pets stop for a little moment you can snap.',
     moments: {
       butterfly: 'Butterfly friend',
@@ -649,7 +620,8 @@ export const STRINGS = {
     guide: 'Guide',
     new: 'New',
     comingSoon: 'Coming soon',
-    back: 'Back',
+    back: 'Back to the menu',
+    backTo: 'Menu', // on the back button: where it goes
     close: 'Close',
     // The lines under the names on the main page.
     shopLine: 'Food, hats and more',
@@ -660,6 +632,9 @@ export const STRINGS = {
     messagesLine: 'Mail, friends',
     messagesNew: (n: number) => `${n} new`,
     collectionLine: (have: number, all: number) => `${have} of ${all}`,
+    journal: 'Journal',
+    journalLine: (postcards: number) => (postcards === 1 ? '1 postcard' : `${postcards} postcards`),
+    journalEmpty: 'No trips yet',
     skillsLine: (level: number) => `Level ${level}`,
     familyLine: 'Every generation',
     meadowLine: (pets: number) => (pets === 1 ? '1 pet' : `${pets} pets`),
@@ -751,8 +726,8 @@ export const STRINGS = {
       dig: {
         name: 'Sniff and dig',
         pages: [
-          { title: 'Pick a spot', text: 'Four new spots every day. Tap a card to see what might be buried there, then Start digging.' },
-          { title: 'Dig for treasure', text: "Tap a square, then Dig. A hole's number is how many treasures touch it. The chest counts what's still buried." },
+          { title: 'Pick a place', text: 'Four places to dig every day, along the bottom. Tap one to go digging there.' },
+          { title: 'Dig for treasure', text: (pet: string) => `Tap a square and ${pet} runs over and digs it. A hole's number is how many treasures touch it. The chest counts what's still buried.` },
           { title: 'Six digs a day', text: (pet: string) => `The spades are your digs for today. Find a treasure and you get the spade back! Stuck? Sniff and ${pet} points at a treasure.` },
           { title: 'Mind the tide', text: 'At Coral Cove the sea creeps in from one side. The pips fill with each dig. Dig the wet squares first!' },
         ],
@@ -1510,6 +1485,8 @@ export const STRINGS = {
     catches: 'Catches',
     achievements: 'Achievements',
     milestones: 'Milestones',
+    // The tabs along the top.
+    tabs: { badges: 'Badges', pets: 'Pets', recipes: 'Recipes', catches: 'Catches' } as Record<string, string>,
     count: (title: string, found: number, total: number) => `${title}  ${found}/${total}`,
     unknown: '???',
     notFound: 'Not found yet',
