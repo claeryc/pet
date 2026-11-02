@@ -936,9 +936,21 @@ body {
   min-width: 0;
 }
 
+/* The middle tiles: rows of two or three sharing the width evenly (see
+   menuRows in src/ui/menu.ts), so none is left alone at the end of a row. */
 .menu-grid.is-mid {
-  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
-  grid-auto-rows: 1fr; /* every tile as tall as the tallest */
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-row {
+  display: flex;
+  gap: 8px;
+}
+
+.menu-row > .menu-tile {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .menu-grid.is-quiet {
@@ -1137,7 +1149,7 @@ body {
   /* Stays at the top while the list scrolls, so the gold is always in view. */
   position: sticky;
   top: -8px; /* the list's top padding */
-  z-index: 1;
+  z-index: 2; /* above the journal's level badge, which sits at 1 */
   margin-top: -8px;
   padding-top: 8px;
   background: #fff5f8;
@@ -1153,6 +1165,27 @@ body {
    buttons in the rows below (row border + padding = 10px). */
 .menu-header-btn {
   justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  width: auto;
+  height: 32px;
+  padding: 0 10px 0 6px;
+  border-radius: 999px;
+  background: #f3e6f7;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--plum);
+}
+
+.menu-header-arrow {
+  font-size: 1.3rem;
+  line-height: 1;
+  margin-top: -2px;
+}
+
+.menu-header-btn:active {
+  background: var(--lavender);
 }
 
 .menu-header-end {
@@ -10479,24 +10512,34 @@ button.trip-bars-name.is-on {
 }
 
 .jr-tabs {
+  flex: 1;
+  min-width: 0;
   display: flex;
+  align-items: center;
+  justify-content: center;
   gap: 6px;
-  margin-bottom: 8px;
+  padding: 4px 2px;
+  overflow-x: auto; /* past seven or so places, it scrolls */
+  scrollbar-width: none;
 }
+
+.jr-tabs::-webkit-scrollbar { display: none; }
 
 .jr-tab {
   position: relative;
-  flex: 1;
-  height: 42px;
+  flex: 0 0 36px;
+  height: 36px;
   display: grid;
   place-items: center;
   border: 0;
-  border-radius: 12px 12px 4px 4px;
+  border-radius: 50%;
   background: var(--lavender);
   cursor: pointer;
 }
 
 .jr-tab.is-on {
+  flex-basis: 44px;
+  height: 44px;
   background: #cbe7d6;
   box-shadow: inset 0 0 0 3px var(--good);
 }
@@ -10508,6 +10551,11 @@ button.trip-bars-name.is-on {
 }
 
 .jr-tab-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.jr-tab.is-on .jr-tab-icon {
   width: 26px;
   height: 26px;
 }
@@ -10522,7 +10570,6 @@ button.trip-bars-name.is-on {
 
 .jr-tab-icon svg,
 .jr-tab-heart svg,
-.jr-hero-place svg,
 .jr-loved-icon svg,
 .jr-find-icon svg,
 .jr-pic-place svg,
@@ -10540,50 +10587,10 @@ button.trip-bars-name.is-on {
 [data-place='cove'] { --sky: #c9ecf7; --ground: #ffe9b3; }
 [data-place='hill'] { --sky: #d6c8f2; --ground: #b5a4e4; }
 
-.jr-hero {
-  position: relative;
-  height: 112px;
-  border: 3px solid var(--ink);
-  border-radius: 14px;
-  overflow: hidden;
-  background: linear-gradient(var(--sky) 0 62%, var(--ground) 62%);
-}
 
-.jr-hero-place {
-  position: absolute;
-  left: 12px;
-  bottom: 10px;
-  width: 64px;
-  height: 64px;
-}
 
-.jr-hero-name {
-  position: absolute;
-  left: 88px;
-  right: 12px;
-  top: 12px;
-  z-index: 1;
-  font-size: clamp(1rem, 5vw, 1.25rem);
-  font-weight: 900;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 
-.jr-hero-level {
-  position: absolute;
-  left: 88px;
-  top: 42px;
-  z-index: 1;
-  padding: 1px 8px;
-  border: 2px solid var(--ink);
-  border-radius: 999px;
-  background: var(--butter);
-  font-size: 0.78rem;
-  font-weight: 800;
-}
 
-.jr-hero-pet,
 .jr-pic-pet {
   position: absolute;
   bottom: 4px;
@@ -10592,34 +10599,9 @@ button.trip-bars-name.is-on {
   image-rendering: pixelated;
 }
 
-.jr-hero-pet {
-  right: 12px;
-  width: 60px;
-  height: 60px;
-}
 
-.jr-prog {
-  margin: 10px 2px 0;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--plum);
-}
 
-.jr-bar {
-  display: block;
-  height: 11px;
-  margin-top: 4px;
-  border: 2px solid var(--ink);
-  border-radius: 6px;
-  background: #efe6f7;
-  overflow: hidden;
-}
 
-.jr-bar i {
-  display: block;
-  height: 100%;
-  background: var(--good);
-}
 
 .jr-loved {
   display: flex;
@@ -10653,6 +10635,7 @@ button.trip-bars-name.is-on {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr)); /* long names wrap, not widen */
   gap: 8px;
+  padding: 0 3px; /* room for the tilt */
 }
 
 .jr-stamp {
@@ -10777,7 +10760,8 @@ button.trip-bars-name.is-on {
 .jr-cards {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 14px;
+  padding: 4px 6px 6px; /* room for the tilt and the lace frames */
 }
 
 .jr-card {
@@ -12617,4 +12601,235 @@ button.trip-bars-name.is-on {
   .project-art.is-building .project-ghost {
     animation: none;
   }
+}
+
+/* ---- The Collection's tabs (src/ui/collection.ts) ---- */
+.coll-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.coll-tab {
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 8px 2px 7px;
+  border: 2px solid var(--lavender);
+  border-radius: 12px;
+  background: white;
+  color: var(--ink);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.coll-tab b {
+  font-size: 0.85rem;
+}
+
+.coll-tab small {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--plum);
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+.coll-tab[aria-pressed='true'] {
+  border-color: var(--lilac);
+  background: var(--lilac);
+  color: white;
+  box-shadow: 0 3px 0 var(--plum);
+}
+
+.coll-tab[aria-pressed='true'] small {
+  color: white;
+}
+
+/* ---- The Journal button on the Journeys board ---- */
+.trip-board-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.trip-board-foot .trip-pick-hint {
+  margin: 0;
+  text-align: left;
+}
+
+.trip-journal-btn {
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 6px 12px 6px 8px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--butter);
+  color: var(--ink);
+  box-shadow: 0 3px 0 var(--ink);
+  cursor: pointer;
+}
+
+.trip-journal-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--ink);
+}
+
+.trip-journal-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.trip-journal-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* "+12": the finds still to find, counted, after a couple of question marks. */
+.jr-find.is-more {
+  border-style: dashed;
+  background: #f6f0fa;
+  color: #9b86b5;
+  font-weight: 900;
+  font-size: 0.85rem;
+}
+
+.jr-more {
+  margin: -4px 2px 12px;
+  font-size: 0.8rem;
+  color: #9b86b5;
+}
+
+/* ---- The journal's banner: the place's scene and the path through its
+   levels (see src/ui/journal-banner.ts). ---- */
+
+.jb {
+  position: relative;
+  height: 172px;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--sky, #cdeedb);
+}
+
+.jb-land {
+  position: absolute;
+  inset: 0;
+}
+
+.jb-land svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.jb-title {
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  font-size: 1.2rem;
+  font-weight: 900;
+  color: #fff7ec;
+  /* A pixel outline, so it reads on any sky. */
+  text-shadow: 2px 0 var(--ink), -2px 0 var(--ink), 0 2px var(--ink), 0 -2px var(--ink), 2px 2px var(--ink), -2px 2px var(--ink), 2px -2px var(--ink), -2px -2px var(--ink);
+}
+
+.jb-track {
+  position: absolute;
+  left: 30px;
+  right: 30px;
+  bottom: 26px;
+  height: 4px;
+}
+
+/* Dashes for the way still to go, a solid line for the way walked. */
+.jb-track-line {
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  background: repeating-linear-gradient(90deg, #fff7ec 0 6px, transparent 6px 10px);
+}
+
+.jb-track-line i {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: #fff7ec;
+  box-shadow: 0 0 0 2px var(--ink);
+}
+
+.jb-flag {
+  position: absolute;
+  top: 50%;
+  width: 0;
+}
+
+.jb-flag i {
+  position: absolute;
+  left: -8px;
+  top: -8px;
+  width: 16px;
+  height: 16px;
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+  background: #efe6f7;
+}
+
+.jb-flag.is-on i { background: var(--butter); }
+
+.jb-flag small {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  transform: translateX(-50%);
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgb(255 247 236 / 0.92);
+  font-size: 0.62rem;
+  font-weight: 900;
+  white-space: nowrap;
+  color: #9b86b5;
+}
+
+.jb-flag.is-on small { color: var(--ink); }
+
+.jb-walker {
+  position: absolute;
+  bottom: 4px;
+  width: 52px;
+  height: 52px;
+  margin-left: -26px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: bottom center;
+  image-rendering: pixelated;
+}
+
+.jb-under {
+  margin: 8px 2px 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--plum);
+}
+
+/* The tabs, in a bar docked to the bottom of the panel like the header at
+   the top: full width, so nothing shows round it while the page scrolls. */
+.jr-pager {
+  position: sticky;
+  bottom: -8px; /* the scrolling list's bottom padding */
+  z-index: 2;
+  margin: 10px -8px -8px; /* out to the panel's edges */
+  padding: 6px 8px 8px;
+  border-top: 2px solid #f0dce8;
+  background: #fff5f8;
 }

@@ -44,6 +44,7 @@ import { formatClock } from './time';
 import { createJourneys, JOURNEYS_OUT_MS } from './journeys';
 import { createDig, type DigCallbacks } from './dig';
 import { createTripView, tripNotes, type TripMoment } from './trip';
+import { newestPlace } from './journal';
 import { createDecorateView, createShelfView } from './decorate';
 import { spotAt } from '../render/furniture';
 import { closeupSpotAt, shelfHit } from '../render/keepsakes';
@@ -963,6 +964,11 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     cb.onGuide('meet');
   }
   const journeys = createJourneys({
+    onJournal: () => {
+      stats.hidden = latest?.state.pet.stage === 'egg';
+      showActions(0);
+      if (latest) goJournal(newestPlace(latest.state) ?? 'market');
+    },
     onSetOff: cb.onSetOff,
     onCallHome: cb.onCallHome,
     onOpenBackpack: cb.onOpenBackpack,

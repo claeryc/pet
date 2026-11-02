@@ -11,19 +11,23 @@ import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import { CHARACTERS, LATER_PACKS, THEMES } from '../game/growth';
 import { RECIPES } from '../game/cooking';
-import { characterKey, isUnlocked } from '../game/unlocks';
+import { characterKey } from '../game/unlocks';
 import type { GameState } from '../game/state';
 import type { Food, FoodId } from '../game/actions';
 import { category, label, row, type Entry } from './shop';
 import { ACHIEVEMENTS, badgeCount, badgeOf, nextGoal, tallyOf, type AchievementId } from '../game/achievements';
 import { ACHIEVEMENT_ICONS, ITEM_ICONS, MILESTONE_ICONS, UNKNOWN_ICON } from './icons';
 import { MILESTONES, hasMilestone, type MilestoneId } from '../game/milestones';
-import { journalCategory } from './journeys';
 
 export interface CollectionCallbacks {
   // A character's picture (its first idle frame) as a URL, if loaded.
   characterImage: (sheet: string) => string | undefined;
-  onJournal?: (place: string) => void; // open the travel journal at a place
+}
+
+// Which tab of the Collection is showing.
+export type CollectionTab = 'badges' | 'pets' | 'recipes' | 'catches';
+export interface CollectionView {
+  tab: CollectionTab;
 }
 
 function portrait(url: string | undefined): string {
@@ -88,7 +92,9 @@ function milestone(state: GameState, id: MilestoneId): Entry {
 
 const foodStars = (id: string) => (CONFIG.foods as readonly Food[]).find((f) => f.id === id)?.stars ?? 0;
 
-export function collectionPage(state: GameState, cb: CollectionCallbacks, open: Set<string>): HTMLElement[] {
+export function collectionPage(
+  state: GameState, cb: CollectionCallbacks, open: Set<string>, view: CollectionView, goTo: (tab: CollectionTab) => void,
+): HTMLElement[] {
   // Every character, then each of its colour variants. A pack that isn't
   // out yet only shows the ones already found.
   const characters: Entry[] = CHARACTERS.flatMap((c) => {
@@ -121,14 +127,38 @@ export function collectionPage(state: GameState, cb: CollectionCallbacks, open: 
   const achievements = ACHIEVEMENTS.map((id) => achievement(state, id));
   const badges = badgeCount(state);
   const milestones = MILESTONES.map((id) => milestone(state, id));
-  return [
-    category('achievements', STRINGS.collection.count(STRINGS.collection.achievements, badges.earned, badges.total),
-      achievements, open),
-    category('milestones', title(STRINGS.collection.milestones, milestones), milestones, open),
-    category('characters', title(STRINGS.collection.characters, characters), characters, open),
-    category('recipes', title(STRINGS.collection.recipes, recipes), recipes, open),
-    category('catches', title(STRINGS.collection.catches, fish), fish, open),
-    // The travel journal: a postcard per place.
-    ...(isUnlocked(state, 'journeys') ? [journalCategory(state, open, cb.onJournal)] : []),
+  // Four tabs along the top, each with how many are found. Each tab's
+  // groups start open, so there's nothing to unfold.
+  const found = (list: Entry[]) => list.filter((e) => !e.faded).length;
+  const tabs: { id: CollectionTab; have: number; all: number; body: () => HTMLElement[] }[] = [
+    {
+      id: 'badges', have: badges.earned + found(milestones), all: badges.total + milestones.length,
+      body: () => [
+        category('achievements', STRINGS.collection.count(STRINGS.collection.achievements, badges.earned, badges.total), achievements, open),
+        category('milestones', title(STRINGS.collection.milestones, milestones), milestones, open),
+      ],
+    },
+    { id: 'pets', have: found(characters), all: characters.length, body: () => [category('characters', title(STRINGS.collection.characters, characters), characters, open)] },
+    { id: 'recipes', have: found(recipes), all: recipes.length, body: () => [category('recipes', title(STRINGS.collection.recipes, recipes), recipes, open)] },
+    { id: 'catches', have: found(fish), all: fish.length, body: () => [category('catches', title(STRINGS.collection.catches, fish), fish, open)] },
   ];
+  const strip = document.createElement('div');
+  strip.className = 'coll-tabs';
+  strip.setAttribute('role', 'group');
+  for (const t of tabs) {
+    const b = document.createElement('button');
+    b.className = 'coll-tab';
+    b.setAttribute('aria-pressed', String(t.id === view.tab));
+    const name = document.createElement('b');
+    name.textContent = STRINGS.collection.tabs[t.id];
+    const count = document.createElement('small');
+    count.textContent = `${t.have}/${t.all}`;
+    b.append(name, count);
+    b.addEventListener('click', () => {
+      if (t.id !== view.tab) goTo(t.id);
+    });
+    strip.append(b);
+  }
+  const shown = tabs.find((t) => t.id === view.tab) ?? tabs[0];
+  return [strip, ...shown.body()];
 }
