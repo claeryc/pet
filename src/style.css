@@ -10635,6 +10635,7 @@ button.trip-bars-name.is-on {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr)); /* long names wrap, not widen */
   gap: 8px;
+  padding: 0 3px; /* room for the tilt */
 }
 
 .jr-stamp {
@@ -10759,7 +10760,8 @@ button.trip-bars-name.is-on {
 .jr-cards {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 14px;
+  padding: 4px 6px 6px; /* room for the tilt and the lace frames */
 }
 
 .jr-card {
