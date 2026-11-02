@@ -834,7 +834,7 @@ export const CONFIG = {
   // day at four spots, the Meadow and three of the journey places. Every
   // spot is a `size` x `size` patch with `treasures` buried in it (one more
   // at a 3-star spot), and you get `digsPerDay` digs a day to share between
-  // them. A dug hole shows how many treasures are buried next to it. Each
+  // them; a dig that finds a treasure doesn't count. A dug hole shows how many treasures are buried next to it. Each
   // spot has `sniffs` (the hill one more, and one more where a pet at home
   // loves the place): the pet points its nose at a buried treasure. It costs
   // no energy, and never gives energy or star fragments.

@@ -617,6 +617,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     stats.hidden = true;
     if (latest) dig.update(latest.state, latest.now);
     dig.start();
+    cb.onGuide('dig');
   }
 
   // Holding the pet opens the Wardrobe, in the gear panel.

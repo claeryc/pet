@@ -9,7 +9,7 @@ import { isUnlocked } from './unlocks';
 
 export type GuideId =
   | 'basics' | 'shop' | 'garden' | 'fishing' | 'cooking' | 'delivery' | 'craving'
-  | 'journeys' | 'meet' | 'family' | 'skills' | 'sick' | 'collection';
+  | 'journeys' | 'dig' | 'meet' | 'family' | 'skills' | 'sick' | 'collection';
 
 const hatched = (s: GameState) => s.pet.stage !== 'egg';
 
@@ -25,6 +25,7 @@ const RULES: Record<GuideId, (s: GameState) => boolean> = {
   delivery: (s) => isUnlocked(s, 'delivery'),
   craving: hatched,
   journeys: (s) => isUnlocked(s, 'journeys'),
+  dig: (s) => isUnlocked(s, 'dig'),
   meet: (s) => isUnlocked(s, 'meet'),
   family: (s) => isUnlocked(s, 'familyTree'),
   skills: (s) => isUnlocked(s, 'skills'),
