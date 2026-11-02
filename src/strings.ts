@@ -753,7 +753,7 @@ export const STRINGS = {
         pages: [
           { title: 'Pick a spot', text: 'Four new spots every day. Tap a card to see what might be buried there, then Start digging.' },
           { title: 'Dig for treasure', text: "Tap a square, then Dig. A hole's number is how many treasures touch it. The chest counts what's still buried." },
-          { title: 'Six digs a day', text: (pet: string) => `The spades top right are your digs for today. Stuck? Sniff and ${pet} points at a treasure.` },
+          { title: 'Six digs a day', text: (pet: string) => `The spades are your digs for today. Find a treasure and you get the spade back! Stuck? Sniff and ${pet} points at a treasure.` },
           { title: 'Mind the tide', text: 'At Coral Cove the sea creeps in from one side. The pips fill with each dig. Dig the wet squares first!' },
         ],
       },

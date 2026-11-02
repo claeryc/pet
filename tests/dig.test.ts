@@ -118,6 +118,8 @@ describe('digging', () => {
     expect(r.find).toBeDefined();
     if (t.find.startsWith('gold:')) expect(r.state.gold).toBe(s.gold + Number(t.find.split(':')[1]));
     expect(found(spotOf(r.state, 'cove')!)).toHaveLength(1);
+    // Finding a treasure gives the spade back.
+    expect(digsLeft(r.state)).toBe(digsLeft(s));
   });
 
   it('shares the digs between spots, and stops at the daily limit', () => {

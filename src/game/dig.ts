@@ -3,7 +3,9 @@
 // Every day there are four spots to dig at: the Meadow, and three of the
 // journey places (open ones first; a place that isn't open yet shows as a
 // locked card). Each spot is a small patch of ground with a few treasures
-// buried in it. You get a handful of digs a day, shared between the spots.
+// buried in it. You get a handful of digs a day, shared between the spots,
+// and finding a treasure gives that dig back, so reading the clues well
+// keeps you digging.
 // A hole with nothing in it shows how many treasures are buried in the
 // eight squares around it, so each dig helps aim the next one, like
 // Minesweeper the other way round. Each spot also has a sniff: the pet
@@ -231,7 +233,8 @@ function withSpot(state: GameState, spot: DigSpot, used = state.dig.used): GameS
   return { ...state, dig: { ...state.dig, used, spots: state.dig.spots.map((s) => (s.place === spot.place ? spot : s)) } };
 }
 
-// Digs at `cell` in the spot at `place`. Uses one of the day's digs.
+// Digs at `cell` in the spot at `place`. Uses one of the day's digs, unless
+// it turns up a buried treasure: then the spade comes back.
 export function dig(state: GameState, now: number, place: string, cell: number): DigResult {
   const c = check(state, now);
   if (c.blocked) return c;
@@ -242,8 +245,8 @@ export function dig(state: GameState, now: number, place: string, cell: number):
   if (!canDigAt(spot, cell)) return { state: s, blocked: 'cantDig' };
   const before = tideLines(spot);
   const next: DigSpot = { ...spot, dug: [...spot.dug, cell] };
-  s = withSpot(s, next, s.dig.used + 1);
   const t = treasureAt(spot, cell);
+  s = withSpot(s, next, t ? s.dig.used : s.dig.used + 1);
   const rose = tideLines(next) > before;
   if (!t) {
     // An empty hole can still turn up the place's key part (see crafting.ts).
