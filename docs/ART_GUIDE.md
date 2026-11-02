@@ -355,6 +355,8 @@ After exporting, click **Reload art** to see the new PNGs.
 
 To look at it closely, use the [art preview page](#the-art-preview-page). To try it in the game, run `npm run dev` and use **Settings → Testing tools**: set the Care Score (10, 60 or 90), then **Grow up now** until it's an adult. Start over to roll a new pet. **+100 gold** helps for trying hats from the Shop.
 
+**The map** (Menu → Map) is drawn in `art/map/`, one Aseprite file per map, with a hidden layer per tappable area. See the [map guide](MAP_GUIDE.md) for how to draw it and add new areas.
+
 ## Regenerating the placeholders
 
 `npm run sprites` makes any placeholder PNG or `.aseprite` file that is **missing**. It never overwrites a file that exists, so your own art is safe. `npm run sprites -- --force` replaces everything with placeholders again. It needs Node.js 22.18 or newer.

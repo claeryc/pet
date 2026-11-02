@@ -6,11 +6,13 @@ import { describe, expect, it } from 'vitest';
 import characters from '../src/data/characters.json';
 import hats from '../src/data/hats.json';
 import traits from '../src/data/traits.json';
+import map from '../src/data/map.json';
 import manifest from '../public/sprites/manifest.json';
 import charactersSchema from '../schemas/characters.schema.json';
 import hatsSchema from '../schemas/hats.schema.json';
 import manifestSchema from '../schemas/manifest.schema.json';
 import traitsSchema from '../schemas/traits.schema.json';
+import mapSchema from '../schemas/map.schema.json';
 
 type Schema = Record<string, any>;
 
@@ -52,6 +54,7 @@ describe('data files match their schemas', () => {
     ['src/data/characters.json', characters, charactersSchema],
     ['src/data/hats.json', hats, hatsSchema],
     ['src/data/traits.json', traits, traitsSchema],
+    ['src/data/map.json', map, mapSchema],
   ])('%s', (_, data, schema) => {
     expect(validate(data, schema)).toEqual([]);
   });

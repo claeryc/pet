@@ -1673,6 +1673,21 @@ export const MENU_ICONS: Record<string, string> = {
   ]),
   messages: ITEM_ICONS.letter,
   journeys: ITEM_ICONS.journey,
+  // A little island on the sea, with a red pin on it.
+  map: pixelIcon([
+    '....kk......',
+    '...krrk.....',
+    '...krrk.....',
+    '....kk.kk...',
+    '..kkkkkggk..',
+    '.kggmmgggmk.',
+    'kgmmggmggggk',
+    'kggggggmggk.',
+    '.kkoooookk..',
+    'bs.kkkkk.sbb',
+    'bbbsbbbbsbbb',
+    '.bbbbbbbbbb.',
+  ]),
   // A travel journal: a brown book with a strap and a little heart stamp.
   journal: pixelIcon([
     '.kkkkkkkkkk.',

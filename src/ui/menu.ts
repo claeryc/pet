@@ -1,9 +1,9 @@
 // The menu inside the gear button's panel (it opens like Feed and Play). It
-// has a main list (Shop, Messages, Journeys, Collection, Skills, Family Tree,
+// has a main list (Shop, Map, Messages, Collection, Skills, Family Tree,
 // Guide, Settings) and a page for each, plus the Wardrobe, which opens when you
-// hold the pet. The Journeys tile opens Journeys over the stat bars, as
-// Play > Journeys does.
-// The main page puts Shop and Journeys first and biggest, then the rest as
+// hold the pet. The Map tile opens the map over the whole screen (see
+// src/ui/map.ts); journeys start from its ship, or from Play > Journeys.
+// The main page puts Shop and Map first and biggest, then the rest as
 // smaller tiles with a line each, then Guide and Settings. Tiles only
 // appear once their part of the game has opened up (see
 // src/game/unlocks.ts), with a "new" dot until you've looked at them.
@@ -30,6 +30,7 @@ import { hasBackpack, isAway } from '../game/presence';
 import { badgeCount } from '../game/achievements';
 import { dailySpecial, getHat, ownsSpecial } from '../game/economy';
 import { GUIDES, guideOpen, type GuideId } from '../game/guides';
+import { MAPS, START_MAP, areaCard } from '../game/map';
 import { GUIDE_ICONS, guideName, guidePageCount } from './guide';
 
 export interface DebugCallbacks {
@@ -63,6 +64,7 @@ export interface MenuActions {
   onOpenDelivery: () => void; // go out to Percy to fill Percy's order
   onOpenMeet: () => void; // meet whoever is over (Play > Meet)
   onOpenJourneys: () => void; // the journey board (Play > Journeys)
+  onOpenMap: () => void; // the map of the island and the sea (Menu > Map)
 }
 
 export interface Menu {
@@ -73,6 +75,7 @@ export interface Menu {
   showShop: (category?: ShopCategory) => void; // open the Shop, at `category`'s tab
   showJournal: (place: string) => void; // the travel journal, at a place
   showMeadow: () => void; // the Meadow and its keepsakes
+  showMessages: (tab?: MessagesTab) => void; // Messages, at Mail or Friends
 }
 
 // Text for a tile's line, which is set as HTML (for the special's pink
@@ -142,7 +145,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
   const toTop = () => panel.parentElement?.scrollTo(0, 0);
 
   // A tile on the main page. `size` sets its place: big (Shop and
-  // Journeys, two across), medium (with a line under the name) or a quiet
+  // Map, two across), medium (with a line under the name) or a quiet
   // pill at the bottom (Guide, Settings). `badge` is a number in its
   // corner (new mail, skill points), `dot` a "new" dot, each with what
   // screen readers say for it.
@@ -195,7 +198,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     return [b];
   }
 
-  // The main page: Shop and Journeys first and biggest, then the places
+  // The main page: Shop and Map first and biggest, then the places
   // you visit now and then, then Guide and Settings, quietly at the bottom.
   function showMain(): void {
     setPage('main');
@@ -209,7 +212,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
         showShop();
         cb.onGuide('shop');
       }, s ? shopLine(s) : ''),
-      ...journeysItem(),
+      ...mapItem(),
     );
     const mid = document.createElement('div');
     mid.className = 'menu-grid is-mid';
@@ -266,15 +269,19 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
       unread > 0 ? STRINGS.menu.messagesNew(unread) : STRINGS.menu.messagesLine, STRINGS.messages.unread, unread);
   }
 
-  // Journeys, with a dot while a backpack is waiting to be opened.
-  function journeysItem(): HTMLButtonElement[] {
+  // The map: the island and, past the ship, the journey places. It says
+  // what's going on out there, with a dot when an area needs you.
+  function mapItem(): HTMLButtonElement[] {
     if (!state) return [];
     const backpack = [state.pet, ...state.housemates].some(hasBackpack);
-    const line = backpack ? STRINGS.menu.journeysBackpack : isAway(state.pet) ? STRINGS.menu.journeysAway(escapeHtml(state.pet.name)) : STRINGS.menu.journeysLine;
-    return unlockable('journeys', 'big', STRINGS.menu.journeys, () => {
+    const M = STRINGS.menu;
+    const line = backpack ? M.journeysBackpack : isAway(state.pet) ? M.journeysAway(escapeHtml(state.pet.name)) : STRINGS.map.menuLine;
+    const now = state.lastUpdated;
+    const dot = backpack ? STRINGS.journeys.backpackNote : MAPS[START_MAP].areas.some((a) => areaCard(state!, now, a).dot) ? STRINGS.menu.new : null;
+    return [tile('big', STRINGS.map.menuTile, MENU_ICONS.map, () => {
       close();
-      cb.onOpenJourneys();
-    }, line, backpack ? STRINGS.journeys.backpackNote : null);
+      cb.onOpenMap();
+    }, line, dot)];
   }
 
   // The travel journal, once journeys are open: how many places and
@@ -635,6 +642,13 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     },
     showJournal: (place) => showJournal(place),
     showMeadow: () => showMeadow(),
+    showMessages: (tab = 'mail') => {
+      showMessages();
+      if (tab !== 'mail') {
+        messagesTab = tab;
+        showMessages(false);
+      }
+    },
     update(next) {
       // Only redraw a page when something on it changed, so the list
       // doesn't jump while you scroll.
@@ -648,6 +662,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
           s.messages, s.messagesSeenAt, s.keeper, s.delivery, s.friends, s.visit.guest, s.housemates.map((p) => [p.id, p.name, p.stage]),
           s.journeys, [s.pet, ...s.housemates].map((p) => [p.id, p.trip?.backAt, p.trip?.percy]), s.guidesRead,
           s.fragments.pieces, s.room, s.familyHome,
+          MAPS[START_MAP].areas.map((a) => areaCard(s, s.lastUpdated, a).dot), // the Map tile's dot
           page === 'messages' && Math.floor(s.lastUpdated / 60_000),
           page === 'shop' && Math.floor(s.lastUpdated / 3_600_000), // the special's countdown
           page === 'familyTree' && [Object.values(s.pet.stats).map(Math.round), Math.floor(s.lastUpdated / 3_600_000)],

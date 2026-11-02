@@ -15,6 +15,8 @@
 // Hats and badges are one horizontal strip. The guides layer is left out,
 // and so is a character's face layer (its face comes from a face set, see
 // art/faces/ and docs/ART_GUIDE.md).
+// A map in art/map/ becomes a picture, its night lights, a cover for each
+// locked area and a JSON file with the tap shapes (see docs/MAP_GUIDE.md).
 //
 // It finds Aseprite in the usual places. If yours is somewhere else, set
 // ASEPRITE to its path, e.g. ASEPRITE="D:\Tools\Aseprite.exe" npm run export-art
@@ -29,7 +31,8 @@ import { EXPRESSIONS } from '../src/game/expression-order.ts';
 import { PALETTE } from '../src/render/palette.ts';
 import { recolourPixels } from '../src/render/recolour.ts';
 import { sheetAnimations, type ManifestFile } from '../src/render/manifest.ts';
-import { readTags } from './aseprite.ts';
+import { readLayers, readSlices, readTags } from './aseprite.ts';
+import { layerArea, mapData } from './map-data.ts';
 import { readPng, scaleUp, sideBySide, stack, writePng, type Pixels } from './png.ts';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -40,10 +43,51 @@ export const PREVIEWS = join(root, 'art', 'previews');
 // Where the PNG for an Aseprite file goes, and whether it's one strip (hats
 // and badges) or one row per tag. `file` is relative to art/, with / between
 // folders. Returns null for files that aren't exported.
-export function exportPlan(file: string): { png: string; strip: boolean } | null {
+export function exportPlan(file: string): { png: string; strip: boolean; map?: true } | null {
   if (!file.endsWith('.aseprite') || file.split('/').pop()!.startsWith('_')) return null;
   if (file.startsWith('previews/') || file.startsWith('shelved/')) return null; // shelved: retired characters
-  return { png: file.replace(/\.aseprite$/, '.png'), strip: /^(hats|badges)\//.test(file) };
+  const png = file.replace(/\.aseprite$/, '.png');
+  if (file.startsWith('map/')) return { png, strip: false, map: true };
+  return { png, strip: /^(hats|badges)\//.test(file) };
+}
+
+// Which layers of a map go where: the picture is every layer except these
+// (and except hidden ones, as Aseprite leaves those out anyway).
+export function mapLayers(names: string[]): { areas: string[]; locked: string[]; night: boolean; notInPicture: string[] } {
+  const areas = names.filter((n) => layerArea(n) !== null);
+  const locked = names.filter((n) => layerArea(n, 'locked') !== null);
+  const night = names.includes('night');
+  return { areas, locked, night, notInPicture: ['guides', ...areas, ...locked, ...(night ? ['night'] : [])] };
+}
+
+function exportMap(aseprite: string, file: string, png: string, temp: string): string[] {
+  const source = join(ART, file);
+  const buffer = readFileSync(source);
+  const names = readLayers(buffer).filter((l) => !l.group).map((l) => l.name);
+  const plan = mapLayers(names);
+  const base = join(SPRITES, png.replace(/\.png$/, ''));
+  mkdirSync(dirname(base), { recursive: true });
+  const written: string[] = [];
+  const save = (out: string, args: string[]) => {
+    const tmp = join(temp, 'layer.png');
+    run(aseprite, ['-b', ...args, source, '--save-as', tmp]);
+    const pixels = readPng(readFileSync(tmp));
+    if (out) { writeFileSync(out, writePng(pixels)); written.push(relative(root, out)); }
+    return pixels;
+  };
+  const picture = save(`${base}.png`, plan.notInPicture.flatMap((n) => ['--ignore-layer', n]));
+  // Hidden layers (area shapes, the night lights) still count here.
+  if (plan.night) save(`${base}-night.png`, ['--all-layers', '--layer', 'night']);
+  for (const n of plan.locked) save(`${base}-locked-${layerArea(n, 'locked')}.png`, ['--all-layers', '--layer', n]);
+  const areas = plan.areas.map((n) => ({ id: layerArea(n)!, pixels: save('', ['--all-layers', '--layer', n]) }));
+  if (areas.length === 0) console.warn(`! ${file} has no "area:<name>" layers, so nothing on it can be tapped`);
+  const data = mapData(picture.width, picture.height, areas, readSlices(buffer), {
+    night: plan.night,
+    locked: plan.locked.map((n) => layerArea(n, 'locked')!),
+  });
+  writeFileSync(`${base}.json`, JSON.stringify(data) + '\n');
+  written.push(relative(root, `${base}.json`));
+  return written;
 }
 
 // Which tag goes on each row of the PNG `png` (a path in public/sprites),
@@ -148,6 +192,11 @@ function exportAll(only: string[]): void {
     for (const file of allArt()) {
       const plan = exportPlan(file);
       if (!plan || (only.length && !only.some((word) => file.includes(word)))) continue;
+      if (plan.map) {
+        for (const out of exportMap(aseprite, file, plan.png, temp)) console.log(`  ${file} -> ${out}`);
+        done++;
+        continue;
+      }
       const target = join(SPRITES, plan.png);
       const picture = exportFile(aseprite, file, plan, temp, manifest);
       // A sheet that changes size usually means a missing or extra tag or

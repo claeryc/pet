@@ -1,0 +1,29 @@
+{
+  "$schema": "../../schemas/map.schema.json",
+  "_help": "The map (Menu > Map). Each map's picture and tap shapes come from art/map/<map>.aseprite (see docs/MAP_GUIDE.md). Each area here needs an 'area:<id>' layer there. Areas are listed in the order the card's arrows step through them.",
+  "start": "island",
+  "maps": {
+    "island": {
+      "title": "Map",
+      "areas": [
+        { "id": "home", "name": "Home", "opens": "home" },
+        { "id": "backyard", "name": "Backyard", "opens": "garden", "unlock": "garden" },
+        { "id": "meadow", "name": "Meadow", "opens": "meadow", "unlock": "familyTree", "lockedText": "Opens when a pet grows up" },
+        { "id": "friends", "name": "Friends", "opens": "friends", "unlock": "messages" },
+        { "id": "fields", "name": "Windmill Fields", "opens": "soon", "soonText": "Under the clouds for now" },
+        { "id": "ship", "name": "The ship", "opens": "map:sea" }
+      ]
+    },
+    "sea": {
+      "title": "Journeys",
+      "back": "island",
+      "areas": [
+        { "id": "market", "opens": "journey:market" },
+        { "id": "woods", "opens": "journey:woods" },
+        { "id": "cove", "opens": "journey:cove" },
+        { "id": "hill", "opens": "journey:hill" },
+        { "id": "home", "name": "Home island", "opens": "map:island" }
+      ]
+    }
+  }
+}

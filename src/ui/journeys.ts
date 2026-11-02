@@ -65,7 +65,7 @@ export interface JourneysScene {
   row: HTMLElement; // the buttons, shown in place of the normal button row
   panel: HTMLElement; // shown in place of the stat bars
   sheet: HTMLElement; // the info card or the lunch tiles, just above the buttons
-  start: () => void;
+  start: (slot?: number) => void; // a trip already picked: its postcard turned over
   stop: () => void;
   active: () => boolean;
   update: (state: GameState, now: number) => void;
@@ -184,6 +184,48 @@ function meter(statIcon: string, name: string, now: number, after: number): HTML
   row.setAttribute('aria-label', STRINGS.journeys.meter(name, Math.round(now), Math.round(after)));
   return row;
 }
+
+// A little picture of a place, from the same scenes the trip shows. On a
+// 3-star postcard (`epic`) the place's own touch moves over it.
+function placeArt(place: string, night: boolean, epic = false, height = PLACE_H): HTMLCanvasElement {
+  const c = el('canvas', 'trip-pc-art');
+  c.width = PLACE_W;
+  c.height = height;
+  const ctx = c.getContext('2d');
+  if (ctx) drawPlace(ctx, place, PLACE_W, height, night, 0);
+  if (epic) sparkle(c, place);
+  return c;
+}
+
+// A 3-star trip by day (the night trip keeps its own night sky card).
+export const isEpic = (o: Offer) => o.rarity === 'epic' && !o.night;
+
+// The stamp in a postcard's corner: how long, and 1 to 3 stars (a moon
+// for the night trip).
+function stamp(o: Offer): HTMLElement {
+  return el('span', 'trip-pc-stamp', `${offerHours(o)}h ${o.night ? '☾' : '★'.repeat(GEMS[o.rarity])}`);
+}
+
+// One trip on offer: the place, its name and the kind of trip.
+export function postcard(o: Offer, onPick: () => void, fan: string | null): HTMLButtonElement {
+  const epic = isEpic(o);
+  const b = el('button', `trip-pc${o.night ? ' is-night' : ''}${epic ? ' is-epic' : ''}`);
+  b.dataset.rarity = o.rarity;
+  b.append(placeArt(o.place, !!o.night, epic, epic ? EPIC_H : PLACE_H));
+  // A 3-star trip: the place fills the card, with its name on a strip.
+  if (epic) b.append(el('span', 'trip-pc-strip'));
+  b.append(stamp(o), el('b', '', placeName(o.place)), el('small', '', o.night ? STRINGS.journeys.nightBoard : tripName(o)));
+  if (epic) twinkles(b);
+  if (fan) {
+    const heart = el('span', 'trip-pc-fav');
+    heart.append(icon(HEART_ICONS.full, 'trip-pc-fav-icon'), STRINGS.journeys.favouriteShort(fan));
+    b.append(heart);
+  }
+  b.setAttribute('aria-label', `${STRINGS.journeys.offer(tripName(o), placeName(o.place))}, ${STRINGS.journeys.hours(offerHours(o))}${fan ? `, ${STRINGS.journeys.favourite(fan)}` : ''}`);
+  b.addEventListener('click', onPick);
+  return b;
+}
+
 
 export function createJourneys(cb: JourneysSetup): JourneysScene {
   const T = STRINGS.journeys;
@@ -392,47 +434,6 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     d.setHours(J.night.fromHour, 0, 0, 0);
     return formatClock(d.getTime());
   };
-
-  // A little picture of a place, from the same scenes the trip shows. On a
-  // 3-star postcard (`epic`) the place's own touch moves over it.
-  function placeArt(place: string, night: boolean, epic = false, height = PLACE_H): HTMLCanvasElement {
-    const c = el('canvas', 'trip-pc-art');
-    c.width = PLACE_W;
-    c.height = height;
-    const ctx = c.getContext('2d');
-    if (ctx) drawPlace(ctx, place, PLACE_W, height, night, 0);
-    if (epic) sparkle(c, place);
-    return c;
-  }
-
-  // A 3-star trip by day (the night trip keeps its own night sky card).
-  const isEpic = (o: Offer) => o.rarity === 'epic' && !o.night;
-
-  // The stamp in a postcard's corner: how long, and 1 to 3 stars (a moon
-  // for the night trip).
-  function stamp(o: Offer): HTMLElement {
-    return el('span', 'trip-pc-stamp', `${offerHours(o)}h ${o.night ? '☾' : '★'.repeat(GEMS[o.rarity])}`);
-  }
-
-  // One trip on offer: the place, its name and the kind of trip.
-  function postcard(o: Offer, onPick: () => void, fan: string | null): HTMLButtonElement {
-    const epic = isEpic(o);
-    const b = el('button', `trip-pc${o.night ? ' is-night' : ''}${epic ? ' is-epic' : ''}`);
-    b.dataset.rarity = o.rarity;
-    b.append(placeArt(o.place, !!o.night, epic, epic ? EPIC_H : PLACE_H));
-    // A 3-star trip: the place fills the card, with its name on a strip.
-    if (epic) b.append(el('span', 'trip-pc-strip'));
-    b.append(stamp(o), el('b', '', placeName(o.place)), el('small', '', o.night ? T.nightBoard : tripName(o)));
-    if (epic) twinkles(b);
-    if (fan) {
-      const heart = el('span', 'trip-pc-fav');
-      heart.append(icon(HEART_ICONS.full, 'trip-pc-fav-icon'), T.favouriteShort(fan));
-      b.append(heart);
-    }
-    b.setAttribute('aria-label', `${T.offer(tripName(o), placeName(o.place))}, ${T.hours(offerHours(o))}${fan ? `, ${T.favourite(fan)}` : ''}`);
-    b.addEventListener('click', onPick);
-    return b;
-  }
 
   // A spot with nothing in it yet: the back of a card, and when that changes.
   function waiting(text: string, night = false): HTMLElement {
@@ -976,10 +977,11 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     row,
     panel,
     sheet,
-    start() {
+    start(picked) {
       active = true;
       stage = 'board';
-      slot = null;
+      slot = picked ?? null;
+      flipped = null;
       going = [];
       boxes = new Map();
       who = '';

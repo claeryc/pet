@@ -9,6 +9,8 @@ import { sheetFor, stageLengthMs } from '../game/growth';
 import type { FurnitureSlot, GameState, PetStats } from '../game/state';
 import { meadowVisitor } from '../game/meadow';
 import { createMenu, type MenuCallbacks } from './menu';
+import { createMap } from './map';
+import { visitor } from '../game/friends';
 import { foodCount, revivalStars } from '../game/economy';
 import { BAITS, baitCount, baitInUse, type BaitId, type Bite } from '../game/fishing';
 import { createDrawer, type DrawerOption, type Effect } from './drawer';
@@ -551,7 +553,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   // shopping), so its rows get the room under its tabs.
   let menuOverStats = false;
   const menu = createMenu(
-    { ...cb, onOpenDelivery: () => startDelivery(), onOpenMeet: () => startMeet(), onOpenJourneys: () => openJourneys(), onDecorate: () => openDecorate() },
+    { ...cb, onOpenDelivery: () => startDelivery(), onOpenMeet: () => startMeet(), onOpenJourneys: () => openJourneys(), onOpenMap: () => openMap(), onDecorate: () => openDecorate() },
     () => menuDrawer?.isOpen() ?? false,
     () => menuDrawer?.close(),
     (page) => {
@@ -595,7 +597,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   actions.append(feedDrawer.el, playDrawer.el, menuDrawer.el, lights);
 
   // Journeys: the board of trips, then the lunchbox, over the stat bars.
-  function openJourneys(): void {
+  function openJourneys(slot?: number): void {
     if (petAway) return showToast(STRINGS.blocked.away(petName));
     if (actions.hidden) return; // already busy with something else
     cb.onSeen('journeys');
@@ -605,8 +607,48 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     hideActions();
     stats.hidden = true; // the board takes the bars' place, and can be taller
     if (latest) journeys.update(latest.state, latest.now);
-    journeys.start();
+    journeys.start(slot);
     cb.onGuide('journeys');
+  }
+
+  // The map (Menu > Map), over the whole screen. Each area's button goes
+  // where it says: home, the garden, the Meadow, friends, or a trip.
+  const worldMap = createMap({
+    characterImage: cb.characterImage,
+    onClose: () => worldMap.close(),
+    onOpen: (opens) => {
+      worldMap.close();
+      switch (opens.kind) {
+        case 'garden':
+          return startGarden();
+        case 'meadow':
+        case 'friends':
+          if (opens.kind === 'friends' && latest && visitor(latest.state)) return startMeet();
+          if (actions.hidden) return;
+          feedDrawer.close();
+          playDrawer.close();
+          if (!menuDrawer!.isOpen()) menuDrawer!.open();
+          return opens.kind === 'meadow' ? menu.showMeadow() : menu.showMessages('friends');
+        case 'journey':
+          return openJourneys();
+      }
+    },
+    onTrip: (slot) => {
+      worldMap.close();
+      openJourneys(slot);
+    },
+    onJournal: (place) => {
+      worldMap.close();
+      goJournal(place ?? (latest && newestPlace(latest.state)) ?? 'market');
+    },
+  });
+  function openMap(): void {
+    if (actions.hidden) return; // busy with something else
+    feedDrawer.close();
+    playDrawer.close();
+    menuDrawer!.close();
+    if (latest) worldMap.update(latest.state, latest.now);
+    worldMap.open();
   }
 
   // Sniff and dig: the whole screen, the room stepping aside.
@@ -1280,7 +1322,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     else showToast(message);
   }
 
-  root.append(roomWrap, banner, statSlot, actions, bath.row, trip.row, decorate.row, shelf.row, fishing.row, cooking.row, workbench.row, garden.row, backyard.row, delivery.row, meet.row, journeys.sheet, journeys.row, dig.row, toastEl);
+  root.append(roomWrap, banner, statSlot, actions, bath.row, trip.row, decorate.row, shelf.row, fishing.row, cooking.row, workbench.row, garden.row, backyard.row, delivery.row, meet.row, journeys.sheet, journeys.row, dig.row, worldMap.el, toastEl);
 
   // Which pet the bars were showing, so switching pets can slide them.
   let barsFor: string | null = null;
@@ -1470,6 +1512,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       }
 
       menu.update(state);
+      worldMap.update(state, now);
     },
     toast: showToast,
     notice: showNotice,
