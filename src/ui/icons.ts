@@ -1673,6 +1673,21 @@ export const MENU_ICONS: Record<string, string> = {
   ]),
   messages: ITEM_ICONS.letter,
   journeys: ITEM_ICONS.journey,
+  // A travel journal: a brown book with a strap and a little heart stamp.
+  journal: pixelIcon([
+    '.kkkkkkkkkk.',
+    'kcccccccccdk',
+    'kceeeeeeecdk',
+    'kcerrerrecdk',
+    'kcerrrrrecdk',
+    'kceerrreecdk',
+    'kceeereeecdk',
+    'kceeeeeeecdk',
+    'kcccccccccdk',
+    'kddddddddkkk',
+    'kyyyyyyyyyk.',
+    '.kkkkkkkkkk.',
+  ], { d: PALETTE.bark }),
   // A gold cup.
   collection: pixelIcon([
     '..kkkkkkkk..',

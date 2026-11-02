@@ -56,6 +56,14 @@ function findLook(entry: string): { svg: string; name: string } {
   return { svg: ITEM_ICONS[entry] ?? ITEM_ICONS.unknown, name: foodName(entry) };
 }
 
+// Where the journal opens from the Menu or the board: the place with the
+// newest postcard (or none yet).
+export function newestPlace(state: GameState): string | undefined {
+  return Object.entries(state.journeys.journal)
+    .filter(([, p]) => p.trips > 0)
+    .sort((a, b) => (b[1].postcards[0]?.at ?? 0) - (a[1].postcards[0]?.at ?? 0))[0]?.[0];
+}
+
 // The line on a postcard. Older postcards, from before stories, say the
 // pet had a lovely time.
 export function storyLine(p: Postcard, place: string): string {

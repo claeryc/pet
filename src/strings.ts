@@ -229,6 +229,7 @@ export const STRINGS = {
     // "Adventure · 10 hours"
     tripLine: (trip: string, length: string) => `${trip} · ${length}`,
     pickHint: 'Tap a postcard to see what it might bring home.',
+    openJournal: 'Journal',
     rackTitle: 'Where to today?',
     // The night trip's spot in the daytime: "A night trip at 20:00"
     nightSoon: (time: string) => `A night trip at ${time}`,
@@ -628,6 +629,9 @@ export const STRINGS = {
     messagesLine: 'Mail, friends',
     messagesNew: (n: number) => `${n} new`,
     collectionLine: (have: number, all: number) => `${have} of ${all}`,
+    journal: 'Journal',
+    journalLine: (postcards: number) => (postcards === 1 ? '1 postcard' : `${postcards} postcards`),
+    journalEmpty: 'No trips yet',
     skillsLine: (level: number) => `Level ${level}`,
     familyLine: 'Every generation',
     meadowLine: (pets: number) => (pets === 1 ? '1 pet' : `${pets} pets`),
@@ -1469,6 +1473,8 @@ export const STRINGS = {
     catches: 'Catches',
     achievements: 'Achievements',
     milestones: 'Milestones',
+    // The tabs along the top.
+    tabs: { badges: 'Badges', pets: 'Pets', recipes: 'Recipes', catches: 'Catches' } as Record<string, string>,
     count: (title: string, found: number, total: number) => `${title}  ${found}/${total}`,
     unknown: '???',
     notFound: 'Not found yet',

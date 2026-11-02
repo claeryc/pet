@@ -12618,3 +12618,95 @@ button.trip-bars-name.is-on {
     animation: none;
   }
 }
+
+/* ---- The Collection's tabs (src/ui/collection.ts) ---- */
+.coll-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.coll-tab {
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 8px 2px 7px;
+  border: 2px solid var(--lavender);
+  border-radius: 12px;
+  background: white;
+  color: var(--ink);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.coll-tab b {
+  font-size: 0.85rem;
+}
+
+.coll-tab small {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--plum);
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+.coll-tab[aria-pressed='true'] {
+  border-color: var(--lilac);
+  background: var(--lilac);
+  color: white;
+  box-shadow: 0 3px 0 var(--plum);
+}
+
+.coll-tab[aria-pressed='true'] small {
+  color: white;
+}
+
+/* ---- The Journal button on the Journeys board ---- */
+.trip-board-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.trip-board-foot .trip-pick-hint {
+  margin: 0;
+  text-align: left;
+}
+
+.trip-journal-btn {
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 6px 12px 6px 8px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--butter);
+  color: var(--ink);
+  box-shadow: 0 3px 0 var(--ink);
+  cursor: pointer;
+}
+
+.trip-journal-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--ink);
+}
+
+.trip-journal-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.trip-journal-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}

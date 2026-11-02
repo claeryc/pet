@@ -14,8 +14,8 @@ import type { GameState } from '../game/state';
 import { isNew, isUnlocked, type UnlockId } from '../game/unlocks';
 import { LOCK_ICON, MENU_ICONS } from './icons';
 import { goldPill, shopPage, wardrobePage, type ShopCallbacks, type ShopCategory, type ShopView } from './shop';
-import { collectionPage } from './collection';
-import { journalPage } from './journal';
+import { collectionPage, type CollectionView } from './collection';
+import { journalPage, newestPlace } from './journal';
 import { familyTreePage, type FamilyCallbacks, type TreeView } from './family';
 import { meadowPage, type MeadowCallbacks } from './meadow';
 import { OWNER_MAX } from '../game/family';
@@ -208,6 +208,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     const mid = document.createElement('div');
     mid.className = 'menu-grid is-mid';
     mid.append(
+      ...journalItem(),
       ...messagesItem(),
       ...unlockable('collection', 'mid', M.collection, () => {
         showCollection();
@@ -253,6 +254,16 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
       close();
       cb.onOpenJourneys();
     }, line, backpack ? STRINGS.journeys.backpackNote : null);
+  }
+
+  // The travel journal, once journeys are open: how many places and
+  // postcards it has, with a dot for a postcard you haven't seen yet.
+  function journalItem(): HTMLButtonElement[] {
+    if (!state || !isUnlocked(state, 'journeys')) return [];
+    const pages = Object.values(state.journeys.journal).filter((p) => p.trips > 0);
+    const postcards = pages.reduce((n, p) => n + p.postcards.length, 0);
+    const line = pages.length ? STRINGS.menu.journalLine(postcards) : STRINGS.menu.journalEmpty;
+    return [tile('mid', STRINGS.menu.journal, MENU_ICONS.journal, () => showJournal(newestPlace(state!) ?? journalPlace), line)];
   }
 
   // Skills, with the number of points to spend.
@@ -340,7 +351,15 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
         }, showMain));
         return;
       } else if (which === 'wardrobe') list.append(...wardrobePage(state, cb));
-      else if (which === 'collection') list.append(...collectionPage(state, { ...cb, onJournal: (place) => showJournal(place) }, openCategories));
+      else if (which === 'collection') {
+        // Every group starts open: the tabs already pick what's showing.
+        if (fresh) for (const id of ['achievements', 'milestones', 'characters', 'recipes', 'catches']) openCategories.add(id);
+        list.append(...collectionPage(state, cb, openCategories, collectionView, (tab) => {
+          collectionView.tab = tab;
+          showCollection(false);
+          toTop();
+        }));
+      }
       else if (which === 'skills') list.append(...skillsPage(state, cb, skillsView, () => showSkills(false)));
       else {
         list.classList.add('tree');
@@ -363,7 +382,11 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
   }
   const showShop = (fresh = true) => showList('shop', fresh);
   const showWardrobe = (fresh = true) => showList('wardrobe', fresh);
-  const showCollection = (fresh = true) => showList('collection', fresh);
+  const collectionView: CollectionView = { tab: 'badges' };
+  const showCollection = (fresh = true) => {
+    if (fresh) collectionView.tab = 'badges';
+    showList('collection', fresh);
+  };
   const showSkills = (fresh = true) => {
     if (fresh) {
       skillsView.tree = (state && TREES.find((t) => canLearnIn(state!, t))) ?? 'fishing';
@@ -375,7 +398,9 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
   };
   const showFamilyTree = (fresh = true) => showList('familyTree', fresh);
 
-  // The travel journal, at a place's page (back goes to the Collection).
+  // The travel journal, at a place's page (back goes to the main menu).
+  // Without a place: the last page looked at, or else the place with the
+  // newest postcard.
   function showJournal(place = journalPlace, fresh = true): void {
     if (fresh) toTop();
     setPage('journal');
@@ -383,7 +408,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     const list = document.createElement('div');
     list.className = 'shop-list journal';
     if (state) list.append(...journalPage(state, place, { characterImage: cb.characterImage, onPlace: (p) => showJournal(p) }));
-    panel.replaceChildren(header(STRINGS.journeys.journal, () => showCollection()), list);
+    panel.replaceChildren(header(STRINGS.journeys.journal, showMain), list);
   }
 
   // The Meadow: its scene, everyone there, and their keepsakes.
