@@ -887,6 +887,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     roomWrap.setAttribute('aria-hidden', 'true');
     if (latest) workbench.update(latest.state, latest.now);
     workbench.start();
+    cb.onGuide('workbench');
   }
   // The garden too: its own buttons, and a bed of pots that slides up over
   // the stat bars.

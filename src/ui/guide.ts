@@ -26,6 +26,7 @@ export const GUIDE_ICONS: Record<GuideId, string> = {
   craving: ACHIEVEMENT_ICONS.cravings,
   journeys: ITEM_ICONS.journey,
   dig: ITEM_ICONS.dig,
+  workbench: ITEM_ICONS.workbench,
   meet: ITEM_ICONS.meet,
   family: MENU_ICONS.familyTree,
   skills: MENU_ICONS.skills,

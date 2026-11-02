@@ -757,6 +757,15 @@ export const STRINGS = {
           { title: 'Mind the tide', text: 'At Coral Cove the sea creeps in from one side. The pips fill with each dig. Dig the wet squares first!' },
         ],
       },
+      workbench: {
+        name: 'The workbench',
+        pages: [
+          { title: 'Collect materials', text: 'Journeys and Sniff and dig bring home twigs, pebbles, shells and more. Open Materials to see your pouch.' },
+          { title: 'Pick a pattern', text: 'Open Patterns and pick a tab: things for the room, trips, the pond and the garden. Grey ones need more materials.' },
+          { title: 'Make it!', text: 'The spots show what it takes. Tap Make! three times to hammer it together. A room piece can go straight up in your room.' },
+          { title: 'Big projects', text: 'Swipe to Projects. Dig up a key part to start one, then build it stage by stage. Each stage takes a few hours.' },
+        ],
+      },
       meet: {
         name: 'Friends',
         pages: [
