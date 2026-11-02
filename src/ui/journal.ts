@@ -1,6 +1,6 @@
 // The travel journal (Menu > Journal, or Journal on the trip board): a
-// little book with a page for each place, turned with the tabs along the
-// bottom or a swipe.
+// little book with a page for each place, turned with the tabs in a bar
+// along the bottom or a swipe.
 //
 //   ┌ Mossy Woods ─────────────────────────────┐
 //   │  (a little scene of the place)            │
@@ -13,7 +13,8 @@
 //   Found here    the ones found, a couple of '?' and "+5"
 //   Snapshots     little moments snapped on trips here (see snapshots.ts)
 //   Postcards     the pets' postcards, newest first, two to a row
-//   (‹)  (market) (woods♥) [cove] (?)  (›)
+//   ─────────────────────────────────────────────
+//        (market) (woods♥) [cove] (?)      <- held at the bottom
 //
 // The same postcard, bigger, comes up after a backpack is opened (see
 // postcardArt). The rules are in src/game/journeys.ts.
@@ -147,12 +148,12 @@ function turnable(state: GameState): string[] {
   return PLACES.filter((p) => (state.journeys.journal[p.id]?.trips ?? 0) > 0).map((p) => p.id);
 }
 
-// The tabs, along the bottom where a thumb can reach them: a small round
-// icon for each place been to (with a heart if it's a pet's favourite),
-// then a '?' for the next one, between arrows to the place before and
-// after. Round icons stay small, so a fifth or sixth place still fits.
+// The tabs, in a bar along the bottom of the panel where a thumb can
+// reach them: a round icon for each place been to (with a heart if it's
+// a pet's favourite), then a '?' for the next one. Round icons stay small,
+// so a fifth or sixth place still fits (past seven or so, they scroll).
 //
-//   (‹)  (market) (woods♥) [ cove ] (?)  (›)
+//   (market) (woods♥) [ cove ] (?)
 function tabs(state: GameState, showing: string, cb: JournalCallbacks): HTMLElement {
   const row = el('div', 'jr-tabs');
   const pets: Pet[] = [state.pet, ...state.housemates];
@@ -173,21 +174,8 @@ function tabs(state: GameState, showing: string, cb: JournalCallbacks): HTMLElem
     else b.disabled = true;
     row.append(b);
   }
-  const order = turnable(state);
-  const at = order.indexOf(showing);
-  const arrow = (text: string, label: string, to: string | undefined) => {
-    const b = el('button', 'jr-turn', text);
-    b.setAttribute('aria-label', label);
-    if (to) b.addEventListener('click', () => cb.onPlace(to));
-    else b.disabled = true;
-    return b;
-  };
   const bar = el('div', 'jr-pager');
-  bar.append(
-    arrow('‹', STRINGS.journeys.prevPlace, at > 0 ? order[at - 1] : undefined),
-    row,
-    arrow('›', STRINGS.journeys.nextPlace, at >= 0 ? order[at + 1] : undefined),
-  );
+  bar.append(row);
   return bar;
 }
 
@@ -307,9 +295,8 @@ export function journalPage(state: GameState, placeId: string, cb: JournalCallba
     for (const p of page.postcards) cards.append(postcardCard(p, place.id, level, p.look ? cb.characterImage(p.look) : undefined));
     book.append(cards);
   }
-  book.append(tabs(state, place.id, cb));
   swipeable(book, state, place.id, cb);
-  return [book];
+  return [book, tabs(state, place.id, cb)];
 }
 
 // "Stamps        2 of 4"

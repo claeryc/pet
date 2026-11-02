@@ -336,8 +336,6 @@ export const STRINGS = {
     snap: 'Snap!',
     snapshots: 'Snapshots',
     moreToFind: (n: number) => `+${n}`,
-    prevPlace: 'Place before',
-    nextPlace: 'Next place',
     moreToSnap: (n: number) => `${n} more moments to snap here, one trip at a time.`,
     noSnapshots: 'Look in on a trip here: now and then the pets stop for a little moment you can snap.',
     moments: {
@@ -622,7 +620,8 @@ export const STRINGS = {
     guide: 'Guide',
     new: 'New',
     comingSoon: 'Coming soon',
-    back: 'Back',
+    back: 'Back to the menu',
+    backTo: 'Menu', // on the back button: where it goes
     close: 'Close',
     // The lines under the names on the main page.
     shopLine: 'Food, hats and more',

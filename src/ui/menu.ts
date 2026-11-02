@@ -112,14 +112,20 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
   const debugInfo = document.createElement('p');
   debugInfo.className = 'debug-info';
 
-  // "‹  Shop" at the top of a page, with a button back to the main list.
-  // (Tapping the gear bar above closes the whole panel.)
+  // "‹ Menu   Shop" at the top of a page: a button back to the main list,
+  // saying where it goes, so it doesn't read as a second way to close.
+  // (The menu button at the bottom, the one that opened it, closes the
+  // whole panel, as it does for Feed and Play.)
   function header(title: string, onBack: () => void, right?: HTMLElement): HTMLElement {
     const h = document.createElement('div');
     h.className = 'menu-header';
     const back = document.createElement('button');
     back.className = 'menu-header-btn';
-    back.textContent = '‹';
+    const arrow = document.createElement('span');
+    arrow.className = 'menu-header-arrow';
+    arrow.textContent = '‹';
+    arrow.setAttribute('aria-hidden', 'true');
+    back.append(arrow, STRINGS.menu.backTo);
     back.setAttribute('aria-label', STRINGS.menu.back);
     back.addEventListener('click', onBack);
     const t = document.createElement('h2');

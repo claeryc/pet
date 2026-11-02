@@ -1165,6 +1165,27 @@ body {
    buttons in the rows below (row border + padding = 10px). */
 .menu-header-btn {
   justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  width: auto;
+  height: 32px;
+  padding: 0 10px 0 6px;
+  border-radius: 999px;
+  background: #f3e6f7;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--plum);
+}
+
+.menu-header-arrow {
+  font-size: 1.3rem;
+  line-height: 1;
+  margin-top: -2px;
+}
+
+.menu-header-btn:active {
+  background: var(--lavender);
 }
 
 .menu-header-end {
@@ -12799,32 +12820,14 @@ button.trip-bars-name.is-on {
   color: var(--plum);
 }
 
-/* The tabs, along the bottom: they stay in reach while the page scrolls. */
+/* The tabs, in a bar docked to the bottom of the panel like the header at
+   the top: full width, so nothing shows round it while the page scrolls. */
 .jr-pager {
   position: sticky;
   bottom: -8px; /* the scrolling list's bottom padding */
   z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 12px -12px -16px -18px;
-  padding: 6px 10px 10px 14px;
-  border-top: 2px solid #f0dcc8;
-  border-radius: 0 0 18px 18px;
-  background: #fffaf0;
-  box-shadow: 0 -6px 10px -8px rgb(91 63 110 / 0.35);
+  margin: 10px -8px -8px; /* out to the panel's edges */
+  padding: 6px 8px 8px;
+  border-top: 2px solid #f0dce8;
+  background: #fff5f8;
 }
-
-.jr-turn {
-  flex: 0 0 30px;
-  height: 30px;
-  border: 2px solid var(--ink);
-  border-radius: 50%;
-  background: var(--butter);
-  font-size: 1.2rem;
-  font-weight: 900;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.jr-turn:disabled { opacity: 0.3; cursor: default; }
