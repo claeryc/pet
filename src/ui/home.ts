@@ -597,7 +597,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   actions.append(feedDrawer.el, playDrawer.el, menuDrawer.el, lights);
 
   // Journeys: the board of trips, then the lunchbox, over the stat bars.
-  function openJourneys(): void {
+  function openJourneys(slot?: number): void {
     if (petAway) return showToast(STRINGS.blocked.away(petName));
     if (actions.hidden) return; // already busy with something else
     cb.onSeen('journeys');
@@ -607,7 +607,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     hideActions();
     stats.hidden = true; // the board takes the bars' place, and can be taller
     if (latest) journeys.update(latest.state, latest.now);
-    journeys.start();
+    journeys.start(slot);
     cb.onGuide('journeys');
   }
 
@@ -632,6 +632,10 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
         case 'journey':
           return openJourneys();
       }
+    },
+    onTrip: (slot) => {
+      worldMap.close();
+      openJourneys(slot);
     },
     onJournal: (place) => {
       worldMap.close();

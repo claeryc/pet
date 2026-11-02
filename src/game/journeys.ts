@@ -66,6 +66,9 @@ export const tripHours = (rarity: Rarity): number => J.hours[rarity];
 // How long an offer's trip is: a night trip lasts the night.
 export const offerHours = (offer: Offer): number => (offer.night ? J.night.hours : tripHours(offer.rarity));
 
+// A 3-star trip by day (the night trip is its own kind).
+export const isEpicOffer = (o: Offer): boolean => o.rarity === 'epic' && !o.night;
+
 // The board's spots are 0 to 2; the night ticket is spot NIGHT.
 export const NIGHT = 3;
 export function offerAt(state: GameState, slot: number): Offer | null {

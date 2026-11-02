@@ -56,6 +56,12 @@ without them, both go in the middle of the area's tap shape.
 - **`pin:<id>`**: where the pet stands when it's there (and, on the sea, where
   the boat sails to). The **middle** of the slice is used.
 
+On the sea, a third one says where a journey island's **trip flags** stand:
+
+- **`flag:<id>`**: one flag per trip on the board that goes there (a gold
+  banner for an Adventure, a moon for the night trip). The flags stand on
+  the slice's **bottom middle**. Without it, they stand on the pin.
+
 To name a slice, double-click it with the Slice tool.
 
 ## map.json
@@ -98,7 +104,14 @@ from another one, `back`: the map the **‹ Back** button goes to.
 | `map:<id>` | Set sail / Sail home | Another map, like `map:sea`. |
 | `journey:<place>` | Plan a trip | The journey board. `<place>` is a place id from the journeys config. |
 
-The card's line under the name (garden ready, a visitor over, the pet out at
+Tapping a place opens a **bubble** over its sign with its news and its
+button; on the sea, a journey island's bubble shows its trips as postcards.
+When something is waiting at a place (water, a ripe crop, honey, a visitor,
+a letter, a backpack, a trip), its sign gets a little picture in the corner.
+A journey island that's open but has no trip right now is **misty**: its
+`locked:` clouds, shown thin.
+
+The bubble's line under the name (garden ready, a visitor over, the pet out at
 Market Town...) is written in `areaCard()` in `src/game/map.ts`, and its words
 are in `STRINGS.map` in `src/strings.ts`. A brand-new kind of `opens` (a shop
 street, say) needs a line in `parseOpens()` and `areaCard()` there, and in the

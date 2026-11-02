@@ -7,7 +7,8 @@
 //   - a slice called "label:<id>" says where the area's name sign goes (the
 //     middle of its bottom edge), and "pin:<id>" where the pet, the boat or
 //     a dot sits (its middle). Without them, both go in the middle of the
-//     area's shape.
+//     area's shape. On a journey island, an optional "flag:<id>" slice says
+//     where its trip flags stand (the middle of its bottom edge).
 //
 // Plain functions, no Aseprite, so they're easy to test. export-art.ts and
 // make-map-art.ts use them.
@@ -20,6 +21,7 @@ export interface MapArea {
   box: [number, number, number, number]; // x, y, width, height
   label: [number, number];
   pin: [number, number];
+  flag?: [number, number];
 }
 
 export interface MapFile {
@@ -111,11 +113,13 @@ export function mapData(
     const middle = middleOf(mask, width, height);
     const l = slice(`label:${id}`);
     const p = slice(`pin:${id}`);
+    const f = slice(`flag:${id}`);
     out[id] = {
       shape: pathOf(mask, width, height),
       box: boxOf(mask, width, height),
       label: l ? [l.x + Math.round(l.width / 2), l.y + l.height] : middle,
       pin: p ? [p.x + Math.round(p.width / 2), p.y + Math.round(p.height / 2)] : middle,
+      ...(f ? { flag: [f.x + Math.round(f.width / 2), f.y + f.height] as [number, number] } : {}),
     };
   }
   return { width, height, night: extras.night, locked: extras.locked, areas: out };

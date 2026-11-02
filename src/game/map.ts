@@ -7,13 +7,14 @@ import data from '../data/map.json';
 import { STRINGS } from '../strings';
 import { CONFIG } from './config';
 import { plotStage, needsTending } from './garden';
-import { PLACES, placeLevel, placeOpen } from './journeys';
+import { NIGHT, PLACES, isEpicOffer, placeOpen } from './journeys';
+import { hiveBuilt, hiveStock } from './crafting';
 import { meadowVisitor } from './meadow';
 import { unreadMail } from './messages';
 import { visitor } from './friends';
 import { hasBackpack, isAway } from './presence';
 import { isUnlocked, type UnlockId } from './unlocks';
-import type { GameState, Pet } from './state';
+import type { GameState, Offer, Pet } from './state';
 
 export interface MapAreaDef {
   id: string;
@@ -71,6 +72,32 @@ export interface AreaCard {
   locked: boolean; // under clouds, or not open yet
   button: string;
   enabled: boolean;
+  // A little picture on the sign for what's waiting there (honey, a ripe
+  // crop, a visitor...). The screen picks the picture.
+  badge?: Badge;
+  // A journey place: the trips on the board that go there.
+  tickets?: Ticket[];
+  mist?: boolean; // open, but no trip goes there right now
+}
+
+export type Badge = 'water' | 'honey' | 'crop' | 'visitor' | 'mail' | 'backpack' | 'epic' | 'night' | 'trip';
+// A trip on the board: its spot (NIGHT for the night ticket) and the offer.
+export interface Ticket {
+  slot: number;
+  offer: Offer;
+}
+
+// The trips on the board that go to `place`, night ticket last.
+export function ticketsAt(state: GameState, place: string): Ticket[] {
+  const all: Ticket[] = state.journeys.offers.flatMap((offer, slot) => (offer ? [{ slot, offer }] : []));
+  if (state.journeys.night) all.push({ slot: NIGHT, offer: state.journeys.night });
+  return all.filter((t) => t.offer.place === place);
+}
+
+// When the board next gets a new trip (0 if every spot is full).
+export function nextTicketAt(state: GameState): number {
+  const due = state.journeys.offers.flatMap((o, i) => (o ? [] : [state.journeys.refillAt[i]]));
+  return due.length ? Math.min(...due) : 0;
 }
 
 function homeLeft(ms: number): string {
@@ -100,28 +127,29 @@ export function areaCard(state: GameState, now: number, area: MapAreaDef): AreaC
     case 'garden': {
       const stages = state.garden.map(plotStage);
       const ready = stages.filter((s) => s === 'ready').length;
-      if (needsTending(state.garden, now)) return card(S.gardenNeeds, S.go, { good: true, dot: true });
-      if (ready > 0) return card(S.gardenReady(ready), S.go, { good: true, dot: true });
+      if (needsTending(state.garden, now)) return card(S.gardenNeeds, S.go, { good: true, dot: true, badge: 'water' });
+      if (ready > 0) return card(S.gardenReady(ready), S.go, { good: true, dot: true, badge: 'crop' });
+      if (hiveBuilt(state) && hiveStock(state) > 0) return card(S.honeyReady, S.go, { good: true, dot: true, badge: 'honey' });
       return card(stages.every((s) => s === 'empty') ? S.gardenEmpty : S.gardenGrowing, S.go);
     }
     case 'meadow': {
       const v = meadowVisitor(state);
-      if (v) return card(S.meadowVisitor(v.pet.name), S.visit, { good: true, dot: true });
+      if (v) return card(S.meadowVisitor(v.pet.name), S.visit, { good: true, dot: true, badge: 'visitor' });
       const n = state.meadow.length;
       return card(n ? S.meadowPets(n) : S.meadowEmpty, S.visit);
     }
     case 'friends': {
       const over = visitor(state);
-      if (over) return card(S.friendOver(over.name), S.visit, { good: true, dot: true });
+      if (over) return card(S.friendOver(over.name), S.visit, { good: true, dot: true, badge: 'visitor' });
       const mail = unreadMail(state);
-      if (mail > 0) return card(S.friendMail(mail), S.visit, { good: true, dot: true });
+      if (mail > 0) return card(S.friendMail(mail), S.visit, { good: true, dot: true, badge: 'mail' });
       return card(S.friendsQuiet, S.visit);
     }
     case 'map': {
       if (opens.map === START_MAP) return card(S.homeIsland, S.sailHome);
       // Before journeys open you can still sail over and look around.
       if (!isUnlocked(state, 'journeys')) return card(S.shipLook, S.setSail);
-      if (hasBackpack(pet)) return card(S.shipBackpack(pet.name), S.setSail, { good: true, dot: true });
+      if (hasBackpack(pet)) return card(S.shipBackpack(pet.name), S.setSail, { good: true, dot: true, badge: 'backpack' });
       if (pet.trip) return card(S.shipSailing(pet.name, placeName(pet.trip.place)), S.setSail);
       return card(S.shipReady, S.setSail);
     }
@@ -130,23 +158,23 @@ export function areaCard(state: GameState, now: number, area: MapAreaDef): AreaC
       if (!placeOpen(state, place)) return locked(lockedLine(state, place.opens));
       if (!isUnlocked(state, 'journeys')) return card(S.tripsLater, S.planTrip, { enabled: false });
       if (pet.trip?.place === place.id && isAway(pet)) return card(S.placeHere(pet.name, homeLeft(pet.trip.endsAt - now)), S.planTrip, { good: true });
-      const trips = state.journeys.journal[place.id]?.trips ?? 0;
-      const level = STRINGS.journeys.levels[placeLevel(trips)] || STRINGS.journeys.levels[1];
-      return card(S.placeTrips(level, trips), S.planTrip);
+      const tickets = ticketsAt(state, place.id);
+      if (tickets.length) {
+        const badge: Badge = tickets.some((t) => isEpicOffer(t.offer)) ? 'epic' : tickets.some((t) => t.offer.night) ? 'night' : 'trip';
+        return card(S.tickets(tickets.length), S.planTrip, { good: true, badge, tickets });
+      }
+      // Open, but no trip goes there now: mist, and when a new trip comes.
+      const next = nextTicketAt(state);
+      return card(next > now ? S.noTicketsUntil(homeLeft(next - now)) : S.noTickets, S.otherTrips, { mist: true, tickets: [] });
     }
   }
   return card('', S.go);
 }
 
-// Which area is picked when a map opens: the first that needs you, then
-// where the pet is, then the first one.
+// Which area's bubble is open when a map opens: the first that needs
+// you, or none ('').
 export function firstPick(state: GameState, now: number, mapId: string): string {
-  const areas = MAPS[mapId].areas;
-  const needy = areas.find((a) => areaCard(state, now, a).dot);
-  if (needy) return needy.id;
-  const here = petAt(state, now, mapId);
-  if (here) return here.area;
-  return areas[0].id;
+  return MAPS[mapId].areas.find((a) => areaCard(state, now, a).dot)?.id ?? '';
 }
 
 // Where the pet is on a map: an area, and on the sea how far along the way
@@ -174,4 +202,9 @@ export const shipOut = (state: GameState) => !!petOf(state).trip && isAway(petOf
 // Areas locked right now that have a cloud cover in the art.
 export function lockedAreas(state: GameState, now: number, mapId: string): string[] {
   return MAPS[mapId].areas.filter((a) => areaCard(state, now, a).locked).map((a) => a.id);
+}
+
+// Journey places that are open but misty: no trip goes there right now.
+export function mistyAreas(state: GameState, now: number, mapId: string): string[] {
+  return MAPS[mapId].areas.filter((a) => areaCard(state, now, a).mist).map((a) => a.id);
 }

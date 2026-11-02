@@ -306,6 +306,7 @@ interface Area {
   things: Thing[];
   label: [number, number]; // where the sign goes (bottom middle)
   pin?: [number, number]; // where the pet or a dot goes
+  flag?: [number, number]; // where a journey island's trip flags stand
   locked?: boolean; // gets a "locked:<id>" layer of clouds
   tap?: 'land' | 'box';
   tapBox?: [number, number, number, number];
@@ -584,6 +585,7 @@ function build(def: MapDef) {
   const slices: AseSlice[] = def.areas.flatMap((a) => [
     { name: `label:${a.id}`, x: a.label[0] - 8, y: a.label[1] - 4, width: 16, height: 4 },
     ...(a.pin ? [{ name: `pin:${a.id}`, x: a.pin[0] - 3, y: a.pin[1] - 3, width: 6, height: 6 }] : []),
+    ...(a.flag ? [{ name: `flag:${a.id}`, x: a.flag[0] - 4, y: a.flag[1] - 4, width: 8, height: 4 }] : []),
   ]);
   return { ground, details, night, locked, tap, slices };
 }
@@ -665,25 +667,25 @@ const SEA: MapDef = {
   routes: [[[80, 196], [56, 172]], [[80, 196], [136, 198]], [[80, 196], [122, 112]], [[80, 196], [66, 92]]],
   areas: [
     {
-      id: 'woods', at: [44, 140], r: 30, sy: 1.05, ground: C.leaf, label: [44, 106], pin: [56, 170], locked: true,
+      id: 'woods', at: [44, 140], r: 30, sy: 1.05, ground: C.leaf, label: [44, 106], pin: [56, 170], flag: [70, 128], locked: true,
       things: [
         put(T.house(C.peach, { w: 16 }), 42, 164), put(mushroom, 58, 164), put(mushroom, 28, 160),
         put(T.pine(15), 30, 132), put(T.pine(13), 44, 128), put(T.pine(14), 58, 136), put(T.pine(12), 24, 150), put(T.pine(15), 62, 154),
       ],
     },
     {
-      id: 'market', at: [130, 76], r: 30, ground: C.sand, kind: 'sand', label: [130, 42], pin: [116, 108], locked: true, yard: [130, 100, 18, 6],
+      id: 'market', at: [130, 76], r: 30, ground: C.sand, kind: 'sand', label: [130, 42], pin: [116, 108], flag: [146, 66], locked: true, yard: [130, 100, 18, 6],
       things: [
         put(T.house(C.lilac, { w: 18 }), 116, 84), put(T.house(C.rose, { w: 18, chimney: false }), 144, 86),
         put(stall, 130, 106), put(lamp, 110, 100), put(lamp, 150, 102), put(T.tree(4, C.leaf, 24), 120, 64),
       ],
     },
     {
-      id: 'cove', at: [140, 172], r: 28, ground: C.sand, kind: 'sand', label: [140, 142], pin: [136, 196], locked: true,
+      id: 'cove', at: [140, 172], r: 28, ground: C.sand, kind: 'sand', label: [140, 142], pin: [136, 196], flag: [128, 162], locked: true,
       things: [put(palm, 132, 178), put(palm, 150, 168), put(rock, 152, 186), put(rock, 122, 170), put(shell, 128, 190), put(shell, 144, 194)],
     },
     {
-      id: 'hill', at: [58, 58], r: 26, ground: C.lavender, label: [58, 28], pin: [70, 84], locked: true,
+      id: 'hill', at: [58, 58], r: 26, ground: C.lavender, label: [58, 28], pin: [70, 84], flag: [50, 60], locked: true,
       things: [put(dome, 54, 68), put(telescope, 70, 68), put(rock, 42, 74), put(star, 44, 46, { bare: true }), put(star, 70, 44, { bare: true })],
     },
     {

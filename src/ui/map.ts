@@ -2,16 +2,21 @@
 // the sea behind the ship with the journey places, each its own island.
 //
 //   ┌──────────── [ Map ] ────────────┐
-//   │      (the island picture,       │
-//   │   signs on each area, the pet   │
-//   │   at home, red dots on areas    │
-//   │       that need you)            │
-//   ├─────────────────────────────────┤
-//   │ ‹  Backyard               ›  Go │   <- everything you press is down
-//   │    Honey is ready.              │      here, where a thumb reaches
+//   │        ╭──────────────╮         │
+//   │        │ Backyard   × │         │   <- tap a place: a bubble pops up
+//   │        │ Honey ready! │         │      over its sign, with its news
+//   │        │ [    Go    ] │         │      and its button
+//   │        ╰──────v───────╯         │
+//   │  (the island, signs on   [🍯]   │   <- a little picture on a sign
+//   │   each area, the pet at home)   │      when something's waiting
 //   ├─────────────────────────────────┤
 //   │  [ Close ]                      │
 //   └─────────────────────────────────┘
+//
+// On the sea, each journey island has a flag per trip on the board that
+// goes there (gold for a 3-star Adventure, a moon for the night trip), and
+// its bubble shows those trips as postcards. An island no trip goes to
+// right now is misty; one not open yet is under clouds.
 //
 // The picture is one PNG per map, drawn in art/map/<map>.aseprite. Each
 // area is a tap shape from that file (an SVG path over the picture), so
@@ -21,7 +26,11 @@
 
 import { STRINGS } from '../strings';
 import { sheetFor } from '../game/growth';
-import { MAPS, START_MAP, areaCard, firstPick, lockedAreas, parseOpens, petAt, type AreaCard, type Opens } from '../game/map';
+import { MAPS, START_MAP, areaCard, firstPick, lockedAreas, mistyAreas, parseOpens, petAt, type AreaCard, type Badge, type Opens } from '../game/map';
+import { isEpicOffer } from '../game/journeys';
+import type { Offer } from '../game/state';
+import { ITEM_ICONS, MENU_ICONS, STAT_ICONS } from './icons';
+import { postcard } from './journeys';
 import { isNight } from '../game/stats';
 import type { GameState } from '../game/state';
 
@@ -30,7 +39,7 @@ interface MapFile {
   height: number;
   night: boolean;
   locked: string[];
-  areas: Record<string, { shape: string; box: number[]; label: [number, number]; pin: [number, number] }>;
+  areas: Record<string, { shape: string; box: number[]; label: [number, number]; pin: [number, number]; flag?: [number, number] }>;
 }
 
 export interface MapCallbacks {
@@ -39,6 +48,7 @@ export interface MapCallbacks {
   // An area's button: go home, to the garden, plan a trip to a place...
   onOpen: (opens: Opens) => void;
   onJournal: (place: string | null) => void; // the travel journal, at a place
+  onTrip: (slot: number) => void; // a postcard picked: the trip board, with it turned over
 }
 
 export interface WorldMap {
@@ -64,6 +74,43 @@ const BOAT = `<svg viewBox="0 0 15 13" shape-rendering="crispEdges" aria-hidden=
   <path fill="#ffffff" d="M8 3h2v1H8zM8 4h3v1H8zM8 5h4v1H8zM8 6h5v1H8zM8 7h6v1H8zM4 11h1v1H4zM8 11h1v1H8z"/>
   <path fill="#8a5a44" d="M1 10h13v1H1zM2 11h2v1H2zM5 11h3v1H5zM9 11h4v1H9z"/>
 </svg>`;
+
+// The trip flags on the sea islands, as tiny pixel pictures: a pennant
+// for a Stroll, a swallowtail for a Hike, a gold banner for an Adventure
+// and a moon flag for the night trip. (Placeholders until the art is in:
+// see the Map art brief.)
+const FLAG_ROWS: Record<string, string[]> = {
+  common: ['.kkkk.', '.kmmmk', '.kMmmk', '.kkkk.', '.k....', '.k....', '.k....', 'kpk...'],
+  rare: ['.kkkkkk.', '.ksssssk', '.kSssssk', '.ksss.k.', '.kss.k..', '.kkk....', '.k......', '.k......', '.k......', 'kpk.....'],
+  epic: ['..kkkkkkk.', '..kgggggk.', '..kggyggk.', '..kgyyygk.', '..kggyggk.', '..kGgggGk.', '..kGG.GGk.', '..kk...kk.', '..k.......', '..k.......', '..k.......', '.kpk......'],
+  night: ['.kkkkkk.', '.kllllk.', '.klyyLk.', '.kly.Lk.', '.klyyLk.', '.kLlllk.', '.kk..kk.', '.k......', '.k......', '.k......', 'kpk.....'],
+};
+const FLAG_INK: Record<string, string> = {
+  k: '#3b2a4a', p: '#8a5a3c', m: '#7fd6b0', M: '#4fb08a', s: '#9ad3f0', S: '#5a8fd6',
+  g: '#ffd36e', G: '#e0a83a', y: '#fff3a0', l: '#c9b6f0', L: '#8e74c8',
+};
+function pixelSvg(rows: string[], ink: Record<string, string>): string {
+  let rects = '';
+  rows.forEach((row, y) => [...row].forEach((ch, x) => {
+    if (ink[ch]) rects += `<rect x="${x}" y="${y}" width="1" height="1" fill="${ink[ch]}"/>`;
+  }));
+  return `<svg viewBox="0 0 ${rows[0].length} ${rows.length}" width="${rows[0].length}" height="${rows.length}" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
+}
+const flagKind = (o: Offer) => (o.night ? 'night' : o.rarity);
+const FLAGS = Object.fromEntries(Object.entries(FLAG_ROWS).map(([k, rows]) => [k, pixelSvg(rows, FLAG_INK)]));
+
+// The little picture on a sign for what's waiting there.
+const BADGES: Record<Badge, string> = {
+  water: STAT_ICONS.drop,
+  honey: ITEM_ICONS.honey,
+  crop: ITEM_ICONS.carrot,
+  visitor: MENU_ICONS.meet ?? ITEM_ICONS.meet ?? ITEM_ICONS.paw,
+  mail: ITEM_ICONS.letter,
+  backpack: ITEM_ICONS.journey,
+  epic: FLAGS.epic,
+  night: FLAGS.night,
+  trip: FLAGS.common,
+};
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text?: string): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
@@ -98,26 +145,31 @@ export function createMap(cb: MapCallbacks): WorldMap {
   stage.append(picture, lights, covers, shapes, marks); // lights under the clouds
   view.append(stage);
 
-  // The card: ‹ name and news ›, and the area's button.
-  const card = el('div', 'map-card');
-  const prev = el('button', 'map-step', '‹');
-  prev.setAttribute('aria-label', S.prev);
-  const info = el('div', 'map-info');
-  info.setAttribute('aria-live', 'polite');
-  const title = el('div', 'map-name');
+  // The bubble over a picked place's sign: its name and news, its trips
+  // as postcards on the sea, and its button.
+  const pop = el('div', 'map-pop');
+  stage.append(pop);
+  const bubble = el('div', 'map-bubble');
+  bubble.setAttribute('role', 'dialog');
+  const shut = el('button', 'map-bubble-x', '×');
+  shut.setAttribute('aria-label', S.closeBubble);
+  const head = el('div', 'map-bubble-head');
+  const badge = el('span', 'map-bubble-badge');
+  const title = el('b', 'map-name');
+  head.append(badge, title);
   const text = el('div', 'map-text');
-  info.append(title, text);
-  const next = el('button', 'map-step', '›');
-  next.setAttribute('aria-label', S.next);
+  text.setAttribute('aria-live', 'polite');
+  const cards = el('div', 'map-bubble-cards');
   const go = el('button', 'map-go');
-  card.append(prev, info, next, go);
+  bubble.append(shut, head, text, cards, go);
+  shut.addEventListener('click', () => pick(''));
 
   const row = el('div', 'map-row');
   const back = el('button', 'btn map-back');
   const journal = el('button', 'btn map-journal', S.journal);
   row.append(back, journal);
 
-  root.append(top, view, card, row);
+  root.append(top, view, row);
 
   let mapId = START_MAP;
   let file: MapFile | null = null;
@@ -140,6 +192,8 @@ export function createMap(cb: MapCallbacks): WorldMap {
     const scale = Math.min(w / file.width, h / file.height);
     stage.style.width = `${Math.floor(file.width * scale)}px`;
     stage.style.height = `${Math.floor(file.height * scale)}px`;
+    stage.style.setProperty('--flag-px', `${scale}px`);
+    if (picked && file.areas[picked] && bubble.isConnected) place(file.areas[picked].label);
   }
   new ResizeObserver(fit).observe(view);
 
@@ -149,13 +203,10 @@ export function createMap(cb: MapCallbacks): WorldMap {
     draw();
   }
 
-  function step(by: number): void {
-    const list = areas();
-    const i = list.findIndex((a) => a.id === picked);
-    pick(list[(i + by + list.length) % list.length].id);
-  }
-  prev.addEventListener('click', () => step(-1));
-  next.addEventListener('click', () => step(1));
+  // A tap on the sea or the sky (not on a place) closes the bubble.
+  view.addEventListener('click', (e) => {
+    if (e.target === view || e.target === stage || e.target === shapes || e.target === picture) pick('');
+  });
 
   go.addEventListener('click', () => {
     const area = areas().find((a) => a.id === picked);
@@ -197,7 +248,10 @@ export function createMap(cb: MapCallbacks): WorldMap {
       p.setAttribute('d', shape.shape);
       p.classList.add('map-hit');
       p.dataset.area = a.id;
-      p.addEventListener('click', () => pick(a.id));
+      p.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pick(a.id);
+      });
       shapes.append(p);
     }
   }
@@ -215,8 +269,10 @@ export function createMap(cb: MapCallbacks): WorldMap {
 
     // Clouds over what's still locked.
     const locked = new Set(lockedAreas(state, now, mapId));
-    covers.replaceChildren(...file.locked.filter((id) => locked.has(id)).map((id) => {
-      const img = el('img', 'map-cover');
+    // Mist (the same cover, thin) over a journey island no trip goes to.
+    const misty = new Set(mistyAreas(state, now, mapId));
+    covers.replaceChildren(...file.locked.filter((id) => locked.has(id) || misty.has(id)).map((id) => {
+      const img = el('img', `map-cover${misty.has(id) && !locked.has(id) ? ' is-mist' : ''}`);
       img.src = `${base()}${mapId}-locked-${id}.png`;
       img.alt = '';
       img.draggable = false;
@@ -236,9 +292,32 @@ export function createMap(cb: MapCallbacks): WorldMap {
       const b = el('button', `map-label${a.id === picked ? ' is-picked' : ''}${c.locked ? ' is-locked' : ''}`, c.name);
       if (!at) b.hidden = true;
       else b.setAttribute('style', pct(...at.label));
-      if (c.dot) b.append(el('span', 'map-dot'));
-      b.addEventListener('click', () => pick(a.id));
+      if (c.badge) {
+        const at = el('span', `map-badge is-${c.badge}`);
+        at.innerHTML = BADGES[c.badge];
+        b.append(at);
+      } else if (c.dot) b.append(el('span', 'map-dot'));
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pick(a.id === picked ? '' : a.id);
+      });
       return b;
+    });
+    // A flag on each journey island for every trip that goes there.
+    const flags = areas().flatMap((a) => {
+      const c = cardFor(a.id);
+      const at = file!.areas[a.id];
+      if (!c?.tickets?.length || !at) return [];
+      const f = el('div', 'map-flags');
+      f.setAttribute('style', pct(...(at.flag ?? at.pin)));
+      for (const t of c.tickets) {
+        const kind = flagKind(t.offer);
+        const one = el('span', `map-flag is-${kind}`);
+        one.innerHTML = FLAGS[kind];
+        one.style.setProperty('--w', String(FLAG_ROWS[kind][0].length));
+        f.append(one);
+      }
+      return [f];
     });
     // Locked areas without clouds of their own are shaded instead.
     for (const p of shapes.querySelectorAll<SVGPathElement>('.map-hit')) {
@@ -246,7 +325,7 @@ export function createMap(cb: MapCallbacks): WorldMap {
       p.setAttribute('aria-label', c ? `${c.name}. ${c.text}` : '');
       p.classList.toggle('is-locked', !!c?.locked && !file.locked.includes(p.dataset.area!));
     }
-    const marksNow: HTMLElement[] = [...signs];
+    const marksNow: HTMLElement[] = [...flags, ...signs];
     const where = petAt(state, now, mapId);
     if (where && file.areas[where.area]) {
       const face = cb.characterImage(sheetFor(state.pet));
@@ -275,16 +354,58 @@ export function createMap(cb: MapCallbacks): WorldMap {
     }
     marks.replaceChildren(...marksNow);
 
-    // The card.
+    // The bubble.
     const c = cardFor(picked);
-    if (c) {
-      title.textContent = c.name;
-      text.textContent = c.text;
-      text.classList.toggle('is-good', c.good);
-      go.textContent = c.button;
-      go.disabled = !c.enabled;
-      go.classList.toggle('is-trip', c.button === S.planTrip || c.button === S.setSail || c.button === S.sailHome);
+    const at = file.areas[picked];
+    if (!c || !at) {
+      pop.replaceChildren();
+      return;
     }
+    title.textContent = c.name;
+    text.textContent = c.text;
+    text.classList.toggle('is-good', c.good);
+    badge.innerHTML = c.badge ? BADGES[c.badge] : '';
+    badge.hidden = !c.badge;
+    badge.className = `map-bubble-badge${c.badge ? ` is-${c.badge}` : ''}`;
+    const trips = c.tickets ?? [];
+    cards.replaceChildren(...trips.map((t) => {
+      const card = postcard(t.offer, () => cb.onTrip(t.slot), null);
+      if (isEpicOffer(t.offer)) card.append(el('span', 'map-epic-ribbon', S.epic));
+      return card;
+    }));
+    cards.hidden = !trips.length;
+    cards.classList.toggle('is-one', trips.length === 1);
+    bubble.classList.toggle('has-cards', trips.length > 0);
+    bubble.classList.toggle('is-epic', trips.some((t) => isEpicOffer(t.offer)));
+    go.textContent = c.button;
+    go.disabled = !c.enabled;
+    go.hidden = trips.length > 0 || c.locked;
+    go.classList.toggle('is-soft', !!c.mist);
+    go.classList.toggle('is-trip', c.button === S.planTrip || c.button === S.setSail || c.button === S.sailHome);
+    if (bubble.parentElement !== pop) pop.replaceChildren(bubble);
+    place(at.label);
+  }
+
+  // Puts the bubble over the sign at `label` (its bottom middle), kept
+  // inside the view; under the sign when there's no room above. The tail
+  // still points at the sign.
+  function place(label: [number, number]): void {
+    if (!file) return;
+    const sw = stage.clientWidth, sh = stage.clientHeight;
+    const x = (label[0] / file.width) * sw;
+    const y = (label[1] / file.height) * sh;
+    const sr = stage.getBoundingClientRect(), vr = view.getBoundingClientRect();
+    const w = bubble.offsetWidth, h = bubble.offsetHeight;
+    const SIGN = 26, GAP = 12, EDGE = 8;
+    const minX = vr.left - sr.left + EDGE, maxX = vr.right - sr.left - EDGE - w;
+    const left = Math.max(minX, Math.min(maxX, x - w / 2));
+    let top = y - SIGN - GAP - h;
+    const below = top < vr.top - sr.top + EDGE;
+    if (below) top = Math.min(y + GAP, vr.bottom - sr.top - EDGE - h);
+    bubble.classList.toggle('is-below', below);
+    bubble.style.left = `${left}px`;
+    bubble.style.top = `${top}px`;
+    bubble.style.setProperty('--tail', `${Math.max(18, Math.min(w - 18, x - left))}px`);
   }
 
   function show(id: string): void {
@@ -302,6 +423,7 @@ export function createMap(cb: MapCallbacks): WorldMap {
       draw();
     });
   }
+
 
   return {
     el: root,

@@ -13038,40 +13038,252 @@ button.trip-bars-name.is-on {
 }
 
 /* The card: ‹ name and news ›, then the area's button. */
-.map-card {
-  display: grid;
-  grid-template-columns: 40px 1fr 40px;
-  grid-template-rows: auto auto;
-  align-items: center;
-  gap: 8px 4px;
-  padding: 10px;
-  border-radius: 16px;
-  background: var(--card);
-  box-shadow: 0 4px 0 rgba(43, 33, 64, 0.25);
+/* The bubble over a picked place's sign: name, news, button. On the sea,
+   the place's trips as postcards. Its tail points at the sign. */
+.map-pop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
 }
 
-.map-step {
-  width: 40px;
-  height: 44px;
+.map-bubble {
+  position: absolute;
+  width: min(232px, calc(100vw - 40px));
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px 12px;
+  border: 3px solid var(--plum);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: 0 5px 0 rgba(43, 33, 64, 0.28);
+  text-align: center;
+  pointer-events: auto;
+  animation: map-bubble-in 0.18s ease-out;
+  transform-origin: var(--tail, 50%) 100%;
+}
+
+.map-bubble.has-cards {
+  width: min(272px, calc(100vw - 40px));
+}
+
+.map-bubble.is-below {
+  transform-origin: var(--tail, 50%) 0;
+}
+
+@keyframes map-bubble-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+
+/* The tail: a plum triangle with a cream one inside it. */
+.map-bubble::before,
+.map-bubble::after {
+  content: '';
+  position: absolute;
+  left: var(--tail, 50%);
+  transform: translateX(-50%);
+  border: solid transparent;
+}
+
+.map-bubble::before {
+  bottom: -14px;
+  border-width: 12px 11px 0;
+  border-top-color: var(--plum);
+}
+
+.map-bubble::after {
+  bottom: -8px;
+  border-width: 9px 8px 0;
+  border-top-color: var(--card);
+}
+
+.map-bubble.is-below::before {
+  bottom: auto;
+  top: -14px;
+  border-width: 0 11px 12px;
+  border-color: transparent transparent var(--plum);
+}
+
+.map-bubble.is-below::after {
+  bottom: auto;
+  top: -8px;
+  border-width: 0 8px 9px;
+  border-color: transparent transparent var(--card);
+}
+
+.map-bubble.is-epic {
+  border-color: #c98a1a;
+  box-shadow: 0 5px 0 rgba(160, 104, 16, 0.35), 0 0 0 3px rgba(255, 211, 110, 0.55);
+}
+
+.map-bubble.is-epic::before {
+  border-top-color: #c98a1a;
+}
+
+.map-bubble.is-epic.is-below::before {
+  border-color: transparent transparent #c98a1a;
+}
+
+.map-bubble-x {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
   font: inherit;
-  font-size: 1.6rem;
+  font-size: 1rem;
   font-weight: 900;
   line-height: 1;
-  border: none;
-  border-radius: 12px;
-  background: var(--lavender);
+  border: 3px solid var(--plum);
+  border-radius: 50%;
+  background: var(--card);
   color: var(--plum);
   cursor: pointer;
   touch-action: manipulation;
 }
 
-.map-step:active {
-  background: var(--lilac);
+.map-bubble-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
-.map-info {
-  min-width: 0;
+.map-bubble-badge,
+.map-badge {
+  display: inline-grid;
+  place-items: center;
+}
+
+.map-bubble-badge[hidden] {
+  display: none;
+}
+
+.map-bubble-badge svg {
+  width: 20px;
+  height: 20px;
+  image-rendering: pixelated;
+}
+
+.map-bubble-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 4px 2px 2px;
+}
+
+.map-bubble-cards.is-one {
+  grid-template-columns: minmax(0, 150px);
+  justify-content: center;
+}
+
+.map-bubble-cards[hidden] {
+  display: none;
+}
+
+/* A 3-star Adventure's postcard gets a gold ribbon across its corner. */
+.map-bubble-cards .trip-pc {
+  overflow: hidden;
+}
+
+.map-epic-ribbon {
+  position: absolute;
+  top: 15px;
+  left: -30px;
+  width: 112px;
+  padding: 2px 0;
+  transform: rotate(-38deg);
+  background: linear-gradient(#ffe08a, #f4b73c);
+  color: #6b3f00;
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
   text-align: center;
+  text-transform: uppercase;
+  box-shadow: 0 2px 0 rgba(107, 63, 0, 0.35);
+  z-index: 2;
+}
+
+/* What's waiting at a place, as a little picture on its sign's corner. */
+.map-badge {
+  position: absolute;
+  top: -11px;
+  right: -11px;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--plum);
+  border-radius: 50%;
+  background: var(--card);
+  box-shadow: 0 2px 0 rgba(43, 33, 64, 0.3);
+  animation: map-badge-bob 1.6s ease-in-out infinite;
+}
+
+.map-badge svg {
+  width: 14px;
+  height: 14px;
+  image-rendering: pixelated;
+}
+
+.map-badge.is-epic {
+  background: #fff3c4;
+  border-color: #c98a1a;
+}
+
+@keyframes map-badge-bob {
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+/* The trip flags standing on a journey island. */
+.map-flags {
+  position: absolute;
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+}
+
+.map-flag {
+  display: block;
+  line-height: 0;
+  filter: drop-shadow(1px 2px 0 rgba(43, 33, 64, 0.35));
+}
+
+.map-flag svg {
+  width: calc(var(--flag-px, 2.2px) * var(--w, 8));
+  height: auto;
+  image-rendering: pixelated;
+}
+
+.map-flag.is-epic {
+  animation: map-flag-shine 1.8s ease-in-out infinite;
+}
+
+.map-flag.is-night {
+  filter: drop-shadow(0 0 4px #fff3a0) drop-shadow(0 0 2px #fff3a0);
+}
+
+@keyframes map-flag-shine {
+  0%,
+  100% {
+    filter: drop-shadow(1px 2px 0 rgba(43, 33, 64, 0.35)) drop-shadow(0 0 0 #ffe08a);
+  }
+
+  50% {
+    filter: drop-shadow(1px 2px 0 rgba(43, 33, 64, 0.35)) drop-shadow(0 0 5px #ffe08a);
+  }
+}
+
+/* Mist over a journey island no trip goes to right now. */
+.map-cover.is-mist {
+  opacity: 0.5;
+  filter: blur(1px);
 }
 
 .map-name {
@@ -13084,7 +13296,6 @@ button.trip-bars-name.is-on {
   font-size: 0.86rem;
   line-height: 1.25;
   color: var(--ink);
-  min-height: 2.5em; /* two lines, so the card doesn't jump */
 }
 
 .map-text.is-good {
@@ -13093,11 +13304,11 @@ button.trip-bars-name.is-on {
 }
 
 .map-go {
-  grid-column: 1 / -1;
+  margin-top: 2px;
   font: inherit;
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 800;
-  padding: 11px;
+  padding: 9px;
   border: none;
   border-radius: 14px;
   background: var(--accent);
@@ -13115,6 +13326,16 @@ button.trip-bars-name.is-on {
 .map-go:active:not(:disabled) {
   transform: translateY(3px);
   box-shadow: 0 1px 0 var(--accent-dark);
+}
+
+.map-go[hidden] {
+  display: none;
+}
+
+.map-go.is-soft {
+  background: var(--lavender);
+  color: var(--plum);
+  box-shadow: 0 4px 0 var(--lilac);
 }
 
 .map-go:disabled {
@@ -13152,10 +13373,6 @@ button.trip-bars-name.is-on {
   .map-screen {
     gap: 6px;
     padding-top: 8px;
-  }
-
-  .map-text {
-    min-height: 0;
   }
 }
 

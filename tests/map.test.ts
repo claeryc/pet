@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { MAPS, START_MAP, areaCard, firstPick, parseOpens, petAt } from '../src/game/map';
-import { PLACES } from '../src/game/journeys';
+import { MAPS, START_MAP, areaCard, firstPick, mistyAreas, parseOpens, petAt, ticketsAt } from '../src/game/map';
+import { NIGHT, PLACES } from '../src/game/journeys';
 import { CONFIG } from '../src/game/config';
 import type { Trip } from '../src/game/state';
 import { newTeen } from './helpers';
@@ -72,8 +72,33 @@ describe('area cards', () => {
     expect(c.text).toContain('Mochi');
   });
 
-  it('the map opens on what needs you, or else where the pet is', () => {
-    expect(firstPick(newTeen(NOW), NOW, 'island')).toBe('home');
+  it('the map opens with a bubble on what needs you, or none', () => {
+    expect(firstPick(newTeen(NOW), NOW, 'island')).toBe('');
+  });
+
+  it('a journey island shows the trips that go there, misty when none do', () => {
+    const s = newTeen(NOW);
+    s.unlocked.push('journeys');
+    s.journeys.offers = [{ place: 'market', rarity: 'common' }, { place: 'market', rarity: 'epic' }, null];
+    s.journeys.refillAt = [NOW + 2 * 3_600_000, NOW + 3 * 3_600_000, NOW + 4 * 3_600_000];
+    const market = areaCard(s, NOW, area('sea', 'market'));
+    expect(market.tickets?.map((t) => t.slot)).toEqual([0, 1]);
+    expect(market.badge).toBe('epic');
+    expect(market.mist).toBeFalsy();
+    s.journeys.offers = [null, null, null];
+    const empty = areaCard(s, NOW, area('sea', 'market'));
+    expect(empty.mist).toBe(true);
+    expect(empty.text).toContain('2h');
+    expect(mistyAreas(s, NOW, 'sea')).toContain('market');
+  });
+
+  it('the night trip shows up on its island', () => {
+    const s = newTeen(NOW);
+    s.unlocked.push('journeys');
+    s.journeys.offers = [null, null, null];
+    s.journeys.night = { place: 'market', rarity: 'rare', night: true };
+    expect(ticketsAt(s, 'market')).toEqual([{ slot: NIGHT, offer: s.journeys.night }]);
+    expect(areaCard(s, NOW, area('sea', 'market')).badge).toBe('night');
   });
 });
 
