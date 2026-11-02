@@ -12851,7 +12851,7 @@ button.trip-bars-name.is-on {
   flex-direction: column;
   gap: 10px;
   padding: 12px 12px calc(14px + env(safe-area-inset-bottom));
-  background: #5a8fd6; /* the deep sea at the picture's edge */
+  background: #3f6db8; /* the deep sea at the picture's edge */
 }
 
 .map-screen[hidden] {
@@ -12917,7 +12917,7 @@ button.trip-bars-name.is-on {
 
 /* Night: the picture dims, and the lights layer stays bright on top. */
 .map-screen.is-night {
-  background: #2c3f74;
+  background: #233c66; /* the deep sea, dimmed like the picture */
 }
 
 .map-screen.is-night .map-picture,
@@ -13161,6 +13161,7 @@ button.trip-bars-name.is-on {
 
 .map-hit.is-locked {
   fill: rgba(60, 48, 92, 0.38);
+}
 
 /* ---- The Backyard (src/ui/backyard.ts) ----
 
