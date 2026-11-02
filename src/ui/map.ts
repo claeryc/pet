@@ -181,7 +181,7 @@ export function createMap(cb: MapCallbacks): WorldMap {
     if (!file) return;
     shapes.setAttribute('viewBox', `0 0 ${file.width} ${file.height}`);
     shapes.innerHTML = `<defs><filter id="map-ring" x="-10%" y="-10%" width="120%" height="120%">
-      <feMorphology in="SourceAlpha" operator="dilate" radius="3" result="grown"/>
+      <feMorphology in="SourceAlpha" operator="dilate" radius="1.5" result="grown"/>
       <feComposite in="grown" in2="SourceAlpha" operator="out" result="ring"/>
       <feFlood flood-color="#ffe596"/><feComposite in2="ring" operator="in"/></filter></defs>`;
     const ring = document.createElementNS(SVG, 'path');

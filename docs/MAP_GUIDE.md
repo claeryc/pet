@@ -20,7 +20,7 @@ kind of screen the map doesn't know yet (see [What an area can open](#what-an-ar
 
 ## The Aseprite file
 
-Each map is one canvas (the island and the sea are 360 × 540, a tall phone
+Each map is one canvas (the island and the sea are 180 × 270, a tall phone
 shape). The game shows it as big as it fits on the
 screen. Its layers:
 
@@ -40,7 +40,7 @@ Tips for tap shapes:
 - Make shapes **touch but not overlap**, so a tap always means one area. If
   they overlap, the one further down in `map.json` wins.
 - Include a bit of sea or shore around small things (the ship, a little
-  island), so they're easy to hit with a thumb. 24 × 24 pixels is about the
+  island), so they're easy to hit with a thumb. 12 × 12 pixels is about the
   smallest that's comfortable.
 - The shape doesn't have to be one piece. The sea islands' shapes include
   the water around them.
