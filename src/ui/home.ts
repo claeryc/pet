@@ -90,6 +90,7 @@ export interface HomeCallbacks extends MenuCallbacks, DigCallbacks {
   onCollectPoop: (petId: string, slot: number) => void;
   onBathe: () => boolean; // the bath is done and it's dry; false if refused
   petSheet: () => SpriteSheet | undefined; // the pet's sprite, for where its body is
+  petHat: () => SpriteSheet | undefined; // its hat's sprite, if it's wearing one
 }
 
 export interface HomeScreen {
@@ -604,7 +605,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     cb.onGuide('journeys');
   }
 
-  // Sniff and dig: today's spots, then a patch of ground, over the stat bars.
+  // Sniff and dig: the whole screen, the room stepping aside.
   function openDig(): void {
     if (petAway) return showToast(STRINGS.blocked.away(petName));
     if (actions.hidden) return;
@@ -994,6 +995,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       showActions(JOURNEYS_OUT_MS);
     },
     toast: (msg) => showToast(msg),
+    petLook: () => ({ sheet: cb.petSheet(), hat: cb.petHat() }),
   });
   // The current trip: the place in the room, and a map over the stat bars.
   const trip = createTripView({

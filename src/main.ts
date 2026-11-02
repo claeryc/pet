@@ -970,6 +970,7 @@ const home = createHomeScreen(root, {
     return true;
   },
   petSheet: () => sprites.get(sheetFor(state.pet)),
+  petHat: () => sprites.get(getHat(state.pet.hat)?.sheet ?? ''),
   onLights: () => {
     if (!runAction(toggleLights)) return;
     playMoment(state.pet.asleep ? 'doze' : 'wake');
