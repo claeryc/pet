@@ -104,6 +104,31 @@ export const STRINGS = {
   stations: {
     goTo: (name: string) => `Go to the ${name}`,
   },
+  // The Backyard (Play > Garden, see src/ui/backyard.ts): the garden, and
+  // the beehive and Percy's perch once they're built.
+  backyard: {
+    stops: { garden: 'Garden', hive: 'Beehive', perch: 'Perch' } as Record<string, string>,
+    close: 'Close',
+    hive: 'Beehive',
+    honey: 'Honey',
+    beeswax: 'Beeswax',
+    collect: 'Collect',
+    full: 'Full! The bees are waiting.',
+    nextIn: (time: string) => `More honey in ${time}`,
+    empty: (time: string) => `Nothing yet. More honey in ${time}`,
+    nightNote: 'The bees are asleep.',
+    collected: (honey: number, wax: number) => `Collected ${honey} honey and ${wax} beeswax!`,
+    nothing: 'Nothing to collect yet. The bees make more every day.',
+    hiveFull: 'The beehive is full of honey',
+    perch: "Percy's perch",
+    percyReady: 'Percy is home and ready for a trip.',
+    percyResting: (time: string) => `Percy is resting. Ready in ${time}.`,
+    percyAway: 'Percy is away on a trip.',
+    journeys: 'Journeys',
+    wake: 'Wake up',
+    wakeLabel: (price: number) => `Wake Percy up for ${price} gold`,
+    away: 'Away',
+  },
   // The workbench and projects (Play > Workbench, see src/game/crafting.ts).
   crafting: {
     tabs: { bench: 'Bench', projects: 'Projects' } as Record<string, string>,
@@ -153,13 +178,13 @@ export const STRINGS = {
     projects: { windmill: 'Windmill', beehive: 'Beehive', perch: "Percy's perch" } as Record<string, string>,
     stages: {
       windmill: ['The foundation', 'The frame', 'The sails', 'The millstone'],
-      beehive: ['The stand', 'The hive', 'The roof'],
-      perch: ['The post', 'The roof', 'The bell'],
+      beehive: ['The bench', 'The skep', 'Bees and flowers'],
+      perch: ['The pole', 'The house', 'Roof and bell'],
     } as Record<string, string[]>,
     stageOf: (n: number, of: number) => `Stage ${n} of ${of}`,
     gives: {
       windmill: 'Adds the mill to your kitchen',
-      beehive: 'Honey and beeswax every day',
+      beehive: 'Honey and beeswax every day, to collect in the Backyard',
       perch: 'Percy rests 12 hours less after a trip',
     } as Record<string, string>,
     locked: (part: string, place: string) => `Find the ${part.toLowerCase()} in the ${place} dig to start it.`,
@@ -179,7 +204,7 @@ export const STRINGS = {
     stageBuilt: (project: string, stage: string) => `${project}: ${stage.toLowerCase()} is built.`,
     projectDone: {
       windmill: 'The windmill is finished! The mill is in your kitchen now.',
-      beehive: 'The beehive is finished! It gives honey and beeswax every day.',
+      beehive: 'The beehive is finished! Collect its honey and beeswax in the Backyard.',
       perch: "Percy's perch is finished! He'll rest less after a courier trip.",
     } as Record<string, string>,
   },

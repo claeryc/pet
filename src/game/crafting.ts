@@ -200,7 +200,7 @@ export function buildStage(state: GameState, now: number, id: string): { state: 
 
 // Catches projects up to time `t` (from simulate): stages that are done
 // get built (the windmill's last one adds the mill to the kitchen), and
-// a finished beehive gives its honey and beeswax once each new day.
+// a finished beehive fills with a day's honey and beeswax each new day.
 export function stepCrafting(state: GameState, t: number): GameState {
   if (!state.crafting) return state;
   let s = state;
@@ -213,15 +213,51 @@ export function stepCrafting(state: GameState, t: number): GameState {
     if (done && p.gives === 'mill' && !s.kitchen.includes('mill')) s = { ...s, kitchen: [...s.kitchen, 'mill'] };
     s = logMessage(s, { kind: 'built', at: prog.until, project: p.id, stage: built - 1, done });
   }
-  const hive = PROJECTS.find((p) => p.gives === 'hive');
-  const day = localDay(t);
-  if (hive && projectDone(s, hive.id) && crafting(s).hiveDay !== day) {
-    const food = { ...s.inventory.food, honey: (s.inventory.food.honey ?? 0) + C.hive.honey };
-    s = addMaterial({ ...s, inventory: { ...s.inventory, food } }, 'beeswax', C.hive.beeswax);
-    s = withCrafting(s, { hiveDay: day });
+  // A finished beehive fills up a day at a time, up to what it holds.
+  if (hiveBuilt(s)) {
+    const day = localDay(t);
+    const was = crafting(s).hiveDay;
+    if (was !== day) {
+      const days = was ? Math.max(1, Math.round((dayStart(day) - dayStart(was)) / DAY)) : 1;
+      s = withCrafting(s, { hiveDay: day, hiveStock: Math.min(C.hive.holds, hiveStock(s) + days) });
+    }
   }
   return s;
 }
+
+const DAY = 24 * HOUR;
+// Midnight at the start of a local day ('2026-11-02').
+const dayStart = (day: string): number => {
+  const [y, m, d] = day.split('-').map(Number);
+  return new Date(y, m - 1, d).getTime();
+};
+
+// ---- The beehive (in the Backyard) ----
+
+export const hiveBuilt = (state: GameState): boolean => PROJECTS.some((p) => p.gives === 'hive' && projectDone(state, p.id));
+// Days of honey waiting, 0 to C.hive.holds.
+export const hiveStock = (state: GameState): number => crafting(state).hiveStock ?? 0;
+export const hiveFull = (state: GameState): boolean => hiveStock(state) >= C.hive.holds;
+// When the next day's honey comes in: the coming local midnight.
+export function hiveNextAt(now: number): number {
+  const d = new Date(now);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime();
+}
+
+// Takes everything waiting in the beehive: honey into the pantry, beeswax
+// into the pouch.
+export function collectHive(state: GameState): { state: GameState; honey: number; beeswax: number; blocked?: 'empty' } {
+  const n = hiveStock(state);
+  if (!hiveBuilt(state) || n <= 0) return { state, honey: 0, beeswax: 0, blocked: 'empty' };
+  const honey = n * C.hive.honey;
+  const beeswax = n * C.hive.beeswax;
+  const food = { ...state.inventory.food, honey: (state.inventory.food.honey ?? 0) + honey };
+  let s = addMaterial({ ...state, inventory: { ...state.inventory, food } }, 'beeswax', beeswax);
+  s = withCrafting(s, { hiveStock: 0 });
+  return { state: s, honey, beeswax };
+}
+
+export const perchBuilt = (state: GameState): boolean => PROJECTS.some((p) => p.gives === 'perch' && projectDone(state, p.id));
 
 // Hours less Percy rests after a courier trip, once his perch is built.
 export const perchRestOff = (state: GameState): number => (PROJECTS.some((p) => p.gives === 'perch' && projectDone(state, p.id)) ? C.perchRestOff : 0);

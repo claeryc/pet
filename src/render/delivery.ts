@@ -116,6 +116,18 @@ export function drawPercy(ctx: CanvasRenderingContext2D, x: number, footY: numbe
   draw(ctx, body.slice(0, 1), x, bodyTop);
 }
 
+// Percy from the side as above, asleep: eyes shut, standing still, his
+// head rising and falling slowly as he breathes.
+const PERCY_SLEEP_HEAD: Sprite = PERCY_SIDE_HEAD.map((row) => row.replace('wk', 'bb'));
+export function drawPercyAsleep(ctx: CanvasRenderingContext2D, x: number, footY: number, timeMs: number): void {
+  const breathe = Math.floor(timeMs / 900) % 2;
+  const body = [...PERCY_SIDE_BODY, ...PERCY_SIDE_FEET[0]];
+  const bodyTop = footY + 1 - body.length;
+  draw(ctx, body, x, bodyTop, PALETTE.deep);
+  draw(ctx, PERCY_SLEEP_HEAD, x, bodyTop - PERCY_SLEEP_HEAD.length + 1 + breathe, PALETTE.deep);
+  draw(ctx, body.slice(0, 1), x, bodyTop);
+}
+
 // Percy facing you, with his feet on row `footY`. His head bobs down.
 function drawPercyFront(ctx: CanvasRenderingContext2D, x: number, footY: number, timeMs: number): void {
   const bob = bobOf(timeMs);
