@@ -26,6 +26,8 @@ export interface WalkOptions<T extends string> {
   frame: HTMLElement; // gets --at, --drag and the walking classes
   room: HTMLElement; // where the stations, signs and edge tabs go
   swipeOn: HTMLElement[];
+  // A station that needs you: its edge tab gets a red dot.
+  needs?: (id: T) => boolean;
 }
 
 export interface Walk<T extends string> {
@@ -186,6 +188,7 @@ export function createWalk<T extends string>(o: WalkOptions<T>): Walk<T> {
       peek.textContent = to.label;
       edge.innerHTML = `<span aria-hidden="true">${dir < 0 ? '‹' : '›'}</span>${to.icon}`;
       edge.setAttribute('aria-label', STRINGS.stations.goTo(to.label));
+      edge.classList.toggle('needs', o.needs?.(to.id) ?? false);
     }
   }
 

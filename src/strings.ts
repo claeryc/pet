@@ -104,6 +104,31 @@ export const STRINGS = {
   stations: {
     goTo: (name: string) => `Go to the ${name}`,
   },
+  // The Backyard (Play > Garden, see src/ui/backyard.ts): the garden, and
+  // the beehive and Percy's perch once they're built.
+  backyard: {
+    stops: { garden: 'Garden', hive: 'Beehive', perch: 'Perch' } as Record<string, string>,
+    close: 'Close',
+    hive: 'Beehive',
+    honey: 'Honey',
+    beeswax: 'Beeswax',
+    collect: 'Collect',
+    full: 'Full! The bees are waiting.',
+    nextIn: (time: string) => `More honey in ${time}`,
+    empty: (time: string) => `Nothing yet. More honey in ${time}`,
+    nightNote: 'The bees are asleep.',
+    collected: (honey: number, wax: number) => `Collected ${honey} honey and ${wax} beeswax!`,
+    nothing: 'Nothing to collect yet. The bees make more every day.',
+    hiveFull: 'The beehive is full of honey',
+    perch: "Percy's perch",
+    percyReady: 'Percy is home and ready for a trip.',
+    percyResting: (time: string) => `Percy is resting. Ready in ${time}.`,
+    percyAway: 'Percy is away on a trip.',
+    journeys: 'Journeys',
+    wake: 'Wake up',
+    wakeLabel: (price: number) => `Wake Percy up for ${price} gold`,
+    away: 'Away',
+  },
   // The workbench and projects (Play > Workbench, see src/game/crafting.ts).
   crafting: {
     tabs: { bench: 'Bench', projects: 'Projects' } as Record<string, string>,
@@ -153,13 +178,13 @@ export const STRINGS = {
     projects: { windmill: 'Windmill', beehive: 'Beehive', perch: "Percy's perch" } as Record<string, string>,
     stages: {
       windmill: ['The foundation', 'The frame', 'The sails', 'The millstone'],
-      beehive: ['The stand', 'The hive', 'The roof'],
-      perch: ['The post', 'The roof', 'The bell'],
+      beehive: ['The bench', 'The skep', 'Bees and flowers'],
+      perch: ['The pole', 'The house', 'Roof and bell'],
     } as Record<string, string[]>,
     stageOf: (n: number, of: number) => `Stage ${n} of ${of}`,
     gives: {
       windmill: 'Adds the mill to your kitchen',
-      beehive: 'Honey and beeswax every day',
+      beehive: 'Honey and beeswax every day, to collect in the Backyard',
       perch: 'Percy rests 12 hours less after a trip',
     } as Record<string, string>,
     locked: (part: string, place: string) => `Find the ${part.toLowerCase()} in the ${place} dig to start it.`,
@@ -179,7 +204,7 @@ export const STRINGS = {
     stageBuilt: (project: string, stage: string) => `${project}: ${stage.toLowerCase()} is built.`,
     projectDone: {
       windmill: 'The windmill is finished! The mill is in your kitchen now.',
-      beehive: 'The beehive is finished! It gives honey and beeswax every day.',
+      beehive: 'The beehive is finished! Collect its honey and beeswax in the Backyard.',
       perch: "Percy's perch is finished! He'll rest less after a courier trip.",
     } as Record<string, string>,
   },
@@ -730,6 +755,15 @@ export const STRINGS = {
           { title: 'Dig for treasure', text: (pet: string) => `Tap a square and ${pet} runs over and digs it. A hole's number is how many treasures touch it. The chest counts what's still buried.` },
           { title: 'Six digs a day', text: (pet: string) => `The spades are your digs for today. Find a treasure and you get the spade back! Stuck? Sniff and ${pet} points at a treasure.` },
           { title: 'Mind the tide', text: 'At Coral Cove the sea creeps in from one side. The pips fill with each dig. Dig the wet squares first!' },
+        ],
+      },
+      workbench: {
+        name: 'The workbench',
+        pages: [
+          { title: 'Collect materials', text: 'Journeys and Sniff and dig bring home twigs, pebbles, shells and more. Open Materials to see your pouch.' },
+          { title: 'Pick a pattern', text: 'Open Patterns and pick a tab: things for the room, trips, the pond and the garden. Grey ones need more materials.' },
+          { title: 'Make it!', text: 'The spots show what it takes. Tap Make! three times to hammer it together. A room piece can go straight up in your room.' },
+          { title: 'Big projects', text: 'Swipe to Projects. Dig up a key part to start one, then build it stage by stage. Each stage takes a few hours.' },
         ],
       },
       meet: {

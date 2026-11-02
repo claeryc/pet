@@ -461,7 +461,10 @@ export interface Crafting {
   // Stages built so far, and when the one being built now is done (0 while
   // nothing's being built).
   projects: Record<string, { built: number; until: number }>;
-  hiveDay: string; // the local day the beehive last gave its honey ('' = never)
+  hiveDay: string; // the local day the beehive last made its honey ('' = never)
+  // Days of honey and beeswax waiting in the beehive to be collected (up to
+  // CONFIG.crafting.hive.holds). Missing in older saves: none.
+  hiveStock?: number;
 }
 
 export interface GameState {

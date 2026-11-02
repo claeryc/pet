@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CONFIG } from '../src/game/config';
 import {
-  addMaterial, addPart, buildStage, craft, digForPart, hasAnyMaterial, hasPart, materialCount, PATTERNS,
+  addMaterial, addPart, buildStage, collectHive, craft, hiveBuilt, hiveFull, hiveNextAt, hiveStock, digForPart, hasAnyMaterial, hasPart, materialCount, PATTERNS,
   perchRestOff, progressOf, PROJECTS, projectDone, stepCrafting, tripCrafting,
 } from '../src/game/crafting';
 import { FURNITURE, ownsDecor } from '../src/game/decor';
@@ -147,15 +147,35 @@ describe('projects', () => {
     expect(state.kitchen).toContain('mill');
   });
 
-  it('a beehive gives honey and beeswax once a day', () => {
+  it('a beehive fills a day at a time until you collect it', () => {
     const { state, at } = buildAll(addPart(withMaterials(newTeen(START)), 'queenCrown'), 'beehive');
     const honey = state.inventory.food.honey ?? 0;
     const wax = materialCount(state, 'beeswax');
-    const again = stepCrafting(state, at + 1);
-    expect(again.inventory.food.honey ?? 0).toBe(honey);
-    const tomorrow = stepCrafting(again, at + 24 * HOUR);
-    expect(tomorrow.inventory.food.honey).toBe(honey + C.hive.honey);
-    expect(materialCount(tomorrow, 'beeswax')).toBe(wax + C.hive.beeswax);
+    // The day it's finished brings the first day's worth, kept in the hive.
+    expect(hiveStock(state)).toBe(1);
+    expect(state.inventory.food.honey ?? 0).toBe(honey);
+    expect(hiveStock(stepCrafting(state, at + 1))).toBe(1);
+    const tomorrow = stepCrafting(state, at + 24 * HOUR);
+    expect(hiveStock(tomorrow)).toBe(2);
+    // A long time away still stops at what it holds.
+    const later = stepCrafting(tomorrow, at + 10 * 24 * HOUR);
+    expect(hiveStock(later)).toBe(C.hive.holds);
+    expect(hiveFull(later)).toBe(true);
+    const got = collectHive(later);
+    expect(got.honey).toBe(C.hive.holds * C.hive.honey);
+    expect(got.state.inventory.food.honey).toBe(honey + C.hive.holds * C.hive.honey);
+    expect(materialCount(got.state, 'beeswax')).toBe(wax + C.hive.holds * C.hive.beeswax);
+    expect(hiveStock(got.state)).toBe(0);
+    expect(collectHive(got.state).blocked).toBe('empty');
+  });
+
+  it('there is nothing to collect without a beehive', () => {
+    expect(collectHive(newTeen(START)).blocked).toBe('empty');
+    expect(hiveBuilt(newTeen(START))).toBe(false);
+  });
+
+  it('the next honey comes in at midnight', () => {
+    expect(hiveNextAt(START)).toBe(new Date(2026, 0, 2).getTime());
   });
 
   it("Percy's perch shortens his rest", () => {

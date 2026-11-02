@@ -12344,12 +12344,15 @@ button.trip-bars-name.is-on {
 }
 
 .kitchen[data-project='beehive'] .project-art {
-  aspect-ratio: 22 / 24;
-  height: 56%;
+  aspect-ratio: 36 / 40;
+  height: 46%;
+  transform: translateX(-50%);
 }
 
 .kitchen[data-project='perch'] .project-art {
-  aspect-ratio: 20 / 28;
+  aspect-ratio: 35 / 44;
+  height: 54%;
+  transform: translateX(-50%);
 }
 
 .project-ghost,
@@ -12832,4 +12835,203 @@ button.trip-bars-name.is-on {
   padding: 6px 8px 8px;
   border-top: 2px solid #f0dce8;
   background: #fff5f8;
+}
+
+/* ---- The Backyard (src/ui/backyard.ts) ----
+
+   The workbench's walk, outdoors: a sky over the whole yard, each stop a
+   pixel canvas standing on the ledge, and the controls on the front ledge
+   under them. The garden's own panel (pot tabs, sunflower, meters) sits on
+   the ledge at the Garden stop, so the ledge is a little taller there. */
+.backyard {
+  --front: 120px;
+}
+
+.backyard[data-stop='garden'] {
+  --front: 150px;
+}
+
+/* The pixel sky, fence and grass (as src/render/garden.ts draws them),
+   carried on past the first and last stop. --px, --fence and --grass are
+   measured from the stop's canvas. */
+.backyard .kitchen-room {
+  --sky: #9ad3f0;
+  --picket: var(--card);
+  background:
+    linear-gradient(#a8e6cf 0 0) 0 var(--grass, 70%) / 100% var(--px, 4px) no-repeat,
+    linear-gradient(#6cc19a 0 0) 0 var(--grass, 70%) / 100% 100% no-repeat,
+    linear-gradient(var(--picket) 0 0) 0 calc(var(--fence, 60%) + 3 * var(--px, 4px)) / 100% var(--px, 4px) no-repeat,
+    linear-gradient(var(--picket) 0 0) 0 calc(var(--fence, 60%) + 7 * var(--px, 4px)) / 100% var(--px, 4px) no-repeat,
+    repeating-linear-gradient(90deg, var(--picket) 0 calc(2 * var(--px, 4px)), transparent 0 calc(4 * var(--px, 4px))) 0 calc(var(--fence, 60%) + var(--px, 4px)) / 100% calc(10 * var(--px, 4px)) no-repeat,
+    var(--sky);
+}
+
+.backyard.night .kitchen-room {
+  --sky: var(--plum);
+  --picket: var(--lavender, #d9c8ee);
+}
+
+/* Each stop: its 64 x 48 canvas, as wide as the stop, on the ledge. */
+.yard-scene canvas {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  aspect-ratio: 64 / 48;
+  image-rendering: pixelated;
+}
+
+/* The ledge is grassy here, and the front ledge a garden-bed brown. */
+.backyard .back-counter {
+  background: linear-gradient(var(--good) 0 calc(100% - 5px), #5aa883 calc(100% - 5px));
+}
+
+.backyard .kitchen-controls {
+  padding: 16px 12px 8px;
+}
+
+/* A red dot on a stop's edge tab when it needs you (a full beehive). */
+.walk-edge.needs::after {
+  content: '';
+  position: absolute;
+  top: -6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--rose, #e05a7a);
+  border: 2px solid white;
+}
+
+.walk-edge.l.needs::after {
+  right: -4px;
+}
+
+.walk-edge.r.needs::after {
+  left: -4px;
+}
+
+/* The garden's panel, on the ledge instead of over the stat bars. */
+.yard-garden {
+  align-items: stretch;
+}
+
+.yard-garden .garden {
+  position: relative;
+  inset: auto;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  background: none;
+  transform: none;
+  transition: none;
+}
+
+.yard-garden .garden::before {
+  display: none;
+}
+
+.yard-garden .garden-tabs {
+  margin-bottom: 4px;
+}
+
+.yard-garden .garden-flower {
+  width: 64px;
+  height: 64px;
+}
+
+/* The pour meter, just over the ledge while you hold Water. */
+.yard-pour {
+  position: absolute;
+  z-index: 6;
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--front) + var(--band) + var(--lift) + 10px);
+}
+
+.yard-pour .pour-bar {
+  width: 100%;
+}
+
+/* The beehive's and the perch's ledge: what's there, and a round button. */
+.yard-info {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: inset 0 0 0 2px rgba(91, 63, 110, 0.1);
+}
+
+.yard-name {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: var(--ink);
+  margin-bottom: 3px;
+}
+
+.yard-meter {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 2px;
+  font-size: 0.75rem;
+  font-weight: 900;
+  color: var(--plum);
+}
+
+.yard-meter-icon svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+.yard-meter-name {
+  width: 56px;
+}
+
+.yard-meter i {
+  width: 22px;
+  height: 9px;
+  border-radius: 5px;
+  background: #ece2f4;
+  border: 2px solid var(--lavender, #d9c8ee);
+}
+
+.yard-meter i.on {
+  background: var(--butter);
+  border-color: #e2b85a;
+}
+
+.yard-note {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--lilac);
+}
+
+.yard-note.good {
+  color: var(--leaf-dark, #3f7d62);
+}
+
+.yard-go-icon svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+}
+
+.yard-go.pricey::after {
+  content: attr(data-price);
+  font-size: 0.75rem;
+  color: var(--plum);
+}
+
+.yard-row .btn {
+  height: 52px;
+  flex: 1 1 0;
+}
+
+.yard-row[hidden] {
+  display: none;
 }

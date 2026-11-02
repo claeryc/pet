@@ -4,7 +4,7 @@
 
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
-import { canPlayMinigames, getLook, hasPassed, isCritical, isNeglected, isRecovering, timeLeftToTreat } from '../game/stats';
+import { canPlayMinigames, getLook, isNight, hasPassed, isCritical, isNeglected, isRecovering, timeLeftToTreat } from '../game/stats';
 import { sheetFor, stageLengthMs } from '../game/growth';
 import type { FurnitureSlot, GameState, PetStats } from '../game/state';
 import { meadowVisitor } from '../game/meadow';
@@ -20,6 +20,7 @@ import { createCooking, KITCHEN_OUT_MS } from './cooking';
 import { createWorkbench } from './workbench';
 import type { Pattern } from '../game/crafting';
 import { createGarden, GARDEN_OUT_MS } from './garden';
+import { createBackyard, stopNeedsYou } from './backyard';
 import { createDelivery, DELIVERY_OUT_MS } from './delivery';
 import { unreadMail } from '../game/messages';
 import { needsTending, type CropId } from '../game/garden';
@@ -76,6 +77,8 @@ export interface HomeCallbacks extends MenuCallbacks, DigCallbacks {
   onCure: (pot: number) => void;
   onHarvest: (pot: number) => void;
   onClear: (pot: number) => void;
+  onCollectHive: () => void; // the Backyard's beehive
+  onWakePercy: () => void; // ends Percy's rest, for gold
   onPetTap: () => void; // a quick cuddle
   onPutInBox: (box: number) => void; // Percy's order
   onTakeFromBox: (box: number) => void;
@@ -889,6 +892,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     roomWrap.setAttribute('aria-hidden', 'true');
     if (latest) workbench.update(latest.state, latest.now);
     workbench.start();
+    cb.onGuide('workbench');
   }
   // The garden too: its own buttons, and a bed of pots that slides up over
   // the stat bars.
@@ -899,9 +903,40 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     onCure: cb.onCure,
     onHarvest: cb.onHarvest,
     onClear: cb.onClear,
-    onExit: () => showActions(GARDEN_OUT_MS),
+    onExit: () => {
+      backyard.stop();
+      showActions(GARDEN_OUT_MS);
+    },
     toast: showToast,
+    fitPanel: (drawer) => backyard.fit(drawer),
   });
+  // ...which is the first stop of the Backyard, along with the beehive and
+  // Percy's perch once they're built.
+  const backyard = createBackyard({
+    onCollect: cb.onCollectHive,
+    onWakePercy: cb.onWakePercy,
+    onJourneys: () => {
+      leaveBackyard(0);
+      openJourneys();
+    },
+    onExit: () => leaveBackyard(GARDEN_OUT_MS),
+    onGardenTap: (x, y) => {
+      const pot = potAt(x, y, latest?.state.garden.length ?? CONFIG.garden.plots);
+      if (pot >= 0) garden.select(pot);
+    },
+    onStop: (stop) => (garden.row.hidden = stop !== 'garden' || !garden.active()),
+    gardenRow: garden.row,
+    roomCanvas: () => canvas,
+    roomBox: () => roomWrap.getBoundingClientRect(),
+    isNight: () => isNight(latest?.now ?? Date.now()),
+  });
+  backyard.gardenSlot.append(garden.beds);
+  backyard.pourSlot.append(garden.pour);
+  function leaveBackyard(ms: number): void {
+    garden.stop();
+    backyard.stop();
+    showActions(ms);
+  }
   function startGarden(): void {
     if (petAway) return showToast(STRINGS.blocked.away(petName));
     if (actions.hidden) return; // already busy with something else
@@ -911,8 +946,13 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     cb.onSeen('garden');
     hideActions();
     stats.setAttribute('aria-hidden', 'true'); // covered by the garden for now
-    if (latest) garden.update(latest.state, latest.now);
+    roomWrap.setAttribute('aria-hidden', 'true');
+    if (latest) {
+      garden.update(latest.state, latest.now);
+      backyard.update(latest.state, latest.now);
+    }
     garden.start();
+    backyard.start();
     cb.onGuide('garden');
   }
   // Percy's order: his meadow, its own [Close] [Fill all] row, and a
@@ -1165,7 +1205,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const reveal = createReveal();
   const craft = createCraft();
   const backpack = createBackpack();
-  statSlot.append(stats, bath.panel, journeys.panel, dig.panel, trip.panel, decorate.panel, shelf.panel, fishing.pond, cooking.kitchen, workbench.bench, garden.beds, delivery.panel, meet.panel, backpack.el, reveal.el, craft.el);
+  statSlot.append(stats, bath.panel, journeys.panel, dig.panel, trip.panel, decorate.panel, shelf.panel, fishing.pond, cooking.kitchen, workbench.bench, backyard.frame, delivery.panel, meet.panel, backpack.el, reveal.el, craft.el);
 
   // A short message that pops up and fades, e.g. "Mochi is asleep". When
   // you've run out of something the Shop sells, it has a Shop button too.
@@ -1216,10 +1256,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   }
   // Leaves the garden or the kitchen and opens the Shop at `category`.
   function goShop(category: ShopCategory): void {
-    if (garden.active()) {
-      garden.stop();
-      showActions(GARDEN_OUT_MS);
-    }
+    if (garden.active()) leaveBackyard(GARDEN_OUT_MS);
     if (cooking.active()) {
       cooking.stop();
       showActions(KITCHEN_OUT_MS);
@@ -1243,7 +1280,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     else showToast(message);
   }
 
-  root.append(roomWrap, banner, statSlot, garden.pour, actions, bath.row, trip.row, decorate.row, shelf.row, fishing.row, cooking.row, workbench.row, garden.row, delivery.row, meet.row, journeys.sheet, journeys.row, dig.row, toastEl);
+  root.append(roomWrap, banner, statSlot, actions, bath.row, trip.row, decorate.row, shelf.row, fishing.row, cooking.row, workbench.row, garden.row, backyard.row, delivery.row, meet.row, journeys.sheet, journeys.row, dig.row, toastEl);
 
   // Which pet the bars were showing, so switching pets can slide them.
   let barsFor: string | null = null;
@@ -1328,6 +1365,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       fishing.setBait(baitInUse(state), Object.fromEntries(BAITS.map((id) => [id, baitCount(state, id)])) as Record<BaitId, number>);
       fishing.setPerks(reelPerks(state));
       garden.update(state, now);
+      backyard.update(state, now);
       delivery.update(state, now);
       meet.update(state, now);
       journeys.update(state, now);
@@ -1356,7 +1394,9 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       playDrawer.setNew(gardenIsNew || meetIsNew || journeysIsNew || digIsNew || benchIsNew);
       // A drop on Play when a pot is dry, sick or ready to harvest.
       const tend = isUnlocked(state, 'garden') && needsTending(state.garden, now);
-      playDrawer.setBadge(tend ? STAT_ICONS.drop : null, STRINGS.garden.needsYou);
+      // ...or a jar of honey when the beehive is full.
+      const honey = !tend && stopNeedsYou(state, now, 'hive');
+      playDrawer.setBadge(tend ? STAT_ICONS.drop : honey ? ITEM_ICONS.honey : null, tend ? STRINGS.garden.needsYou : STRINGS.backyard.hiveFull);
       stats.hidden = isEgg || journeys.active() || dig.active() || trip.active() || decorate.active() || shelf.active(); // an egg has no needs yet
       const mood = petAway ? STRINGS.blocked.away(pet.name) : isEgg ? STRINGS.mood.egg : STRINGS.mood[getLook(pet)](pet.name);
       const mess = [

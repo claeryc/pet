@@ -56,6 +56,8 @@ export interface GardenCallbacks {
   onClear: (pot: number) => void;
   onExit: () => void;
   toast: (message: string, shop?: ShopCategory) => void; // `shop`: offer a button to that part of the Shop
+  // Fits the open Plant panel (the Backyard lifts its ledge on top of it).
+  fitPanel?: (drawer: HTMLElement) => void;
 }
 
 export interface Garden {
@@ -237,7 +239,7 @@ export function createGarden(cb: GardenCallbacks): Garden {
     comingSoon: STRINGS.menu.comingSoon,
     beforeOpen: () => (state && CROPS.some((c) => seedCount(state!, c.id as CropId) > 0) ? null : STRINGS.garden.noSeeds),
     onBlocked: (msg: string) => cb.toast(msg, 'garden'),
-    onOpen: () => fitPanel(),
+    onOpen: () => (cb.fitPanel ? cb.fitPanel(plantDrawer.el) : fitPanel()),
   });
   const waterBtn = btn(STRINGS.garden.water, 'btn garden-water');
   const fertilizeBtn = btn(STRINGS.garden.fertilize);
