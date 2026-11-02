@@ -1,14 +1,19 @@
-// The travel journal (Collection > Travel journal, then a place): a little
-// book with a page for each place, in tabs along the top.
+// The travel journal (Menu > Journal, or Journal on the trip board): a
+// little book with a page for each place, turned with the tabs along the
+// bottom or a swipe.
 //
-//   [market] [woods ♥] [cove] [?]
-//   ┌ Mossy Woods  Regular · 7 trips ────── (pet) ┐
-//   8 more trips to become a Local [=====-----]
+//   ┌ Mossy Woods ─────────────────────────────┐
+//   │  (a little scene of the place)            │
+//   │  o────o────(pet)- - - o- - - - o          │
+//   │  Visitor Regular   Local     Legend       │
+//   └───────────────────────────────────────────┘
+//   8 more trips to become a Local
 //   ♥ Pip's favourite place
 //   Stamps        [Stroll] [Hike] [Adventure] [Night trip]
-//   Found here    everything the place can give, found ones in colour
+//   Found here    the ones found, a couple of '?' and "+5"
 //   Snapshots     little moments snapped on trips here (see snapshots.ts)
 //   Postcards     the pets' postcards, newest first, two to a row
+//   (‹)  (market) (woods♥) [cove] (?)  (›)
 //
 // The same postcard, bigger, comes up after a backpack is opened (see
 // postcardArt). The rules are in src/game/journeys.ts.
@@ -20,7 +25,7 @@ import { PLACES, placeFinds, placeLevel, type Place } from '../game/journeys';
 import type { GameState, Pet, Postcard } from '../game/state';
 import { HEART_ICONS, ITEM_ICONS } from './icons';
 import { placeMoments } from '../game/snapshots';
-import { banner, fakeExtra, tabsStyle } from './journal-banner';
+import { banner } from './journal-banner';
 
 export interface JournalCallbacks {
   characterImage: (sheet: string) => string | undefined;
@@ -137,8 +142,17 @@ export function postcardArt(
   return wrap.outerHTML;
 }
 
-// The tabs along the top: a place you've been to, with a heart if it's a
-// pet's favourite; '?' for one you haven't.
+// The places you can turn to: the ones been to, in order.
+function turnable(state: GameState): string[] {
+  return PLACES.filter((p) => (state.journeys.journal[p.id]?.trips ?? 0) > 0).map((p) => p.id);
+}
+
+// The tabs, along the bottom where a thumb can reach them: a small round
+// icon for each place been to (with a heart if it's a pet's favourite),
+// then a '?' for the next one, between arrows to the place before and
+// after. Round icons stay small, so a fifth or sixth place still fits.
+//
+//   (‹)  (market) (woods♥) [ cove ] (?)  (›)
 function tabs(state: GameState, showing: string, cb: JournalCallbacks): HTMLElement {
   const row = el('div', 'jr-tabs');
   const pets: Pet[] = [state.pet, ...state.housemates];
@@ -157,43 +171,52 @@ function tabs(state: GameState, showing: string, cb: JournalCallbacks): HTMLElem
     if (pets.some((pet) => pet.favouritePlace === p.id)) b.append(icon(HEART_ICONS.full, 'jr-tab-heart'));
     if (visited) b.addEventListener('click', () => cb.onPlace(p.id));
     else b.disabled = true;
-    // MOCKUP: a couple of made-up places, before the '?' (or at the end).
-    if (!visited || (!next && p === shown[shown.length - 1])) {
-      if (visited) row.append(b);
-      for (const [i, svg] of fakeExtra().map((_, i) => [i, [ITEM_ICONS.place_meadow, ITEM_ICONS.journey][i % 2]] as const)) {
-        const f = el('button', 'jr-tab');
-        f.dataset.fake = String(i);
-        f.append(icon(svg ?? ITEM_ICONS.journey, 'jr-tab-icon'));
-        row.append(f);
-      }
-      if (visited) continue;
-    }
     row.append(b);
   }
-  const style = tabsStyle();
-  if (style === 'strip') {
-    // Tabs keep their size and the row scrolls sideways, the one showing
-    // brought into view.
-    row.classList.add('is-strip');
-    requestAnimationFrame(() => {
-      const on = row.querySelector<HTMLElement>('.is-on');
-      if (on) row.scrollLeft = on.offsetLeft - (row.clientWidth - on.offsetWidth) / 2;
-    });
-    return row;
-  }
-  // Pager: small round icons between arrows to the place before and after.
-  row.classList.add('is-mini');
-  const pager = el('div', 'jr-pager');
-  const visitedIds = [...row.querySelectorAll<HTMLButtonElement>('.jr-tab:not(.is-new)')];
-  const at = visitedIds.findIndex((b) => b.classList.contains('is-on'));
-  const prev = el('button', 'jr-pager-btn', '‹');
-  const nextBtn = el('button', 'jr-pager-btn', '›');
-  prev.disabled = at <= 0;
-  nextBtn.disabled = at < 0 || at >= visitedIds.length - 1;
-  prev.addEventListener('click', () => visitedIds[at - 1]?.click());
-  nextBtn.addEventListener('click', () => visitedIds[at + 1]?.click());
-  pager.append(prev, row, nextBtn);
-  return pager;
+  const order = turnable(state);
+  const at = order.indexOf(showing);
+  const arrow = (text: string, label: string, to: string | undefined) => {
+    const b = el('button', 'jr-turn', text);
+    b.setAttribute('aria-label', label);
+    if (to) b.addEventListener('click', () => cb.onPlace(to));
+    else b.disabled = true;
+    return b;
+  };
+  const bar = el('div', 'jr-pager');
+  bar.append(
+    arrow('‹', STRINGS.journeys.prevPlace, at > 0 ? order[at - 1] : undefined),
+    row,
+    arrow('›', STRINGS.journeys.nextPlace, at >= 0 ? order[at + 1] : undefined),
+  );
+  return bar;
+}
+
+// A swipe across the page turns to the place before or after, like the
+// arrows. Mostly sideways and far enough, so scrolling down doesn't.
+function swipeable(book: HTMLElement, state: GameState, showing: string, cb: JournalCallbacks): void {
+  let from: { x: number; y: number } | null = null;
+  book.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    from = e.touches.length === 1 && t ? { x: t.clientX, y: t.clientY } : null;
+  }, { passive: true });
+  book.addEventListener('touchend', (e) => {
+    const t = e.changedTouches[0];
+    if (!from || !t) return;
+    const dx = t.clientX - from.x;
+    const dy = t.clientY - from.y;
+    from = null;
+    const to = swipeTo(turnable(state), showing, dx, dy);
+    if (to) cb.onPlace(to);
+  });
+}
+
+// Where a swipe of (dx, dy) pixels goes from `showing`, if anywhere: left
+// is the next place, right the one before.
+export function swipeTo(order: string[], showing: string, dx: number, dy: number): string | undefined {
+  if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return undefined;
+  const at = order.indexOf(showing);
+  if (at < 0) return undefined;
+  return order[at + (dx < 0 ? 1 : -1)];
 }
 
 // How many question marks to show among the finds still to find.
@@ -213,9 +236,10 @@ export function journalPage(state: GameState, placeId: string, cb: JournalCallba
   // looking after) standing there.
   const fans = pets.filter((p) => p.favouritePlace === place.id);
   const shown = fans[0] ?? state.pet;
-  // MOCKUP: the banner, in one of three looks (see journal-banner.ts).
-  book.append(tabs(state, place.id, cb), ...banner({
-    place: place.id, name: placeName(place.id), icon: placeIcon(place.id),
+  // The banner: the place as a little scene, with the path from Visitor to
+  // Legend along the bottom (see journal-banner.ts).
+  book.append(...banner({
+    place: place.id, name: placeName(place.id),
     trips: page.trips, level, pet: cb.characterImage(sheetFor(shown)),
   }));
   if (fans.length) {
@@ -283,6 +307,8 @@ export function journalPage(state: GameState, placeId: string, cb: JournalCallba
     for (const p of page.postcards) cards.append(postcardCard(p, place.id, level, p.look ? cb.characterImage(p.look) : undefined));
     book.append(cards);
   }
+  book.append(tabs(state, place.id, cb));
+  swipeable(book, state, place.id, cb);
   return [book];
 }
 

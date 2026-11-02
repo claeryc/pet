@@ -1,6 +1,7 @@
-// MOCKUP: three looks for the banner at the top of a journal page, and
-// two ways to lay out the place tabs once there are more places. Picked
-// with <html data-jr-banner="scene|ticket|path"> and data-jr-tabs.
+// The banner at the top of a journal page: a little pixel scene of the
+// place, its name, and a path along the bottom with a stop for each level
+// (Visitor, Regular, Local, Legend), the pet standing where you've got to.
+// Under it, how many trips to the next level.
 
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
@@ -86,7 +87,7 @@ const SCENES: Record<string, (p: Px) => void> = {
     p.rect(0, 38, W, H - 38, '#7cc496');
     for (let x = 2; x < W; x += 6) p.rect(x, 37, 1, 1, '#5fae80');
     // A couple of mushrooms.
-    for (const x of [30, 74]) {
+    for (const x of [44, 92]) {
       p.rect(x, 38, 4, 2, '#e05a7a');
       p.dot(x + 1, 38, '#ffffff');
       p.rect(x + 1, 40, 2, 2, '#fff7ec');
@@ -139,14 +140,9 @@ export function scenery(place: string): string {
 export interface BannerInfo {
   place: string;
   name: string;
-  icon: string; // svg
   trips: number;
   level: number;
   pet?: string; // image url
-}
-
-export function bannerStyle(): string {
-  return document.documentElement.dataset.jrBanner ?? 'scene';
 }
 
 const T = () => STRINGS.journeys;
@@ -170,60 +166,7 @@ function nextLine(b: BannerInfo): string {
   return next === undefined ? T().topLevel : T().toNext(next - b.trips, T().levels[b.level + 1]!);
 }
 
-// A: the place as a little scene, its name on a wooden sign, and the way to
-// the next level along the bottom.
-function scene(b: BannerInfo): HTMLElement {
-  const box = el('div', 'jb jb-scene');
-  box.dataset.place = b.place;
-  box.append(art(scenery(b.place), 'jb-land'));
-  const sign = el('div', 'jb-sign');
-  sign.append(el('b', '', b.name));
-  if (b.level > 0) sign.append(el('small', '', T().levels[b.level]));
-  box.append(sign, ...petAt(b.pet, 'jb-pet'));
-  const strip = el('div', 'jb-strip');
-  const next = J.levels[b.level];
-  const from = J.levels[b.level - 1] ?? 0;
-  strip.append(el('span', 'jb-strip-text', nextLine(b)));
-  if (next !== undefined) {
-    const bar = el('span', 'jb-strip-bar');
-    const fill = el('i', '');
-    fill.style.width = `${Math.round(((b.trips - from) / (next - from)) * 100)}%`;
-    bar.append(fill);
-    strip.append(bar, el('span', 'jb-strip-count', `${b.trips - from}/${next - from}`));
-  }
-  box.append(strip);
-  return box;
-}
-
-// B: a travel pass. A stub with the scene and the place's stamp, a torn
-// line, then the name, the level stamped on, and a hole punched per trip.
-function ticket(b: BannerInfo): HTMLElement {
-  const box = el('div', 'jb jb-ticket');
-  box.dataset.place = b.place;
-  const stub = el('div', 'jb-stub');
-  stub.append(art(scenery(b.place), 'jb-land'));
-  const seal = el('span', 'jb-seal');
-  seal.append(art(b.icon, 'jb-seal-icon'));
-  stub.append(seal);
-  const body = el('div', 'jb-body');
-  body.append(el('small', 'jb-kicker', 'Travel pass'), el('b', 'jb-name', b.name));
-  if (b.level > 0) body.append(el('span', 'jb-rubber', T().levels[b.level]));
-  const next = J.levels[b.level];
-  const from = J.levels[b.level - 1] ?? 0;
-  if (next !== undefined) {
-    const holes = el('div', 'jb-holes');
-    const span = next - from;
-    const shown = Math.min(span, 8);
-    const done = Math.floor(((b.trips - from) / span) * shown);
-    for (let i = 0; i < shown; i++) holes.append(el('i', i < done ? 'is-on' : ''));
-    body.append(holes);
-  }
-  body.append(el('span', 'jb-next', nextLine(b)));
-  box.append(stub, body);
-  return box;
-}
-
-// C: the scene with a path along the bottom: a flag for each level, and the
+// The scene with a path along the bottom: a stop for each level, and the
 // pet walking it.
 function path(b: BannerInfo): HTMLElement {
   const box = el('div', 'jb jb-path');
@@ -260,22 +203,5 @@ function path(b: BannerInfo): HTMLElement {
 }
 
 export function banner(b: BannerInfo): HTMLElement[] {
-  const style = bannerStyle();
-  if (style === 'ticket') return [ticket(b)];
-  if (style === 'path') {
-    return [path(b), el('p', 'jb-under', nextLine(b))];
-  }
-  return [scene(b)];
-}
-
-// --- Tabs, for more places ---------------------------------------------------
-
-export function tabsStyle(): string {
-  return document.documentElement.dataset.jrTabs ?? 'strip';
-}
-
-// For the mockup: pretend there are a couple more places.
-export function fakeExtra(): { id: string; icon: string }[] {
-  const n = Number(document.documentElement.dataset.jrFake ?? 0);
-  return Array.from({ length: n }, (_, i) => ({ id: `extra${i}`, icon: '' }));
+  return [path(b), el('p', 'jb-under', nextLine(b))];
 }
