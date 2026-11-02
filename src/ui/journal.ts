@@ -141,8 +141,14 @@ export function postcardArt(
 function tabs(state: GameState, showing: string, cb: JournalCallbacks): HTMLElement {
   const row = el('div', 'jr-tabs');
   const pets: Pet[] = [state.pet, ...state.housemates];
-  for (const p of PLACES) {
-    const visited = (state.journeys.journal[p.id]?.trips ?? 0) > 0;
+  // Only the places been to, and the next one still to find: a row of
+  // question marks would make a new book look empty.
+  const been = (id: string) => (state.journeys.journal[id]?.trips ?? 0) > 0;
+  const next = PLACES.find((p) => !been(p.id) && p.id !== showing);
+  // The '?' goes last, after the places been to.
+  const shown = PLACES.filter((p) => been(p.id) || p.id === showing);
+  for (const p of next ? [...shown, next] : shown) {
+    const visited = been(p.id);
     const b = el('button', `jr-tab${p.id === showing ? ' is-on' : ''}${visited ? '' : ' is-new'}`);
     b.append(icon(visited ? placeIcon(p.id) : ITEM_ICONS.unknown, 'jr-tab-icon'));
     b.setAttribute('aria-label', visited ? placeName(p.id) : STRINGS.collection.unknown);
@@ -154,6 +160,9 @@ function tabs(state: GameState, showing: string, cb: JournalCallbacks): HTMLElem
   }
   return row;
 }
+
+// How many question marks to show among the finds still to find.
+const TEASERS = 2;
 
 // A place's page.
 export function journalPage(state: GameState, placeId: string, cb: JournalCallbacks): HTMLElement[] {
@@ -211,9 +220,12 @@ export function journalPage(state: GameState, placeId: string, cb: JournalCallba
   book.append(head(T.stamps, got.filter((g) => (STAMPS as readonly string[]).includes(g)).length, STAMPS.length), stamps);
 
   // Found here: everything the place can give.
+  // The ones found, then just a couple still to find and a count of the
+  // rest, so a new page isn't a wall of question marks.
   const all = placeFinds(place);
   const finds = el('div', 'jr-finds');
-  for (const entry of all) {
+  const missing = all.filter((e) => !page.found.includes(e));
+  for (const entry of [...all.filter((e) => page.found.includes(e)), ...missing.slice(0, TEASERS)]) {
     const found = page.found.includes(entry);
     const look = findLook(entry);
     const tile = el('span', `jr-find${found ? '' : ' is-none'}${place.finds[3].includes(entry as never) ? ' is-star3' : ''}`);
@@ -221,13 +233,18 @@ export function journalPage(state: GameState, placeId: string, cb: JournalCallba
     tile.title = found ? look.name : STRINGS.collection.unknown;
     finds.append(tile);
   }
+  if (missing.length > TEASERS) finds.append(el('span', 'jr-find is-more', T.moreToFind(missing.length - TEASERS)));
   book.append(head(T.foundHere, all.filter((e) => page.found.includes(e)).length, all.length), finds);
 
   // Snapshots: the place's set, the ones snapped with their picture.
   const moments = placeMoments(place.id);
   const snaps = page.snaps ?? [];
   const album = el('div', 'jr-snaps');
-  for (const id of moments) {
+  // The ones snapped, then one empty frame for the next.
+  const taken = moments.filter((id) => snaps.some((x) => x.moment === id));
+  const toSnap = moments.filter((id) => !taken.includes(id));
+  // None yet: just the line on how to snap one, no empty frames.
+  for (const id of taken.length ? [...taken, ...toSnap.slice(0, 1)] : []) {
     const snap = snaps.find((x) => x.moment === id);
     const frame = el('figure', `jr-snap${snap ? '' : ' is-none'}`);
     if (snap) {
@@ -238,9 +255,10 @@ export function journalPage(state: GameState, placeId: string, cb: JournalCallba
     } else frame.append(el('span', 'jr-snap-none', '?'), el('figcaption', '', STRINGS.collection.unknown));
     album.append(frame);
   }
-  book.append(head(T.snapshots, moments.filter((id) => snaps.some((x) => x.moment === id)).length, moments.length));
+  book.append(head(T.snapshots, taken.length, moments.length));
   if (!snaps.length) book.append(el('p', 'jr-empty', T.noSnapshots));
-  book.append(album);
+  if (taken.length) book.append(album);
+  if (taken.length && toSnap.length > 1) book.append(el('p', 'jr-more', T.moreToSnap(toSnap.length - 1)));
 
   // Postcards, newest first.
   book.append(head(T.postcards, page.postcards.length));

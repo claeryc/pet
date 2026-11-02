@@ -335,6 +335,8 @@ export const STRINGS = {
     // Little moments on a trip, snapped for the travel journal.
     snap: 'Snap!',
     snapshots: 'Snapshots',
+    moreToFind: (n: number) => `+${n}`,
+    moreToSnap: (n: number) => `${n} more moments to snap here, one trip at a time.`,
     noSnapshots: 'Look in on a trip here: now and then the pets stop for a little moment you can snap.',
     moments: {
       butterfly: 'Butterfly friend',

@@ -207,7 +207,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     );
     const mid = document.createElement('div');
     mid.className = 'menu-grid is-mid';
-    mid.append(
+    mid.append(...menuRows([
       ...journalItem(),
       ...messagesItem(),
       ...unlockable('collection', 'mid', M.collection, () => {
@@ -218,7 +218,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
       ...unlockable('familyTree', 'mid', M.familyTree, () => showFamilyTree(), s ? M.familyLine : ''),
       // The Meadow, once a pet has moved there.
       ...(s && (s.meadow.length > 0 || s.keepsakes.length > 0) ? [tile('mid', M.meadow, MENU_ICONS.meadow, () => showMeadow(), M.meadowLine(s.meadow.length))] : []),
-    );
+    ]));
     const quiet = document.createElement('div');
     quiet.className = 'menu-grid is-quiet';
     quiet.append(
@@ -226,6 +226,21 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
       tile('quiet', M.settings, MENU_ICONS.settings, showSettings),
     );
     panel.replaceChildren(...[big, mid, quiet].filter((g) => g.children.length > 0));
+  }
+
+  // The middle tiles in rows that share the width evenly, three at most to
+  // a row: four make 2 + 2, five 3 + 2, seven 3 + 2 + 2. No tile is ever
+  // left on its own at the end of a row.
+  function menuRows(tiles: HTMLElement[]): HTMLElement[] {
+    const sizes = rowSizes(tiles.length);
+    let at = 0;
+    return sizes.map((n) => {
+      const row = document.createElement('div');
+      row.className = 'menu-row';
+      row.append(...tiles.slice(at, at + n));
+      at += n;
+      return row;
+    });
   }
 
   // Under the Shop's name: today's special while it's still to buy.
@@ -650,4 +665,14 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
       debugInfo.textContent = `${STRINGS.debug.careScore}: ${p.careScore.toFixed(1)} · ${STRINGS.debug.condition}: ${p.condition} · ${STRINGS.debug.character}: ${p.character ?? '-'}${p.variant ? ` (${p.variant})` : ''}`;
     },
   };
+}
+
+// How many tiles go on each row of the menu, three at most, the fuller
+// rows first: 4 -> [2, 2], 5 -> [3, 2], 7 -> [3, 2, 2].
+export function rowSizes(n: number): number[] {
+  if (n <= 0) return [];
+  const rows = Math.ceil(n / 3);
+  const small = Math.floor(n / rows);
+  const extra = n % rows;
+  return Array.from({ length: rows }, (_, i) => small + (i < extra ? 1 : 0));
 }
