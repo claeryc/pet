@@ -662,7 +662,7 @@ const SEA: MapDef = {
   width: 180,
   height: 270,
   paths: [],
-  routes: [[[96, 236], [56, 172]], [[96, 236], [136, 198]], [[96, 236], [122, 112]], [[96, 236], [66, 92]]],
+  routes: [[[80, 196], [56, 172]], [[80, 196], [136, 198]], [[80, 196], [122, 112]], [[80, 196], [66, 92]]],
   areas: [
     {
       id: 'woods', at: [44, 140], r: 30, sy: 1.05, ground: C.leaf, label: [44, 106], pin: [56, 170], locked: true,
@@ -687,12 +687,12 @@ const SEA: MapDef = {
       things: [put(dome, 54, 68), put(telescope, 70, 68), put(rock, 42, 74), put(star, 44, 46, { bare: true }), put(star, 70, 44, { bare: true })],
     },
     {
-      id: 'home', at: [90, 304], r: 66, ground: C.leaf, label: [90, 262], pin: [96, 236],
-      things: [put(T.tree(6, C.leaf, 13), 56, 266), put(T.tree(6, C.leaf, 14), 130, 266), put(T.bush(3, C.leaf, 15), 72, 262)],
+      id: 'home', at: [92, 234], r: 32, sy: 1.6, ground: C.leaf, label: [92, 254], pin: [80, 196],
+      things: [put(T.house(C.peach, { w: 16 }), 98, 238), put(T.tree(6, C.leaf, 13), 76, 244), put(T.tree(6, C.leaf, 14), 118, 240), put(T.bush(3, C.leaf, 15), 66, 234)],
     },
   ],
   sea: [
-    put(dock, 90, 251, { free: true }), put(ship, 112, 242, { free: true }),
+    put(dock, 80, 221, { free: true }), put(ship, 60, 212, { free: true }),
     put(coral, 168, 206, { water: true }), put(coral, 108, 210, { water: true }), put(coral, 168, 150, { water: true }),
     put(rock, 96, 162, { water: true }), put(rock, 18, 212, { water: true }),
   ],

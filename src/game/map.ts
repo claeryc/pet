@@ -53,6 +53,14 @@ export function areaName(area: MapAreaDef): string {
   return o?.kind === 'journey' ? placeName(o.place) : area.id;
 }
 
+// What a locked journey place's card says, with how far along you are
+// when the goal is a count.
+function lockedLine(state: GameState, opens: string): string {
+  const text = STRINGS.dig.locked[opens] ?? STRINGS.map.lockedText;
+  if (opens === 'fish') return STRINGS.map.fishSoFar(text, state.tally.fish ?? 0);
+  return text;
+}
+
 // What the card under the map says about an area.
 export interface AreaCard {
   id: string;
@@ -111,13 +119,16 @@ export function areaCard(state: GameState, now: number, area: MapAreaDef): AreaC
     }
     case 'map': {
       if (opens.map === START_MAP) return card(S.homeIsland, S.sailHome);
+      // Before journeys open you can still sail over and look around.
+      if (!isUnlocked(state, 'journeys')) return card(S.shipLook, S.setSail);
       if (hasBackpack(pet)) return card(S.shipBackpack(pet.name), S.setSail, { good: true, dot: true });
       if (pet.trip) return card(S.shipSailing(pet.name, placeName(pet.trip.place)), S.setSail);
       return card(S.shipReady, S.setSail);
     }
     case 'journey': {
       const place = PLACES.find((p) => p.id === opens.place)!;
-      if (!placeOpen(state, place)) return locked(STRINGS.dig.locked[place.opens] ?? S.lockedText);
+      if (!placeOpen(state, place)) return locked(lockedLine(state, place.opens));
+      if (!isUnlocked(state, 'journeys')) return card(S.tripsLater, S.planTrip, { enabled: false });
       if (pet.trip?.place === place.id && isAway(pet)) return card(S.placeHere(pet.name, homeLeft(pet.trip.endsAt - now)), S.planTrip, { good: true });
       const trips = state.journeys.journal[place.id]?.trips ?? 0;
       const level = STRINGS.journeys.levels[placeLevel(trips)] || STRINGS.journeys.levels[1];

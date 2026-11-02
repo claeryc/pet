@@ -33,18 +33,37 @@ describe('map.json', () => {
 describe('area cards', () => {
   it('a locked area says how it opens, and its button is off', () => {
     const s = newTeen(NOW);
-    const c = areaCard(s, NOW, area('island', 'ship'));
+    const c = areaCard(s, NOW, area('island', 'meadow'));
     expect(c.locked).toBe(true);
     expect(c.enabled).toBe(false);
-    expect(c.text).toBe(area('island', 'ship').lockedText);
+    expect(c.text).toBe(area('island', 'meadow').lockedText);
   });
 
   it('opens once its part of the game has', () => {
     const s = newTeen(NOW);
-    s.unlocked.push('journeys');
-    const c = areaCard(s, NOW, area('island', 'ship'));
+    s.unlocked.push('familyTree');
+    const c = areaCard(s, NOW, area('island', 'meadow'));
     expect(c.locked).toBe(false);
     expect(c.enabled).toBe(true);
+  });
+
+  it('the ship sails before journeys open, to look around, but trips wait', () => {
+    const s = newTeen(NOW);
+    expect(areaCard(s, NOW, area('island', 'ship')).enabled).toBe(true);
+    const market = areaCard(s, NOW, area('sea', 'market'));
+    expect(market.locked).toBe(false);
+    expect(market.enabled).toBe(false);
+    s.unlocked.push('journeys');
+    expect(areaCard(s, NOW, area('sea', 'market')).enabled).toBe(true);
+  });
+
+  it('a place that opens after some fish says how many are caught', () => {
+    const s = newTeen(NOW);
+    s.unlocked.push('journeys');
+    s.tally.fish = 4;
+    const c = areaCard(s, NOW, area('sea', 'cove'));
+    expect(c.locked).toBe(true);
+    expect(c.text).toContain('4 caught so far');
   });
 
   it('home is always open, and says where the pet is', () => {
