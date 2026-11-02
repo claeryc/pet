@@ -20,6 +20,7 @@ import { PLACES, placeFinds, placeLevel, type Place } from '../game/journeys';
 import type { GameState, Pet, Postcard } from '../game/state';
 import { HEART_ICONS, ITEM_ICONS } from './icons';
 import { placeMoments } from '../game/snapshots';
+import { banner, fakeExtra, tabsStyle } from './journal-banner';
 
 export interface JournalCallbacks {
   characterImage: (sheet: string) => string | undefined;
@@ -156,9 +157,43 @@ function tabs(state: GameState, showing: string, cb: JournalCallbacks): HTMLElem
     if (pets.some((pet) => pet.favouritePlace === p.id)) b.append(icon(HEART_ICONS.full, 'jr-tab-heart'));
     if (visited) b.addEventListener('click', () => cb.onPlace(p.id));
     else b.disabled = true;
+    // MOCKUP: a couple of made-up places, before the '?' (or at the end).
+    if (!visited || (!next && p === shown[shown.length - 1])) {
+      if (visited) row.append(b);
+      for (const [i, svg] of fakeExtra().map((_, i) => [i, [ITEM_ICONS.place_meadow, ITEM_ICONS.journey][i % 2]] as const)) {
+        const f = el('button', 'jr-tab');
+        f.dataset.fake = String(i);
+        f.append(icon(svg ?? ITEM_ICONS.journey, 'jr-tab-icon'));
+        row.append(f);
+      }
+      if (visited) continue;
+    }
     row.append(b);
   }
-  return row;
+  const style = tabsStyle();
+  if (style === 'strip') {
+    // Tabs keep their size and the row scrolls sideways, the one showing
+    // brought into view.
+    row.classList.add('is-strip');
+    requestAnimationFrame(() => {
+      const on = row.querySelector<HTMLElement>('.is-on');
+      if (on) row.scrollLeft = on.offsetLeft - (row.clientWidth - on.offsetWidth) / 2;
+    });
+    return row;
+  }
+  // Pager: small round icons between arrows to the place before and after.
+  row.classList.add('is-mini');
+  const pager = el('div', 'jr-pager');
+  const visitedIds = [...row.querySelectorAll<HTMLButtonElement>('.jr-tab:not(.is-new)')];
+  const at = visitedIds.findIndex((b) => b.classList.contains('is-on'));
+  const prev = el('button', 'jr-pager-btn', '‹');
+  const nextBtn = el('button', 'jr-pager-btn', '›');
+  prev.disabled = at <= 0;
+  nextBtn.disabled = at < 0 || at >= visitedIds.length - 1;
+  prev.addEventListener('click', () => visitedIds[at - 1]?.click());
+  nextBtn.addEventListener('click', () => visitedIds[at + 1]?.click());
+  pager.append(prev, row, nextBtn);
+  return pager;
 }
 
 // How many question marks to show among the finds still to find.
@@ -176,33 +211,13 @@ export function journalPage(state: GameState, placeId: string, cb: JournalCallba
 
   // The picture at the top, with a pet that loves it (or the one you're
   // looking after) standing there.
-  const hero = el('div', 'jr-hero');
-  hero.dataset.place = place.id;
-  hero.append(icon(placeIcon(place.id), 'jr-hero-place'), el('b', 'jr-hero-name', placeName(place.id)));
-  if (level > 0) hero.append(el('span', 'jr-hero-level', T.levelLine(T.levels[level], T.tripCount(page.trips))));
   const fans = pets.filter((p) => p.favouritePlace === place.id);
   const shown = fans[0] ?? state.pet;
-  const url = cb.characterImage(sheetFor(shown));
-  if (url) {
-    const pet = el('span', 'jr-hero-pet');
-    pet.style.backgroundImage = `url('${url}')`;
-    hero.append(pet);
-  }
-  book.append(tabs(state, place.id, cb), hero);
-
-  // How far to the next level.
-  const next = J.levels[level];
-  const prog = el('div', 'jr-prog');
-  if (next !== undefined) {
-    const from = J.levels[level - 1] ?? 0;
-    prog.append(el('span', '', T.toNext(next - page.trips, T.levels[level + 1])));
-    const bar = el('span', 'jr-bar');
-    const fill = el('i', '');
-    fill.style.width = `${Math.round(((page.trips - from) / (next - from)) * 100)}%`;
-    bar.append(fill);
-    prog.append(bar);
-  } else prog.append(el('span', '', T.topLevel));
-  book.append(prog);
+  // MOCKUP: the banner, in one of three looks (see journal-banner.ts).
+  book.append(tabs(state, place.id, cb), ...banner({
+    place: place.id, name: placeName(place.id), icon: placeIcon(place.id),
+    trips: page.trips, level, pet: cb.characterImage(sheetFor(shown)),
+  }));
   if (fans.length) {
     const loved = el('p', 'jr-loved');
     loved.append(icon(HEART_ICONS.full, 'jr-loved-icon'), T.loved(STRINGS.list(fans.map((p) => p.name))));

@@ -12737,3 +12737,405 @@ button.trip-bars-name.is-on {
   font-size: 0.8rem;
   color: #9b86b5;
 }
+
+/* ---- MOCKUP: journal banners and tabs (see src/ui/journal-banner.ts) ---- */
+
+.jb {
+  position: relative;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--sky, #cdeedb);
+}
+
+.jb-land {
+  position: absolute;
+  inset: 0;
+}
+
+.jb-land svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.jb-pet {
+  position: absolute;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: bottom center;
+  image-rendering: pixelated;
+}
+
+/* A: the scene. */
+.jb-scene { height: 168px; }
+
+.jb-sign {
+  position: absolute;
+  left: 10px;
+  top: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.jb-sign b {
+  padding: 4px 12px 5px;
+  border: 3px solid var(--ink);
+  border-radius: 6px;
+  background: #8a5a44;
+  box-shadow: inset 0 -4px 0 #5c3a2e, 0 3px 0 rgb(43 33 64 / 0.25);
+  color: #fff7ec;
+  font-size: 1.05rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.jb-sign small {
+  margin-left: 8px;
+  padding: 0 8px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--butter);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.jb-scene .jb-pet {
+  right: 14px;
+  bottom: 40px;
+  width: 64px;
+  height: 64px;
+}
+
+.jb-strip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  align-items: center;
+  padding: 6px 10px 7px;
+  border-top: 3px solid var(--ink);
+  background: #fff7ec;
+}
+
+.jb-strip-text {
+  grid-column: 1 / -1;
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: var(--plum);
+}
+
+.jb-strip-bar {
+  height: 10px;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  background: #efe6f7;
+  overflow: hidden;
+}
+
+.jb-strip-bar i {
+  display: block;
+  height: 100%;
+  background: repeating-linear-gradient(90deg, var(--good) 0 8px, #5fb38c 8px 10px);
+}
+
+.jb-strip-count {
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: var(--plum);
+}
+
+/* B: the travel pass. */
+.jb-ticket {
+  display: flex;
+  height: 132px;
+  background: #fffaf0;
+  overflow: visible;
+}
+
+.jb-stub {
+  position: relative;
+  flex: 0 0 34%;
+  border-right: 3px dashed #c9b5a0;
+  border-radius: 11px 0 0 11px;
+  overflow: hidden;
+}
+
+/* The notches where it tears. */
+.jb-ticket::before,
+.jb-ticket::after {
+  content: '';
+  position: absolute;
+  left: calc(34% - 9px);
+  width: 16px;
+  height: 16px;
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+  background: #fffaf0;
+  z-index: 1;
+}
+
+.jb-ticket::before { top: -11px; }
+.jb-ticket::after { bottom: -11px; }
+
+.jb-seal {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 54px;
+  height: 54px;
+  margin: -30px 0 0 -27px;
+  display: grid;
+  place-items: center;
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+  background: #fff7ec;
+  box-shadow: 0 0 0 3px #fff7ec, 0 0 0 5px var(--ink);
+}
+
+.jb-seal-icon {
+  width: 34px;
+  height: 34px;
+}
+
+.jb-seal-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.jb-body {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 10px 12px;
+  background: repeating-linear-gradient(0deg, transparent 0 15px, #f3e8da 15px 16px);
+  border-radius: 0 11px 11px 0;
+}
+
+.jb-kicker {
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #b49a82;
+}
+
+.jb-name {
+  font-size: 1.1rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.jb-rubber {
+  position: absolute;
+  right: 10px;
+  top: 8px;
+  padding: 1px 7px;
+  border: 2px solid #d0566f;
+  border-radius: 6px;
+  color: #d0566f;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transform: rotate(8deg);
+  opacity: 0.85;
+}
+
+.jb-holes {
+  display: flex;
+  gap: 5px;
+  margin-top: auto;
+}
+
+.jb-holes i {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #c9b5a0;
+  border-radius: 50%;
+  background: #fffaf0;
+}
+
+.jb-holes i.is-on {
+  border-color: var(--ink);
+  background: var(--good);
+  box-shadow: inset 0 -3px 0 #4a9a76;
+}
+
+.jb-next {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--plum);
+}
+
+.jb-ticket .jb-pet {
+  right: 8px;
+  bottom: 6px;
+  width: 44px;
+  height: 44px;
+}
+
+/* C: the path. */
+.jb-path { height: 172px; }
+
+.jb-title {
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  font-size: 1.2rem;
+  font-weight: 900;
+  color: #fff7ec;
+  text-shadow: 2px 0 var(--ink), -2px 0 var(--ink), 0 2px var(--ink), 0 -2px var(--ink), 2px 2px var(--ink), -2px 2px var(--ink), 2px -2px var(--ink), -2px -2px var(--ink);
+}
+
+.jb-track {
+  position: absolute;
+  left: 30px;
+  right: 30px;
+  bottom: 26px;
+  height: 4px;
+}
+
+.jb-track-line {
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  background: repeating-linear-gradient(90deg, #fff7ec 0 6px, transparent 6px 10px);
+}
+
+.jb-track-line i {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: #fff7ec;
+  box-shadow: 0 0 0 2px var(--ink);
+}
+
+.jb-flag {
+  position: absolute;
+  top: 50%;
+  width: 0;
+}
+
+.jb-flag i {
+  position: absolute;
+  left: -8px;
+  top: -8px;
+  width: 16px;
+  height: 16px;
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+  background: #efe6f7;
+}
+
+.jb-flag.is-on i { background: var(--butter); }
+
+.jb-flag small {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  transform: translateX(-50%);
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgb(255 247 236 / 0.92);
+  font-size: 0.62rem;
+  font-weight: 900;
+  white-space: nowrap;
+  color: #9b86b5;
+}
+
+.jb-flag.is-on small { color: var(--ink); }
+
+.jb-walker {
+  position: absolute;
+  bottom: 4px;
+  width: 52px;
+  height: 52px;
+  margin-left: -26px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: bottom center;
+  image-rendering: pixelated;
+}
+
+.jb-under {
+  margin: 8px 2px 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--plum);
+}
+
+/* Tabs: a strip that scrolls sideways. */
+.jr-tabs.is-strip {
+  overflow-x: auto;
+  scrollbar-width: none;
+  scroll-snap-type: x mandatory;
+  padding: 6px 2px 0;
+  margin-top: -6px;
+  mask-image: linear-gradient(90deg, #000 85%, transparent);
+}
+
+.jr-tabs.is-strip::-webkit-scrollbar { display: none; }
+
+.jr-tabs.is-strip .jr-tab {
+  flex: 0 0 64px;
+  scroll-snap-align: center;
+}
+
+/* Tabs: small round icons between arrows. */
+.jr-pager {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.jr-tabs.is-mini {
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding-top: 4px;
+}
+
+.jr-tabs.is-mini .jr-tab {
+  flex: 0 0 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.jr-tabs.is-mini .jr-tab.is-on {
+  flex-basis: 42px;
+  height: 42px;
+}
+
+.jr-tabs.is-mini .jr-tab-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.jr-pager-btn {
+  flex: 0 0 28px;
+  height: 28px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--butter);
+  font-size: 1.2rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.jr-pager-btn:disabled { opacity: 0.35; }
