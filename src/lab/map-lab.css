@@ -1,0 +1,275 @@
+/* The map lab (map-lab.html). It loads the game's style.css too, so the map
+   screen in the phone frame looks exactly like the game's. */
+
+body {
+  display: block;
+  font: 14px/1.45 'Nunito', ui-rounded, system-ui, sans-serif;
+  background: #efe6f7;
+}
+
+.lab-head {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 10px 16px;
+  background: var(--card);
+  box-shadow: 0 2px 0 var(--lavender);
+}
+
+.lab-head h1 {
+  margin: 0 6px 0 0;
+  font-size: 1.15rem;
+  color: var(--plum);
+}
+
+.lab-head select,
+.lab-panel select,
+.lab-panel input:not([type='checkbox']) {
+  font: inherit;
+  padding: 5px 8px;
+  border: 2px solid var(--lavender);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+}
+
+.lab-head button,
+.lab-panel button {
+  font: inherit;
+  font-weight: 800;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 10px;
+  background: var(--lavender);
+  color: var(--plum);
+  cursor: pointer;
+}
+
+.lab-head button.is-on,
+.lab-panel button.is-on {
+  background: var(--plum);
+  color: white;
+}
+
+.lab-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 12px;
+  background: #f3ecfa;
+}
+
+.lab-save {
+  background: var(--accent) !important;
+  color: white !important;
+}
+
+.lab-save:disabled {
+  background: #d8d0e2 !important;
+  color: #7d6b8f !important;
+  cursor: default;
+}
+
+.lab-status {
+  flex: 1 1 220px;
+  color: #6d5d80;
+  font-weight: 700;
+}
+
+.lab-status.is-ok {
+  color: var(--good-dark);
+}
+
+.lab-status.is-error {
+  color: var(--low-dark);
+}
+
+.lab-layout {
+  display: grid;
+  grid-template-columns: 1fr minmax(280px, 360px);
+  gap: 16px;
+  padding: 16px;
+  height: calc(100vh - 60px);
+}
+
+.lab-main {
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+}
+
+.lab-main.is-edit {
+  place-items: start center;
+}
+
+/* The phone: the real map screen, inside a frame. */
+.lab-phone-box {
+  position: relative;
+}
+
+.lab-phone-box .lab-phone {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+}
+
+.lab-phone {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  border: 10px solid #2b2140;
+  border-radius: 34px;
+  box-shadow: 0 10px 30px rgba(43, 33, 64, 0.3);
+  background: #4a7cc8;
+  box-sizing: content-box;
+}
+
+.lab-phone .map-screen {
+  position: absolute;
+  max-width: none;
+}
+
+.lab-canvas {
+  display: block;
+  image-rendering: pixelated;
+  border-radius: 8px;
+  background: #4a7cc8;
+  box-shadow: 0 6px 20px rgba(43, 33, 64, 0.25);
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.lab-panel {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+
+.lab-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: 0 3px 0 var(--lavender);
+}
+
+.lab-card h2,
+.lab-card h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--plum);
+}
+
+.lab-card h3 {
+  margin-top: 6px;
+  font-size: 0.9rem;
+}
+
+.lab-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.lab-row > span {
+  color: #6d5d80;
+  font-weight: 700;
+}
+
+.lab-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #6d5d80;
+}
+
+.lab-place {
+  display: grid;
+  gap: 6px;
+  padding: 8px 0;
+  border-top: 2px dashed var(--lavender);
+}
+
+.lab-place > b {
+  padding-left: 8px;
+  border-left: 5px solid;
+  color: var(--plum);
+}
+
+.lab-trips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  justify-content: flex-end;
+}
+
+.lab-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lab-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.lab-area {
+  display: grid !important;
+  grid-template-columns: 14px 1fr;
+  gap: 0 8px;
+  align-items: center;
+  text-align: left;
+  background: white !important;
+  color: var(--ink) !important;
+  border: 2px solid transparent !important;
+}
+
+.lab-area.is-on {
+  border-color: var(--plum) !important;
+}
+
+.lab-area i {
+  grid-row: 1 / 3;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+}
+
+.lab-area small {
+  color: #8b7aa0;
+  font-weight: 700;
+}
+
+.lab-new {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.lab-new input {
+  min-width: 0;
+}
+
+.lab-new button {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 800px) {
+  .lab-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+}
