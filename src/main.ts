@@ -102,7 +102,7 @@ import { DISH_MS, DONE_MS as COOKED_MS } from './ui/cooking';
 import { sound, startAudio, type SoundId } from './audio/audio';
 import { dig, digToday, sniff, type DigBlock } from './game/dig';
 import { placeName as digPlaceName } from './ui/dig';
-import { buildStage, craft, getProject } from './game/crafting';
+import { buildStage, collectHive, craft, getProject } from './game/crafting';
 import { patternIcon } from './ui/workbench';
 import { buyCharm, buyHolidayTicket, callHome, goHoliday, goTogether, offerAt, openBackpack, placeLevel, restPercy } from './game/journeys';
 import { postcardArt } from './ui/journal';
@@ -1129,6 +1129,13 @@ const home = createHomeScreen(root, {
     react('happy');
   },
   onClear: (pot) => runGarden((s) => clearPlot(s, pot), STRINGS.garden.cleared, 'clear'),
+  onCollectHive: () => {
+    const result = collectHive(simulate(state, gameNow()));
+    if (result.blocked) return home.toast(STRINGS.backyard.nothing);
+    setState(result.state);
+    sound('harvest');
+    home.toast(STRINGS.backyard.collected(result.honey, result.beeswax));
+  },
   onPutInBox: (box) => runBox((s) => putInBox(s, box), boxFood(box)),
   onTakeFromBox: (box) => runBox((s) => takeFromBox(s, box), undefined, 'lift'),
   onFillAll: () => runBox(fillAll),

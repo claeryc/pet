@@ -981,7 +981,9 @@ export const CONFIG = {
         ],
       },
     ],
-    hive: { honey: 1, beeswax: 1 },
+    // A day's honey and beeswax; the hive holds up to `holds` days of it
+    // until you collect it in the Backyard.
+    hive: { honey: 1, beeswax: 1, holds: 3 },
     perchRestOff: 12,
   },
 

@@ -91,7 +91,7 @@ from another one, `back`: the map the **‹ Back** button goes to.
 | `opens` | The button | |
 | --- | --- | --- |
 | `home` | Go home | Closes the map. |
-| `garden` | Go | The garden (the Backyard opens it for now). |
+| `garden` | Go | The Backyard and its garden. |
 | `meadow` | Visit | Menu → Meadow. |
 | `friends` | Visit | Meet a visitor if one's over, else Messages → Friends. |
 | `soon` | Soon | Not built yet: shown, never opens. |
