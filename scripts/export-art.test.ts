@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import manifest from '../public/sprites/manifest.json';
 import { sheetAnimations, type ManifestFile } from '../src/render/manifest';
 import { readTags } from './aseprite';
-import { exportPlan, rowsFor } from './export-art';
+import { exportPlan, mapLayers, rowsFor } from './export-art';
 import { readPng, sideBySide, stack, writePng, type Pixels } from './png';
 
 const m = manifest as ManifestFile;
@@ -38,6 +38,15 @@ describe('export-art', () => {
     expect(exportPlan('previews/dumpling-matcha.png')).toBeNull();
     expect(exportPlan('shelved/bunbun.aseprite')).toBeNull();
     expect(exportPlan('characters/cave/notes.txt')).toBeNull();
+  });
+
+  it('exports a map with its tap shapes, night lights and locked covers apart', () => {
+    expect(exportPlan('map/island.aseprite')).toEqual({ png: 'map/island.png', strip: false, map: true });
+    const plan = mapLayers(['ground', 'details', 'locked:fields', 'night', 'area:home', 'area: Backyard', 'sketch']);
+    expect(plan.areas).toEqual(['area:home', 'area: Backyard']);
+    expect(plan.locked).toEqual(['locked:fields']);
+    expect(plan.night).toBe(true);
+    expect(plan.notInPicture).toEqual(['guides', 'area:home', 'area: Backyard', 'locked:fields', 'night']);
   });
 });
 
@@ -79,7 +88,7 @@ describe('rows by tag name', () => {
 });
 
 describe('art files', () => {
-  const files = allArt().filter((f) => exportPlan(f) && !exportPlan(f)!.strip);
+  const files = allArt().filter((f) => exportPlan(f) && !exportPlan(f)!.strip && !exportPlan(f)!.map);
 
   it.each(files)('%s has tags the manifest knows, one frame per animation frame', (file) => {
     const png = exportPlan(file)!.png;

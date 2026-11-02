@@ -12833,3 +12833,329 @@ button.trip-bars-name.is-on {
   border-top: 2px solid #f0dce8;
   background: #fff5f8;
 }
+
+/* ---- The map (Menu > Map, src/ui/map.ts) ----
+   The whole screen: a sign on top, the picture as big as it fits, and the
+   card and buttons at the bottom where a thumb reaches. */
+.map-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 12px calc(14px + env(safe-area-inset-bottom));
+  background: #5a8fd6; /* the deep sea at the picture's edge */
+}
+
+.map-screen[hidden] {
+  display: none;
+}
+
+.map-top {
+  display: flex;
+  justify-content: center;
+}
+
+.map-sign {
+  padding: 4px 18px;
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--plum);
+  font-weight: 900;
+  font-size: 1.05rem;
+  box-shadow: 0 3px 0 var(--plum);
+}
+
+.map-view {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.map-stage {
+  position: relative;
+  flex: none;
+}
+
+.map-picture,
+.map-lights,
+.map-cover,
+.map-shapes {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.map-covers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.map-lights,
+.map-cover {
+  pointer-events: none;
+}
+
+.map-lights[hidden] {
+  display: none;
+}
+
+/* Night: the picture dims, and the lights layer stays bright on top. */
+.map-screen.is-night {
+  background: #2c3f74;
+}
+
+.map-screen.is-night .map-picture,
+.map-screen.is-night .map-covers {
+  filter: brightness(0.55) saturate(0.85);
+}
+
+.map-hit {
+  fill: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.map-glow {
+  fill: rgba(255, 229, 150, 0.22);
+  pointer-events: none;
+}
+
+.map-ring {
+  fill: #000;
+  pointer-events: none;
+}
+
+.map-marks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* An area's sign, its bottom middle on the label point. */
+.map-label {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  pointer-events: auto;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.1;
+  white-space: nowrap;
+  padding: 3px 8px;
+  border: 2px solid var(--plum);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--plum);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.map-label[hidden] {
+  display: none;
+}
+
+.map-label.is-picked {
+  background: var(--butter);
+}
+
+.map-label.is-locked {
+  background: #e6dfee;
+  color: #7d6b8f;
+  border-color: #7d6b8f;
+}
+
+.map-label.is-locked::before {
+  content: '🔒';
+  font-size: 0.7em;
+  margin-right: 3px;
+  filter: grayscale(1);
+}
+
+.map-dot {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--accent-dark);
+  border: 2px solid var(--card);
+}
+
+/* The pet, standing on its pin; on the sea, in its boat. */
+.map-pet {
+  position: absolute;
+  width: 30px;
+  transform: translate(-50%, -85%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  filter: drop-shadow(0 2px 0 rgba(43, 33, 64, 0.35));
+}
+
+.map-pet img {
+  width: 30px;
+  height: 30px;
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+
+.map-pet svg {
+  width: 30px;
+  margin-top: -12px;
+}
+
+.map-pet.is-sailing {
+  animation: map-bob 1.6s ease-in-out infinite;
+}
+
+@keyframes map-bob {
+  50% {
+    margin-top: -2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-pet.is-sailing {
+    animation: none;
+  }
+}
+
+/* The card: ‹ name and news ›, then the area's button. */
+.map-card {
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 8px 4px;
+  padding: 10px;
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: 0 4px 0 rgba(43, 33, 64, 0.25);
+}
+
+.map-step {
+  width: 40px;
+  height: 44px;
+  font: inherit;
+  font-size: 1.6rem;
+  font-weight: 900;
+  line-height: 1;
+  border: none;
+  border-radius: 12px;
+  background: var(--lavender);
+  color: var(--plum);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.map-step:active {
+  background: var(--lilac);
+}
+
+.map-info {
+  min-width: 0;
+  text-align: center;
+}
+
+.map-name {
+  font-weight: 900;
+  font-size: 1.05rem;
+  color: var(--plum);
+}
+
+.map-text {
+  font-size: 0.86rem;
+  line-height: 1.25;
+  color: var(--ink);
+  min-height: 2.5em; /* two lines, so the card doesn't jump */
+}
+
+.map-text.is-good {
+  color: var(--good-dark);
+  font-weight: 700;
+}
+
+.map-go {
+  grid-column: 1 / -1;
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 800;
+  padding: 11px;
+  border: none;
+  border-radius: 14px;
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 4px 0 var(--accent-dark);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.map-go.is-trip {
+  background: #4f8fd1;
+  box-shadow: 0 4px 0 #2f5f9c;
+}
+
+.map-go:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--accent-dark);
+}
+
+.map-go:disabled {
+  background: #d8d0e2;
+  color: #7d6b8f;
+  box-shadow: 0 4px 0 #b9add0;
+  cursor: default;
+}
+
+.map-row {
+  display: flex;
+  gap: 10px;
+}
+
+.map-row .btn {
+  flex: 1 1 0;
+  padding: 11px;
+  font-size: 1rem;
+}
+
+.map-back {
+  background: var(--lilac);
+  box-shadow: 0 4px 0 var(--plum);
+}
+
+.map-back:active {
+  box-shadow: 0 1px 0 var(--plum);
+}
+
+.map-journal[hidden] {
+  display: none;
+}
+
+@media (max-height: 600px) {
+  .map-screen {
+    gap: 6px;
+    padding-top: 8px;
+  }
+
+  .map-text {
+    min-height: 0;
+  }
+}
+
+.map-hit.is-locked {
+  fill: rgba(60, 48, 92, 0.38);
+}

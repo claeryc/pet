@@ -705,6 +705,13 @@ export const CONFIG = {
     surpriseFrom: 8,
   },
 
+  // The map (Menu > Map, src/game/map.ts).
+  map: {
+    // On the sea map, the boat sails out over this share of the trip and
+    // back over the same share at the end. In between it waits at the place.
+    sailShare: 0.2,
+  },
+
   // Journeys (Play > Journeys, see src/game/journeys.ts). A teen or
   // grown-up pet goes out to one of the places for a while and comes home
   // with a backpack of finds. Three offers are on the board at a time; each

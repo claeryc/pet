@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Map",
+  "description": "The map's areas and what tapping each one does (src/data/map.json). The pictures and tap shapes come from art/map/ (see docs/MAP_GUIDE.md).",
+  "type": "object",
+  "required": ["start", "maps"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "_help": { "type": "string" },
+    "start": { "type": "string", "description": "The map that opens first." },
+    "maps": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/definitions/map" }
+    }
+  },
+  "definitions": {
+    "map": {
+      "type": "object",
+      "required": ["title", "areas"],
+      "additionalProperties": false,
+      "properties": {
+        "title": { "type": "string", "description": "The sign at the top." },
+        "back": { "type": "string", "description": "The map the bottom-left button goes back to. Without it, that button closes the map." },
+        "areas": { "type": "array", "items": { "$ref": "#/definitions/area" } }
+      }
+    },
+    "area": {
+      "type": "object",
+      "required": ["id", "opens"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "description": "Matches the 'area:<id>' layer in the map's Aseprite file." },
+        "name": { "type": "string", "description": "The name on its sign. A journey place can leave it out to use the place's own name." },
+        "opens": {
+          "type": "string",
+          "description": "What its button does: home, garden, meadow, friends, soon (not there yet), map:<map id> (another map) or journey:<place id> (the trip board, about that place)."
+        },
+        "unlock": {
+          "type": "string",
+          "enum": ["shop", "cooking", "collection", "familyTree", "garden", "messages", "delivery", "meet", "skills", "journeys", "dig", "workbench"],
+          "description": "Locked until this part of the game opens (see src/game/unlocks.ts)."
+        },
+        "lockedText": { "type": "string", "description": "Said on the card while it's locked." },
+        "soonText": { "type": "string", "description": "Said on the card of a 'soon' area." }
+      }
+    }
+  }
+}
