@@ -141,6 +141,49 @@ A **new map** works the same way: a new `art/map/<id>.aseprite`, a new entry
 under `maps` in `map.json` with a `title` and `back`, and an area somewhere
 with `"opens": "map:<id>"` that leads to it.
 
+## The map lab
+
+Run `npm run dev` and open **`/map-lab.html`** (for example
+`http://localhost:5173/map-lab.html`). It's a page for laying out the map,
+not part of the game, and `npm run build` leaves it out.
+
+**Preview** shows the real map screen in a phone frame (three sizes, day or
+night). For each place you can pick how it looks without playing to it:
+
+- **Open**, **Locked** (its clouds), or on the sea **Misty** (open, no trips).
+- A **sign badge**: water, a ripe crop, honey, a visitor, a letter, a
+  backpack, or a trip.
+- On the sea, its **trips**: any mix of Stroll, Hike, Adventure and Night,
+  shown as flags on the island and postcards in its bubble.
+
+Tap a place on the phone to see its bubble, as in the game.
+
+**Edit** shows the picture with every tap shape coloured in, and each sign,
+pin and (on the sea) flag spot on top:
+
+| Tool | Key | |
+| --- | --- | --- |
+| Paint | B | Paints the picked area's tap shape. It takes the pixels from the other shapes, so they never overlap (untick that to allow it). |
+| Erase | E | Rubs it out. |
+| Move markers | V | Drag a sign (the box), the pet's pin (the dot) or the trip flags (the little flag). A faded one has no slice yet and sits where the game would put it. |
+
+**Add area** makes a new one: give it an id and a name, paint its shape,
+and Save. **Ctrl+Z** undoes, **Ctrl+S** saves. What you change shows in
+Preview straight away, before you save.
+
+**Save** writes the tap shapes and the `label:`, `pin:` and `flag:` slices
+into `art/map/<map>.aseprite` (nothing else in the file changes; the old
+file is kept in `art/map/.lab-backup/`), updates the game's
+`public/sprites/map/<map>.json`, and adds new areas to `src/data/map.json`
+with `"opens": "soon"`. Set what they open there. The picture itself is
+still drawn in Aseprite: the lab can't paint the art.
+
+**Live reload:** while the lab is open, saving a map in Aseprite exports it
+by itself (if Aseprite is installed; see the art guide for where it looks),
+and the lab loads the new picture. **Reload** does the same by hand. The lab
+only saves RGB files (Sprite → Color Mode → RGB Color), which the map files
+are.
+
 ## Making the canvas bigger
 
 When the island grows, use Sprite → Canvas Size on the whole file (every

@@ -16,7 +16,7 @@ npm run music    # remakes the background music (needs Node 22.18+ and ffmpeg)
 npm run sfx      # remakes the game's sound effects (needs Node 22.18+ and ffmpeg)
 ```
 
-Want to draw your own pet? See [docs/ART_GUIDE.md](docs/ART_GUIDE.md), and open `/art.html` while `npm run dev` runs to preview the art.
+Want to draw your own pet? See [docs/ART_GUIDE.md](docs/ART_GUIDE.md), and open `/art.html` while `npm run dev` runs to preview the art. To lay out the map and try its looks, open `/map-lab.html` (see [docs/MAP_GUIDE.md](docs/MAP_GUIDE.md)).
 
 ## Where things live
 

@@ -26,7 +26,7 @@
 
 import { STRINGS } from '../strings';
 import { sheetFor } from '../game/growth';
-import { MAPS, START_MAP, areaCard, firstPick, lockedAreas, mistyAreas, parseOpens, petAt, type AreaCard, type Badge, type Opens } from '../game/map';
+import { MAPS, START_MAP, areaCard, firstPick, parseOpens, petAt, type AreaCard, type Badge, type MapAreaDef, type Opens } from '../game/map';
 import { isEpicOffer } from '../game/journeys';
 import type { Offer } from '../game/state';
 import { ITEM_ICONS, MENU_ICONS, STAT_ICONS } from './icons';
@@ -34,7 +34,7 @@ import { postcard } from './journeys';
 import { isNight } from '../game/stats';
 import type { GameState } from '../game/state';
 
-interface MapFile {
+export interface MapFile {
   width: number;
   height: number;
   night: boolean;
@@ -49,6 +49,9 @@ export interface MapCallbacks {
   onOpen: (opens: Opens) => void;
   onJournal: (place: string | null) => void; // the travel journal, at a place
   onTrip: (slot: number) => void; // a postcard picked: the trip board, with it turned over
+  // The map lab (map-lab.html) changes what each card says, to try out
+  // locked, misty, ticket and badge looks without playing to them.
+  preview?: (area: MapAreaDef, card: AreaCard) => AreaCard;
 }
 
 export interface WorldMap {
@@ -57,13 +60,19 @@ export interface WorldMap {
   close: () => void;
   isOpen: () => boolean;
   update: (state: GameState, now: number) => void;
+  // For the map lab: open a place's bubble, show a map file that isn't
+  // saved yet, or load everything again after an export.
+  pick: (id: string) => void;
+  useFile: (id: string, file: MapFile) => void;
+  reload: () => void;
 }
 
 const SVG = 'http://www.w3.org/2000/svg';
 const files = new Map<string, Promise<MapFile>>();
+let version = ''; // "?v=..." after a reload, so the browser fetches the new export
 const base = () => `${import.meta.env.BASE_URL}sprites/map/`;
 function loadMap(id: string): Promise<MapFile> {
-  if (!files.has(id)) files.set(id, fetch(`${base()}${id}.json`).then((r) => r.json()));
+  if (!files.has(id)) files.set(id, fetch(`${base()}${id}.json${version}`).then((r) => r.json()));
   return files.get(id)!;
 }
 
@@ -181,7 +190,9 @@ export function createMap(cb: MapCallbacks): WorldMap {
   const areas = () => MAPS[mapId].areas;
   const cardFor = (id: string): AreaCard | null => {
     const a = areas().find((x) => x.id === id);
-    return a && latest ? areaCard(latest.state, latest.now, a) : null;
+    if (!a || !latest) return null;
+    const c = areaCard(latest.state, latest.now, a);
+    return cb.preview ? cb.preview(a, c) : c;
   };
 
   // Fits the picture inside the view, as big as it goes, sea around it.
@@ -268,12 +279,12 @@ export function createMap(cb: MapCallbacks): WorldMap {
     journal.hidden = !backTo;
 
     // Clouds over what's still locked.
-    const locked = new Set(lockedAreas(state, now, mapId));
+    const locked = new Set(areas().filter((a) => cardFor(a.id)?.locked).map((a) => a.id));
     // Mist (the same cover, thin) over a journey island no trip goes to.
-    const misty = new Set(mistyAreas(state, now, mapId));
+    const misty = new Set(areas().filter((a) => cardFor(a.id)?.mist).map((a) => a.id));
     covers.replaceChildren(...file.locked.filter((id) => locked.has(id) || misty.has(id)).map((id) => {
       const img = el('img', `map-cover${misty.has(id) && !locked.has(id) ? ' is-mist' : ''}`);
-      img.src = `${base()}${mapId}-locked-${id}.png`;
+      img.src = `${base()}${mapId}-locked-${id}.png${version}`;
       img.alt = '';
       img.draggable = false;
       return img;
@@ -395,13 +406,14 @@ export function createMap(cb: MapCallbacks): WorldMap {
     const x = (label[0] / file.width) * sw;
     const y = (label[1] / file.height) * sh;
     const sr = stage.getBoundingClientRect(), vr = view.getBoundingClientRect();
+    const k = sr.width / sw || 1; // on screen vs. layout size (the map lab scales the phone)
     const w = bubble.offsetWidth, h = bubble.offsetHeight;
     const SIGN = 26, GAP = 12, EDGE = 8;
-    const minX = vr.left - sr.left + EDGE, maxX = vr.right - sr.left - EDGE - w;
+    const minX = (vr.left - sr.left) / k + EDGE, maxX = (vr.right - sr.left) / k - EDGE - w;
     const left = Math.max(minX, Math.min(maxX, x - w / 2));
     let top = y - SIGN - GAP - h;
-    const below = top < vr.top - sr.top + EDGE;
-    if (below) top = Math.min(y + GAP, vr.bottom - sr.top - EDGE - h);
+    const below = top < (vr.top - sr.top) / k + EDGE;
+    if (below) top = Math.min(y + GAP, (vr.bottom - sr.top) / k - EDGE - h);
     bubble.classList.toggle('is-below', below);
     bubble.style.left = `${left}px`;
     bubble.style.top = `${top}px`;
@@ -411,8 +423,8 @@ export function createMap(cb: MapCallbacks): WorldMap {
   function show(id: string): void {
     mapId = MAPS[id] ? id : START_MAP;
     const mine = ++token;
-    picture.src = `${base()}${mapId}.png`;
-    lights.src = `${base()}${mapId}-night.png`;
+    picture.src = `${base()}${mapId}.png${version}`;
+    lights.src = `${base()}${mapId}-night.png${version}`;
     if (latest) picked = firstPick(latest.state, latest.now, mapId);
     loadMap(mapId).then((f) => {
       if (mine !== token) return;
@@ -423,7 +435,6 @@ export function createMap(cb: MapCallbacks): WorldMap {
       draw();
     });
   }
-
 
   return {
     el: root,
@@ -438,18 +449,35 @@ export function createMap(cb: MapCallbacks): WorldMap {
     isOpen: () => !root.hidden,
     update: (state, now) => {
       latest = { state, now };
-      if (!picked) picked = firstPick(state, now, mapId);
       if (root.hidden) return;
       // Only redraw when something on the map changed, so a sign isn't
       // swapped out from under a finger.
       const where = petAt(state, now, mapId);
       const key = JSON.stringify([
-        mapId, isNight(now), areas().map((a) => areaCard(state, now, a)),
+        mapId, isNight(now), areas().map((a) => cardFor(a.id)),
         where && [where.area, Math.round(where.share * 200)], cb.characterImage(sheetFor(state.pet)),
       ]);
       if (key === drawn) return;
       drawn = key;
       draw();
+    },
+    pick: (id) => pick(id),
+    useFile: (id, f) => {
+      files.set(id, Promise.resolve(f));
+      if (id === mapId && !root.hidden) {
+        const keep = picked;
+        show(id);
+        picked = keep;
+      }
+    },
+    reload: () => {
+      files.clear();
+      version = `?v=${Date.now()}`;
+      if (!root.hidden) {
+        const keep = picked;
+        show(mapId);
+        picked = keep;
+      }
     },
   };
 }

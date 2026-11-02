@@ -13,8 +13,10 @@
 // Plain functions, no Aseprite, so they're easy to test. export-art.ts and
 // make-map-art.ts use them.
 
-import type { Pixels } from './png.ts';
-import type { AseSlice } from './aseprite.ts';
+// No Node here (the map lab runs these in the browser too), so the two
+// shapes it needs are spelled out rather than imported.
+type Pixels = { width: number; height: number; data: Uint8Array };
+type AseSlice = { name: string; x: number; y: number; width: number; height: number };
 
 export interface MapArea {
   shape: string; // SVG path, in map pixels
