@@ -33,7 +33,9 @@ export const materialStars = (id: string): number => (C.materials as Record<stri
 export const isMaterial = (id: string): id is MaterialId => MATERIALS.includes(id as MaterialId);
 
 export type PartId = keyof typeof C.parts;
-export const PARTS = Object.keys(C.parts) as PartId[];
+// Parts for projects saved for later (the windmill) can't be found yet.
+const LATER_PARTS: readonly string[] = (C.projects as readonly { part: string; later?: boolean }[]).filter((p) => p.later).map((p) => p.part);
+export const PARTS = (Object.keys(C.parts) as PartId[]).filter((id) => !LATER_PARTS.includes(id));
 export const partPlace = (id: string): string | undefined => (C.parts as Record<string, string>)[id];
 
 export type Category = (typeof C.categories)[number];
@@ -59,10 +61,13 @@ export interface Project {
   id: string;
   part: PartId;
   gives: 'mill' | 'hive' | 'perch';
+  later?: boolean;
   stages: readonly Stage[];
 }
-export const PROJECTS = C.projects as readonly Project[];
-export const getProject = (id: string): Project | undefined => PROJECTS.find((p) => p.id === id);
+const ALL_PROJECTS = C.projects as readonly Project[];
+// The projects players can see and build now.
+export const PROJECTS = ALL_PROJECTS.filter((p) => !p.later);
+export const getProject = (id: string): Project | undefined => ALL_PROJECTS.find((p) => p.id === id);
 
 // Saves from before crafting have none of it yet.
 const crafting = (state: GameState): Crafting =>
@@ -204,7 +209,7 @@ export function buildStage(state: GameState, now: number, id: string): { state: 
 export function stepCrafting(state: GameState, t: number): GameState {
   if (!state.crafting) return state;
   let s = state;
-  for (const p of PROJECTS) {
+  for (const p of ALL_PROJECTS) {
     const prog = progressOf(s, p.id);
     if (!prog.until || t < prog.until) continue;
     const built = prog.built + 1;

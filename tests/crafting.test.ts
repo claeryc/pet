@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CONFIG } from '../src/game/config';
 import {
   addMaterial, addPart, buildStage, collectHive, craft, hiveBuilt, hiveFull, hiveNextAt, hiveStock, digForPart, hasAnyMaterial, hasPart, materialCount, PATTERNS,
-  perchRestOff, progressOf, PROJECTS, projectDone, stepCrafting, tripCrafting,
+  getProject, PARTS, partAt, perchRestOff, progressOf, PROJECTS, projectDone, stepCrafting, tripCrafting,
 } from '../src/game/crafting';
 import { FURNITURE, ownsDecor } from '../src/game/decor';
 import { percyPerks } from '../src/game/regulars';
@@ -19,7 +19,7 @@ const withMaterials = (s: GameState, n = 50): GameState =>
 
 // Builds every stage of a project, waiting out each one.
 function buildAll(s: GameState, id: string, at = START): { state: GameState; at: number } {
-  const p = PROJECTS.find((x) => x.id === id)!;
+  const p = getProject(id)!;
   for (const stage of p.stages) {
     s = { ...s, gold: s.gold + stage.gold };
     const r = buildStage(s, at, id);
@@ -68,14 +68,21 @@ describe('finding materials', () => {
     let s = newTeen(START);
     let tries = 0;
     // A roll of 0.99 only wins once the chance has climbed all the way.
-    while (!hasPart(s, 'millstone')) {
-      const r = digForPart(s, 'woods', 0.99);
+    while (!hasPart(s, 'queenCrown')) {
+      const r = digForPart(s, 'meadow', 0.99);
       s = r.state;
       tries++;
       expect(tries).toBeLessThan(20);
     }
     expect(tries).toBe(Math.ceil((0.99 - C.partDig.first) / C.partDig.step) + 1);
-    expect(digForPart(s, 'woods', 0).find).toBeUndefined();
+    expect(digForPart(s, 'meadow', 0).find).toBeUndefined();
+  });
+
+  it('keeps the windmill and its millstone for a later update', () => {
+    expect(PROJECTS.map((p) => p.id)).toEqual(['beehive', 'perch']);
+    expect(PARTS).not.toContain('millstone');
+    expect(partAt(newTeen(START), 'woods')).toBeNull();
+    expect(digForPart(newTeen(START), 'woods', 0).find).toBeUndefined();
   });
 });
 
@@ -123,7 +130,7 @@ describe('projects', () => {
   it('takes materials and gold, then builds over real hours', () => {
     let s = addPart(withMaterials(newTeen(START)), 'millstone');
     s = { ...s, gold: 1000 };
-    const stage = PROJECTS[0].stages[0];
+    const stage = getProject('windmill')!.stages[0];
     const r = buildStage(s, START, 'windmill');
     expect(r.blocked).toBeUndefined();
     expect(r.state.gold).toBe(1000 - stage.gold);

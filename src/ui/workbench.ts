@@ -67,7 +67,7 @@ export interface Workbench {
 
 type Tab = 'bench' | 'projects';
 const TABS: readonly Tab[] = ['bench', 'projects'];
-const TAB_ICONS: Record<Tab, string> = { bench: ITEM_ICONS.workbench, projects: CRAFT_ART.windmill };
+const TAB_ICONS: Record<Tab, string> = { bench: ITEM_ICONS.workbench, projects: CRAFT_ART.beehive };
 const TAPS = 3;
 
 const el = (tag: string, className: string, text?: string): HTMLElement => {
@@ -344,6 +344,9 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
     bench.dataset.tab = tab;
     benchControls.hidden = tab !== 'bench';
     projectControls.hidden = tab !== 'projects';
+    // Patterns are for the bench; the projects scene has no use for them.
+    if (tab === 'projects') patternDrawer.close();
+    patternDrawer.el.hidden = tab === 'projects';
     // Both show along the workshop: the one you're not at peeks in.
     renderBench(s);
     renderProject(s, PROJECTS[project]);

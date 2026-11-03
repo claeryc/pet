@@ -12321,6 +12321,7 @@ button.trip-bars-name.is-on {
   border-radius: 14px;
   background: linear-gradient(#cdeafa 0 74%, var(--good) 74%);
   box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.5), 0 4px 0 rgba(92, 58, 46, 0.25);
+  container-type: size;
 }
 
 .project-window::after {
@@ -12343,15 +12344,19 @@ button.trip-bars-name.is-on {
   z-index: 1;
 }
 
+/* Sized to whichever runs out first, the window's height or its width,
+   so the whole piece (flowers and all) stays inside the frame. */
 .kitchen[data-project='beehive'] .project-art {
   aspect-ratio: 36 / 40;
-  height: 46%;
+  height: auto;
+  width: min(88cqw, 40cqh);
   transform: translateX(-50%);
 }
 
 .kitchen[data-project='perch'] .project-art {
   aspect-ratio: 35 / 44;
-  height: 54%;
+  height: auto;
+  width: min(80cqw, 42cqh);
   transform: translateX(-50%);
 }
 
@@ -12404,8 +12409,11 @@ button.trip-bars-name.is-on {
 
 .project-sign {
   position: absolute;
-  right: 0;
-  bottom: 14%;
+  left: 50%;
+  bottom: calc(10% + 18px);
+  transform: translateX(-50%);
+  max-width: 76%;
+  white-space: nowrap;
   z-index: 2;
   padding: 5px 10px;
   border: 3px solid var(--plum);
@@ -12432,6 +12440,17 @@ button.trip-bars-name.is-on {
 .pj {
   flex: 1;
   min-width: 0;
+}
+
+/* Build is gone while a stage builds (or once it's all done): the
+   project card takes the whole counter, rather than leaving a gap. */
+.project-controls .kitchen-cook[hidden] {
+  display: none;
+}
+
+/* Patterns belong to the bench, not the projects. */
+.drawer[hidden] {
+  display: none;
 }
 
 .pj-head {

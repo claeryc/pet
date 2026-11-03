@@ -954,9 +954,11 @@ export const CONFIG = {
     //  - 'mill': the mill joins the kitchen (CONFIG.cooking.kitchen.mill);
     //  - 'hive': `hive` (honey and beeswax) each new day;
     //  - 'perch': Percy rests `perchRestOff` hours less after a courier trip.
+    // A project marked `later` waits for a future update: it isn't shown,
+    // and its key part can't be found yet.
     projects: [
       {
-        id: 'windmill', part: 'millstone', gives: 'mill',
+        id: 'windmill', part: 'millstone', gives: 'mill', later: true,
         stages: [
           { id: 'foundation', needs: { pebble: 12, clay: 4 }, gold: 50, hours: 3 },
           { id: 'frame', needs: { twig: 12, twine: 4 }, gold: 75, hours: 4 },
