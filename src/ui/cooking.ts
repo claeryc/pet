@@ -14,8 +14,8 @@
 // recipe you know, the dish it will make. A mix that can't become any
 // recipe, even with more added, shows a Mushy mess as a warning; anything
 // else shows a "?". On the front counter is a plate for each food the pot
-// takes (three, four with the bigger pot) and a round Cook! button
-// (tapping the pot cooks too). With double batch, a ×2 stamp on Cook!
+// takes (three, four with the bigger pot) and a round Cook! button.
+// Tapping the pot opens the Food panel. With double batch, a ×2 stamp on Cook!
 // cooks two of a dish at once from two of everything.
 //
 // Food and Recipes open upward like Feed and Play. The front counter rides
@@ -39,7 +39,8 @@
 //
 // The cutting board takes one fish, with dotted lines across it where the
 // chops go. On the counter, a marker runs back and forth along a meter;
-// tap Chop! (or the board) to chop on the next line. A chop while the marker is in the green
+// tap Chop! to chop on the next line (tapping the board opens the Food
+// panel, or chops too once the first chop is in). A chop while the marker is in the green
 // is a perfect one, and all of them perfect is a perfect cut, but any cut
 // makes the fillet.
 //
@@ -184,7 +185,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
   const cardNote = el('small', 'recipe-card-note');
   card.append(el('i', 'recipe-card-pin'), cardArt, cardName, cardNote);
   const stove = el('div', 'stove');
-  // The pot is a Cook button too.
+  // Tapping the pot opens the Food panel.
   const potBtn = el('button', 'stove-pot');
   potBtn.innerHTML = KITCHEN_ART.pot;
   const steam = el('span', 'pot-steam');
@@ -195,7 +196,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
   batchTag.textContent = '×2';
   batchTag.setAttribute('aria-hidden', 'true');
   potBtn.append(steam, potDish, batchTag);
-  potBtn.addEventListener('click', cookIt);
+  potBtn.addEventListener('click', openFood);
   const flames = el('span', 'stove-flames');
   flames.setAttribute('aria-hidden', 'true');
   flames.innerHTML = KITCHEN_ART.flame.repeat(2);
@@ -231,11 +232,12 @@ export function createCooking(cb: CookingCallbacks): Cooking {
 
   // ---- The board: the food with its dotted chop lines and the knife over
   // the next one. On the counter: the chop pips, what's on the board, the
-  // meter and the Chop! button (tapping the board chops too).
+  // meter and the Chop! button. Tapping the board opens the Food panel,
+  // or chops once the fish is part-way cut.
   const boardScene = el('div', 'kitchen-scene board-scene');
   const boardControls = el('div', 'kitchen-controls board-controls');
   const boardBtn = el('button', 'cut-board');
-  boardBtn.addEventListener('click', chop);
+  boardBtn.addEventListener('click', () => (chops.length > 0 ? chop() : openFood()));
   const cutFood = el('span', 'cut-food');
   cutFood.setAttribute('aria-hidden', 'true');
   // The food is drawn once per piece, each clipped to its stretch between
@@ -431,6 +433,14 @@ export function createCooking(cb: CookingCallbacks): Cooking {
     if (onBoard()) cb.toast(STRINGS.cooking.boardStart);
     // An open panel now shows this station's foods or recipes.
     lift.refit();
+  }
+
+  // A tap on the pot or the board: open the Food panel (in place of
+  // Recipes, if that's open). Nothing while something's cooking.
+  function openFood(): void {
+    if (busy()) return;
+    recipeDrawer.close();
+    if (!foodDrawer.isOpen()) foodDrawer.open();
   }
 
   function addToPot(id: FoodId): void {
@@ -801,7 +811,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
       if (t.b.disabled && t.sh === shelf) shelf = 'all';
     }
     for (const t of shelfButtons) t.b.setAttribute('aria-pressed', String(t.sh === shelf));
-    pantryEmpty.textContent = here.length === 0 ? (onBoard() ? STRINGS.cooking.noFish : STRINGS.cooking.noFood) : '';
+    pantryEmpty.textContent = here.length === 0 ? (onBoard() ? STRINGS.cooking.noBoardFood : STRINGS.cooking.noFood) : '';
     for (const p of pantryItems) {
       p.b.style.display = here.includes(p.id) && onShelf(p.id, shelf) ? '' : 'none';
       const n = left(p.id);

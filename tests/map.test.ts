@@ -92,6 +92,25 @@ describe('area cards', () => {
     expect(mistyAreas(s, NOW, 'sea')).toContain('market');
   });
 
+  it('lists everything waiting in the garden, most important first', () => {
+    const s = newTeen(NOW);
+    s.unlocked.push('garden');
+    s.garden[0] = { ...s.garden[0], crop: 'carrot', growth: 1e12, dead: false, sickSince: null, moistUntil: NOW + 3_600_000 };
+    s.garden[1] = { ...s.garden[1], crop: 'carrot', growth: 0, dead: false, sickSince: null, moistUntil: 0 };
+    const c = areaCard(s, NOW, area('island', 'backyard'));
+    expect(c.news?.map((n) => n.badge)).toEqual(['water', 'crop']);
+    expect(c.badge).toBe('water');
+    expect(c.text).toBe(c.news![0].text);
+  });
+
+  it('an island with an Adventure and a Stroll shows both, the Adventure first', () => {
+    const s = newTeen(NOW);
+    s.unlocked.push('journeys');
+    s.journeys.offers = [{ place: 'market', rarity: 'common' }, { place: 'market', rarity: 'epic' }, null];
+    const c = areaCard(s, NOW, area('sea', 'market'));
+    expect(c.news?.map((n) => n.badge)).toEqual(['epic', 'trip']);
+  });
+
   it('the night trip shows up on its island', () => {
     const s = newTeen(NOW);
     s.unlocked.push('journeys');

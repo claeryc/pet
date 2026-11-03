@@ -72,8 +72,10 @@ export interface AreaCard {
   locked: boolean; // under clouds, or not open yet
   button: string;
   enabled: boolean;
-  // A little picture on the sign for what's waiting there (honey, a ripe
-  // crop, a visitor...). The screen picks the picture.
+  // Everything waiting there, most important first (a plant to water, a
+  // ripe crop, honey...): a little picture on the sign for each, and a line
+  // each in the bubble. `badge` is the first one's picture.
+  news?: News[];
   badge?: Badge;
   // A journey place: the trips on the board that go there.
   tickets?: Ticket[];
@@ -81,6 +83,10 @@ export interface AreaCard {
 }
 
 export type Badge = 'water' | 'honey' | 'crop' | 'visitor' | 'mail' | 'backpack' | 'epic' | 'night' | 'trip';
+export interface News {
+  badge: Badge;
+  text: string;
+}
 // A trip on the board: its spot (NIGHT for the night ticket) and the offer.
 export interface Ticket {
   slot: number;
@@ -117,6 +123,9 @@ export function areaCard(state: GameState, now: number, area: MapAreaDef): AreaC
   const card = (text: string, button: string, extra: Partial<AreaCard> = {}): AreaCard =>
     ({ id: area.id, name, text, good: false, dot: false, locked: false, button, enabled: true, ...extra });
   const locked = (text: string) => card(text, S.locked, { locked: true, enabled: false });
+  // A card with news: the first line is its text, every line gets a badge.
+  const busy = (news: News[], button: string, extra: Partial<AreaCard> = {}): AreaCard =>
+    card(news[0].text, button, { good: true, dot: true, badge: news[0].badge, news, ...extra });
 
   if (!opens || opens.kind === 'soon') return card(area.soonText ?? S.soonText, S.soon, { locked: true, enabled: false });
   if (area.unlock && !isUnlocked(state, area.unlock)) return locked(area.lockedText ?? S.lockedText);
@@ -127,29 +136,33 @@ export function areaCard(state: GameState, now: number, area: MapAreaDef): AreaC
     case 'garden': {
       const stages = state.garden.map(plotStage);
       const ready = stages.filter((s) => s === 'ready').length;
-      if (needsTending(state.garden, now)) return card(S.gardenNeeds, S.go, { good: true, dot: true, badge: 'water' });
-      if (ready > 0) return card(S.gardenReady(ready), S.go, { good: true, dot: true, badge: 'crop' });
-      if (hiveBuilt(state) && hiveStock(state) > 0) return card(S.honeyReady, S.go, { good: true, dot: true, badge: 'honey' });
+      const news: News[] = [];
+      if (needsTending(state.garden, now)) news.push({ badge: 'water', text: S.gardenNeeds });
+      if (ready > 0) news.push({ badge: 'crop', text: S.gardenReady(ready) });
+      if (hiveBuilt(state) && hiveStock(state) > 0) news.push({ badge: 'honey', text: S.honeyReady });
+      if (news.length) return busy(news, S.go);
       return card(stages.every((s) => s === 'empty') ? S.gardenEmpty : S.gardenGrowing, S.go);
     }
     case 'meadow': {
       const v = meadowVisitor(state);
-      if (v) return card(S.meadowVisitor(v.pet.name), S.visit, { good: true, dot: true, badge: 'visitor' });
+      if (v) return busy([{ badge: 'visitor', text: S.meadowVisitor(v.pet.name) }], S.visit);
       const n = state.meadow.length;
       return card(n ? S.meadowPets(n) : S.meadowEmpty, S.visit);
     }
     case 'friends': {
       const over = visitor(state);
-      if (over) return card(S.friendOver(over.name), S.visit, { good: true, dot: true, badge: 'visitor' });
       const mail = unreadMail(state);
-      if (mail > 0) return card(S.friendMail(mail), S.visit, { good: true, dot: true, badge: 'mail' });
+      const news: News[] = [];
+      if (over) news.push({ badge: 'visitor', text: S.friendOver(over.name) });
+      if (mail > 0) news.push({ badge: 'mail', text: S.friendMail(mail) });
+      if (news.length) return busy(news, S.visit);
       return card(S.friendsQuiet, S.visit);
     }
     case 'map': {
       if (opens.map === START_MAP) return card(S.homeIsland, S.sailHome);
       // Before journeys open you can still sail over and look around.
       if (!isUnlocked(state, 'journeys')) return card(S.shipLook, S.setSail);
-      if (hasBackpack(pet)) return card(S.shipBackpack(pet.name), S.setSail, { good: true, dot: true, badge: 'backpack' });
+      if (hasBackpack(pet)) return busy([{ badge: 'backpack', text: S.shipBackpack(pet.name) }], S.setSail);
       if (pet.trip) return card(S.shipSailing(pet.name, placeName(pet.trip.place)), S.setSail);
       return card(S.shipReady, S.setSail);
     }
@@ -160,8 +173,12 @@ export function areaCard(state: GameState, now: number, area: MapAreaDef): AreaC
       if (pet.trip?.place === place.id && isAway(pet)) return card(S.placeHere(pet.name, homeLeft(pet.trip.endsAt - now)), S.planTrip, { good: true });
       const tickets = ticketsAt(state, place.id);
       if (tickets.length) {
-        const badge: Badge = tickets.some((t) => isEpicOffer(t.offer)) ? 'epic' : tickets.some((t) => t.offer.night) ? 'night' : 'trip';
-        return card(S.tickets(tickets.length), S.planTrip, { good: true, badge, tickets });
+        // A badge for each kind of trip there: an Adventure first.
+        const news: News[] = [];
+        if (tickets.some((t) => isEpicOffer(t.offer))) news.push({ badge: 'epic', text: S.epicHere });
+        if (tickets.some((t) => t.offer.night)) news.push({ badge: 'night', text: S.nightHere });
+        if (tickets.some((t) => !t.offer.night && !isEpicOffer(t.offer))) news.push({ badge: 'trip', text: S.tripHere });
+        return card(S.tickets(tickets.length), S.planTrip, { good: true, badge: news[0].badge, news, tickets });
       }
       // Open, but no trip goes there now: mist, and when a new trip comes.
       const next = nextTicketAt(state);

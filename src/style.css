@@ -13197,11 +13197,26 @@ button.trip-bars-name.is-on {
   z-index: 2;
 }
 
-/* What's waiting at a place, as a little picture on its sign's corner. */
-.map-badge {
+/* What's waiting at a place, as little pictures on its sign's corner: the
+   first two overlapping, then "+1" for the rest. */
+.map-badges {
   position: absolute;
   top: -11px;
   right: -11px;
+  display: flex;
+  flex-direction: row-reverse;
+}
+
+.map-badges > .map-badge + .map-badge {
+  margin-right: -7px;
+}
+
+.map-badges > .map-badge:nth-child(2) {
+  animation-delay: 0.25s;
+}
+
+.map-badge {
+  position: relative;
   width: 22px;
   height: 22px;
   border: 2px solid var(--plum);
@@ -13220,6 +13235,50 @@ button.trip-bars-name.is-on {
 .map-badge.is-epic {
   background: #fff3c4;
   border-color: #c98a1a;
+}
+
+.map-badge.is-more {
+  width: auto;
+  min-width: 22px;
+  padding: 0 4px;
+  border-radius: 11px;
+  background: var(--plum);
+  color: white;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+  animation-delay: 0.5s;
+}
+
+/* The bubble's list when several things are waiting there. */
+.map-text.is-list {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  text-align: left;
+}
+
+.map-news {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.map-news-badge {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--lavender);
+  border-radius: 50%;
+  background: white;
+}
+
+.map-news-badge svg {
+  width: 14px;
+  height: 14px;
+  image-rendering: pixelated;
 }
 
 @keyframes map-badge-bob {
