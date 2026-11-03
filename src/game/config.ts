@@ -190,6 +190,17 @@ export const CONFIG = {
     { id: 'fragments650', fragments: 650, price: '€4.99' },
   ],
 
+  // Rewarded ads (see src/game/ads.ts), only ever watched when the player
+  // taps to. The first one of a day is the daily `treat`: star fragments
+  // and some gold. Then up to `extra.perDay` more give gold only, so ads
+  // add at most 60 fragments a month (a star fragment is worth about a
+  // cent, and an ad view pays well under one). Counted per local day.
+  // Watching is only a stand-in for now (see src/ads.ts).
+  ads: {
+    treat: { fragments: 2, gold: 20 },
+    extra: { gold: 15, perDay: 3 },
+  },
+
   // The hidden Care Score (0-100) tracks long-term care. Later it decides
   // which adult form the pet grows into.
   careScore: {

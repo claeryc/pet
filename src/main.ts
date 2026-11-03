@@ -25,6 +25,9 @@ import {
   type ShopResult,
 } from './game/economy';
 import { purchase, type ProductId } from './payments';
+import { standInAds, useAdProvider, watchRewardedAd } from './ads';
+import { adsAllowed, claimAd, nextAd } from './game/ads';
+import { createAdPlayer } from './ui/adPlayer';
 import { getDecor, placeFurniture, takeDownFurniture, useDecor } from './game/decor';
 import { getLook, isNight } from './game/stats';
 import { feeling } from './game/likes';
@@ -575,6 +578,25 @@ function buyPack(productId: ProductId): Promise<boolean> {
     home.toast(STRINGS.revival.bought(pack.fragments));
     return true;
   });
+}
+
+// Rewarded ads (a stand-in for now, see src/ads.ts): plays one only when
+// the player taps Watch, and gives its reward once it was watched to the
+// end. Says the fragments before and after, for the Star counter's bar.
+async function watchAd(): Promise<{ before: number; after: number } | null> {
+  if (!adsAllowed(state)) return (blocked(STRINGS.ads.notNow), null);
+  if (!nextAd(state, gameNow())) return (blocked(STRINGS.ads.capped), null);
+  const outcome = await watchRewardedAd();
+  if (outcome !== 'rewarded') return (home.toast(outcome === 'closed' ? STRINGS.ads.closedEarly : STRINGS.ads.unavailable), null);
+  const result = claimAd(simulate(state, gameNow()), gameNow());
+  setState(result.state);
+  const reward = result.reward;
+  if (!reward) return (blocked(result.blocked === 'notNow' ? STRINGS.ads.notNow : STRINGS.ads.capped), null);
+  sound(reward.fragments > 0 ? 'fragment' : 'coins');
+  home.toast(reward.fragments > 0 ? STRINGS.ads.gotTreat(reward.fragments, reward.gold) : STRINGS.ads.gotGold(reward.gold));
+  if (reward.fragments === 0) return null;
+  const after = result.state.fragments.pieces;
+  return { before: after - reward.fragments, after };
 }
 
 // A pet that passed away: bring it back with a Revival Star, making one
@@ -1294,6 +1316,7 @@ const home = createHomeScreen(root, {
     });
   },
   onBuyPack: (id) => void buyPack(id as ProductId),
+  onWatchAd: watchAd,
   onBuyFamilyHome,
   onRoomDoor: askRoomDoor,
   onWakePercy: () => {
@@ -1564,6 +1587,8 @@ const home = createHomeScreen(root, {
 // Made after the home screen, which clears the page when it starts.
 const naming = createNamingBox(root);
 const choice = createChoiceBox(root);
+// No ad network yet: a pretend ad stands in (see src/ads.ts to plug in AdMob).
+useAdProvider(standInAds(createAdPlayer(root)));
 const littleOne = createLittleOneReveal(root, (moment) => {
   if (moment === 'hearts') sound('hearts');
   else if (moment === 'egg') sound('found');

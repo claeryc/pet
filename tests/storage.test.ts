@@ -246,6 +246,13 @@ describe('save migration to crafting', () => {
   it('gives old saves an empty pouch and no projects', () => {
     const out = migrate({ version: 41, state: { pet: { name: 'drip' } } }).state;
     expect(out.crafting).toEqual({ materials: {}, parts: [], partTries: {}, made: [], projects: {}, hiveDay: '' });
-    expect(SAVE_VERSION).toBe(42);
+  });
+});
+
+describe('save migration to rewarded ads', () => {
+  it('gives old saves no ads watched yet', () => {
+    const out = migrate({ version: 42, state: { pet: { name: 'drip' } } }).state;
+    expect(out.ads).toEqual({ day: '', watched: 0 });
+    expect(SAVE_VERSION).toBe(43);
   });
 });
