@@ -65,9 +65,10 @@ export interface Workbench {
   update: (state: GameState, now: number) => void;
 }
 
-type Tab = 'bench' | 'projects';
-const TABS: readonly Tab[] = ['bench', 'projects'];
-const TAB_ICONS: Record<Tab, string> = { bench: ITEM_ICONS.workbench, projects: CRAFT_ART.beehive };
+// The stops along the workshop: the bench, then one per project.
+type Tab = string;
+const BENCH = 'bench';
+const UNKNOWN_ICON = '<svg viewBox="0 0 12 12" aria-hidden="true"><text x="6" y="10" text-anchor="middle" font-size="10" font-weight="900" fill="#3f7d62">?</text></svg>';
 const TAPS = 3;
 
 const el = (tag: string, className: string, text?: string): HTMLElement => {
@@ -90,12 +91,11 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
   let state: GameState | null = null;
   let now = 0;
   let active = false;
-  let tab: Tab = 'bench';
+  let tab: Tab = BENCH;
   let picked: Pattern | null = null;
   let taps = 0;
   let justMade: Pattern | null = null;
   let category: Category = CATEGORIES[0];
-  let project = 0;
   let outTimer = 0;
   let hitTimer = 0;
 
@@ -158,37 +158,33 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
   madeBox.append(madeIcon, madeText);
   benchControls.append(spots, madeBox, makeBtn);
 
-  // The projects scene: sky, grass, the project and its sign.
-  const meadow = el('div', 'kitchen-scene project-scene');
-  const view = el('div', 'project-window');
-  const build = el('div', 'project-art');
-  const ghost = el('span', 'project-ghost');
-  const done = el('span', 'project-built');
-  const unknown = el('span', 'project-unknown', '?');
-  build.append(ghost, done, unknown);
-  const signBoard = el('div', 'project-sign');
-  const signName = el('b', '');
-  const signNote = el('small', '');
-  signBoard.append(signName, signNote);
-  view.append(build);
-  meadow.append(view, signBoard);
+  // A project's stop: a window onto the meadow, the project out there,
+  // and its sign.
+  const projectScenes = PROJECTS.map((p) => {
+    const scene = el('div', 'kitchen-scene project-scene');
+    scene.dataset.project = p.id;
+    const view = el('div', 'project-window');
+    const build = el('div', 'project-art');
+    const ghost = el('span', 'project-ghost');
+    const done = el('span', 'project-built');
+    const unknown = el('span', 'project-unknown', '?');
+    build.append(ghost, done, unknown);
+    const signBoard = el('div', 'project-sign');
+    const signName = el('b', '');
+    const signNote = el('small', '');
+    signBoard.append(signName, signNote);
+    view.append(build);
+    scene.append(view, signBoard);
+    return { p, scene, build, ghost, done, unknown, signName, signNote };
+  });
 
   const projectControls = el('div', 'kitchen-controls project-controls');
   const pj = el('div', 'pj');
-  const pjHead = el('div', 'pj-head');
-  const prev = el('button', 'pj-arrow', '‹');
-  prev.setAttribute('aria-label', 'Previous project');
-  prev.addEventListener('click', () => turn(-1));
-  const pjName = el('b', 'pj-name');
-  const next = el('button', 'pj-arrow', '›');
-  next.setAttribute('aria-label', 'Next project');
-  next.addEventListener('click', () => turn(1));
-  pjHead.append(prev, pjName, next);
   const pips = el('div', 'pj-stages');
   pips.setAttribute('aria-hidden', 'true');
   const pjStage = el('div', 'pj-stage');
   const pjNeeds = el('div', 'pj-needs');
-  pj.append(pjHead, pips, pjStage, pjNeeds);
+  pj.append(pjStage, pips, pjNeeds);
   const buildBtn = el('button', 'kitchen-cook');
   buildBtn.innerHTML = `${CRAFT_ART.hammer}<span>${T.build}</span>`;
   buildBtn.addEventListener('click', buildIt);
@@ -196,9 +192,12 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
 
   room.append(floor);
   counter.append(benchControls, projectControls);
-  const scenes: Record<Tab, HTMLElement> = { bench: benchScene, projects: meadow };
+  const stations = [
+    { id: BENCH, icon: ITEM_ICONS.workbench, label: T.tabs.bench, scene: benchScene },
+    ...projectScenes.map((x) => ({ id: x.p.id, icon: CRAFT_ART[x.p.id] ?? '', label: T.projects[x.p.id], scene: x.scene })),
+  ];
   const walk = createWalk({
-    stations: TABS.map((t) => ({ id: t, icon: TAB_ICONS[t], label: T.tabs[t], scene: scenes[t] })),
+    stations,
     pick: (t) => switchTo(t),
     current: () => tab,
     frame: bench,
@@ -290,7 +289,7 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
     if (madeAlready(state, p)) return cb.toast(T.madeAlready);
     picked = p;
     justMade = null;
-    tab = 'bench';
+    tab = BENCH;
     patternDrawer.close();
     render();
   }
@@ -298,7 +297,7 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
   // A tap of the hammer (the round button or the bench). The last one
   // makes the piece.
   function hammer(): void {
-    if (!state || tab !== 'bench' || justMade) return;
+    if (!state || tab !== BENCH || justMade) return;
     if (!picked) return cb.toast(T.start);
     if (madeAlready(state, picked)) return cb.toast(T.madeAlready);
     if (!haveMaterials(state, picked.needs)) {
@@ -327,29 +326,34 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
     render();
   }
 
-  function turn(by: number): void {
-    project = (project + by + PROJECTS.length) % PROJECTS.length;
-    render();
-  }
+  const here = (): Project | undefined => PROJECTS.find((p) => p.id === tab);
 
   function buildIt(): void {
-    const p = PROJECTS[project];
-    if (cb.onBuild(p.id)) render();
+    const p = here();
+    if (p && cb.onBuild(p.id)) render();
   }
 
   function render(): void {
     if (!state) return;
     const s = state;
+    // A project not found yet shows as a "?" on its tab.
+    for (const st of stations) {
+      const p = PROJECTS.find((x) => x.id === st.id);
+      if (p) st.icon = projectOpen(s, p) ? CRAFT_ART[p.id] ?? '' : UNKNOWN_ICON;
+    }
     walk.render(tab);
-    bench.dataset.tab = tab;
-    benchControls.hidden = tab !== 'bench';
-    projectControls.hidden = tab !== 'projects';
-    // Patterns are for the bench; the projects scene has no use for them.
-    if (tab === 'projects') patternDrawer.close();
-    patternDrawer.el.hidden = tab === 'projects';
-    // Both show along the workshop: the one you're not at peeks in.
+    const atBench = tab === BENCH;
+    bench.dataset.tab = atBench ? BENCH : 'project';
+    benchControls.hidden = !atBench;
+    projectControls.hidden = atBench;
+    // Patterns are for the bench; the projects have no use for them.
+    if (!atBench) patternDrawer.close();
+    patternDrawer.el.hidden = !atBench;
+    // Every stop shows along the workshop: the ones you're not at peek in.
     renderBench(s);
-    renderProject(s, PROJECTS[project]);
+    for (const x of projectScenes) renderScene(s, x);
+    const p = here();
+    if (p) renderProject(s, p);
     renderLists(s);
   }
 
@@ -406,22 +410,30 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
     return x;
   }
 
+  function renderScene(s: GameState, x: (typeof projectScenes)[number]): void {
+    const { p } = x;
+    const open = projectOpen(s, p);
+    const prog = progressOf(s, p.id);
+    const total = p.stages.length;
+    const finished = prog.built >= total;
+    const art = open ? CRAFT_ART[p.id] ?? '' : '';
+    if (x.ghost.dataset.art !== String(open)) {
+      x.ghost.innerHTML = x.done.innerHTML = art;
+      x.ghost.dataset.art = String(open);
+    }
+    x.unknown.hidden = open;
+    // Built bottom up: the built share shows in full, the rest faintly.
+    x.done.style.clipPath = `inset(${(1 - prog.built / total) * 100}% 0 0 0)`;
+    x.build.classList.toggle('is-building', prog.until > 0);
+    x.signName.textContent = T.projects[p.id];
+    x.signNote.textContent = !open ? T.notFound : finished ? T.built : T.stageOf(prog.built + 1, total);
+  }
+
   function renderProject(s: GameState, p: Project): void {
     const open = projectOpen(s, p);
     const prog = progressOf(s, p.id);
     const total = p.stages.length;
     const finished = prog.built >= total;
-    const name = T.projects[p.id];
-    bench.dataset.project = p.id;
-    ghost.innerHTML = done.innerHTML = open ? CRAFT_ART[p.id] : '';
-    unknown.hidden = open;
-    // Built bottom up: the built share shows in full, the rest faintly.
-    done.style.clipPath = `inset(${(1 - prog.built / total) * 100}% 0 0 0)`;
-    build.classList.toggle('is-building', prog.until > 0);
-    signName.textContent = name;
-    signNote.textContent = !open ? T.notFound : finished ? T.built : T.stageOf(prog.built + 1, total);
-
-    pjName.textContent = name;
     pips.replaceChildren(
       ...p.stages.map((_, i) => {
         const pip = el('i', '');
@@ -543,16 +555,10 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
     bench,
     start() {
       active = true;
-      tab = 'bench';
+      tab = BENCH;
       taps = 0;
       justMade = null;
       if (picked && state && madeAlready(state, picked)) picked = null;
-      // Open on the first project you can work on.
-      if (state) {
-        const s = state;
-        const i = PROJECTS.findIndex((p) => projectOpen(s, p) && progressOf(s, p.id).built < p.stages.length);
-        if (i >= 0) project = i;
-      }
       row.hidden = false;
       clearTimeout(outTimer);
       bench.hidden = false;

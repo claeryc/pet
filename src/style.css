@@ -12346,14 +12346,14 @@ button.trip-bars-name.is-on {
 
 /* Sized to whichever runs out first, the window's height or its width,
    so the whole piece (flowers and all) stays inside the frame. */
-.kitchen[data-project='beehive'] .project-art {
+.project-scene[data-project='beehive'] .project-art {
   aspect-ratio: 36 / 40;
   height: auto;
   width: min(88cqw, 40cqh);
   transform: translateX(-50%);
 }
 
-.kitchen[data-project='perch'] .project-art {
+.project-scene[data-project='perch'] .project-art {
   aspect-ratio: 35 / 44;
   height: auto;
   width: min(80cqw, 42cqh);
@@ -12453,37 +12453,8 @@ button.trip-bars-name.is-on {
   display: none;
 }
 
-.pj-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
 
-.pj-name {
-  flex: 1;
-  text-align: center;
-  font-size: 0.95rem;
-  font-weight: 900;
-  color: var(--ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 
-.pj-arrow {
-  flex: 0 0 28px;
-  height: 28px;
-  padding: 0;
-  border: 2px solid var(--plum);
-  border-radius: 50%;
-  background: white;
-  color: var(--plum);
-  font: inherit;
-  font-weight: 900;
-  font-size: 1.1rem;
-  line-height: 1;
-  cursor: pointer;
-}
 
 .pj-stages {
   display: flex;
@@ -12510,10 +12481,9 @@ button.trip-bars-name.is-on {
 }
 
 .pj-stage {
-  font-size: 0.75rem;
-  font-weight: 800;
-  color: var(--plum);
-  margin-bottom: 4px;
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: var(--ink);
   line-height: 1.2;
 }
 
