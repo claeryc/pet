@@ -303,10 +303,17 @@ export function createMap(cb: MapCallbacks): WorldMap {
       const b = el('button', `map-label${a.id === picked ? ' is-picked' : ''}${c.locked ? ' is-locked' : ''}`, c.name);
       if (!at) b.hidden = true;
       else b.setAttribute('style', pct(...at.label));
-      if (c.badge) {
-        const at = el('span', `map-badge is-${c.badge}`);
-        at.innerHTML = BADGES[c.badge];
-        b.append(at);
+      // A badge for each thing waiting there: the first two, then "+1".
+      const news = c.news?.length ? c.news.map((n) => n.badge) : c.badge ? [c.badge] : [];
+      if (news.length) {
+        const stack = el('span', 'map-badges');
+        for (const one of news.slice(0, 2)) {
+          const pic = el('span', `map-badge is-${one}`);
+          pic.innerHTML = BADGES[one];
+          stack.append(pic);
+        }
+        if (news.length > 2) stack.append(el('span', 'map-badge is-more', S.moreNews(news.length - 2)));
+        b.append(stack);
       } else if (c.dot) b.append(el('span', 'map-dot'));
       b.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -373,12 +380,25 @@ export function createMap(cb: MapCallbacks): WorldMap {
       return;
     }
     title.textContent = c.name;
-    text.textContent = c.text;
-    text.classList.toggle('is-good', c.good);
-    badge.innerHTML = c.badge ? BADGES[c.badge] : '';
-    badge.hidden = !c.badge;
-    badge.className = `map-bubble-badge${c.badge ? ` is-${c.badge}` : ''}`;
     const trips = c.tickets ?? [];
+    // Several things waiting (and no postcards to show them): a line for
+    // each, with its picture. One thing: its picture by the name.
+    const lines = !trips.length && (c.news?.length ?? 0) > 1 ? c.news! : [];
+    if (lines.length) {
+      text.replaceChildren(...lines.map((n) => {
+        const line = el('span', 'map-news');
+        const pic = el('span', `map-news-badge is-${n.badge}`);
+        pic.innerHTML = BADGES[n.badge];
+        line.append(pic, el('span', '', n.text));
+        return line;
+      }));
+    } else text.textContent = c.text;
+    text.classList.toggle('is-good', c.good);
+    text.classList.toggle('is-list', lines.length > 0);
+    const one = lines.length ? undefined : c.badge;
+    badge.innerHTML = one ? BADGES[one] : '';
+    badge.hidden = !one;
+    badge.className = `map-bubble-badge${one ? ` is-${one}` : ''}`;
     cards.replaceChildren(...trips.map((t) => {
       const card = postcard(t.offer, () => cb.onTrip(t.slot), null);
       if (isEpicOffer(t.offer)) card.append(el('span', 'map-epic-ribbon', S.epic));

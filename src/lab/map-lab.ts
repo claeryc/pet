@@ -3,7 +3,7 @@
 //
 //   Preview  the real map screen in a phone frame. Each place can be made
 //            open, locked or misty, given trips (Stroll, Hike, Adventure,
-//            night) and a sign badge; day or night; three phone sizes.
+//            night) and any mix of sign badges; day or night; three phone sizes.
 //   Edit     the map picture with every tap shape, sign, pin and flag spot
 //            on it. Paint and erase tap shapes, drag the markers, add a new
 //            area. Save writes it all into art/map/<map>.aseprite and the
@@ -17,7 +17,7 @@ import '../style.css';
 import './map-lab.css';
 import { STRINGS } from '../strings';
 import { createNewGame, type GameState, type Offer } from '../game/state';
-import { MAPS, areaName, parseOpens, type AreaCard, type Badge, type MapAreaDef } from '../game/map';
+import { MAPS, areaName, parseOpens, type AreaCard, type Badge, type MapAreaDef, type News } from '../game/map';
 import { NIGHT } from '../game/journeys';
 import { createMap, type MapFile } from '../ui/map';
 import { mapData } from '../../scripts/map-data';
@@ -27,7 +27,7 @@ interface Slice { name: string; x: number; y: number; width: number; height: num
 interface Loaded { width: number; height: number; areas: Record<string, string>; slices: Slice[]; night: boolean; locked: string[] }
 type Look = 'game' | 'open' | 'locked' | 'misty';
 type Trip = 'common' | 'rare' | 'epic' | 'night';
-interface Override { look: Look; badge: Badge | 'none' | 'game'; trips: Trip[] }
+interface Override { look: Look; badges: Badge[]; trips: Trip[] }
 
 const S = STRINGS.map;
 const SIZES: Record<string, [number, number]> = { 'Small phone (320 × 568)': [320, 568], 'Phone (390 × 844)': [390, 844], 'Big phone (430 × 932)': [430, 932] };
@@ -137,8 +137,14 @@ freshGame();
 
 function override(id: string): Override {
   const all = (overrides[mapId] ??= {});
-  return (all[id] ??= { look: 'open', badge: 'none', trips: [] });
+  return (all[id] ??= { look: 'open', badges: [], trips: [] });
 }
+
+// What each badge's line says in the preview.
+const SAMPLE: Record<Badge, string> = {
+  water: S.gardenNeeds, crop: S.gardenReady(2), honey: S.honeyReady, visitor: S.friendOver('Bun'), mail: S.friendMail(1),
+  backpack: S.shipBackpack('Mochi'), epic: S.epicHere, night: S.nightHere, trip: S.tripHere,
+};
 
 function previewCard(a: MapAreaDef, c: AreaCard): AreaCard {
   const o = overrides[mapId]?.[a.id] ?? override(a.id);
@@ -150,23 +156,42 @@ function previewCard(a: MapAreaDef, c: AreaCard): AreaCard {
     card = { ...card, locked: false, enabled: true, good: false, dot: false, badge: undefined, tickets: [], mist: true, button: S.otherTrips, text: S.noTicketsUntil('2h 10m') };
   } else if (o.look !== 'game') {
     card = { ...card, mist: false };
-    if (opens?.kind !== 'soon') card = { ...card, locked: false, enabled: true };
+    if (opens?.kind !== 'soon') {
+      // Open: the button a new game would show once it's unlocked.
+      const button = { home: S.goHome, garden: S.go, meadow: S.visit, friends: S.visit, map: S.setSail, journey: S.planTrip }[opens?.kind ?? 'garden'];
+      card = { ...card, locked: false, enabled: true, button: card.button === S.locked ? button : card.button };
+    }
     if (card.text === (a.lockedText ?? S.lockedText) || card.text.startsWith('Opens')) card.text = '';
     if (opens?.kind === 'journey') {
       const tickets = o.trips.map((t, i) => ({ slot: t === 'night' ? NIGHT : i, offer: { place: opens.place, rarity: t === 'night' ? 'rare' : t, night: t === 'night' || undefined } as Offer }));
       card.tickets = tickets;
       card.button = S.planTrip;
+      card.news = [];
       if (tickets.length) {
         card.text = S.tickets(tickets.length);
         card.good = true;
-        card.badge = tickets.some((t) => t.offer.rarity === 'epic' && !t.offer.night) ? 'epic' : tickets.some((t) => t.offer.night) ? 'night' : 'trip';
+        if (o.trips.includes('epic')) card.news.push({ badge: 'epic', text: S.epicHere });
+        if (o.trips.includes('night')) card.news.push({ badge: 'night', text: S.nightHere });
+        if (o.trips.some((t) => t === 'common' || t === 'rare')) card.news.push({ badge: 'trip', text: S.tripHere });
       } else {
         card.text = card.text || S.placeTrips('', 0);
-        card.badge = undefined;
+      }
+      card.badge = card.news[0]?.badge;
+    }
+  }
+  // The badges picked here, as news on top of any trips.
+  if (o.look !== 'locked' && o.look !== 'game') {
+    const picked: News[] = o.badges.map((b) => ({ badge: b, text: SAMPLE[b] }));
+    if (picked.length || opens?.kind !== 'journey') {
+      const news = [...picked, ...(opens?.kind === 'journey' ? card.news ?? [] : [])];
+      card.news = news;
+      card.badge = news[0]?.badge;
+      if (picked.length && !card.tickets?.length) {
+        card.text = news[0].text;
+        card.good = true;
       }
     }
   }
-  if (o.badge !== 'game' && o.look !== 'locked') card.badge = o.badge === 'none' ? (o.trips.length ? card.badge : undefined) : o.badge;
   card.dot = !!card.badge;
   if (!card.text) card.text = ' ';
   return card;
@@ -555,7 +580,21 @@ function previewPanel(): HTMLElement[] {
     if (opens?.kind === 'journey') looks.push(['misty', 'Misty (no trips)']);
     looks.push(['game', 'As in a new game']);
     box.append(row('Looks', select(looks, o.look, (v) => { o.look = v; refreshPreview(); renderPanel(); })));
-    box.append(row('Sign badge', select<Override['badge']>([['none', 'None'], ...BADGES.map((b) => [b, b] as [Badge, string])], o.badge, (v) => { o.badge = v; refreshPreview(); })));
+    // Badges in the order ticked: the first two show on the sign, then "+1".
+    const badges = el('div', 'lab-trips');
+    for (const b of BADGES) {
+      const l = el('label', 'lab-check');
+      const c = el('input');
+      c.type = 'checkbox';
+      c.checked = o.badges.includes(b);
+      c.addEventListener('change', () => {
+        o.badges = c.checked ? [...o.badges, b] : o.badges.filter((x) => x !== b);
+        refreshPreview();
+      });
+      l.append(c, b);
+      badges.append(l);
+    }
+    box.append(row('Waiting there', badges));
     if (opens?.kind === 'journey' && o.look === 'open') {
       const trips = el('div', 'lab-trips');
       for (const [t, label] of TRIPS) {
