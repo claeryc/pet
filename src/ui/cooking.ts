@@ -811,7 +811,7 @@ export function createCooking(cb: CookingCallbacks): Cooking {
       if (t.b.disabled && t.sh === shelf) shelf = 'all';
     }
     for (const t of shelfButtons) t.b.setAttribute('aria-pressed', String(t.sh === shelf));
-    pantryEmpty.textContent = here.length === 0 ? (onBoard() ? STRINGS.cooking.noFish : STRINGS.cooking.noFood) : '';
+    pantryEmpty.textContent = here.length === 0 ? (onBoard() ? STRINGS.cooking.noBoardFood : STRINGS.cooking.noFood) : '';
     for (const p of pantryItems) {
       p.b.style.display = here.includes(p.id) && onShelf(p.id, shelf) ? '' : 'none';
       const n = left(p.id);

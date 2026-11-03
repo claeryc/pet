@@ -582,7 +582,7 @@ export const STRINGS = {
     // when there's nothing for this station.
     shelves: { all: 'All', seafood: 'Seafood', garden: 'Garden', pantry: 'Pantry', made: 'Made' },
     noFood: 'Nothing for the pot yet. Get food in the Shop, the garden or the pond.',
-    noFish: 'No fish yet. Catch one at the pond!',
+    noBoardFood: 'Nothing to chop yet. Try a fish from the pond!',
     emptyPot: 'Put some food in the pot first. Tap Food to pick some.',
     full: 'The pot is full. Tap something in it to take it out.',
     noneLeft: (name: string) => `No ${name} left.`,
@@ -596,10 +596,10 @@ export const STRINGS = {
     needs: { biggerPot: 'Needs the bigger pot', doubleBatch: '', oven: 'Needs an oven', mill: 'Needs a mill' },
     // The station tabs on the counter.
     stations: { pot: 'Pot', board: 'Board', oven: 'Oven', mill: 'Mill' },
-    boardStart: 'Put a fish on the board, then tap Chop! when the marker is in the green!',
-    boardEmpty: 'Put a fish on the board first. Tap Food to pick one.',
+    boardStart: 'Put something on the board, then tap Chop! when the marker is in the green!',
+    boardEmpty: 'Put something on the board first. Tap Food to pick it.',
     boardFull: 'Finish chopping this one first.',
-    boardHint: 'Tap Food to add a fish',
+    boardHint: 'Tap to add something to chop',
     onBoard: (name: string) => `${name} on the board. Tap to take it off`,
     chop: 'Chop!',
     addToBoard: (name: string, count: string) => `${name} (${count}). Tap to put it on the board`,
