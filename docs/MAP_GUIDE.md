@@ -108,6 +108,10 @@ Tapping a place opens a **bubble** over its sign with its news and its
 button; on the sea, a journey island's bubble shows its trips as postcards.
 When something is waiting at a place (water, a ripe crop, honey, a visitor,
 a letter, a backpack, a trip), its sign gets a little picture in the corner.
+When several things are waiting (a plant to water *and* a ripe crop), the
+sign shows the first two, most important first, then "+1" for the rest, and
+the bubble lists each on its own line. On the sea, an island with both an
+Adventure and a plain trip shows the gold Adventure badge first.
 A journey island that's open but has no trip right now is **misty**: its
 `locked:` clouds, shown thin.
 
@@ -151,8 +155,8 @@ not part of the game, and `npm run build` leaves it out.
 night). For each place you can pick how it looks without playing to it:
 
 - **Open**, **Locked** (its clouds), or on the sea **Misty** (open, no trips).
-- A **sign badge**: water, a ripe crop, honey, a visitor, a letter, a
-  backpack, or a trip.
+- **What's waiting there**: tick any mix of water, a ripe crop, honey, a
+  visitor, a letter, a backpack or a trip, in the order they should show.
 - On the sea, its **trips**: any mix of Stroll, Hike, Adventure and Night,
   shown as flags on the island and postcards in its bubble.
 
