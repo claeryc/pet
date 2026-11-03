@@ -28,6 +28,7 @@ import { audioSettings, setAudioSettings } from '../audio/audio';
 import type { JourneysCallbacks } from './journeys';
 import { hasBackpack, isAway } from '../game/presence';
 import { badgeCount } from '../game/achievements';
+import { MILESTONES } from '../game/milestones';
 import { dailySpecial, getHat, ownsSpecial } from '../game/economy';
 import { GUIDES, guideOpen, type GuideId } from '../game/guides';
 import { MAPS, START_MAP, areaCard } from '../game/map';
@@ -72,7 +73,9 @@ export interface Menu {
   reset: () => void; // go back to the main list
   update: (state: GameState) => void;
   showWardrobe: () => void;
-  showShop: (category?: ShopCategory) => void; // open the Shop, at `category`'s tab
+  // Opens the Shop, at `category`'s tab. With `back`, the Shop's back
+  // button goes there (e.g. back to the garden) instead of the menu.
+  showShop: (category?: ShopCategory, back?: () => void) => void;
   showJournal: (place: string) => void; // the travel journal, at a place
   showMeadow: () => void; // the Meadow and its keepsakes
   showMessages: (tab?: MessagesTab) => void; // Messages, at Mail or Friends
@@ -209,6 +212,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     big.className = 'menu-grid is-big';
     big.append(
       ...unlockable('shop', 'big', M.shop, () => {
+        shopBack = null;
         showShop();
         cb.onGuide('shop');
       }, s ? shopLine(s) : ''),
@@ -222,7 +226,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
       ...unlockable('collection', 'mid', M.collection, () => {
         showCollection();
         cb.onGuide('collection');
-      }, s ? M.collectionLine(badgeCount(s).earned, badgeCount(s).total) : ''),
+      }, s ? M.collectionLine(badgeCount(s).earned + s.milestones.length, badgeCount(s).total + MILESTONES.length) : ''),
       ...skillsItem(),
       ...unlockable('familyTree', 'mid', M.familyTree, () => showFamilyTree(), s ? M.familyLine : ''),
       // The Meadow, once a pet has moved there.
@@ -376,7 +380,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
           // A new tab starts at the top; a sheet opening or closing stays put.
           if (shopView.tab !== tabBefore) toTop();
           else panel.parentElement?.scrollTo(0, scroll);
-        }, showMain));
+        }, leaveShop));
         return;
       } else if (which === 'wardrobe') list.append(...wardrobePage(state, cb));
       else if (which === 'collection') {
@@ -409,6 +413,15 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     panel.replaceChildren(header(title, showMain, right), list);
   }
   const showShop = (fresh = true) => showList('shop', fresh);
+  // Where the Shop's back button goes: the menu, unless the Shop was opened
+  // from somewhere else to come back to.
+  let shopBack: (() => void) | null = null;
+  const leaveShop = () => {
+    const back = shopBack;
+    shopBack = null;
+    if (back) back();
+    else showMain();
+  };
   const showWardrobe = (fresh = true) => showList('wardrobe', fresh);
   const collectionView: CollectionView = { tab: 'badges' };
   const showCollection = (fresh = true) => {
@@ -633,7 +646,8 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     el: panel,
     reset: showMain,
     showWardrobe: () => showWardrobe(),
-    showShop: (category) => {
+    showShop: (category, back) => {
+      shopBack = back ?? null;
       showShop();
       if (category) {
         shopView.tab = category;

@@ -1116,9 +1116,10 @@ export const CONFIG = {
     limited: { chance: 0.3, perDay: 3 },
   },
 
-  // Testing helpers shown in Settings. Turn off before releasing the game.
+  // Testing helpers shown in Settings. Only while running `npm run dev`:
+  // the finished game (`npm run build`) never shows them.
   debug: {
-    showTools: true,
+    showTools: import.meta.env.DEV,
     fastForwardHours: [1, 6, 24],
     addGold: 100,
     // Buttons that set the Care Score, to test which characters appear.
