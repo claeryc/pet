@@ -1,0 +1,294 @@
+/* The item catalog page (items.html). Builds on art.css's colours. */
+
+.nav-link {
+  color: var(--plum);
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid var(--lavender);
+  border-radius: 8px;
+  padding: 4px 10px;
+  background: #fff;
+}
+
+.nav-link:hover {
+  border-color: var(--lilac);
+}
+
+.items-page input[type='search'] {
+  font: inherit;
+  border: 1px solid var(--lavender);
+  border-radius: 8px;
+  padding: 4px 10px;
+  min-width: 220px;
+}
+
+.items-page .check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px 16px 0;
+}
+
+.cats button .n {
+  margin-left: 6px;
+}
+
+.cats button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.summary {
+  margin: 8px 16px;
+  color: var(--plum);
+}
+
+.items {
+  margin: 0 16px 24px;
+  background: var(--card);
+  border-radius: 14px;
+  padding: 8px 12px;
+}
+
+.item-head,
+.item > summary {
+  display: grid;
+  grid-template-columns: 48px minmax(150px, 1.3fr) minmax(110px, 1fr) minmax(160px, 1.6fr) minmax(110px, 0.9fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.item-head {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--plum);
+  padding: 4px 8px;
+}
+
+.cat-title {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--plum);
+  margin: 16px 0 4px;
+  padding: 0 8px;
+}
+
+.item {
+  border-top: 1px solid #f0e4f4;
+}
+
+.item > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 10px;
+}
+
+.item > summary::-webkit-details-marker {
+  display: none;
+}
+
+.item > summary:hover,
+.item[open] > summary {
+  background: #fff;
+}
+
+.item.is-later .name b {
+  color: var(--lilac);
+}
+
+.art {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  border: 1px solid var(--lavender);
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.art svg {
+  width: 100%;
+  height: 100%;
+}
+
+.art.is-missing {
+  border-style: dashed;
+  border-color: var(--accent);
+}
+
+.art .hat {
+  width: 100%;
+  height: 100%;
+  background-size: 200% 100%;
+  background-position: right center;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+
+.name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.costs,
+.ways,
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.cost {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #fff;
+  border: 1px solid var(--lavender);
+  border-radius: 999px;
+  padding: 1px 8px 1px 4px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.cost.is-cash {
+  padding-left: 8px;
+  background: #e8f6ee;
+  border-color: #b9e2c9;
+}
+
+.cost .ic {
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+}
+
+.cost .ic svg {
+  width: 100%;
+  height: 100%;
+}
+
+.muted {
+  opacity: 0.6;
+}
+
+.worth {
+  width: 100%;
+}
+
+.way,
+.theme,
+.later,
+.noart {
+  font-size: 12px;
+  border-radius: 6px;
+  padding: 1px 6px;
+  background: #f3ecfa;
+  white-space: nowrap;
+}
+
+.way.is-shop { background: #fff1cc; }
+.way.is-starShop,
+.way.is-money { background: #e8f0ff; }
+.way.is-fishing { background: #dff2fb; }
+.way.is-garden { background: #e3f4e6; }
+.way.is-cooking { background: #fbeedd; }
+.way.is-journeys { background: #efe6fb; }
+.way.is-dig { background: #f4e9dc; }
+.way.is-workbench { background: #ece3d8; }
+.way.is-percy { background: #e3eefc; }
+.way.is-none { background: #fde0e6; }
+
+.theme { background: #fff; border: 1px solid var(--lavender); }
+.theme.is-nature { border-color: #8cc79a; }
+.theme.is-ocean { border-color: #7fb6e6; }
+.theme.is-bakery { border-color: #e7b37a; }
+.theme.is-starry { border-color: #a68bc9; }
+.theme.is-cave { border-color: #9aa0a8; }
+
+.later {
+  background: var(--plum);
+  color: #fff;
+}
+
+.noart {
+  background: #fde0e6;
+  color: var(--accent-dark);
+}
+
+.detail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 4px 20px;
+  padding: 4px 8px 12px 68px;
+}
+
+.detail h4 {
+  margin: 6px 0 2px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--plum);
+}
+
+.detail ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.detail .key {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+.empty {
+  padding: 20px 8px;
+  text-align: center;
+  opacity: 0.7;
+}
+
+/* Phones: each item becomes a little card. */
+@media (max-width: 760px) {
+  .items-page header {
+    position: static;
+  }
+
+  .item-head {
+    display: none;
+  }
+
+  .item > summary {
+    grid-template-columns: 48px minmax(0, 1fr);
+    gap: 4px 12px;
+  }
+
+  .item > summary > .art {
+    grid-row: span 4;
+    align-self: start;
+  }
+
+  .items-page input[type='search'] {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .detail {
+    padding-left: 8px;
+  }
+
+  .items {
+    margin: 0 8px 16px;
+    padding: 6px;
+  }
+}
