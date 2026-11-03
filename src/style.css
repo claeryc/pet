@@ -1760,14 +1760,17 @@ body {
 }
 
 .shop-name {
+  /* Up to two lines, so "Windowsill cactus" reads whole on a small phone. */
+  display: -webkit-box;
   width: 100%;
+  min-height: 2.3em;
   font-size: 0.8rem;
   font-weight: 800;
   line-height: 1.15;
   text-align: center;
-  white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 /* Small cards: names on up to two lines, so "Energy drink" fits. */
@@ -1849,6 +1852,7 @@ body {
 
 .shop-swatch-row {
   display: flex;
+  flex-wrap: wrap; /* a long name keeps its words: the price drops below */
   align-items: center;
   justify-content: space-between;
   gap: 4px;
@@ -1859,9 +1863,11 @@ body {
   min-width: 0;
   font-size: 0.82rem;
   font-weight: 800;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.15; /* a long name takes two lines rather than "…" */
+}
+
+.shop-swatch-row > :last-child {
+  margin-left: auto;
 }
 
 .shop-swatch-row .shop-buy {
@@ -4780,8 +4786,9 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 
 .tree-name {
   display: flex;
+  flex-wrap: wrap; /* on a narrow phone Rename drops below, not the name */
   align-items: center;
-  gap: 6px;
+  gap: 4px 6px;
 }
 
 .tree-name b {
@@ -8145,6 +8152,16 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 
 .trip-pc-postmark b {
   font-size: 0.62rem;
+}
+
+/* On a narrow phone the note runs to more lines, so the postmark gets
+   smaller and sits lower, off the words. */
+@media (max-width: 359px) {
+  .trip-pc-postmark {
+    width: 50px;
+    height: 50px;
+    bottom: -18px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -13205,6 +13222,12 @@ button.trip-bars-name.is-on {
   right: -11px;
   display: flex;
   flex-direction: row-reverse;
+}
+
+/* Two or more reach back over the sign, so they sit higher, clear of its
+   name. */
+.map-badges.is-many {
+  top: -20px;
 }
 
 .map-badges > .map-badge + .map-badge {

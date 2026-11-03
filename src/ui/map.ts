@@ -306,7 +306,7 @@ export function createMap(cb: MapCallbacks): WorldMap {
       // A badge for each thing waiting there: the first two, then "+1".
       const news = c.news?.length ? c.news.map((n) => n.badge) : c.badge ? [c.badge] : [];
       if (news.length) {
-        const stack = el('span', 'map-badges');
+        const stack = el('span', `map-badges${news.length > 1 ? ' is-many' : ''}`);
         for (const one of news.slice(0, 2)) {
           const pic = el('span', `map-badge is-${one}`);
           pic.innerHTML = BADGES[one];

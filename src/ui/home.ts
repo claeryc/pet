@@ -397,7 +397,11 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   passedButtons.append(revive, goodbye);
   // A pet out on a journey can be called home, and one that's back has a
   // backpack to open.
-  const openBackpack = button(STRINGS.journeys.openBackpack, 'btn', () => latest && cb.onOpenBackpack(latest.state.pet.id));
+  const openBackpack = button(STRINGS.journeys.openBackpack, 'btn', () => {
+    if (!latest) return;
+    cb.onOpenBackpack(latest.state.pet.id);
+    openBackpack.hidden = !backpack.el.hidden; // the sack is out now: tap that
+  });
   const makeRoom = button(STRINGS.friends.makeRoom, 'btn', () => cb.onMakeRoom());
   const sayHello = button(STRINGS.meadow.sayHello, 'btn', () => cb.onMeadowVisitor());
   banner.append(bannerText, medicine, passedButtons, openBackpack, makeRoom, sayHello);
@@ -981,6 +985,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   }
   function startGarden(): void {
     if (petAway) return showToast(STRINGS.blocked.away(petName));
+    // Asleep: the same as Play > Garden, also from the map.
+    if (petAsleep) return showToast(STRINGS.blocked.asleep(petName));
     if (actions.hidden) return; // already busy with something else
     feedDrawer.close();
     playDrawer.close();
@@ -1298,7 +1304,9 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   }
   // Leaves the garden or the kitchen and opens the Shop at `category`.
   function goShop(category: ShopCategory): void {
-    if (garden.active()) leaveBackyard(GARDEN_OUT_MS);
+    // From the garden, the Shop's back button goes back to the garden.
+    const fromGarden = garden.active();
+    if (fromGarden) leaveBackyard(GARDEN_OUT_MS);
     if (cooking.active()) {
       cooking.stop();
       showActions(KITCHEN_OUT_MS);
@@ -1307,7 +1315,11 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     feedDrawer.close();
     playDrawer.close();
     if (!menuDrawer!.isOpen()) menuDrawer!.open();
-    menu.showShop(category);
+    menu.showShop(category, fromGarden ? () => {
+      menuDrawer!.close();
+      menu.reset();
+      startGarden();
+    } : undefined);
   }
   // Opens the travel journal at `place` (after a postcard).
   function goJournal(place: string): void {
@@ -1481,7 +1493,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       bannerText.textContent = text;
       medicine.hidden = pet.condition !== 'sick' || !!pet.trip;
       passedButtons.hidden = !passed || !!pet.trip;
-      openBackpack.hidden = !hasBackpack(pet);
+      // Hidden while the sack is out over the stat bars, waiting for its tap.
+      openBackpack.hidden = !hasBackpack(pet) || !backpack.el.hidden;
       makeRoom.hidden = !nestWaits;
       sayHello.hidden = !fromMeadow;
 

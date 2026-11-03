@@ -202,7 +202,11 @@ const AUTO_GUIDES: { id: GuideId; when: (s: GameState) => boolean }[] = [
 // behind it first.
 const GUIDE_DELAY_MS = 450;
 function showGuide(id: GuideId): void {
-  window.setTimeout(() => guide.show(id, state.pet.name), GUIDE_DELAY_MS);
+  window.setTimeout(() => {
+    // Not on top of "While you were away": wait for it to be closed.
+    if (away.isOpen()) return showGuide(id);
+    guide.show(id, state.pet.name);
+  }, GUIDE_DELAY_MS);
 }
 
 // The first time the player opens a part of the game that has a guide.
