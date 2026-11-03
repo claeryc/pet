@@ -433,6 +433,13 @@ export interface Fragments {
   home?: boolean; // whether a pet was home that day (not all away on journeys)
 }
 
+// Rewarded ads watched today (see src/game/ads.ts): the local day they're
+// for and how many gave their reward. The first of a day is the treat.
+export interface AdsToday {
+  day: string; // e.g. "2026-11-03" ('' before the first)
+  watched: number;
+}
+
 // A character who isn't a pet but keeps coming back, like Percy (see
 // src/game/regulars.ts): a score from 0 to 100, shown as hearts, and the
 // highest heart already rewarded, so no reward is given twice.
@@ -559,6 +566,7 @@ export interface GameState {
   // Regulars by id ("percy"), once you've met them.
   regulars: Record<string, Regular>;
   crafting: Crafting;
+  ads: AdsToday;
 }
 
 export function newJourneys(): Journeys {
@@ -680,5 +688,6 @@ export function createNewGame(now: number): GameState {
     guidesRead: [],
     regulars: {},
     crafting: newCrafting(),
+    ads: { day: '', watched: 0 },
   };
 }
