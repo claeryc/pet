@@ -773,10 +773,11 @@ export const STRINGS = {
       cooking: {
         name: 'Cooking',
         pages: [
-          { title: 'Fill the pot', text: 'Tap food in your pantry to put it in the pot. Then tap the bowl on the right to cook!' },
+          { title: 'Fill the pot', text: 'Tap Food, then tap what goes in the pot. Once it\'s in, tap Cook!' },
           { title: 'Find secret recipes', text: 'Recipes lists every dish. The ??? ones are secret: the hint shows one thing that goes in.' },
           { title: 'Fresh from the pot', text: (pet: string) => `Feed your dish to ${pet} or pack it for a journey. Each new dish goes in your Recipes list.` },
-          { title: 'Oops, a Mushy mess', text: 'A grey bowl means the mix makes no dish. Cook it anyway for a Mushy mess, then try another mix!' },
+          { title: 'Oops, a Mushy mess', text: 'If the recipe card shows a Mushy mess, the mix makes no dish. Cook it anyway, or try another mix!' },
+          { title: 'Chop on the board', text: 'Swipe to the Board and add something to chop. Tap Chop! in the green: three in a row is a perfect cut!' },
         ],
       },
       delivery: {
