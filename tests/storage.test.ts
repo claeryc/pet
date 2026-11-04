@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createNewGame } from '../src/game/state';
 import { migrate, SAVE_VERSION } from '../src/storage/storage';
 import { rollTrait } from '../src/game/traits';
+import { rollTheme } from '../src/game/growth';
 
 describe('save migration', () => {
   it('upgrades a version 1 save without losing the pet', () => {
@@ -246,6 +247,19 @@ describe('save migration to crafting', () => {
   it('gives old saves an empty pouch and no projects', () => {
     const out = migrate({ version: 41, state: { pet: { name: 'drip' } } }).state;
     expect(out.crafting).toEqual({ materials: {}, parts: [], partTries: {}, made: [], projects: {}, hiveDay: '' });
-    expect(SAVE_VERSION).toBe(42);
+  });
+});
+
+describe('save migration to themed eggs', () => {
+  it('gives pets that are not grown up their theme, and grown-ups none', () => {
+    const egg = { id: 'e1', stage: 'egg', themes: ['ocean'], parentCarried: [] };
+    const out = migrate({
+      version: 42,
+      state: { pet: { id: 'a1', stage: 'adult' }, housemates: [{ id: 't1', stage: 'teen', themes: [] }], nest: egg },
+    }).state;
+    expect(out.pet.destinedTheme).toBeNull();
+    expect(out.housemates[0].destinedTheme).toBe(rollTheme('t1'));
+    expect(out.nest.destinedTheme).toBe('ocean'); // its only parent theme, no carried ones
+    expect(SAVE_VERSION).toBe(43);
   });
 });
