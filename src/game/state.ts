@@ -8,7 +8,8 @@ import { newGarden } from './garden';
 import { inheritTrait } from './traits';
 import { rollLikes, type Likes } from './likes';
 import { newHygiene, type Hygiene } from './hygiene';
-import type { Genes } from './genes';
+import { inheritanceOf, type Genes } from './genes';
+import { rollTheme } from './growth';
 
 export interface PetStats {
   hunger: number; // 0-100, higher is better (a full tummy)
@@ -45,6 +46,10 @@ export interface Pet {
   // src/data/characters.json). Both stay null until it becomes an adult.
   character: string | null;
   variant: string | null;
+  // The theme it will grow into, rolled when its egg was made (see
+  // rollTheme in growth.ts). Its egg, baby and teen are drawn in that
+  // theme's colours. Null for pets that were already grown-ups.
+  destinedTheme: string | null;
   stageStartedAt: number; // when it entered its current stage
   asleep: boolean; // true while the lights are off
   condition: Condition;
@@ -610,6 +615,7 @@ export function newPet(
     stage: 'egg', // every pet starts life as an egg
     character: null,
     variant: null,
+    destinedTheme: rollTheme(id, inheritanceOf({ themes: family.themes, parentCarried: family.parentCarried })),
     stageStartedAt: now,
     asleep: false,
     condition: 'healthy',

@@ -18,7 +18,7 @@
 
 import { CONFIG } from './config';
 import { localDay } from './economy';
-import { getCharacter, seededRoll } from './growth';
+import { getCharacter, rollTheme, seededRoll } from './growth';
 import { likesOf } from './likes';
 import { newHygiene } from './hygiene';
 import { isAway } from './presence';
@@ -283,6 +283,7 @@ export function petFromMember(m: FamilyMember, now: number): Pet {
     stage: m.character ? 'adult' : 'baby',
     character: m.character,
     variant: m.variant,
+    destinedTheme: m.character ? null : rollTheme(m.id),
     stageStartedAt: now,
     trait: m.trait ?? pet.trait,
     likes: m.likes ?? pet.likes,

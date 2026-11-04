@@ -3,7 +3,22 @@ import { simulate } from '../src/game/simulate';
 import { createNewGame } from '../src/game/state';
 import { feed, growNow, toggleLights } from '../src/game/actions';
 import { CONFIG } from '../src/game/config';
-import { CHARACTERS, IN_GAME, LATER_PACKS, chooseCharacter, getCharacter, rollStars, sheetFor } from '../src/game/growth';
+import {
+  CHARACTERS,
+  IN_GAME,
+  LATER_PACKS,
+  chooseCharacter,
+  getCharacter,
+  growUp,
+  littleOneChances,
+  rollStars,
+  rollTheme,
+  sheetFor,
+  stageSheet,
+} from '../src/game/growth';
+import { newPet } from '../src/game/state';
+import manifest from '../public/sprites/manifest.json';
+import data from '../src/data/characters.json';
 
 const HOUR = 3_600_000;
 const START = new Date(2026, 0, 1, 10, 0).getTime();
@@ -37,7 +52,7 @@ describe('life stages', () => {
     const s = simulate(createNewGame(START), START + egg * HOUR + 60_000);
     expect(s.pet.stage).toBe('baby');
     expect(s.pet.character).toBeNull();
-    expect(sheetFor(s.pet)).toBe('baby');
+    expect(sheetFor(s.pet)).toBe(`baby-${s.pet.destinedTheme}`);
   });
 
   it('hatches after 90 seconds, right on time between ticks', () => {
@@ -157,5 +172,61 @@ describe('choosing the adult character', () => {
       character.variants?.find((v) => v.id === s.pet.variant)?.sheet ?? character.sheet,
     );
     expect(simulate(s, START + 48 * HOUR).pet.character).toBe(character.id);
+  });
+});
+
+describe('the theme is rolled when the egg is made', () => {
+  const themes = [...new Set(IN_GAME.map((c) => c.theme))];
+
+  it('every in-game theme has its own egg, baby and teen colours', () => {
+    expect([...data.stageThemes].sort()).toEqual([...themes].sort());
+    for (const theme of themes)
+      for (const stage of ['egg', 'baby', 'teen'] as const) expect(manifest.sheets).toHaveProperty(stageSheet(stage, theme));
+  });
+
+  it('shows its theme as an egg, baby and teen, then grows into that theme', () => {
+    for (let i = 0; i < 40; i++) {
+      const pet = newPet(START);
+      const theme = pet.destinedTheme!;
+      expect(themes).toContain(theme);
+      expect(sheetFor(pet)).toBe(`egg-${theme}`);
+      growUp(pet, START);
+      expect(sheetFor(pet)).toBe(`baby-${theme}`);
+      growUp(pet, START);
+      expect(sheetFor(pet)).toBe(`teen-${theme}`);
+      growUp(pet, START);
+      expect(getCharacter(pet.character)!.theme).toBe(theme);
+    }
+  });
+
+  it('gives a first pet every theme about evenly', () => {
+    const counts = new Map<string, number>();
+    for (let i = 0; i < 4000; i++) {
+      const t = rollTheme(`pet-${i}`);
+      counts.set(t, (counts.get(t) ?? 0) + 1);
+    }
+    for (const t of themes) expect(counts.get(t)! / 4000).toBeCloseTo(1 / themes.length, 1);
+  });
+
+  it('gives a little one the same odds as rolling everything at grow-up', () => {
+    const family = { themes: ['ocean', 'starry'], carriedThemes: ['nature'], variants: [] };
+    const looks = [
+      { character: 'jellop', variant: null },
+      { character: 'cloudlet', variant: null },
+    ];
+    const n = 6000;
+    const counts = new Map<string, number>();
+    for (let i = 0; i < n; i++) {
+      const id = `little-${i}`;
+      const { character } = chooseCharacter(60, id, family, looks, rollTheme(id, family));
+      counts.set(character.id, (counts.get(character.id) ?? 0) + 1);
+    }
+    for (const [character, chance] of littleOneChances(60, family, looks))
+      expect(Math.abs((counts.get(character.id) ?? 0) / n - chance)).toBeLessThan(0.02);
+  });
+
+  it('a little one only gets its parents\' themes (or one they carry)', () => {
+    const pet = newPet(START, { generation: 2, parents: ['a', 'b'], themes: ['bakery'], parentLooks: [] });
+    expect(pet.destinedTheme).toBe('bakery');
   });
 });

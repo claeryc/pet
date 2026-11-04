@@ -224,6 +224,92 @@
       "file": "stages/teen.png",
       "shape": "tall"
     },
+    "egg-nature": {
+      "from": "egg",
+      "recolour": {
+        "pink": "leaf",
+        "sky": "leaf",
+        "butter": "leaf"
+      }
+    },
+    "baby-nature": {
+      "from": "baby",
+      "recolour": {
+        "pink": "leaf",
+        "rose": "moss"
+      }
+    },
+    "teen-nature": {
+      "from": "teen",
+      "recolour": {
+        "pink": "leaf",
+        "rose": "moss"
+      }
+    },
+    "egg-ocean": {
+      "from": "egg",
+      "recolour": {
+        "pink": "sky",
+        "butter": "sky"
+      }
+    },
+    "baby-ocean": {
+      "from": "baby",
+      "recolour": {
+        "pink": "sky",
+        "rose": "ocean"
+      }
+    },
+    "teen-ocean": {
+      "from": "teen",
+      "recolour": {
+        "pink": "sky",
+        "rose": "ocean"
+      }
+    },
+    "egg-bakery": {
+      "from": "egg",
+      "recolour": {
+        "pink": "butter",
+        "sky": "butter"
+      }
+    },
+    "baby-bakery": {
+      "from": "baby",
+      "recolour": {
+        "pink": "butter",
+        "rose": "peach"
+      }
+    },
+    "teen-bakery": {
+      "from": "teen",
+      "recolour": {
+        "pink": "butter",
+        "rose": "peach"
+      }
+    },
+    "egg-starry": {
+      "from": "egg",
+      "recolour": {
+        "pink": "lilac",
+        "sky": "lilac",
+        "butter": "lilac"
+      }
+    },
+    "baby-starry": {
+      "from": "baby",
+      "recolour": {
+        "pink": "lilac",
+        "rose": "plum"
+      }
+    },
+    "teen-starry": {
+      "from": "teen",
+      "recolour": {
+        "pink": "lilac",
+        "rose": "plum"
+      }
+    },
     "sprig": {
       "file": "characters/nature/sprig.png",
       "shape": "blob",
