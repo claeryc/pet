@@ -32,6 +32,8 @@ import { dailySpecial, getHat, ownsSpecial } from '../game/economy';
 import { GUIDES, guideOpen, type GuideId } from '../game/guides';
 import { MAPS, START_MAP, areaCard } from '../game/map';
 import { GUIDE_ICONS, guideName, guidePageCount } from './guide';
+import { LINKS, VERSION, type LinkId } from '../about';
+import fontLicence from '../fonts/Nunito-OFL.txt?raw';
 
 export interface DebugCallbacks {
   onFastForward: (hours: number) => void;
@@ -91,7 +93,7 @@ function item(label: string, onClick: () => void): HTMLButtonElement {
   return b;
 }
 
-export type MenuPage = 'main' | 'settings' | 'shop' | 'wardrobe' | 'collection' | 'skills' | 'familyTree' | 'meadow' | 'messages' | 'guide' | 'journal';
+export type MenuPage = 'main' | 'settings' | 'credits' | 'shop' | 'wardrobe' | 'collection' | 'skills' | 'familyTree' | 'meadow' | 'messages' | 'guide' | 'journal';
 
 // `isOpen` says whether the panel is showing; `close` folds it up.
 // `onPage` hears which page is showing, each time one is drawn.
@@ -119,7 +121,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
   // saying where it goes, so it doesn't read as a second way to close.
   // (The menu button at the bottom, the one that opened it, closes the
   // whole panel, as it does for Feed and Play.)
-  function header(title: string, onBack: () => void, right?: HTMLElement): HTMLElement {
+  function header(title: string, onBack: () => void, right?: HTMLElement, backLabel: string = STRINGS.menu.backTo): HTMLElement {
     const h = document.createElement('div');
     h.className = 'menu-header';
     const back = document.createElement('button');
@@ -128,8 +130,8 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     arrow.className = 'menu-header-arrow';
     arrow.textContent = '‹';
     arrow.setAttribute('aria-hidden', 'true');
-    back.append(arrow, STRINGS.menu.backTo);
-    back.setAttribute('aria-label', STRINGS.menu.back);
+    back.append(arrow, backLabel);
+    back.setAttribute('aria-label', backLabel === STRINGS.menu.backTo ? STRINGS.menu.back : STRINGS.family.backTo(backLabel));
     back.addEventListener('click', onBack);
     const t = document.createElement('h2');
     t.textContent = title;
@@ -616,6 +618,56 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     return field;
   }
 
+  // A row that opens one of the game's web pages (help, privacy, terms)
+  // outside the game. Until its link is filled in (src/about.ts) it shows
+  // greyed out, saying it's coming soon.
+  function linkRow(id: LinkId): HTMLElement {
+    const url = LINKS[id];
+    const label = STRINGS.settings[id];
+    if (!url) {
+      const b = item(label, () => {});
+      b.disabled = true;
+      const soon = document.createElement('span');
+      soon.className = 'menu-soon';
+      soon.textContent = STRINGS.settings.soon;
+      b.append(soon);
+      return b;
+    }
+    const a = document.createElement('a');
+    a.className = 'menu-item settings-link';
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.textContent = label;
+    const arrow = document.createElement('span');
+    arrow.className = 'settings-link-arrow';
+    arrow.textContent = '↗';
+    arrow.setAttribute('aria-hidden', 'true');
+    a.setAttribute('aria-label', `${label} ${STRINGS.settings.opensOutside}`);
+    a.append(arrow);
+    return a;
+  }
+
+  // About the game: help, the privacy policy and terms, the credits, and
+  // which version this is.
+  function aboutSection(): HTMLElement {
+    const section = document.createElement('div');
+    section.className = 'settings-about';
+    const h = document.createElement('h3');
+    h.textContent = STRINGS.settings.about;
+    const credits = item(STRINGS.settings.credits, showCredits);
+    const arrow = document.createElement('span');
+    arrow.className = 'settings-link-arrow';
+    arrow.textContent = '›';
+    arrow.setAttribute('aria-hidden', 'true');
+    credits.append(arrow);
+    const version = document.createElement('small');
+    version.className = 'settings-version';
+    version.textContent = STRINGS.settings.version(VERSION);
+    section.append(h, linkRow('support'), linkRow('privacy'), linkRow('terms'), credits, version);
+    return section;
+  }
+
   function showSettings(): void {
     setPage('settings');
     toTop();
@@ -624,8 +676,37 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
       cb.onReset();
     });
     reset.classList.add('menu-item-danger');
-    panel.replaceChildren(header(STRINGS.menu.settings, showMain), ownerField(), audioToggles(), reset);
+    panel.replaceChildren(header(STRINGS.menu.settings, showMain), ownerField(), audioToggles(), aboutSection(), reset);
     if (CONFIG.debug.showTools) panel.append(debugSection());
+  }
+
+  // Who made what: the music and sounds, the art, and the font, with the
+  // font's licence (which has to travel with it) folded up underneath.
+  function showCredits(): void {
+    setPage('credits');
+    toTop();
+    const S = STRINGS.settings;
+    const list = document.createElement('div');
+    list.className = 'settings-credits';
+    for (const [title, text] of [[S.creditsArtTitle, S.creditsArt], [S.creditsMusicTitle, S.creditsMusic], [S.creditsFontTitle, S.creditsFont]]) {
+      const block = document.createElement('section');
+      block.className = 'settings-field';
+      const b = document.createElement('b');
+      b.textContent = title;
+      const p = document.createElement('p');
+      p.textContent = text;
+      block.append(b, p);
+      list.append(block);
+    }
+    const licence = document.createElement('details');
+    licence.className = 'settings-licence';
+    const summary = document.createElement('summary');
+    summary.textContent = S.creditsFontLicence;
+    const pre = document.createElement('pre');
+    pre.textContent = fontLicence;
+    licence.append(summary, pre);
+    list.lastElementChild!.append(licence);
+    panel.replaceChildren(header(S.credits, showSettings, undefined, STRINGS.menu.settings), list);
   }
 
   showMain();

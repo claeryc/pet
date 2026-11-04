@@ -1187,9 +1187,20 @@ const home = createHomeScreen(root, {
   },
   onRemoveFriend: (id) => {
     const friend = getFriend(state, id);
-    if (!friend || !confirm(STRINGS.friends.confirmRemove(friend.name))) return;
-    setState(removeFriend(simulate(state, gameNow()), id, gameNow()));
-    home.toast(STRINGS.friends.removed(friend.name));
+    if (!friend) return;
+    choice.open({
+      title: STRINGS.friends.removeTitle(friend.name),
+      text: STRINGS.friends.removeAsk,
+      options: [
+        { label: STRINGS.friends.keep, onPick: () => {} },
+        {
+          label: STRINGS.friends.remove, soft: true, onPick: () => {
+            setState(removeFriend(simulate(state, gameNow()), id, gameNow()));
+            home.toast(STRINGS.friends.removed(friend.name));
+          },
+        },
+      ],
+    });
   },
   onInvite: (id) => {
     const result = invite(simulate(state, gameNow()), id, gameNow());
@@ -1242,10 +1253,20 @@ const home = createHomeScreen(root, {
       item.kind === 'seed' ? STRINGS.garden.seedName(STRINGS.foods[item.id]) : STRINGS.garden.supplies[item.id],
     )),
   onReset: () => {
-    if (confirm(STRINGS.confirmReset)) {
-      clearSave();
-      setState(createNewGame(Date.now()));
-    }
+    // The safe choice comes first, so it's the one that has focus.
+    choice.open({
+      title: STRINGS.settings.resetTitle,
+      text: STRINGS.confirmReset,
+      options: [
+        { label: STRINGS.settings.resetNo, onPick: () => {} },
+        {
+          label: STRINGS.settings.resetYes, soft: true, onPick: () => {
+            clearSave();
+            setState(createNewGame(Date.now()));
+          },
+        },
+      ],
+    });
   },
   onFastForward: (hours) => {
     const before = simulate(state, gameNow());
