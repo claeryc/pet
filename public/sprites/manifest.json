@@ -227,23 +227,23 @@
     "egg-nature": {
       "from": "egg",
       "recolour": {
-        "pink": "leaf",
-        "sky": "leaf",
-        "butter": "leaf"
+        "pink": "cocoa",
+        "sky": "cocoa",
+        "butter": "cocoa"
       }
     },
     "baby-nature": {
       "from": "baby",
       "recolour": {
-        "pink": "leaf",
-        "rose": "moss"
+        "pink": "peach",
+        "rose": "cocoa"
       }
     },
     "teen-nature": {
       "from": "teen",
       "recolour": {
-        "pink": "leaf",
-        "rose": "moss"
+        "pink": "peach",
+        "rose": "cocoa"
       }
     },
     "egg-ocean": {
