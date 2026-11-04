@@ -40,6 +40,19 @@ describe('life stages', () => {
     expect(sheetFor(s.pet)).toBe('baby');
   });
 
+  it('hatches after 90 seconds, right on time between ticks', () => {
+    expect(egg * HOUR).toBe(90_000);
+    const s = createNewGame(START);
+    expect(simulate(s, START + 89_000).pet.stage).toBe('egg');
+    const hatched = simulate(s, START + 90_000);
+    expect(hatched.pet.stage).toBe('baby');
+    expect(hatched.pet.stageStartedAt).toBe(START + 90_000);
+    // It keeps counting from the hatch, not from the next whole minute.
+    const later = simulate(simulate(hatched, START + 100_000), START + 150_000);
+    expect(later.pet.stage).toBe('baby');
+    expect(later.pet.stageStartedAt).toBe(START + 90_000);
+  });
+
   it('goes egg -> baby -> teen -> adult over time, even all at once', () => {
     const total = (egg + baby + teen) * HOUR + 60_000;
     const s = simulate(createNewGame(START), START + total);
