@@ -1768,8 +1768,24 @@ function drawFrame(timeMs: number): void {
 }
 requestAnimationFrame(render);
 
-// Keep the world ticking while the game is open...
-setInterval(() => setState(simulate(state, gameNow())), CONFIG.liveUpdateSeconds * 1000);
+// Keep the world ticking while the game is open. simulate hands back the
+// same state when nothing has happened yet (the world moves in 1-minute
+// ticks), and then there's nothing to save: only the screen is refreshed,
+// so countdowns keep counting.
+function liveTick(): void {
+  const next = simulate(state, gameNow());
+  if (next !== state) setState(next);
+  else home.update(state, gameNow());
+}
+let ticker: ReturnType<typeof setInterval> | null = null;
+function startTicking(): void {
+  if (ticker === null) ticker = setInterval(liveTick, CONFIG.liveUpdateSeconds * 1000);
+}
+function stopTicking(): void {
+  if (ticker !== null) clearInterval(ticker);
+  ticker = null;
+}
+startTicking();
 
 // ...and catch up straight away when you come back to the tab or app.
 // Leaving keeps a copy of the game as it was, so coming back can say what
@@ -1777,9 +1793,12 @@ setInterval(() => setState(simulate(state, gameNow())), CONFIG.liveUpdateSeconds
 let leftAs: { state: GameState; at: number } | null = null;
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
+    // Nothing ticks in the background; coming back catches up in one go.
+    stopTicking();
     leftAs = { state, at: gameNow() };
   } else {
-    tryCheckIn();
+    startTicking();
+    tryCheckIn(); // catches the world up, too
     if (leftAs) showAway(leftAs.state, leftAs.at);
     leftAs = null;
     home.showTripIfEmpty();
