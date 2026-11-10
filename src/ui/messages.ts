@@ -24,7 +24,7 @@ import type { FoodId } from '../game/actions';
 import { ACHIEVEMENT_ICONS, ITEM_ICONS, MENU_ICONS, MILESTONE_ICONS, SKILL_POINT_ICON, STAT_ICONS, UNKNOWN_ICON } from './icons';
 import type { AchievementId } from '../game/achievements';
 import type { MilestoneId } from '../game/milestones';
-import { formatDuration, formatWhen } from './time';
+import { formatIn, formatWhen } from './time';
 import { REGULARS, rewards, type RegularId } from '../game/regulars';
 import { regularRow, rewardName } from './regulars';
 
@@ -133,7 +133,7 @@ function liveOrder(state: GameState, now: number, cb: MessagesActions): HTMLElem
     if (!isUnlocked(state, 'delivery')) return null;
     const card = el('div', 'mail-live idle');
     card.innerHTML = ITEM_ICONS.percy;
-    card.append(el('p', 'mail-live-wait', STRINGS.delivery.nextOrder(formatDuration(state.delivery.nextAt - now))));
+    card.append(el('p', 'mail-live-wait', STRINGS.delivery.nextOrder(formatIn(state.delivery.nextAt - now))));
     return card;
   }
   const card = el('div', 'mail-live');
@@ -142,7 +142,7 @@ function liveOrder(state: GameState, now: number, cb: MessagesActions): HTMLElem
   const title = el('b', '', STRINGS.messages.order);
   const when = el('span', 'mail-live-when');
   when.innerHTML = STAT_ICONS.hourglass;
-  when.append(STRINGS.delivery.pickupIn(formatDuration(order.pickupAt - now)));
+  when.append(STRINGS.delivery.pickupIn(formatIn(order.pickupAt - now)));
   head.append(title, when);
   const list = el('div', 'mail-live-boxes');
   for (const b of order.boxes) {
@@ -215,7 +215,7 @@ function friendRow(f: Friend, state: GameState, now: number, cb: MessagesActions
   body.append(
     el('b', 'friend-name', f.name),
     heartRow(f.score),
-    el('small', '', over ? `${what}  ·  ${STRINGS.friends.visiting(formatDuration(state.visit.until - now))}` : what),
+    el('small', '', over ? `${what}  ·  ${STRINGS.friends.visiting(formatIn(state.visit.until - now))}` : what),
   );
   // Hang out with whoever is over; invite anyone else (quieter when
   // someone's already over or today's invite is used, and a tap says why).

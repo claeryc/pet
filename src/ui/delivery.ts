@@ -21,7 +21,7 @@ import type { GameState } from '../game/state';
 import type { FoodId } from '../game/actions';
 import type { DeliveryScene } from '../render/delivery';
 import { ITEM_ICONS, STAT_ICONS } from './icons';
-import { formatDuration } from './time';
+import { formatDuration, formatIn } from './time';
 
 export interface DeliveryCallbacks {
   onPut: (box: number) => void;
@@ -121,7 +121,7 @@ export function createDelivery(cb: DeliveryCallbacks): DeliveryPanel {
     if (!order) {
       when.replaceChildren();
       reward.replaceChildren();
-      empty.textContent = `${STRINGS.delivery.noOrder} ${STRINGS.delivery.nextOrder(formatDuration(state.delivery.nextAt - now))}`;
+      empty.textContent = `${STRINGS.delivery.noOrder} ${STRINGS.delivery.nextOrder(formatIn(state.delivery.nextAt - now))}`;
       return;
     }
     // What the whole order pays with every box full, bonus included. It
@@ -142,7 +142,7 @@ export function createDelivery(cb: DeliveryCallbacks): DeliveryPanel {
     }
     when.innerHTML = STAT_ICONS.hourglass;
     when.append(formatDuration(order.pickupAt - now));
-    when.title = STRINGS.delivery.pickupIn(formatDuration(order.pickupAt - now));
+    when.title = STRINGS.delivery.pickupIn(formatIn(order.pickupAt - now));
     boxesEl.dataset.count = String(order.boxes.length);
     boxes.forEach((b, i) => {
       const box = order.boxes[i];

@@ -41,7 +41,7 @@ import { HEART_ICONS, ITEM_ICONS, MENU_ICONS, STAT_ICONS } from './icons';
 import { drawPlace, drawPlaceSparkle } from '../render/places';
 import { BENTO_HEIGHT, BENTO_WIDTH, drawBento, LID_FRAMES, lidCover } from './bento';
 import { category, type Entry } from './shop';
-import { formatClock, formatDayClock, formatDuration } from './time';
+import { formatClock, formatDayClock, formatDuration, formatIn } from './time';
 
 export interface JourneysCallbacks {
   // The pets getting ready set off, each with its lunch: true if they can.
@@ -421,7 +421,7 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
       render(true);
     };
     s.journeys.offers.forEach((offer, i) => {
-      rack.append(offer ? postcard(offer, pick(i), fanOf(s, offer.place)) : waiting(T.nextOffer(formatDuration(s.journeys.refillAt[i] - now))));
+      rack.append(offer ? postcard(offer, pick(i), fanOf(s, offer.place)) : waiting(T.nextOffer(formatIn(s.journeys.refillAt[i] - now))));
     });
     const night = s.journeys.night;
     rack.append(night ? postcard(night, pick(NIGHT), fanOf(s, night.place)) : waiting(T.nightSoon(nightAt()), true));
@@ -514,7 +514,7 @@ export function createJourneys(cb: JourneysSetup): JourneysScene {
     const p = s.pet;
     const why = homePets(s).some((h) => !cantGo(h, now)) ? null : cantGo(p, now);
     if (why) {
-      const text = why === 'wait' ? T.wait(formatDuration(p.tripReadyAt - now)) : T.blocked[why](p.name);
+      const text = why === 'wait' ? T.wait(formatIn(p.tripReadyAt - now)) : T.blocked[why](p.name);
       wrap.append(el('p', 'trip-card-warn', text));
     }
     // Pots that will dry out with nobody home to water them.

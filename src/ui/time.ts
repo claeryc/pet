@@ -1,3 +1,5 @@
+import { STRINGS } from '../strings';
+
 // "4h 12m" style text for a length of time.
 export function formatDuration(ms: number): string {
   const totalMinutes = Math.max(0, Math.ceil(ms / 60_000));
@@ -6,6 +8,13 @@ export function formatDuration(ms: number): string {
   const m = totalMinutes % 60;
   if (d > 0) return `${d}d ${h}h`;
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+// "in 4h 12m" for a sentence like "A new trip in 4h 12m". The world moves
+// on in 1-minute ticks, so the last minute (or a time already past, still
+// waiting for its tick) reads "any moment now" rather than "in 0m".
+export function formatIn(ms: number): string {
+  return ms <= 60_000 ? STRINGS.time.anyMoment : STRINGS.time.inTime(formatDuration(ms));
 }
 
 // A time of day, like "14:05".

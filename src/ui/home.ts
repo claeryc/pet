@@ -36,7 +36,7 @@ import type { Friend } from '../game/state';
 import type { CookOptions } from '../game/cooking';
 import { potAt, type GardenScene } from '../render/garden';
 import type { DeliveryScene } from '../render/delivery';
-import { formatDuration } from './time';
+import { formatDuration, formatIn } from './time';
 import { createReveal, type RevealItem } from './reveal';
 import { createCraft, type Craft } from './craft';
 import { createBackpack } from './backpack';
@@ -1381,7 +1381,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
         const count = foodCount(state, f.id);
         const stars = f.stars ? `${STRINGS.stars(f.stars)}  ` : '';
         // The rice ball also says when the jar adds its next free one.
-        const refill = f.id === 'riceBall' && state.riceJarAt ? `  ${STRINGS.shop.riceJar(formatDuration(state.riceJarAt - now))}` : '';
+        const refill = f.id === 'riceBall' && state.riceJarAt ? `  ${STRINGS.shop.riceJar(formatIn(state.riceJarAt - now))}` : '';
         feedDrawer.setNote(foodRow(i), count === Infinity ? STRINGS.shop.free : `${stars}× ${count}${refill}`);
         feedDrawer.setHidden(foodRow(i), count === 0);
         // A heart on what the pet is craving.
@@ -1468,7 +1468,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       if (petAway) text = '';
       else if (hasBackpack(pet)) text = STRINGS.journeys.bannerHome(pet.name, place);
       else if (isEgg)
-        text = STRINGS.status_egg(formatDuration(pet.stageStartedAt + stageLengthMs('egg') - now));
+        text = STRINGS.status_egg(formatIn(pet.stageStartedAt + stageLengthMs('egg') - now));
       else if (passed) text = STRINGS.status.passed(pet.name);
       else if (isCritical(pet)) {
         // Only what you already have, never a price: this is about care.
