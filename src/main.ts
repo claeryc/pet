@@ -90,7 +90,8 @@ import { fortuneArt, skipFortuneOnTap } from './ui/fortune';
 import { createAwayCard } from './ui/away';
 import { awayNotes } from './game/away';
 import type { Pet, Room } from './game/state';
-import { clearSave, loadGame, saveGame } from './storage/storage';
+import { blockSaves, clearSave, loadGame, saveGame } from './storage/storage';
+import { askAboutUnreadableSave } from './ui/saveTrouble';
 import { setupCanvas, drawRoom } from './render/canvas';
 import { loadSprites, type SpriteLibrary } from './render/sprites';
 import { createHomeScreen } from './ui/home';
@@ -122,7 +123,15 @@ function gameNow(): number {
 }
 
 // Load the saved game (or start a new one) and catch it up to right now.
-const saved = loadGame();
+// A save we can't read (from a newer build, or broken) is backed up and
+// never written over until the player says so.
+const loaded = loadGame();
+if (loaded.kind === 'newer' || loaded.kind === 'broken') {
+  blockSaves();
+  await askAboutUnreadableSave(root, loaded.kind);
+  blockSaves(false);
+}
+const saved = loaded.kind === 'ok' ? loaded.state : null;
 let state: GameState = saved ?? createNewGame(Date.now());
 // How the pets were when the game was last closed, so any that grew up
 // while you were away still get their grow-up reveal.

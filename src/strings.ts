@@ -1546,6 +1546,20 @@ export const STRINGS = {
     resetYes: 'Start over',
     resetNo: 'Keep my pet',
   },
+  // When the saved pet can't be opened (see src/ui/saveTrouble.ts).
+  saveTrouble: {
+    newerTitle: 'A newer version saved this pet',
+    newerText: 'This pet was saved by a newer version of the game. Reload to update.',
+    reload: 'Reload',
+    brokenTitle: 'We couldn\'t open your pet',
+    brokenText: 'We couldn\'t open your saved pet. A copy is kept safe.',
+    tryAgain: 'Try again',
+    startNew: 'Start a new pet',
+    startNewTitle: 'Start a new pet?',
+    startNewText: 'Your new pet takes the old one\'s place. The safe copy stays on this device.',
+    startNewYes: 'Start a new pet',
+    goBack: 'Go back',
+  },
   family: {
     generation: (n: number) => `Generation ${n}`,
     raisedBy: (owner: string) => `Raised by ${owner}`,

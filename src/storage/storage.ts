@@ -516,34 +516,123 @@ function renameIds(value: any, renames: Record<string, string>): any {
   return value;
 }
 
-export function saveGame(state: GameState): void {
+// localStorage, or undefined where the browser blocks it (some private
+// modes throw just for asking).
+function browserStorage(): Storage | undefined {
+  try {
+    return globalThis.localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
+// While this is set, saveGame does nothing: a save we couldn't read is
+// waiting for the player to choose what to do, or another tab has the pet.
+let savesBlocked = false;
+export function blockSaves(blocked = true): void {
+  savesBlocked = blocked;
+}
+
+// Called once when a save fails (storage full, private browsing), so the
+// game can tell the player. Set by main.ts.
+let onSaveFailed: (() => void) | null = null;
+export function whenSaveFails(handler: () => void): void {
+  onSaveFailed = handler;
+}
+
+export function saveGame(state: GameState, store: Storage | undefined = browserStorage()): boolean {
+  if (savesBlocked) return false;
   const file: SaveFile = { version: SAVE_VERSION, state };
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(file));
+    if (!store) throw new Error('No storage');
+    store.setItem(SAVE_KEY, JSON.stringify(file));
+    return true;
   } catch (err) {
     // Storage can be full or blocked (e.g. private browsing). The game keeps
     // working in memory; we just can't save right now.
     console.warn('Could not save the game:', err);
+    onSaveFailed?.();
+    return false;
   }
 }
 
-// Returns the saved game, or null if there is none (or it can't be read).
-export function loadGame(): GameState | null {
+// What loading found. 'newer' and 'broken' saves are copied to a backup key
+// before anything else happens, and must never be overwritten without the
+// player saying so.
+export type LoadResult =
+  | { kind: 'none' }
+  | { kind: 'ok'; state: GameState }
+  | { kind: 'newer'; version: number }
+  | { kind: 'broken'; error: unknown };
+
+export const BACKUP_PREFIX = 'cozy-pixel-pet-save-backup-';
+const BACKUPS_KEPT = 3;
+
+// Keeps a copy of a save we couldn't read, under its own key, and drops all
+// but the newest few copies. The same text twice in a row (a player who
+// keeps pressing Try again) is only kept once.
+export function backupRawSave(raw: string, store: Storage | undefined = browserStorage(), now = Date.now()): void {
+  if (!store) return;
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return null;
-    const file = migrate(JSON.parse(raw) as SaveFile);
-    if (file.version !== SAVE_VERSION) return null;
-    return file.state as GameState;
+    const keys = backupKeys(store);
+    if (keys.length && store.getItem(keys[keys.length - 1]) === raw) return;
+    store.setItem(`${BACKUP_PREFIX}${now}`, raw);
+    const all = backupKeys(store);
+    for (const key of all.slice(0, Math.max(0, all.length - BACKUPS_KEPT))) store.removeItem(key);
   } catch (err) {
-    console.warn('Could not load the save, starting fresh:', err);
-    return null;
+    console.warn('Could not back up the save:', err);
+  }
+}
+
+// The backup keys, oldest first.
+export function backupKeys(store: Storage): string[] {
+  const keys: string[] = [];
+  for (let i = 0; i < store.length; i++) {
+    const key = store.key(i);
+    if (key?.startsWith(BACKUP_PREFIX)) keys.push(key);
+  }
+  return keys.sort((a, b) => Number(a.slice(BACKUP_PREFIX.length)) - Number(b.slice(BACKUP_PREFIX.length)));
+}
+
+// A quick check that a migrated save really holds a game.
+export function looksLikeSave(file: unknown): file is SaveFile {
+  const f = file as SaveFile | null;
+  return !!f && typeof f === 'object' && typeof f.version === 'number'
+    && !!f.state && typeof f.state === 'object'
+    && !!f.state.pet && typeof f.state.pet === 'object'
+    && !!f.state.pet.stats && typeof f.state.pet.stats === 'object';
+}
+
+// Reads the saved game. Anything that goes wrong is reported, not hidden as
+// "no save", so the caller never starts a new game over a real one.
+export function loadGame(store: Storage | undefined = browserStorage()): LoadResult {
+  let raw: string | null = null;
+  try {
+    raw = store?.getItem(SAVE_KEY) ?? null;
+  } catch {
+    return { kind: 'none' }; // storage is blocked: there's nothing we could read
+  }
+  if (!raw) return { kind: 'none' };
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed?.version === 'number' && parsed.version > SAVE_VERSION) {
+      backupRawSave(raw, store);
+      return { kind: 'newer', version: parsed.version };
+    }
+    const file = migrate(parsed as SaveFile);
+    if (file.version !== SAVE_VERSION) throw new Error(`Save stopped at version ${file.version}`);
+    if (!looksLikeSave(file)) throw new Error('Save has no pet in it');
+    return { kind: 'ok', state: file.state as GameState };
+  } catch (error) {
+    console.warn('Could not load the save:', error);
+    backupRawSave(raw, store);
+    return { kind: 'broken', error };
   }
 }
 
 export function clearSave(): void {
   try {
-    localStorage.removeItem(SAVE_KEY);
+    browserStorage()?.removeItem(SAVE_KEY);
   } catch {
     // Nothing to do if storage is unavailable.
   }

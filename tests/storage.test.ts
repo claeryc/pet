@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createNewGame } from '../src/game/state';
-import { migrate, SAVE_VERSION } from '../src/storage/storage';
+import { BACKUP_PREFIX, backupKeys, backupRawSave, blockSaves, loadGame, migrate, saveGame, SAVE_VERSION } from '../src/storage/storage';
 import { rollTrait } from '../src/game/traits';
 import { rollTheme } from '../src/game/growth';
 
@@ -261,5 +261,80 @@ describe('save migration to themed eggs', () => {
     expect(out.housemates[0].destinedTheme).toBe(rollTheme('t1'));
     expect(out.nest.destinedTheme).toBe('ocean'); // its only parent theme, no carried ones
     expect(SAVE_VERSION).toBe(43);
+  });
+});
+
+// A Storage that lives in memory, for the load and backup tests.
+function memoryStorage(entries: Record<string, string> = {}): Storage {
+  const map = new Map(Object.entries(entries));
+  return {
+    get length() { return map.size; },
+    key: (i: number) => [...map.keys()][i] ?? null,
+    getItem: (k: string) => map.get(k) ?? null,
+    setItem: (k: string, v: string) => { map.set(k, String(v)); },
+    removeItem: (k: string) => { map.delete(k); },
+    clear: () => map.clear(),
+  };
+}
+
+describe('loading a save', () => {
+  it('reports no save for a first-time player', () => {
+    expect(loadGame(memoryStorage()).kind).toBe('none');
+  });
+
+  it('loads a valid save', () => {
+    const state = createNewGame(1);
+    const store = memoryStorage();
+    saveGame(state, store);
+    const out = loadGame(store);
+    expect(out.kind).toBe('ok');
+    if (out.kind === 'ok') expect(out.state.pet.id).toBe(state.pet.id);
+  });
+
+  it('keeps a broken save safe under a backup key', () => {
+    const store = memoryStorage({ 'cozy-pixel-pet-save': '{not json' });
+    const out = loadGame(store);
+    expect(out.kind).toBe('broken');
+    const keys = backupKeys(store);
+    expect(keys).toHaveLength(1);
+    expect(keys[0].startsWith(BACKUP_PREFIX)).toBe(true);
+    expect(store.getItem(keys[0])).toBe('{not json');
+    expect(store.getItem('cozy-pixel-pet-save')).toBe('{not json');
+  });
+
+  it('calls a save with no pet in it broken', () => {
+    const store = memoryStorage({ 'cozy-pixel-pet-save': JSON.stringify({ version: SAVE_VERSION, state: {} }) });
+    expect(loadGame(store).kind).toBe('broken');
+  });
+
+  it('reports a save from a newer build and leaves it alone', () => {
+    const raw = JSON.stringify({ version: SAVE_VERSION + 1, state: {} });
+    const store = memoryStorage({ 'cozy-pixel-pet-save': raw });
+    const out = loadGame(store);
+    expect(out).toEqual({ kind: 'newer', version: SAVE_VERSION + 1 });
+    expect(store.getItem('cozy-pixel-pet-save')).toBe(raw);
+    expect(store.getItem(backupKeys(store)[0])).toBe(raw);
+  });
+
+  it('keeps only the newest 3 backups, and the same text only once', () => {
+    const store = memoryStorage();
+    backupRawSave('a', store, 1);
+    backupRawSave('a', store, 2);
+    expect(backupKeys(store)).toHaveLength(1);
+    backupRawSave('b', store, 3);
+    backupRawSave('c', store, 4);
+    backupRawSave('d', store, 5);
+    expect(backupKeys(store).map((k) => store.getItem(k))).toEqual(['b', 'c', 'd']);
+  });
+
+  it('does not save while saves are blocked', () => {
+    const store = memoryStorage({ 'cozy-pixel-pet-save': 'old' });
+    blockSaves();
+    try {
+      expect(saveGame(createNewGame(1), store)).toBe(false);
+      expect(store.getItem('cozy-pixel-pet-save')).toBe('old');
+    } finally {
+      blockSaves(false);
+    }
   });
 });
