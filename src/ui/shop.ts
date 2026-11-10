@@ -31,6 +31,7 @@ import { formatDuration } from './time';
 import { ownsFamilyHome } from '../game/rooms';
 import { CURTAINS as CURTAIN_COLOURS, WALLPAPERS as WALL_PATTERNS } from '../render/room';
 import { PALETTE } from '../render/palette';
+import { STORE_OPEN } from '../payments';
 
 // What the room above shows while a sheet is open: a hat on the pet, or a
 // decoration up in the room, before it's bought.
@@ -836,6 +837,7 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
       pack.append(buy);
       packs.append(pack);
     });
+    if (!STORE_OPEN) return [have];
     return [have, section(S.getFragments), packs, text('p', 'shop-fine', S.realMoney)];
   };
 
