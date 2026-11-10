@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createNewGame } from '../src/game/state';
-import { BACKUP_PREFIX, backupKeys, backupRawSave, blockSaves, loadGame, migrate, saveGame, SAVE_VERSION } from '../src/storage/storage';
+import { BACKUP_PREFIX, BackupError, backupKeys, exportSave, importSave, backupRawSave, blockSaves, loadGame, migrate, saveGame, SAVE_VERSION } from '../src/storage/storage';
 import { rollTrait } from '../src/game/traits';
 import { rollTheme } from '../src/game/growth';
 
@@ -336,5 +336,46 @@ describe('loading a save', () => {
     } finally {
       blockSaves(false);
     }
+  });
+});
+
+// The body of a plain (PET0) backup code for a save file.
+const plainCode = (file: unknown) => btoa(JSON.stringify(file)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+describe('backup codes', () => {
+  it('round-trips a game through export and import', async () => {
+    const state = createNewGame(1234);
+    const code = await exportSave(state);
+    expect(code.startsWith('PET1:')).toBe(true);
+    expect(await importSave(code)).toEqual(state);
+  });
+
+  it('reads a code with line breaks and spaces in it', async () => {
+    const state = createNewGame(1234);
+    const code = await exportSave(state);
+    const wrapped = `  ${code.match(/.{1,40}/g)!.join('\n')}  `;
+    expect(await importSave(wrapped)).toEqual(state);
+  });
+
+  it('migrates a code made from an old save', async () => {
+    const v1 = { version: 1, state: { pet: { id: 'abc', name: 'Mochi', bornAt: 1, stats: { hunger: 40, happiness: 60 } }, lastUpdated: 1000 } };
+    const b64 = plainCode(v1);
+    const out = await importSave(`PET0:${b64}`);
+    expect(out.pet.id).toBe('abc');
+    expect(out.pet.stats.energy).toBeTypeOf('number');
+  });
+
+  it('turns down codes it cannot read', async () => {
+    await expect(importSave('')).rejects.toMatchObject({ reason: 'empty' });
+    await expect(importSave('hello')).rejects.toMatchObject({ reason: 'unreadable' });
+    await expect(importSave('PET1:not-gzip')).rejects.toMatchObject({ reason: 'unreadable' });
+    const noPet = plainCode({ version: SAVE_VERSION, state: {} });
+    await expect(importSave(`PET0:${noPet}`)).rejects.toMatchObject({ reason: 'unreadable' });
+  });
+
+  it('says when a code comes from a newer version', async () => {
+    const newer = plainCode({ version: SAVE_VERSION + 1, state: {} });
+    await expect(importSave(`PET0:${newer}`)).rejects.toBeInstanceOf(BackupError);
+    await expect(importSave(`PET0:${newer}`)).rejects.toMatchObject({ reason: 'newer' });
   });
 });

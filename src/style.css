@@ -13716,3 +13716,60 @@ button.trip-bars-name.is-on {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* ---- Settings: Back up your pet ---- */
+
+.settings-backup p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.settings-backup-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-backup-buttons .shop-btn {
+  flex: 1 1 120px;
+  font-size: 0.95rem;
+  padding: 10px 12px;
+}
+
+.settings-backup-status:empty {
+  display: none;
+}
+
+.settings-backup-problem {
+  color: var(--accent-dark);
+  font-weight: 700;
+  opacity: 1;
+}
+
+.settings-field .settings-backup-status.settings-backup-problem {
+  opacity: 1;
+}
+
+.settings-backup-code {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  font: 0.75rem/1.35 ui-monospace, monospace;
+  padding: 8px 10px;
+  border: 2px solid var(--lavender);
+  border-radius: 12px;
+  background: white;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+.settings-backup-code:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.settings-backup-code[hidden] {
+  display: none;
+}

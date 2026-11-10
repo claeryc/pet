@@ -630,6 +630,89 @@ export function loadGame(store: Storage | undefined = browserStorage()): LoadRes
   }
 }
 
+// ---- Backup codes ----
+// A backup code is "PET1:" and the save file, gzipped and in base64url, so
+// it can be pasted anywhere. Where the browser can't gzip, it's "PET0:" and
+// plain base64url. Codes with snapshots in them can be 100 kB or more, so
+// they're copied or downloaded as a file, never put in a URL.
+
+const CODE_GZIP = 'PET1:';
+const CODE_PLAIN = 'PET0:';
+
+// Why a backup code didn't work, in words for the player.
+export class BackupError extends Error {
+  constructor(public reason: 'empty' | 'unreadable' | 'newer' | 'noGzip') {
+    super(reason);
+    this.name = 'BackupError';
+  }
+}
+
+function toBase64Url(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function fromBase64Url(text: string): Uint8Array {
+  const b64 = text.replace(/-/g, '+').replace(/_/g, '/');
+  const binary = atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+async function throughStream(bytes: Uint8Array, stream: GenericTransformStream): Promise<Uint8Array> {
+  const out = new Blob([bytes as BlobPart]).stream().pipeThrough(stream);
+  return new Uint8Array(await new Response(out).arrayBuffer());
+}
+
+export async function exportSave(state: GameState): Promise<string> {
+  const file: SaveFile = { version: SAVE_VERSION, state };
+  const json = new TextEncoder().encode(JSON.stringify(file));
+  if (typeof CompressionStream === 'undefined') return CODE_PLAIN + toBase64Url(json);
+  return CODE_GZIP + toBase64Url(await throughStream(json, new CompressionStream('gzip')));
+}
+
+// Reads a backup code (from any version of the game) back into a game.
+// Throws a BackupError if it can't.
+export async function importSave(code: string): Promise<GameState> {
+  const text = code.replace(/\s+/g, '');
+  if (!text) throw new BackupError('empty');
+  let json: string;
+  try {
+    if (text.startsWith(CODE_GZIP)) {
+      if (typeof DecompressionStream === 'undefined') throw new BackupError('noGzip');
+      json = new TextDecoder().decode(await throughStream(fromBase64Url(text.slice(CODE_GZIP.length)), new DecompressionStream('gzip')));
+    } else if (text.startsWith(CODE_PLAIN)) {
+      json = new TextDecoder().decode(fromBase64Url(text.slice(CODE_PLAIN.length)));
+    } else {
+      throw new BackupError('unreadable');
+    }
+  } catch (err) {
+    throw err instanceof BackupError ? err : new BackupError('unreadable');
+  }
+  let file: SaveFile;
+  try {
+    const parsed = JSON.parse(json);
+    if (typeof parsed?.version === 'number' && parsed.version > SAVE_VERSION) throw new BackupError('newer');
+    file = migrate(parsed as SaveFile);
+  } catch (err) {
+    throw err instanceof BackupError ? err : new BackupError('unreadable');
+  }
+  if (file.version !== SAVE_VERSION || !looksLikeSave(file)) throw new BackupError('unreadable');
+  return file.state as GameState;
+}
+
+// Asks the browser to keep the save even when space runs low. Free, and
+// quietly does nothing where it isn't supported.
+export function askToKeepStorage(): void {
+  try {
+    void navigator.storage?.persist?.().catch(() => {});
+  } catch {
+    // Not supported here.
+  }
+}
+
 export function clearSave(): void {
   try {
     browserStorage()?.removeItem(SAVE_KEY);

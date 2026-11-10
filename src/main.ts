@@ -90,7 +90,7 @@ import { fortuneArt, skipFortuneOnTap } from './ui/fortune';
 import { createAwayCard } from './ui/away';
 import { awayNotes } from './game/away';
 import type { Pet, Room } from './game/state';
-import { blockSaves, clearSave, loadGame, saveGame } from './storage/storage';
+import { askToKeepStorage, BackupError, blockSaves, clearSave, exportSave, importSave, loadGame, saveGame, whenSaveFails } from './storage/storage';
 import { askAboutUnreadableSave, showOpenElsewhere } from './ui/saveTrouble';
 import { claimTab } from './tabLock';
 import { reportOnce, watchForErrors } from './errors';
@@ -151,6 +151,7 @@ const foundAtClose = state.charactersFound;
 // What Messages had at the last visit, so Percy's news from while you were
 // away can be shown once the screen is up.
 const lastVisitMessages = state.messages;
+if (state.pet.named) askToKeepStorage(); // pets named before this was added
 const startup = updateProgress(simulate(state, gameNow()));
 state = startup.state;
 saveGame(state);
@@ -387,6 +388,8 @@ function askName(): void {
       if (result.blocked) return STRINGS.naming.empty;
       setState(result.state);
       const named = state.pet.name;
+      // A named pet is worth keeping: ask the browser not to clear it.
+      if (first) askToKeepStorage();
       if (!first) home.toast(STRINGS.naming.renamed(named));
       else home.toast(pet.stage === 'baby' ? STRINGS.growth.baby(named) : STRINGS.naming.hello(named));
       for (const message of afterNaming.splice(0)) home.notice(message);
@@ -1276,6 +1279,32 @@ const home = createHomeScreen(root, {
     runShop(buyGardenItem(state, item), STRINGS.shop.bought(
       item.kind === 'seed' ? STRINGS.garden.seedName(STRINGS.foods[item.id]) : STRINGS.garden.supplies[item.id],
     )),
+  onBackupCode: () => exportSave(state),
+  onRestore: async (code) => {
+    const S = STRINGS.settings;
+    let restored: GameState;
+    try {
+      restored = await importSave(code);
+    } catch (err) {
+      return S.restoreErrors[err instanceof BackupError ? err.reason : 'unreadable'];
+    }
+    // The safe choice comes first, so it's the one that has focus.
+    choice.open({
+      title: S.restoreTitle,
+      text: S.restoreText,
+      options: [
+        { label: S.restoreNo, onPick: () => {} },
+        {
+          label: S.restoreYes, soft: true, onPick: () => {
+            if (!saveGame(restored)) return;
+            blockSaves(); // nothing may save the old pet over it before the reload
+            location.reload();
+          },
+        },
+      ],
+    });
+    return null;
+  },
   onReset: () => {
     // The safe choice comes first, so it's the one that has focus.
     choice.open({
@@ -1620,6 +1649,13 @@ const growUp = createGrowUpReveal(root, (moment) => {
 });
 skipFortuneOnTap();
 const away = createAwayCard(root);
+// If saving fails (storage full, private browsing), say so once.
+let saveFailShown = false;
+whenSaveFails(() => {
+  if (saveFailShown) return;
+  saveFailShown = true;
+  home.toast(STRINGS.settings.saveFailed);
+});
 const guide = createGuideCard(root);
 home.update(state, gameNow());
 startAudio();
