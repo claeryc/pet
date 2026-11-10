@@ -865,7 +865,7 @@ body {
 
 /* ---- The menu opens like Feed and Play ---- */
 
-/* Closed, the gear button is a small square like the lights button; open,
+/* Closed, the Menu button is a small square like the lights button; open,
    it slides wide like the others. */
 .drawer[data-drawer='menu'] {
   flex: 0 0 56px;
@@ -4420,7 +4420,7 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   background: var(--accent);
 }
 
-/* On the Feed or gear button (which are pink): a yellow dot in the top
+/* On the Feed or Menu button (which are pink): a yellow dot in the top
    corner. */
 .drawer-head.has-new::after {
   content: '';

@@ -1,4 +1,4 @@
-// The menu inside the gear button's panel (it opens like Feed and Play). It
+// The menu inside the Menu (backpack) button's panel (it opens like Feed and Play). It
 // has a main list (Shop, Map, Messages, Collection, Skills, Family Tree,
 // Guide, Settings) and a page for each, plus the Wardrobe, which opens when you
 // hold the pet. The Map tile opens the map over the whole screen (see
