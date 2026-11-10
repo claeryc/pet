@@ -91,7 +91,8 @@ import { createAwayCard } from './ui/away';
 import { awayNotes } from './game/away';
 import type { Pet, Room } from './game/state';
 import { blockSaves, clearSave, loadGame, saveGame } from './storage/storage';
-import { askAboutUnreadableSave } from './ui/saveTrouble';
+import { askAboutUnreadableSave, showOpenElsewhere } from './ui/saveTrouble';
+import { claimTab } from './tabLock';
 import { reportOnce, watchForErrors } from './errors';
 import { setupCanvas, drawRoom } from './render/canvas';
 import { loadSprites, type SpriteLibrary } from './render/sprites';
@@ -122,6 +123,14 @@ const root = document.getElementById('app')!;
 // The game's clock: real time plus any debug fast-forward.
 function gameNow(): number {
   return Date.now() + state.clockOffsetMs;
+}
+
+// Only one tab looks after the pet. If another has it, this one waits
+// (without loading, ticking or saving) until the player takes it over.
+const tab = await claimTab();
+if (!tab.held) {
+  showOpenElsewhere(root);
+  await new Promise<never>(() => {});
 }
 
 // Load the saved game (or start a new one) and catch it up to right now.
@@ -1778,14 +1787,23 @@ function liveTick(): void {
   else home.update(state, gameNow());
 }
 let ticker: ReturnType<typeof setInterval> | null = null;
+let tabLost = false; // another tab has the pet now
 function startTicking(): void {
-  if (ticker === null) ticker = setInterval(liveTick, CONFIG.liveUpdateSeconds * 1000);
+  if (ticker === null && !tabLost) ticker = setInterval(liveTick, CONFIG.liveUpdateSeconds * 1000);
 }
 function stopTicking(): void {
   if (ticker !== null) clearInterval(ticker);
   ticker = null;
 }
 startTicking();
+
+// Another tab took the pet over: stop ticking (saves are already blocked)
+// and say so, over everything else.
+tab.onLost(() => {
+  tabLost = true;
+  stopTicking();
+  showOpenElsewhere(root);
+});
 
 // ...and catch up straight away when you come back to the tab or app.
 // Leaving keeps a copy of the game as it was, so coming back can say what

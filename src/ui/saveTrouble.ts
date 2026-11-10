@@ -4,6 +4,7 @@
 
 import { STRINGS } from '../strings';
 import { createChoiceBox } from './choice';
+import { takeOverHere } from '../tabLock';
 
 // A save from a newer build, or one we couldn't read. A copy of it is kept
 // safe already. The promise only settles if the player picks "Start a new
@@ -36,5 +37,16 @@ export function askAboutUnreadableSave(root: HTMLElement, kind: 'newer' | 'broke
       ],
     });
     brokenCard();
+  });
+}
+
+// The pet is open in another tab. "Use it here" reloads this tab and takes
+// it over. The box can't be dismissed otherwise.
+export function showOpenElsewhere(root: HTMLElement): void {
+  const S = STRINGS.saveTrouble;
+  createChoiceBox(root).open({
+    title: S.elsewhereTitle,
+    text: S.elsewhereText,
+    options: [{ label: S.useHere, onPick: takeOverHere }],
   });
 }

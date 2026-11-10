@@ -1564,6 +1564,10 @@ export const STRINGS = {
     startNewText: 'Your new pet takes the old one\'s place. The safe copy stays on this device.',
     startNewYes: 'Start a new pet',
     goBack: 'Go back',
+    // The pet is already open in another tab (or the installed app).
+    elsewhereTitle: 'Your pet is open in another tab',
+    elsewhereText: 'Only one tab can look after your pet at a time, so nothing gets lost.',
+    useHere: 'Use it here',
   },
   family: {
     generation: (n: number) => `Generation ${n}`,
