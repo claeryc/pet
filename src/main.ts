@@ -92,6 +92,7 @@ import { awayNotes } from './game/away';
 import type { Pet, Room } from './game/state';
 import { blockSaves, clearSave, loadGame, saveGame } from './storage/storage';
 import { askAboutUnreadableSave } from './ui/saveTrouble';
+import { reportOnce, watchForErrors } from './errors';
 import { setupCanvas, drawRoom } from './render/canvas';
 import { loadSprites, type SpriteLibrary } from './render/sprites';
 import { createHomeScreen } from './ui/home';
@@ -115,6 +116,7 @@ import { guideDue, markGuideRead, type GuideId } from './game/guides';
 import { createGuideCard } from './ui/guide';
 import { bathe, collectPoop, poopCount, poopNow, shiftHygiene, smellNow } from './game/hygiene';
 
+watchForErrors();
 const root = document.getElementById('app')!;
 
 // The game's clock: real time plus any debug fast-forward.
@@ -1656,7 +1658,19 @@ function keepsakesView() {
   };
 }
 
+// One frame. If anything in it throws, the error is logged once and the
+// next frame is still drawn, so the pet never freezes for good.
 function render(timeMs: number): void {
+  try {
+    drawFrame(timeMs);
+  } catch (err) {
+    reportOnce(err, 'render');
+  } finally {
+    requestAnimationFrame(render);
+  }
+}
+
+function drawFrame(timeMs: number): void {
   const pet = state.pet;
   // A pet out on a journey isn't in the room.
   const away = isAway(pet);
@@ -1751,7 +1765,6 @@ function render(timeMs: number): void {
     timeMs,
     away ? undefined : sprites.get(getHat(hatId)?.sheet ?? ''),
   );
-  requestAnimationFrame(render);
 }
 requestAnimationFrame(render);
 
