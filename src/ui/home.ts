@@ -131,9 +131,11 @@ export interface HomeScreen {
 }
 
 // Pixel icons drawn on a 12x12 grid, so they match the pixel-art style.
-const GEAR_ICON = `
+// The Menu button's backpack (the gear is kept for the Settings tile, so
+// the two don't look alike).
+const BACKPACK_ICON = `
   <svg viewBox="0 0 12 12" width="24" height="24" shape-rendering="crispEdges" aria-hidden="true">
-    <path fill="currentColor" d="M4 0h4v1H4zM1 1h2v1H1zM4 1h4v1H4zM9 1h2v1H9zM1 2h10v1H1zM2 3h8v1H2zM1 4h4v1H1zM7 4h4v1H7zM0 5h4v1H0zM8 5h4v1H8zM0 6h4v1H0zM8 6h4v1H8zM1 7h4v1H1zM7 7h4v1H7zM2 8h8v1H2zM1 9h10v1H1zM1 10h2v1H1zM4 10h4v1H4zM9 10h2v1H9zM4 11h4v1H4z"/>
+    <path fill="currentColor" d="M4 0h4v1H4zM3 1h1v1H3zM8 1h1v1H8zM2 2h8v1H2zM1 3h10v1H1zM1 4h10v1H1zM1 5h3v1H1zM8 5h3v1H8zM1 6h1v1H1zM4 6h4v1H4zM10 6h1v1H10zM1 7h10v1H1zM0 8h2v1H0zM3 8h6v1H3zM10 8h2v1H10zM0 9h2v1H0zM3 9h1v1H3zM8 9h1v1H8zM10 9h2v1H10zM0 10h2v1H0zM3 10h6v1H3zM10 10h2v1H10zM1 11h10v1H1z"/>
   </svg>`;
 const MOON_ICON = `
   <svg viewBox="0 0 12 12" width="24" height="24" shape-rendering="crispEdges" aria-hidden="true">
@@ -550,7 +552,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const feedDrawer = createDrawer({ id: 'feed', label: STRINGS.buttons.feed, options: feedOptions, ...drawerSetup });
   const playDrawer = createDrawer({ id: 'play', label: STRINGS.buttons.play, options: playOptions, ...drawerSetup });
 
-  // The gear button opens the menu (shop, inventory, settings and more) the
+  // The backpack button opens the menu (shop, inventory, settings and more) the
   // same way Feed and Play open. It always opens, even for an egg.
   let menuDrawer: ReturnType<typeof createDrawer> | null = null;
   // The Shop reaches up over the stat bars as well (nobody needs them while
@@ -570,7 +572,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     ...drawerSetup,
     id: 'menu',
     label: STRINGS.buttons.menu,
-    icon: GEAR_ICON,
+    icon: BACKPACK_ICON,
     content: menu.el,
     onOpen: () => {
       fitDrawers();
