@@ -30,6 +30,14 @@ export const STRINGS = {
     reset: 'Start over',
     menu: 'Menu',
   },
+  // The chips at the top of Feed, by kind of food.
+  feedKinds: {
+    all: 'All',
+    fruitVeg: 'Fruit & veg',
+    seafood: 'Seafood',
+    sweets: 'Sweets',
+    soups: 'Soups & drinks',
+  },
   foods: {
     riceBall: 'Rice ball',
     heartyStew: 'Hearty stew',

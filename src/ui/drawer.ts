@@ -37,6 +37,10 @@ export interface Drawer {
   // Shows the options in this order (indexes into `options`). Indexes for
   // setNote and friends stay the same.
   setOrder: (order: number[]) => void;
+  // Grid only: shows only the options `test` lets through (a filter chip),
+  // and updates the picked tile's bar after its note or chips change.
+  setShown: (test: (index: number) => boolean) => void;
+  refreshPick: () => void;
   // A small "new" dot on the button, or on one option.
   setNew: (isNew: boolean) => void;
   setOptionNew: (index: number, isNew: boolean) => void;
@@ -62,6 +66,12 @@ export interface DrawerSetup {
   // (e.g. "Mochi is asleep"), or null to open.
   beforeOpen: () => string | null;
   onBlocked: (message: string) => void;
+  // Shown above the options, under the grabber (e.g. "Feed" and Cook).
+  header?: HTMLElement;
+  // A grid of tiles to pick from, instead of a list to tap: a tap picks a
+  // tile and shows it in a bar under the grid, whose button (labelled
+  // `pickLabel`) does it. The panel stays open, so the pet can be watched.
+  grid?: { pickLabel: string };
 }
 
 export function createDrawer(setup: DrawerSetup): Drawer {
@@ -93,8 +103,10 @@ export function createDrawer(setup: DrawerSetup): Drawer {
     options.classList.add('drawer-content');
     options.append(setup.content);
   }
+  if (setup.header) inner.append(setup.header);
   inner.append(options);
   body.append(inner);
+  if (setup.grid) el.classList.add('is-grid');
   el.append(head, body);
 
   // Each option is one row: picture, name, then its effects on the right.
@@ -133,7 +145,9 @@ export function createDrawer(setup: DrawerSetup): Drawer {
     }
 
     b.append(icon, label, effects);
-    if (opt.onPick) {
+    if (opt.onPick && setup.grid) {
+      b.addEventListener('click', () => select(i));
+    } else if (opt.onPick) {
       b.addEventListener('click', () => {
         close();
         opt.onPick!(b);
@@ -144,6 +158,54 @@ export function createDrawer(setup: DrawerSetup): Drawer {
     rows.push(b);
     options.append(b);
   });
+
+  // Grid only: the picked tile, shown in the bar under the grid.
+  let picked = -1;
+  const bar = document.createElement('div');
+  bar.className = 'drawer-pick';
+  const barIcon = document.createElement('span');
+  barIcon.className = 'drawer-pick-icon';
+  const barText = document.createElement('span');
+  barText.className = 'drawer-pick-text';
+  const barGo = document.createElement('button');
+  barGo.className = 'drawer-pick-go';
+  barGo.textContent = setup.grid?.pickLabel ?? '';
+  barGo.addEventListener('click', () => {
+    const row = rows[picked];
+    if (row && !row.hidden) setup.options![picked].onPick?.(row);
+  });
+  bar.append(barIcon, barText, barGo);
+  if (setup.grid) inner.append(bar);
+  function select(i: number): void {
+    rows[picked]?.classList.remove('is-picked');
+    picked = i;
+    const row = rows[i];
+    bar.hidden = !row;
+    if (!row) return;
+    row.classList.add('is-picked');
+    barIcon.innerHTML = row.querySelector('.drawer-option-icon')!.innerHTML;
+    barIcon.querySelector('.drawer-option-badge')?.remove();
+    const name = document.createElement('b');
+    name.textContent = setup.options![i].label;
+    const note = row.querySelector('.drawer-option-note')?.textContent;
+    if (note) {
+      const small = document.createElement('small');
+      small.textContent = note;
+      name.append(' ', small);
+    }
+    const chips = row.querySelector('.drawer-option-effects')!.cloneNode(true) as HTMLElement;
+    barText.replaceChildren(name, chips);
+    barGo.setAttribute('aria-label', `${setup.grid?.pickLabel ?? ''}: ${setup.options![i].label}`);
+  }
+  // Keeps a picked tile that's still there, or else picks the first one
+  // showing (the order puts what the pet is craving first).
+  function repick(): void {
+    if (!setup.grid) return;
+    const still = rows[picked] && !rows[picked].hidden && rows[picked].style.display !== 'none';
+    if (still) return select(picked);
+    const first = [...options.children].find((r) => !(r as HTMLElement).hidden && (r as HTMLElement).style.display !== 'none');
+    select(first ? rows.indexOf(first as HTMLButtonElement) : -1);
+  }
 
   function open(): void {
     const blocked = setup.beforeOpen();
@@ -157,6 +219,11 @@ export function createDrawer(setup: DrawerSetup): Drawer {
       .forEach((row, i) => (row as HTMLElement).style.setProperty('--i', String(i)));
     el.classList.add('is-open');
     head.setAttribute('aria-expanded', 'true');
+    // Each time it opens, the first tile is picked: what the pet is
+    // craving, or else what it ate last.
+    rows[picked]?.classList.remove('is-picked');
+    picked = -1;
+    repick();
     // On short screens, gently scroll so the whole panel is visible once
     // it has finished growing.
     window.setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 650);
@@ -188,8 +255,15 @@ export function createDrawer(setup: DrawerSetup): Drawer {
     },
     setHidden(index, hidden) {
       const row = rows[index];
-      if (row) row.hidden = hidden;
+      if (!row || row.hidden === hidden) return;
+      row.hidden = hidden;
+      if (isOpen()) repick();
     },
+    setShown(test) {
+      rows.forEach((row, i) => (row.style.display = test(i) ? '' : 'none'));
+      if (isOpen()) repick();
+    },
+    refreshPick: () => repick(),
     setOrder(order) {
       order.forEach((index) => {
         const row = rows[index];

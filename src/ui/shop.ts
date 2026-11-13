@@ -215,7 +215,6 @@ function text<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, 
 }
 
 const CHECK = `<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 5.5l2 2 4-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-const BACK = `<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M7.5 2.5L4 6l3.5 3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
 type Cur = 'gold' | 'frag';
 
@@ -937,7 +936,8 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
   const awning = el('div', 'shop-awning');
   awning.setAttribute('aria-hidden', 'true');
   const head = el('div', 'shop-head');
-  const back = el('button', 'shop-back', BACK);
+  // The same "‹ Menu" pill as every other page's header.
+  const back = el('button', 'shop-back menu-header-btn', `<span class="menu-header-arrow" aria-hidden="true">‹</span>${STRINGS.menu.backTo}`);
   back.setAttribute('aria-label', STRINGS.menu.back);
   back.addEventListener('click', onBack);
   const purse = el('div', 'shop-purse');

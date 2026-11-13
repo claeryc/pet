@@ -88,6 +88,8 @@ for (const drawer of DRAWERS) {
       const label = (await item.textContent())?.trim().slice(0, 40);
       if (await item.isDisabled()) continue;
       await item.click();
+      // Feed's tiles pick a food; the bar's button feeds it.
+      if (drawer.name === 'Feed') await page.locator('.drawer.is-open .drawer-pick-go').click();
       await page.waitForTimeout(800);
       expect(errors, `after ${drawer.name} > ${label}`).toEqual([]);
     }

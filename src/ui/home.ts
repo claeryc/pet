@@ -563,7 +563,51 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const JOURNEYS_ROW = GARDEN_ROW + 1;
   const DIG_ROW = JOURNEYS_ROW + 1;
   const WORKBENCH_ROW = DIG_ROW + 1;
-  const feedDrawer = createDrawer({ id: 'feed', label: STRINGS.buttons.feed, options: feedOptions, ...drawerSetup });
+  // Feed's sheet: its name and the cooking pot at the top, then chips to
+  // narrow the pantry down by kind, then the food as a grid of tiles. A tap
+  // picks a food; the bar under the grid says what it does and feeds it.
+  const feedHead = document.createElement('div');
+  feedHead.className = 'sheet-head';
+  const feedTitle = document.createElement('h2');
+  feedTitle.textContent = STRINGS.buttons.feed;
+  const cookButton = button('', 'sheet-head-btn', () => {
+    feedDrawer.close();
+    startCooking();
+  });
+  cookButton.innerHTML = `<span class="sheet-head-btn-icon" aria-hidden="true">${ITEM_ICONS.cooking}</span>${STRINGS.cooking.open}`;
+  feedHead.append(feedTitle, cookButton);
+  const FEED_KINDS: { id: string; label: string; tags: string[] }[] = [
+    { id: 'all', label: STRINGS.feedKinds.all, tags: [] },
+    { id: 'fruitVeg', label: STRINGS.feedKinds.fruitVeg, tags: ['fruit', 'veg'] },
+    { id: 'seafood', label: STRINGS.feedKinds.seafood, tags: ['seafood'] },
+    { id: 'sweets', label: STRINGS.feedKinds.sweets, tags: ['sweet'] },
+    { id: 'soups', label: STRINGS.feedKinds.soups, tags: ['soup', 'drink'] },
+  ];
+  let feedKind = 'all';
+  const foodTags = (row: number): readonly string[] => (CONFIG.foods as readonly Food[])[row - 1]?.tags ?? [];
+  const kindShows = (kind: string, row: number) => {
+    const k = FEED_KINDS.find((f) => f.id === kind)!;
+    return row !== COOK_ROW && (k.tags.length === 0 || foodTags(row).some((t) => k.tags.includes(t)));
+  };
+  const feedChips = document.createElement('div');
+  feedChips.className = 'sheet-chips';
+  const chipButtons = FEED_KINDS.map((k) => {
+    const b = button(k.label, 'sheet-chip', () => {
+      feedKind = k.id;
+      chipButtons.forEach((c, i) => c.classList.toggle('is-on', FEED_KINDS[i].id === feedKind));
+      feedDrawer.setShown((row) => kindShows(feedKind, row));
+    });
+    b.classList.toggle('is-on', k.id === feedKind);
+    return b;
+  });
+  feedChips.append(...chipButtons);
+  const feedTop = document.createElement('div');
+  feedTop.className = 'sheet-top';
+  feedTop.append(feedHead, feedChips);
+  const feedDrawer = createDrawer({
+    id: 'feed', label: STRINGS.buttons.feed, options: feedOptions, ...drawerSetup,
+    header: feedTop, grid: { pickLabel: STRINGS.buttons.feed },
+  });
   // In the dock, Feed wears a rice ball next to its name, like Map's island.
   feedDrawer.el.querySelector('.drawer-label')!.innerHTML = `<span class="dock-icon" aria-hidden="true">${ITEM_ICONS.riceBall}</span>${STRINGS.buttons.feed}`;
   const playDrawer = createDrawer({ id: 'play', label: STRINGS.buttons.play, options: playOptions, ...drawerSetup });
@@ -1440,6 +1484,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       // Caught fish and cooked dishes also show their stars. Dishes only
       // show up once you have some, to keep the list short.
       // Only food you have is listed.
+      const have: boolean[] = [];
       CONFIG.foods.forEach((f: Food, i) => {
         const count = foodCount(state, f.id);
         const stars = f.stars ? `${STRINGS.stars(f.stars)}  ` : '';
@@ -1447,6 +1492,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
         const refill = f.id === 'riceBall' && state.riceJarAt ? `  ${STRINGS.shop.riceJar(formatIn(state.riceJarAt - now))}` : '';
         feedDrawer.setNote(foodRow(i), count === Infinity ? STRINGS.shop.free : `${stars}× ${count}${refill}`);
         feedDrawer.setHidden(foodRow(i), count === 0);
+        have[i] = count > 0;
         // A heart on what the pet is craving.
         const craved = state.craving.food === f.id;
         if (craved !== cravedRows.has(i)) {
@@ -1455,9 +1501,19 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
           else cravedRows.delete(i);
         }
       });
-      feedDrawer.setHidden(COOK_ROW, !isUnlocked(state, 'cooking'));
+      // The pot is the Cook button at the top of the sheet, not a tile.
+      feedDrawer.setHidden(COOK_ROW, true);
+      cookButton.hidden = !isUnlocked(state, 'cooking');
+      // Only the kinds you have something of, and back to All if the one
+      // picked has run out.
+      chipButtons.forEach((c, k) => {
+        c.hidden = k > 0 && !have.some((h, i) => h && kindShows(FEED_KINDS[k].id, foodRow(i)));
+      });
+      if (chipButtons.find((c, k) => FEED_KINDS[k].id === feedKind)?.hidden) chipButtons[0].click();
+      feedChips.hidden = chipButtons.filter((c) => !c.hidden).length < 3;
       const cookIsNew = isNew(state, 'cooking');
       feedDrawer.setOptionNew(COOK_ROW, cookIsNew);
+      cookButton.classList.toggle('has-new', cookIsNew);
       feedDrawer.setNew(cookIsNew);
       moreButton.classList.toggle('has-new',
         isNew(state, 'shop') || isNew(state, 'collection') || isNew(state, 'familyTree') || isNew(state, 'journeys') ||
@@ -1477,6 +1533,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
         feedOrderKey = orderKey;
         feedDrawer.setOrder(order);
       }
+      // The bar under the grid follows the picked food's count.
+      feedDrawer.refreshPick();
       cooking.update(state);
       workbench.update(state, now);
       fishing.setBait(baitInUse(state), Object.fromEntries(BAITS.map((id) => [id, baitCount(state, id)])) as Record<BaitId, number>);
