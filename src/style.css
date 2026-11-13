@@ -2314,8 +2314,13 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.25));
 }
 
-.shop-page.is-night .shop-head h2,
-.shop-page.is-night .shop-back {
+.shop-page.is-night .shop-head h2 {
+  color: white !important;
+}
+/* The "‹ Menu" pill on the night page: glass, with white words. */
+.shop-page.is-night .shop-head .shop-back {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.12);
   color: white !important;
 }
 
@@ -14658,6 +14663,7 @@ button.trip-bars-name.is-on {
 }
 .shop-head h2 {
   text-align: center;
+  white-space: nowrap;
 }
 .shop-head .shop-purse {
   justify-self: end;
