@@ -29,7 +29,7 @@ import { unreadMail } from '../game/messages';
 import { needsTending, type CropId } from '../game/garden';
 import { isNew, isUnlocked } from '../game/unlocks';
 import { pointsToSpend, reelPerks } from '../game/skills';
-import { FISHING_LINE_X, petAt, ROOM_HEIGHT, ROOM_WIDTH } from '../render/canvas';
+import { FISHING_LINE_X, fitRoomHeight, petAt, ROOM_HEIGHT, ROOM_WIDTH } from '../render/canvas';
 import { createMeet, MEET_OUT_MS } from './meet';
 import { petStandsLeft } from '../game/friends';
 import { needsYou, otherRoom, petsIn, roommates } from '../game/rooms';
@@ -399,7 +399,20 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     needIcons[key] = i;
     needs.append(i);
   }
-  roomWrap.append(canvas, needs, fx.el, bubble, corner, door, tryTag);
+  // The old 4:3 room at the bottom of the (taller) canvas: what sits on
+  // the pet, its bubble and the Shop's tag are placed in it.
+  const scene = document.createElement('div');
+  scene.className = 'room-scene';
+  scene.append(fx.el, bubble, tryTag);
+  roomWrap.append(canvas, needs, scene, corner, door);
+  // The canvas grows to fill the room's box, a row of wall at a time (see
+  // fitRoomHeight). Folded back to 4:3 (a sheet open, or a game on), it
+  // keeps its height and shows just its bottom.
+  new ResizeObserver(() => {
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    if (w && h / w > ROOM_HEIGHT / ROOM_WIDTH + 0.02) fitRoomHeight(canvas, (h / w) * ROOM_WIDTH);
+  }).observe(canvas);
 
   // Warning / sick / recovering / passed away banner, hidden when all is well.
   const banner = document.createElement('div');
@@ -433,7 +446,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   stats.append(...Object.values(bars).map((b) => b.el));
 
   const actions = document.createElement('div');
-  actions.className = 'actions';
+  actions.className = 'actions dock';
 
   // Turns stat changes like { hunger: 20, energy: -8 } into effect chips.
   const statEffects = (changes: Partial<Record<keyof PetStats, number>>): Effect[] =>
@@ -686,8 +699,11 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     const room = roomWrap.getBoundingClientRect();
     const fit = (h: number) => `${Math.max(DRAWER_MIN, Math.floor(h))}px`;
     // The panel floats DRAWER_GAP over the dock, and keeps the same gap
-    // under the room (or the needs).
-    actions.style.setProperty('--sheet-h', fit(top - room.bottom - 2 * DRAWER_GAP));
+    // under the room (or the needs). With a sheet open the room folds back
+    // to 4:3, whatever its height now.
+    const border = canvas.offsetWidth - canvas.clientWidth;
+    const folded = room.top + canvas.clientWidth * (ROOM_HEIGHT / ROOM_WIDTH) + border;
+    actions.style.setProperty('--sheet-h', fit(top - folded - 2 * DRAWER_GAP));
     actions.style.setProperty('--page-h', fit(top - room.top - needs.offsetTop - needs.offsetHeight - 2 * DRAWER_GAP));
   }
   window.addEventListener('resize', fitDrawers);
@@ -781,10 +797,13 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   let press: { x: number; y: number; held: boolean } | null = null;
   let lastCuddle = -Infinity;
   const roomPoint = (e: PointerEvent) => {
+    // The old room fills the canvas's width and sits at its bottom.
     const rect = canvas.getBoundingClientRect();
+    const scale = canvas.clientWidth / ROOM_WIDTH;
+    const bottom = rect.top + canvas.clientTop + canvas.clientHeight;
     return {
-      x: ((e.clientX - rect.left) / rect.width) * ROOM_WIDTH,
-      y: ((e.clientY - rect.top) / rect.height) * ROOM_HEIGHT,
+      x: (e.clientX - rect.left - canvas.clientLeft) / scale,
+      y: ROOM_HEIGHT - (bottom - e.clientY) / scale,
     };
   };
   // Which pet a tap is on: the one you're looking after, the other one in

@@ -14666,3 +14666,50 @@ button.trip-bars-name.is-on {
 .actions .drawer[data-drawer='menu'] .menu-panel {
   padding-top: 8px;
 }
+
+/* ---- Redesign part 3: the tall room ----
+   At home with nothing open (or just the pop-up), the room takes all the
+   height there is above the dock. The canvas grows a wall to match (see
+   fitRoomHeight in render/canvas.ts); the old 4:3 room sits at its bottom,
+   in .room-scene, which is what the pet's bubble and effects are placed in.
+   Anything else (a sheet, a page, a game) folds the room back to 4:3: the
+   canvas keeps its height and shows only its bottom. */
+.room {
+  object-fit: cover;
+  object-position: 50% 100%;
+}
+.room-scene {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  aspect-ratio: 4 / 3;
+  pointer-events: none;
+}
+.room-scene > :not(.fx) {
+  pointer-events: auto;
+}
+.room-scene > .try-tag {
+  pointer-events: none;
+}
+#app:has(> .dock:not([hidden]):not([data-open])) > .room-wrap,
+#app:has(> .dock[data-open='menu'][data-page='main']) > .room-wrap {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+}
+#app:has(> .dock:not([hidden]):not([data-open])) > .room-wrap > .room,
+#app:has(> .dock[data-open='menu'][data-page='main']) > .room-wrap > .room {
+  flex: 1 1 0;
+  height: 0;
+  aspect-ratio: auto;
+  /* Never shorter than the old room: the pet keeps its whole floor. */
+  min-height: calc((min(100vw, 420px) - 32px) * 0.75);
+}
+/* With a sheet open the room is short: the craving's heart is on its food
+   in the Feed grid instead of in a bubble over the needs. */
+#app:has(> .dock[data-open='feed']) .craving-bubble,
+#app:has(> .dock[data-open='play']) .craving-bubble,
+#app:has(> .dock[data-open='menu']:not([data-page='main'])) .craving-bubble {
+  display: none;
+}
