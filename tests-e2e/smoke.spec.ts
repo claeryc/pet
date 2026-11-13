@@ -30,18 +30,32 @@ async function seedAdult(page: Page): Promise<void> {
   });
 }
 
-// Loads the seeded game fresh and waits for the bottom buttons.
+// Loads the seeded game fresh and waits for the dock.
 async function openGame(page: Page): Promise<void> {
   await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Menu' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'More' })).toBeVisible();
   await page.waitForTimeout(300);
 }
 
-// The items in one drawer: Feed and Play list options, Menu shows tiles.
+// The dock's "···" button, which opens the pop-up menu.
+async function openMore(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'More', exact: true }).click();
+  await page.waitForTimeout(400);
+}
+
+// The items in one panel, and how to get there: Feed from the dock, the
+// pop-up menu from "···", and Play from its row in the pop-up.
 const DRAWERS = [
-  { name: 'Feed', items: '.drawer-option' },
-  { name: 'Play', items: '.drawer-option' },
-  { name: 'Menu', items: '.menu-tile' },
+  { name: 'Feed', items: '.drawer-option', open: (page: Page) => page.getByRole('button', { name: 'Feed', exact: true }).click() },
+  {
+    name: 'Play',
+    items: '.drawer-option',
+    open: async (page: Page) => {
+      await openMore(page);
+      await page.locator('.menu-list .menu-tile', { hasText: 'Play' }).click();
+    },
+  },
+  { name: 'Menu', items: '.menu-tile', open: openMore },
 ] as const;
 
 test('the game opens with no errors', async ({ page }) => {
@@ -60,7 +74,7 @@ for (const drawer of DRAWERS) {
     await seedAdult(page);
     await openGame(page);
     const open = async () => {
-      await page.getByRole('button', { name: drawer.name, exact: true }).click();
+      await drawer.open(page);
       await page.waitForTimeout(400);
       return page.locator(`.drawer.is-open ${drawer.items}:visible`);
     };
