@@ -9,6 +9,10 @@
 
 import { CONFIG } from './game/config';
 
+// Whether the Star counter offers packs for real money. Off until a real
+// store is connected: with the stand-in below, the packs would be free.
+export const STORE_OPEN = false;
+
 export type ProductId = (typeof CONFIG.store)[number]['id'] | 'familyHome';
 
 // Asks for payment. `confirm` shows the player what they're buying and

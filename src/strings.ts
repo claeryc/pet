@@ -102,7 +102,7 @@ export const STRINGS = {
   // Walking between the kitchen's or the workbench's stations (see
   // src/ui/walk.ts).
   stations: {
-    goTo: (name: string) => `Go to the ${name}`,
+    goTo: (name: string) => (name.includes("'") ? `Go to ${name}` : `Go to the ${name}`), // "Go to Percy's perch", not "the Percy's"
   },
   // The Backyard (Play > Garden, see src/ui/backyard.ts): the garden, and
   // the beehive and Percy's perch once they're built.
@@ -819,7 +819,7 @@ export const STRINGS = {
           { title: 'Collect materials', text: 'Journeys and Sniff and dig bring home twigs, pebbles, shells and more. Open Materials to see your pouch.' },
           { title: 'Pick a pattern', text: 'Open Patterns and pick a tab: things for the room, trips, the pond and the garden. Grey ones need more materials.' },
           { title: 'Make it!', text: 'The spots show what it takes. Tap Make! three times to hammer it together. A room piece can go straight up in your room.' },
-          { title: 'Big projects', text: 'Swipe to Projects. Dig up a key part to start one, then build it stage by stage. Each stage takes a few hours.' },
+          { title: 'Big projects', text: 'Walk right from the bench to the projects. Dig up a key part to start one, then build it stage by stage. Each stage takes a few hours.' },
         ],
       },
       meet: {

@@ -172,6 +172,7 @@ export function createFishing(cb: FishingCallbacks): Fishing {
   let reel: Reel | null = null;
   let hooked: Bite | null = null; // what's on the line this cast
   let held = false; // Pull is held down
+  let swallowTap = false; // the release after a reel ended mid-hold
   // Perfect catches in a row, and whether the last cast ended in one.
   let streak = 0;
   let lastPerfect = false;
@@ -224,6 +225,9 @@ export function createFishing(cb: FishingCallbacks): Fishing {
 
   // Back to "ready to cast" after a short pause, so the toast can be read.
   function backToReady(delay = 0): void {
+    // Still holding Pull as the reel ends: letting go later mustn't count
+    // as a tap on Cast.
+    if (held) swallowTap = true;
     clearTimers();
     main.disabled = true;
     timer = window.setTimeout(() => {
@@ -378,11 +382,16 @@ export function createFishing(cb: FishingCallbacks): Fishing {
   }
 
   main.addEventListener('click', () => {
+    if (swallowTap) {
+      swallowTap = false;
+      return;
+    }
     if (phase === 'ready') castLine();
     else if (phase === 'waiting' || phase === 'nibble' || phase === 'bite') reelIn();
   });
   // Pull is held, not tapped: hold to drag the dot right.
   main.addEventListener('pointerdown', (e) => {
+    swallowTap = false; // a new press is a new tap
     if (phase !== 'reeling') return;
     e.preventDefault();
     main.setPointerCapture?.(e.pointerId);
@@ -393,6 +402,7 @@ export function createFishing(cb: FishingCallbacks): Fishing {
   }
   main.addEventListener('contextmenu', (e) => e.preventDefault()); // long press on phones
   main.addEventListener('keydown', (e) => {
+    if (!e.repeat) swallowTap = false;
     if (phase !== 'reeling' || (e.key !== 'Enter' && e.key !== ' ')) return;
     e.preventDefault();
     setHeld(true);
