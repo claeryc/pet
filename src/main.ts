@@ -90,7 +90,10 @@ import { fortuneArt, skipFortuneOnTap } from './ui/fortune';
 import { createAwayCard } from './ui/away';
 import { awayNotes } from './game/away';
 import type { Pet, Room } from './game/state';
-import { clearSave, loadGame, saveGame } from './storage/storage';
+import { askToKeepStorage, BackupError, blockSaves, clearSave, exportSave, importSave, loadGame, saveGame, whenSaveFails } from './storage/storage';
+import { askAboutUnreadableSave, showOpenElsewhere } from './ui/saveTrouble';
+import { claimTab } from './tabLock';
+import { reportOnce, watchForErrors } from './errors';
 import { setupCanvas, drawRoom } from './render/canvas';
 import { loadSprites, type SpriteLibrary } from './render/sprites';
 import { createHomeScreen } from './ui/home';
@@ -114,6 +117,7 @@ import { guideDue, markGuideRead, type GuideId } from './game/guides';
 import { createGuideCard } from './ui/guide';
 import { bathe, collectPoop, poopCount, poopNow, shiftHygiene, smellNow } from './game/hygiene';
 
+watchForErrors();
 const root = document.getElementById('app')!;
 
 // The game's clock: real time plus any debug fast-forward.
@@ -121,8 +125,24 @@ function gameNow(): number {
   return Date.now() + state.clockOffsetMs;
 }
 
+// Only one tab looks after the pet. If another has it, this one waits
+// (without loading, ticking or saving) until the player takes it over.
+const tab = await claimTab();
+if (!tab.held) {
+  showOpenElsewhere(root);
+  await new Promise<never>(() => {});
+}
+
 // Load the saved game (or start a new one) and catch it up to right now.
-const saved = loadGame();
+// A save we can't read (from a newer build, or broken) is backed up and
+// never written over until the player says so.
+const loaded = loadGame();
+if (loaded.kind === 'newer' || loaded.kind === 'broken') {
+  blockSaves();
+  await askAboutUnreadableSave(root, loaded.kind);
+  blockSaves(false);
+}
+const saved = loaded.kind === 'ok' ? loaded.state : null;
 let state: GameState = saved ?? createNewGame(Date.now());
 // How the pets were when the game was last closed, so any that grew up
 // while you were away still get their grow-up reveal.
@@ -131,6 +151,7 @@ const foundAtClose = state.charactersFound;
 // What Messages had at the last visit, so Percy's news from while you were
 // away can be shown once the screen is up.
 const lastVisitMessages = state.messages;
+if (state.pet.named) askToKeepStorage(); // pets named before this was added
 const startup = updateProgress(simulate(state, gameNow()));
 state = startup.state;
 saveGame(state);
@@ -367,6 +388,8 @@ function askName(): void {
       if (result.blocked) return STRINGS.naming.empty;
       setState(result.state);
       const named = state.pet.name;
+      // A named pet is worth keeping: ask the browser not to clear it.
+      if (first) askToKeepStorage();
       if (!first) home.toast(STRINGS.naming.renamed(named));
       else home.toast(pet.stage === 'baby' ? STRINGS.growth.baby(named) : STRINGS.naming.hello(named));
       for (const message of afterNaming.splice(0)) home.notice(message);
@@ -1256,6 +1279,32 @@ const home = createHomeScreen(root, {
     runShop(buyGardenItem(state, item), STRINGS.shop.bought(
       item.kind === 'seed' ? STRINGS.garden.seedName(STRINGS.foods[item.id]) : STRINGS.garden.supplies[item.id],
     )),
+  onBackupCode: () => exportSave(state),
+  onRestore: async (code) => {
+    const S = STRINGS.settings;
+    let restored: GameState;
+    try {
+      restored = await importSave(code);
+    } catch (err) {
+      return S.restoreErrors[err instanceof BackupError ? err.reason : 'unreadable'];
+    }
+    // The safe choice comes first, so it's the one that has focus.
+    choice.open({
+      title: S.restoreTitle,
+      text: S.restoreText,
+      options: [
+        { label: S.restoreNo, onPick: () => {} },
+        {
+          label: S.restoreYes, soft: true, onPick: () => {
+            if (!saveGame(restored)) return;
+            blockSaves(); // nothing may save the old pet over it before the reload
+            location.reload();
+          },
+        },
+      ],
+    });
+    return null;
+  },
   onReset: () => {
     // The safe choice comes first, so it's the one that has focus.
     choice.open({
@@ -1600,6 +1649,13 @@ const growUp = createGrowUpReveal(root, (moment) => {
 });
 skipFortuneOnTap();
 const away = createAwayCard(root);
+// If saving fails (storage full, private browsing), say so once.
+let saveFailShown = false;
+whenSaveFails(() => {
+  if (saveFailShown) return;
+  saveFailShown = true;
+  home.toast(STRINGS.settings.saveFailed);
+});
 const guide = createGuideCard(root);
 home.update(state, gameNow());
 startAudio();
@@ -1647,7 +1703,19 @@ function keepsakesView() {
   };
 }
 
+// One frame. If anything in it throws, the error is logged once and the
+// next frame is still drawn, so the pet never freezes for good.
 function render(timeMs: number): void {
+  try {
+    drawFrame(timeMs);
+  } catch (err) {
+    reportOnce(err, 'render');
+  } finally {
+    requestAnimationFrame(render);
+  }
+}
+
+function drawFrame(timeMs: number): void {
   const pet = state.pet;
   // A pet out on a journey isn't in the room.
   const away = isAway(pet);
@@ -1742,12 +1810,36 @@ function render(timeMs: number): void {
     timeMs,
     away ? undefined : sprites.get(getHat(hatId)?.sheet ?? ''),
   );
-  requestAnimationFrame(render);
 }
 requestAnimationFrame(render);
 
-// Keep the world ticking while the game is open...
-setInterval(() => setState(simulate(state, gameNow())), CONFIG.liveUpdateSeconds * 1000);
+// Keep the world ticking while the game is open. simulate hands back the
+// same state when nothing has happened yet (the world moves in 1-minute
+// ticks), and then there's nothing to save: only the screen is refreshed,
+// so countdowns keep counting.
+function liveTick(): void {
+  const next = simulate(state, gameNow());
+  if (next !== state) setState(next);
+  else home.update(state, gameNow());
+}
+let ticker: ReturnType<typeof setInterval> | null = null;
+let tabLost = false; // another tab has the pet now
+function startTicking(): void {
+  if (ticker === null && !tabLost) ticker = setInterval(liveTick, CONFIG.liveUpdateSeconds * 1000);
+}
+function stopTicking(): void {
+  if (ticker !== null) clearInterval(ticker);
+  ticker = null;
+}
+startTicking();
+
+// Another tab took the pet over: stop ticking (saves are already blocked)
+// and say so, over everything else.
+tab.onLost(() => {
+  tabLost = true;
+  stopTicking();
+  showOpenElsewhere(root);
+});
 
 // ...and catch up straight away when you come back to the tab or app.
 // Leaving keeps a copy of the game as it was, so coming back can say what
@@ -1755,9 +1847,12 @@ setInterval(() => setState(simulate(state, gameNow())), CONFIG.liveUpdateSeconds
 let leftAs: { state: GameState; at: number } | null = null;
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
+    // Nothing ticks in the background; coming back catches up in one go.
+    stopTicking();
     leftAs = { state, at: gameNow() };
   } else {
-    tryCheckIn();
+    startTicking();
+    tryCheckIn(); // catches the world up, too
     if (leftAs) showAway(leftAs.state, leftAs.at);
     leftAs = null;
     home.showTripIfEmpty();

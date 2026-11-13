@@ -1,4 +1,4 @@
-// The menu inside the gear button's panel (it opens like Feed and Play). It
+// The menu inside the Menu (backpack) button's panel (it opens like Feed and Play). It
 // has a main list (Shop, Map, Messages, Collection, Skills, Family Tree,
 // Guide, Settings) and a page for each, plus the Wardrobe, which opens when you
 // hold the pet. The Map tile opens the map over the whole screen (see
@@ -52,6 +52,10 @@ export interface DebugCallbacks {
 
 export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks, FamilyCallbacks, SkillsCallbacks, JourneysCallbacks, MeadowCallbacks {
   onReset: () => void;
+  onBackupCode: () => Promise<string>; // the backup code for the game as it is now
+  // Checks a pasted backup code. Returns what's wrong with it, or null once
+  // the player is being asked whether to restore it.
+  onRestore: (code: string) => Promise<string | null>;
   onOwner: (name: string) => void; // the player typed their name in Settings
   onSeen: (id: UnlockId) => void; // the player has looked at something new
   onMessagesSeen: () => void; // the player opened Messages
@@ -96,7 +100,7 @@ function item(label: string, onClick: () => void): HTMLButtonElement {
   return b;
 }
 
-export type MenuPage = 'main' | 'settings' | 'credits' | 'shop' | 'wardrobe' | 'collection' | 'skills' | 'familyTree' | 'meadow' | 'messages' | 'guide' | 'journal';
+export type MenuPage = 'main' | 'settings' | 'credits' | 'backup' | 'shop' | 'wardrobe' | 'collection' | 'skills' | 'familyTree' | 'meadow' | 'messages' | 'guide' | 'journal';
 
 // `isOpen` says whether the panel is showing; `close` folds it up.
 // `onPage` hears which page is showing, each time one is drawn.
@@ -689,8 +693,124 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
       cb.onReset();
     });
     reset.classList.add('menu-item-danger');
-    panel.replaceChildren(header(STRINGS.menu.settings, showMain), ownerField(), audioToggles(), aboutSection(), reset);
+    const backup = item(STRINGS.settings.backup, showBackup);
+    const arrow = document.createElement('span');
+    arrow.className = 'settings-link-arrow';
+    arrow.textContent = '›';
+    arrow.setAttribute('aria-hidden', 'true');
+    backup.append(arrow);
+    panel.replaceChildren(header(STRINGS.menu.settings, showMain), ownerField(), audioToggles(), backup, aboutSection(), reset);
     if (CONFIG.debug.showTools) panel.append(debugSection());
+  }
+
+  // Back up your pet: copy the backup code or save it as a file, and
+  // restore from a code (pasted, or read from a file).
+  function showBackup(): void {
+    setPage('backup');
+    toTop();
+    const S = STRINGS.settings;
+    const el = <K extends keyof HTMLElementTagNameMap>(tag: K, className = '', text = '') => {
+      const e = document.createElement(tag);
+      if (className) e.className = className;
+      if (text) e.textContent = text;
+      return e;
+    };
+
+    // Making a backup.
+    const make = el('section', 'settings-field settings-backup');
+    const intro = el('p', '', S.backupIntro);
+    const buttons = el('div', 'settings-backup-buttons');
+    const copy = el('button', 'shop-btn', S.backupCopy);
+    const download = el('button', 'shop-btn shop-btn-soft', S.backupDownload);
+    buttons.append(copy, download);
+    const status = el('small', 'settings-backup-status');
+    status.setAttribute('role', 'status');
+    const shown = el('textarea', 'settings-backup-code');
+    shown.readOnly = true;
+    shown.hidden = true;
+    shown.rows = 4;
+    shown.setAttribute('aria-label', S.backupCopy);
+    make.append(el('b', '', S.backupMake), intro, buttons, status, shown);
+
+    const busy = async (button: HTMLButtonElement, work: () => Promise<void>) => {
+      if (button.disabled) return;
+      button.disabled = true;
+      status.textContent = S.backupWorking;
+      try {
+        await work();
+      } finally {
+        button.disabled = false;
+      }
+    };
+    copy.addEventListener('click', () => busy(copy, async () => {
+      const code = await cb.onBackupCode();
+      try {
+        await navigator.clipboard.writeText(code);
+        shown.hidden = true;
+        status.textContent = S.backupCopied;
+      } catch {
+        // No clipboard (or no permission): show the code, all selected.
+        shown.value = code;
+        shown.hidden = false;
+        status.textContent = S.backupCopyFailed;
+        shown.focus();
+        shown.select();
+      }
+    }));
+    download.addEventListener('click', () => busy(download, async () => {
+      const code = await cb.onBackupCode();
+      const url = URL.createObjectURL(new Blob([code], { type: 'text/plain' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = S.backupFile(new Date().toISOString().slice(0, 10));
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      status.textContent = S.backupDownloaded;
+    }));
+
+    // Restoring one.
+    const restore = el('section', 'settings-field settings-backup');
+    const paste = el('textarea', 'settings-backup-code');
+    paste.rows = 4;
+    paste.placeholder = S.restorePlaceholder;
+    paste.setAttribute('aria-label', S.restore);
+    paste.spellcheck = false;
+    paste.setAttribute('autocapitalize', 'off');
+    paste.setAttribute('autocomplete', 'off');
+    const file = el('input');
+    file.type = 'file';
+    file.accept = '.txt,text/plain';
+    file.hidden = true;
+    const restoreButtons = el('div', 'settings-backup-buttons');
+    const openFile = el('button', 'shop-btn shop-btn-soft', S.restoreFile);
+    const go = el('button', 'shop-btn', S.restoreButton);
+    restoreButtons.append(openFile, go);
+    const problem = el('small', 'settings-backup-status settings-backup-problem');
+    problem.setAttribute('role', 'alert');
+    restore.append(el('b', '', S.restore), el('small', '', S.restoreHint), paste, file, restoreButtons, problem);
+
+    openFile.addEventListener('click', () => file.click());
+    file.addEventListener('change', async () => {
+      const picked = file.files?.[0];
+      if (!picked) return;
+      paste.value = (await picked.text()).trim();
+      file.value = '';
+      problem.textContent = '';
+    });
+    go.addEventListener('click', async () => {
+      if (go.disabled) return;
+      go.disabled = true;
+      try {
+        problem.textContent = (await cb.onRestore(paste.value)) ?? '';
+        if (problem.textContent) problem.scrollIntoView({ block: 'nearest' });
+      } finally {
+        go.disabled = false;
+      }
+    });
+
+    panel.replaceChildren(header(S.backup, showSettings, undefined, STRINGS.menu.settings), make, restore);
   }
 
   // Who made what: the music and sounds, the art, and the font, with the

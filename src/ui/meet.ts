@@ -21,7 +21,7 @@ import { giftTenths, hearts, isFriend, littleOneChance, mingleBlock, visitor } f
 import type { Friend, GameState } from '../game/state';
 import { HEART_ICONS, ITEM_ICONS, STAT_ICONS } from './icons';
 import { createDrawer, type DrawerOption } from './drawer';
-import { formatDuration } from './time';
+import { formatDuration, formatIn } from './time';
 
 export interface MeetCallbacks {
   onMeet: (id: string) => boolean; // true if they played (not refused)
@@ -197,7 +197,7 @@ export function createMeet(cb: MeetCallbacks): MeetPanel {
     today.hidden = leaves.hidden = false;
     leaves.innerHTML = STAT_ICONS.hourglass;
     leaves.append(left);
-    leaves.title = STRINGS.friends.visiting(left);
+    leaves.title = STRINGS.friends.visiting(formatIn(state.visit.until - now));
     today.replaceChildren(el('small', '', STRINGS.friends.today));
     for (let i = 0; i < perDay; i++) today.append(el('i', i < met ? 'is-met' : ''));
     today.title = STRINGS.friends.metToday(met, perDay);
@@ -215,7 +215,7 @@ export function createMeet(cb: MeetCallbacks): MeetPanel {
     let text: string;
     if (block === null) text = STRINGS.friends.mingleChance(littleOneChance(f.score));
     else if (block === 'hearts') text = STRINGS.friends.mingleHint(CONFIG.friends.mingle.minScore);
-    else if (block === 'wait') text = STRINGS.friends.mingleWait(formatDuration(f.mingledAt + CONFIG.friends.mingle.waitDays * DAY - now));
+    else if (block === 'wait') text = STRINGS.friends.mingleWait(formatIn(f.mingledAt + CONFIG.friends.mingle.waitDays * DAY - now));
     else text = STRINGS.friends.mingle;
     mingle.innerHTML = HEART_ICONS.full;
     mingle.append(el('span', '', text));
