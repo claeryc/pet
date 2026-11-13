@@ -8,11 +8,11 @@ import { characterKey, unlocksFor } from '../game/unlocks';
 import { newGarden } from '../game/garden';
 import { newCrafting, newDig, newJourneys, newKeeper } from '../game/state';
 import { grownUpXp, levelInfo } from '../game/skills';
-import { getCharacter } from '../game/growth';
+import { getCharacter, rollTheme } from '../game/growth';
 import { guidesAlreadyKnown } from '../game/guides';
 import { backfillRegulars } from '../game/regulars';
 import { fitTrait, rollTrait } from '../game/traits';
-import { carriedOf, genesAtGrowUp } from '../game/genes';
+import { carriedOf, genesAtGrowUp, inheritanceOf } from '../game/genes';
 import { rollLikes } from '../game/likes';
 import { newHygiene } from '../game/hygiene';
 import { hangKeepsakePieces, petFromMember } from '../game/meadow';
@@ -21,7 +21,7 @@ const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 42;
+export const SAVE_VERSION = 43;
 
 export interface SaveFile {
   version: number;
@@ -479,6 +479,16 @@ export function migrate(save: SaveFile): SaveFile {
   if (save.version === 41) {
     save.state.crafting = newCrafting();
     save.version = 42;
+  }
+  // Version 42 -> 43: a pet's theme is rolled when its egg is made, and
+  // shows in its egg, baby and teen colours. Pets that haven't grown up
+  // yet get theirs now (the same odds they'd have had at grow-up).
+  if (save.version === 42) {
+    const st = save.state;
+    for (const p of [st.pet, ...(st.housemates ?? []), st.nest].filter(Boolean)) {
+      p.destinedTheme = p.stage === 'adult' ? null : rollTheme(p.id, inheritanceOf(p));
+    }
+    save.version = 43;
   }
   return save;
 }

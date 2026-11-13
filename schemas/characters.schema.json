@@ -15,6 +15,12 @@
       "additionalProperties": false,
       "properties": { "egg": { "type": "string" }, "baby": { "type": "string" }, "teen": { "type": "string" } }
     },
+    "stageThemes": {
+      "type": "array",
+      "description": "Themes whose eggs, babies and teens use a recoloured sheet named '<sheet>-<theme>' (e.g. 'baby-ocean'). Other themes use the plain sheet.",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
     "themes": { "type": "object", "description": "Theme ids and the names players see.", "additionalProperties": { "type": "string" } },
     "elements": { "type": "object", "description": "Element ids and the names players see. These never change: new themes join one.", "additionalProperties": { "type": "string" } },
     "themeElements": { "type": "object", "description": "Which element each theme belongs to (theme id -> element id).", "additionalProperties": { "type": "string" } },

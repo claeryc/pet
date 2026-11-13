@@ -881,7 +881,7 @@ function mingleNow(id: string): void {
     friend: friend?.name ?? '',
     petPic: () => portraitOf(parent),
     friendPic: () => characterImage(friendSheet),
-    eggPic: () => portraitOf({ ...parent, stage: 'egg' }),
+    eggPic: () => portraitOf(result.egg ?? { ...parent, stage: 'egg' }),
     egg: !!result.egg,
     // A full room keeps the egg in the nest until there's room.
     onClose: () => {

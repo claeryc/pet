@@ -55,7 +55,7 @@ export const CONFIG = {
   // tools in Settings to try this without waiting days.
   growth: {
     stageHours: {
-      egg: 0.5, // the egg hatches after 30 minutes
+      egg: 90 / 3600, // the egg hatches after 90 seconds (time to look around)
       baby: 24, // a baby for 1 day
       teen: 72, // a teen for 3 days, then an adult
     },

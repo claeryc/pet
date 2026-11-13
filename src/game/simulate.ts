@@ -35,8 +35,8 @@ export function simulate(state: GameState, now: number): GameState {
   const elapsed = now - state.lastUpdated;
 
   // If the clock went backwards (e.g. the device time was changed) or less
-  // than one tick has passed, nothing happens yet.
-  if (elapsed < tickMs) return state;
+  // than one tick has passed, nothing happens yet (except an egg that's due).
+  if (elapsed < tickMs) return hatchDueEggs(state, now);
 
   const ticks = Math.floor(elapsed / tickMs);
 
@@ -64,7 +64,24 @@ export function simulate(state: GameState, now: number): GameState {
   // (a pickup that came due, or a new order), the pet's cravings, and
   // visitors dropping by.
   const next = stepJourneys(state, { ...state, pet, housemates, garden, lastUpdated: t }, t);
-  return stepCrafting(stepRiceJar(stepVisits(stepCraving(stepDelivery(next, t), t), t), t), t);
+  const stepped = stepCrafting(stepRiceJar(stepVisits(stepCraving(stepDelivery(next, t), t), t), t), t);
+  return hatchDueEggs(stepped, now);
+}
+
+// The egg timer is short (see CONFIG.growth.stageHours.egg), so an egg
+// hatches right on time instead of waiting for the next whole-minute tick.
+// Eggs need nothing, so there is no decay to catch up on in between.
+function hatchDueEggs(state: GameState, now: number): GameState {
+  const due = (p: Pet) =>
+    p.stage === 'egg' && p.condition !== 'passed' && !p.trip && now - p.stageStartedAt >= stageLengthMs('egg');
+  if (!due(state.pet) && !state.housemates.some(due)) return state;
+  const hatch = (p: Pet): Pet => {
+    if (!due(p)) return p;
+    const copy = { ...p, stats: { ...p.stats } };
+    growUp(copy, p.stageStartedAt + stageLengthMs('egg'));
+    return copy;
+  };
+  return { ...state, pet: hatch(state.pet), housemates: state.housemates.map(hatch) };
 }
 
 // Advances the pet by one tick ending at time `t`. Changes `pet` in place
