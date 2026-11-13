@@ -13649,3 +13649,70 @@ button.trip-bars-name.is-on {
 .yard-row[hidden] {
   display: none;
 }
+
+/* ---- Settings: About the game, and the Credits page ---- */
+
+.settings-about {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.settings-about h3 {
+  margin: 4px 4px 0;
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.6;
+}
+
+.menu-panel .settings-link {
+  text-decoration: none;
+}
+
+.settings-link-arrow {
+  font-weight: 800;
+  opacity: 0.55;
+}
+
+.settings-version {
+  margin: 2px 4px 4px;
+  font-size: 0.78rem;
+  opacity: 0.6;
+  text-align: center;
+}
+
+.settings-credits {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-credits p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.settings-licence summary {
+  margin-top: 4px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--plum);
+  cursor: pointer;
+}
+
+.settings-licence pre {
+  max-height: 260px;
+  overflow: auto;
+  margin: 8px 0 0;
+  padding: 10px;
+  border-radius: 10px;
+  background: white;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
