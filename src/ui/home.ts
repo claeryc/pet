@@ -10,6 +10,7 @@ import type { FurnitureSlot, GameState, PetStats } from '../game/state';
 import { meadowVisitor } from '../game/meadow';
 import { createMenu, type MenuCallbacks } from './menu';
 import { createMap } from './map';
+import { sound } from '../audio/audio';
 import { firstPick, START_MAP } from '../game/map';
 import { visitor } from '../game/friends';
 import { foodCount, revivalStars } from '../game/economy';
@@ -678,13 +679,18 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     menuDrawer!.close();
   };
   // "···" or "×", and what screen readers hear, follow whatever is open.
+  // A soft swish as something opens over the dock, or goes away.
+  let wasOpen = false;
   const syncMore = () => {
     const open = !!actions.dataset.open;
+    if (open !== wasOpen) sound(open ? 'sheetOpen' : 'sheetClose');
+    wasOpen = open;
     moreButton.classList.toggle('is-close', open);
     moreButton.setAttribute('aria-label', open ? STRINGS.menu.close : STRINGS.menu.more);
   };
   new MutationObserver(syncMore).observe(actions, { attributes: true, attributeFilter: ['data-open'] });
-  syncMore();
+  moreButton.classList.toggle('is-close', false);
+  moreButton.setAttribute('aria-label', STRINGS.menu.more);
 
   // An open Feed, Play or Menu panel reaches up to just under the stat bars,
   // so taller screens show more rows. Small screens keep the old height

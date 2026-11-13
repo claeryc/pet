@@ -1226,6 +1226,8 @@ export const STRINGS = {
   decorate: {
     spots: { wallMid: 'Small wall', wall: 'Wall', sill: 'Windowsill', left: 'Floor, left', right: 'Floor, right' } as Record<string, string>,
     hint: 'Tap a spot in the room',
+    undo: 'Undo',
+    undoLabel: 'Put the last change back',
     empty: 'Nothing',
     nothingFits: 'Nothing for this spot yet.',
     shop: 'Shop',

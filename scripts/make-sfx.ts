@@ -782,6 +782,21 @@ const RECIPES: Record<string, { seconds: number; make: (buf: Float32Array) => vo
     make(buf) {
       chomps(buf, 303, [1.04, 0.95, 1.0]);
     },
+  },  // A sheet or the pop-up opening over the dock: a soft paper swish and a
+  // little rising pop. Closing: the same, falling.
+  'sheet-open': {
+    seconds: 0.22,
+    make(buf) {
+      noise(buf, 0, 0.09, 1800, 4200, 0.18, bell, 0.5);
+      bubble(buf, 0.03, 520, 0.08, 0.5, 1.6);
+    },
+  },
+  'sheet-close': {
+    seconds: 0.2,
+    make(buf) {
+      noise(buf, 0, 0.08, 3600, 1500, 0.15, bell, 0.5);
+      bubble(buf, 0.02, 640, 0.07, 0.4, 0.7);
+    },
   },
 };
 
@@ -808,7 +823,10 @@ function wav(samples: Float32Array): Buffer {
 }
 
 mkdirSync(OUT, { recursive: true });
+// `npm run sfx -- sheet-open sheet-close` makes just those.
+const only = process.argv.slice(2);
 for (const [name, { seconds, make }] of Object.entries(RECIPES)) {
+  if (only.length && !only.includes(name)) continue;
   const buf = new Float32Array(Math.round(seconds * RATE));
   make(buf);
   // Every sound peaks at the same level (src/audio/audio.ts sets how loud
