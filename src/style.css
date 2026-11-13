@@ -14842,3 +14842,11 @@ button.trip-bars-name.is-on {
     animation: none;
   }
 }
+/* The Shop's sticky top also covers the strip above it (the sheet's
+   padding), so nothing scrolls into view over the awning. */
+.actions .shop-top {
+  box-shadow: 0 -28px 0 0 #fff8f3;
+}
+.actions .shop-page.is-night .shop-top {
+  box-shadow: 0 -28px 0 0 #3b2b55;
+}
