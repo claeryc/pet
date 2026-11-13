@@ -275,7 +275,9 @@ export function createMap(cb: MapCallbacks): WorldMap {
     lights.hidden = !night || !file.night;
     sign.textContent = MAPS[mapId].title;
     const backTo = MAPS[mapId].back;
-    back.textContent = backTo ? S.back(MAPS[backTo].title) : S.close;
+    // On the island the way out is home; out at sea, back to the island.
+    if (backTo) back.textContent = S.back(MAPS[backTo].title);
+    else back.innerHTML = `<span class="map-back-icon" aria-hidden="true">${ITEM_ICONS.roomDoor}</span>${S.home}`;
     journal.hidden = !backTo;
 
     // Clouds over what's still locked.
@@ -315,6 +317,11 @@ export function createMap(cb: MapCallbacks): WorldMap {
         if (news.length > 2) stack.append(el('span', 'map-badge is-more', S.moreNews(news.length - 2)));
         b.append(stack);
       } else if (c.dot) b.append(el('span', 'map-dot'));
+      // What's going on there, in a word or two, under its name.
+      if ((c.dot || c.good) && !c.locked && !c.tickets) {
+        b.classList.add('has-status');
+        b.append(el('span', 'map-status', (c.news?.[0]?.text ?? c.text).replace(/[.!]$/, '')));
+      }
       b.addEventListener('click', (e) => {
         e.stopPropagation();
         pick(a.id === picked ? '' : a.id);

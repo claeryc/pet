@@ -14136,6 +14136,7 @@ button.trip-bars-name.is-on {
   display: block;
 }
 /* Something new behind "···": one dot, the same as on the other buttons. */
+.dock-map.has-new::after,
 .dock-more.has-new:not(.is-close)::after {
   content: '';
   position: absolute;
@@ -14336,9 +14337,13 @@ button.trip-bars-name.is-on {
     animation: none;
   }
 }
-/* The bars gave way to the needs pill. They stay in the page (the pond,
-   the kitchen and the rest still rise into their place), just unseen. */
+/* The bars gave way to the needs pill. At home they take no room; with a
+   game on (the dock hidden) they keep their height, unseen, so the pond,
+   the kitchen and the rest still rise into their place. */
 .stat-slot > .stats {
+  visibility: hidden;
+}
+#app:has(> .dock:not([hidden])) > .stat-slot > .stats {
   display: none;
 }
 
@@ -14712,4 +14717,47 @@ button.trip-bars-name.is-on {
 #app:has(> .dock[data-open='play']) .craving-bubble,
 #app:has(> .dock[data-open='menu']:not([data-page='main'])) .craving-bubble {
   display: none;
+}
+
+/* ---- Redesign part 4: the map as the hub ----
+   Each place says what's going on there under its name, and the way out
+   is Home (blue, like the dock's Map). */
+.map-label.has-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  text-align: left;
+}
+.map-status {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--good, #3f7d62);
+  max-width: 120px;
+  white-space: normal;
+  line-height: 1.15;
+}
+.map-label.has-status::before {
+  content: none;
+}
+.map-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--map-blue);
+  box-shadow: 0 4px 0 var(--map-blue-dark);
+  color: white;
+}
+.map-back:active {
+  box-shadow: 0 1px 0 var(--map-blue-dark);
+}
+.map-back-icon {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+}
+.map-back-icon svg {
+  width: 100%;
+  height: 100%;
 }

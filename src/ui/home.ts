@@ -10,6 +10,7 @@ import type { FurnitureSlot, GameState, PetStats } from '../game/state';
 import { meadowVisitor } from '../game/meadow';
 import { createMenu, type MenuCallbacks } from './menu';
 import { createMap } from './map';
+import { firstPick, START_MAP } from '../game/map';
 import { visitor } from '../game/friends';
 import { foodCount, revivalStars } from '../game/economy';
 import { BAITS, baitCount, baitInUse, type BaitId, type Bite } from '../game/fishing';
@@ -735,9 +736,16 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       switch (opens.kind) {
         case 'garden':
           return startGarden();
+        case 'pond':
+          return startFishing();
         case 'meadow':
         case 'friends':
-          if (opens.kind === 'friends' && latest && visitor(latest.state)) return startMeet();
+          // Friends: play with whoever's over, or meet one (letters first
+          // when there are new ones and nobody's over).
+          if (opens.kind === 'friends' && latest) {
+            const s = latest.state;
+            if (visitor(s) || (isUnlocked(s, 'meet') && unreadMail(s) === 0)) return startMeet();
+          }
           if (actions.hidden) return;
           feedDrawer.close();
           playDrawer.close();
@@ -1534,6 +1542,10 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       feedDrawer.setOptionNew(COOK_ROW, cookIsNew);
       cookButton.classList.toggle('has-new', cookIsNew);
       feedDrawer.setNew(cookIsNew);
+      // Something going on at a place on the island (a crop to pick, a
+      // friend over, a new place to try): a dot on Map.
+      mapButton.classList.toggle('has-new', firstPick(state, now, START_MAP) !== '' ||
+        isNew(state, 'garden') || isNew(state, 'meet') || isNew(state, 'journeys'));
       moreButton.classList.toggle('has-new',
         isNew(state, 'shop') || isNew(state, 'collection') || isNew(state, 'familyTree') || isNew(state, 'journeys') ||
           [pet, ...state.housemates].some(hasBackpack) ||
@@ -1570,13 +1582,15 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       refreshNotes(state);
       refreshParcel();
       parcel.classList.toggle('all-full', !!state.delivery.order?.boxes.every((b) => b.have >= b.want));
-      playDrawer.setHidden(GARDEN_ROW, !isUnlocked(state, 'garden'));
+      // Meet, Fishing, the Garden and Journeys are places on the map now.
+      playDrawer.setHidden(GARDEN_ROW, true);
       const gardenIsNew = isNew(state, 'garden');
       playDrawer.setOptionNew(GARDEN_ROW, gardenIsNew);
-      playDrawer.setHidden(MEET_ROW, !isUnlocked(state, 'meet'));
+      playDrawer.setHidden(MEET_ROW, true);
+      playDrawer.setHidden(MEET_ROW + 1, true);
       const meetIsNew = isNew(state, 'meet');
       playDrawer.setOptionNew(MEET_ROW, meetIsNew);
-      playDrawer.setHidden(JOURNEYS_ROW, !isUnlocked(state, 'journeys'));
+      playDrawer.setHidden(JOURNEYS_ROW, true);
       const journeysIsNew = isNew(state, 'journeys');
       playDrawer.setOptionNew(JOURNEYS_ROW, journeysIsNew);
       playDrawer.setHidden(DIG_ROW, !isUnlocked(state, 'dig'));
@@ -1585,7 +1599,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       playDrawer.setHidden(WORKBENCH_ROW, !isUnlocked(state, 'workbench'));
       const benchIsNew = isNew(state, 'workbench');
       playDrawer.setOptionNew(WORKBENCH_ROW, benchIsNew);
-      playDrawer.setNew(gardenIsNew || meetIsNew || journeysIsNew || digIsNew || benchIsNew);
+      playDrawer.setNew(digIsNew || benchIsNew);
       // A drop on Play when a pot is dry, sick or ready to harvest.
       const tend = isUnlocked(state, 'garden') && needsTending(state.garden, now);
       // ...or a jar of honey when the beehive is full.

@@ -158,7 +158,7 @@ function previewCard(a: MapAreaDef, c: AreaCard): AreaCard {
     card = { ...card, mist: false };
     if (opens?.kind !== 'soon') {
       // Open: the button a new game would show once it's unlocked.
-      const button = { home: S.goHome, garden: S.go, meadow: S.visit, friends: S.visit, map: S.setSail, journey: S.planTrip }[opens?.kind ?? 'garden'];
+      const button = { home: S.goHome, garden: S.go, meadow: S.visit, pond: S.goFishing, friends: S.visit, map: S.setSail, journey: S.planTrip }[opens?.kind ?? 'garden'];
       card = { ...card, locked: false, enabled: true, button: card.button === S.locked ? button : card.button };
     }
     if (card.text === (a.lockedText ?? S.lockedText) || card.text.startsWith('Opens')) card.text = '';

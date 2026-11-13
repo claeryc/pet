@@ -13,6 +13,7 @@ import { meadowVisitor } from './meadow';
 import { unreadMail } from './messages';
 import { visitor } from './friends';
 import { hasBackpack, isAway } from './presence';
+import { localDay } from './economy';
 import { isUnlocked, type UnlockId } from './unlocks';
 import type { GameState, Offer, Pet } from './state';
 
@@ -34,12 +35,12 @@ export const START_MAP = data.start;
 
 // What an area's button does.
 export type Opens =
-  | { kind: 'home' | 'garden' | 'meadow' | 'friends' | 'soon' }
+  | { kind: 'home' | 'garden' | 'meadow' | 'pond' | 'friends' | 'soon' }
   | { kind: 'map'; map: string }
   | { kind: 'journey'; place: string };
 
 export function parseOpens(opens: string): Opens | null {
-  if (['home', 'garden', 'meadow', 'friends', 'soon'].includes(opens)) return { kind: opens as 'home' };
+  if (['home', 'garden', 'meadow', 'pond', 'friends', 'soon'].includes(opens)) return { kind: opens as 'home' };
   const [kind, id] = opens.split(':');
   if (kind === 'map' && MAPS[id]) return { kind: 'map', map: id };
   if (kind === 'journey' && PLACES.some((p) => p.id === id)) return { kind: 'journey', place: id };
@@ -148,6 +149,13 @@ export function areaCard(state: GameState, now: number, area: MapAreaDef): AreaC
       if (v) return busy([{ badge: 'visitor', text: S.meadowVisitor(v.pet.name) }], S.visit);
       const n = state.meadow.length;
       return card(n ? S.meadowPets(n) : S.meadowEmpty, S.visit);
+    }
+    case 'pond': {
+      // How many more of today's catches still count for XP and seeds.
+      const today = localDay(now);
+      const landed = state.pond.day === today ? state.pond.fish : 0;
+      const left = Math.max(0, CONFIG.fishing.rewardedPerDay - landed);
+      return left > 0 ? card(S.pondBiting, S.goFishing, { good: landed === 0 }) : card(S.pondFull, S.goFishing);
     }
     case 'friends': {
       const over = visitor(state);

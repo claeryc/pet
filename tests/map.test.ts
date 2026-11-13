@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { MAPS, START_MAP, areaCard, firstPick, mistyAreas, parseOpens, petAt, ticketsAt } from '../src/game/map';
 import { NIGHT, PLACES } from '../src/game/journeys';
 import { CONFIG } from '../src/game/config';
+import { localDay } from '../src/game/economy';
 import type { Trip } from '../src/game/state';
 import { newTeen } from './helpers';
 
@@ -137,5 +138,18 @@ describe('where the pet is', () => {
     expect(at(0.5)).toEqual({ area: 'market', share: 1 });
     expect(at(1 - out / 2).share).toBeCloseTo(0.5);
     expect(petAt(s, NOW, 'island')).toBeNull();
+  });
+});
+
+describe('the pond', () => {
+  it('goes fishing, and says when the day\'s rewarded catches are used up', () => {
+    const s = newTeen(NOW);
+    const fresh = areaCard(s, NOW, area('island', 'pond'));
+    expect(parseOpens(area('island', 'pond').opens)).toEqual({ kind: 'pond' });
+    expect(fresh.enabled).toBe(true);
+    expect(fresh.good).toBe(true);
+    const full = areaCard({ ...s, pond: { day: localDay(NOW), fish: CONFIG.fishing.rewardedPerDay } }, NOW, area('island', 'pond'));
+    expect(full.text).not.toBe(fresh.text);
+    expect(full.enabled).toBe(true);
   });
 });
