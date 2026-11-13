@@ -32,6 +32,7 @@ import { ownsFamilyHome } from '../game/rooms';
 import { CURTAINS as CURTAIN_COLOURS, WALLPAPERS as WALL_PATTERNS } from '../render/room';
 import { PALETTE } from '../render/palette';
 import { adsAllowed, extrasLeft, nextAd, rewardOf } from '../game/ads';
+import { STORE_OPEN } from '../payments';
 
 // What the room above shows while a sheet is open: a hat on the pet, or a
 // decoration up in the room, before it's bought.
@@ -848,11 +849,9 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
       pack.append(buy);
       packs.append(pack);
     });
-    return [
-      have,
-      ...(ad ? [section(STRINGS.ads.freeTitle), ad, text('p', 'shop-fine is-ads', STRINGS.ads.optional)] : []),
-      section(S.getFragments), packs, text('p', 'shop-fine', S.realMoney),
-    ];
+    const free = ad ? [section(STRINGS.ads.freeTitle), ad, text('p', 'shop-fine is-ads', STRINGS.ads.optional)] : [];
+    if (!STORE_OPEN) return [have, ...free];
+    return [have, ...free, section(S.getFragments), packs, text('p', 'shop-fine', S.realMoney)];
   };
 
   // Free treats: the next rewarded ad, if there are ads at all. Never

@@ -8,6 +8,11 @@ const pct = (share: number) => Math.round(share * 100);
 export type GuideText = string | ((pet: string) => string);
 
 export const STRINGS = {
+  // How long until something, inside a sentence (see formatIn).
+  time: {
+    inTime: (time: string) => `in ${time}`,
+    anyMoment: 'any moment now',
+  },
   stats: {
     hunger: 'Tummy',
     happiness: 'Joy',
@@ -102,7 +107,7 @@ export const STRINGS = {
   // Walking between the kitchen's or the workbench's stations (see
   // src/ui/walk.ts).
   stations: {
-    goTo: (name: string) => `Go to the ${name}`,
+    goTo: (name: string) => (name.includes("'") ? `Go to ${name}` : `Go to the ${name}`), // "Go to Percy's perch", not "the Percy's"
   },
   // The Backyard (Play > Garden, see src/ui/backyard.ts): the garden, and
   // the beehive and Percy's perch once they're built.
@@ -114,15 +119,15 @@ export const STRINGS = {
     beeswax: 'Beeswax',
     collect: 'Collect',
     full: 'Full! The bees are waiting.',
-    nextIn: (time: string) => `More honey in ${time}`,
-    empty: (time: string) => `Nothing yet. More honey in ${time}`,
+    nextIn: (when: string) => `More honey ${when}`,
+    empty: (when: string) => `Nothing yet. More honey ${when}`,
     nightNote: 'The bees are asleep.',
     collected: (honey: number, wax: number) => `Collected ${honey} honey and ${wax} beeswax!`,
     nothing: 'Nothing to collect yet. The bees make more every day.',
     hiveFull: 'The beehive is full of honey',
     perch: "Percy's perch",
     percyReady: 'Percy is home and ready for a trip.',
-    percyResting: (time: string) => `Percy is resting. Ready in ${time}.`,
+    percyResting: (when: string) => `Percy is resting. Ready ${when}.`,
     percyAway: 'Percy is away on a trip.',
     journeys: 'Journeys',
     wake: 'Wake up',
@@ -374,7 +379,7 @@ export const STRINGS = {
       starCharm: { name: 'Star charm', short: '★★★ up', note: 'The star charm gives a chance of a 3★ find.' },
     } as Record<string, { name: string; short: string; note: string }>,
     charmShopNote: (note: string, have: number) => (have > 0 ? `${note} You have ${have}.` : note),
-    nextOffer: (time: string) => `A new trip in ${time}`,
+    nextOffer: (when: string) => `A new trip ${when}`,
     away: (name: string, place: string) => `${name} is at ${place}`,
     backAt: (time: string) => `Back at ${time}`,
     callHome: 'Call home',
@@ -461,7 +466,7 @@ export const STRINGS = {
       noTicket: (_name: string) => 'You need a Holiday ticket. The Star Shop has them.',
       notEnoughFragments: (_name: string) => 'Not enough star fragments yet.',
     },
-    wait: (time: string) => `Ready for the next trip in ${time}`,
+    wait: (when: string) => `Ready for the next trip ${when}`,
     journal: 'Travel journal',
     tripCount: (n: number) => (n === 1 ? '1 trip' : `${n} trips`),
     notVisited: 'Not visited yet',
@@ -652,7 +657,7 @@ export const STRINGS = {
     sick: 'Sick',
     dead: 'Wilted',
     timeLeft: (time: string) => `${time} left`,
-    diesIn: (time: string) => `Wilts in ${time}`,
+    diesIn: (when: string) => `Wilts ${when}`,
     potLabel: (n: number, what: string, status: string) => `Pot ${n}: ${what}.${status ? ` ${status}` : ''}`,
     moisture: 'Soil moisture',
     fertilized: 'Fertilized',
@@ -773,10 +778,11 @@ export const STRINGS = {
       cooking: {
         name: 'Cooking',
         pages: [
-          { title: 'Fill the pot', text: 'Tap food in your pantry to put it in the pot. Then tap the bowl on the right to cook!' },
+          { title: 'Fill the pot', text: 'Tap Food, then tap what goes in the pot. Once it\'s in, tap Cook!' },
           { title: 'Find secret recipes', text: 'Recipes lists every dish. The ??? ones are secret: the hint shows one thing that goes in.' },
           { title: 'Fresh from the pot', text: (pet: string) => `Feed your dish to ${pet} or pack it for a journey. Each new dish goes in your Recipes list.` },
-          { title: 'Oops, a Mushy mess', text: 'A grey bowl means the mix makes no dish. Cook it anyway for a Mushy mess, then try another mix!' },
+          { title: 'Oops, a Mushy mess', text: 'If the recipe card shows a Mushy mess, the mix makes no dish. Cook it anyway, or try another mix!' },
+          { title: 'Chop on the board', text: 'Swipe to the Board and add something to chop. Tap Chop! in the green: three in a row is a perfect cut!' },
         ],
       },
       delivery: {
@@ -818,7 +824,7 @@ export const STRINGS = {
           { title: 'Collect materials', text: 'Journeys and Sniff and dig bring home twigs, pebbles, shells and more. Open Materials to see your pouch.' },
           { title: 'Pick a pattern', text: 'Open Patterns and pick a tab: things for the room, trips, the pond and the garden. Grey ones need more materials.' },
           { title: 'Make it!', text: 'The spots show what it takes. Tap Make! three times to hammer it together. A room piece can go straight up in your room.' },
-          { title: 'Big projects', text: 'Swipe to Projects. Dig up a key part to start one, then build it stage by stage. Each stage takes a few hours.' },
+          { title: 'Big projects', text: 'Walk right from the bench to the projects. Dig up a key part to start one, then build it stage by stage. Each stage takes a few hours.' },
         ],
       },
       meet: {
@@ -940,7 +946,7 @@ export const STRINGS = {
     inviteUsed: 'Invited today',
     nobody: "Nobody's over right now. Friends drop by through the day, or you can invite one from Messages > Friends.",
     start: (name: string) => `${name} is here! Tap Meet to play together.`,
-    visiting: (time: string) => `Visiting · leaves in ${time}`,
+    visiting: (when: string) => `Visiting · leaves ${when}`,
     hearts: (h: number) => `${h} of 5 hearts`,
     metToday: (n: number, max: number) => `Met ${n} of ${max} today`,
     today: 'Today',
@@ -953,11 +959,13 @@ export const STRINGS = {
       gained > 0 ? `${friend} loved the ${food}! Friendship grew.` : `${friend} said thanks for the ${food}!`,
     added: (friend: string) => `${friend} is your friend now! They'll drop by again, and you can invite them over.`,
     removed: (friend: string) => `You said goodbye to ${friend}.`,
-    confirmRemove: (friend: string) => `Say goodbye to ${friend}? They'll leave your friends list.`,
     remove: 'Say goodbye',
+    removeTitle: (friend: string) => `Say goodbye to ${friend}?`,
+    removeAsk: 'They\'ll leave your friends list.',
+    keep: 'Stay friends',
     mingleHint: (pct: number) => `Mingle when the hearts are ${pct}% full`,
     mingleChance: (pct: number) => `Mingle  ·  ${pct}% chance of a little one`,
-    mingleWait: (time: string) => `Mingle again in ${time}`,
+    mingleWait: (when: string) => `Mingle again ${when}`,
     // Before mingling: go ahead, or open a fortune cookie for a hint
     // about the little one first (see src/ui/fortune.ts).
     mingleTitle: (pet: string, friend: string) => `${pet} & ${friend}`,
@@ -1032,9 +1040,9 @@ export const STRINGS = {
     close: 'Close',
     fillAll: 'Fill all',
     start: 'Tap a box to put something in. Percy pays for every full box.',
-    pickupIn: (time: string) => `Pickup in ${time}`,
+    pickupIn: (when: string) => `Pickup ${when}`,
     noOrder: 'No order right now.',
-    nextOrder: (time: string) => `Percy comes back with a new order in ${time}.`,
+    nextOrder: (when: string) => `Percy comes back with a new order ${when}.`,
     noneLeft: (name: string) => `You have no ${name} left.`,
     full: 'This box is full already.',
     nothingToFill: "You don't have anything Percy asked for yet.",
@@ -1135,8 +1143,8 @@ export const STRINGS = {
   list: (names: readonly string[]) =>
     names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`,
   characterName: (name: string, variant?: string) => (variant ? `${name} (${variant})` : name),
-  status_egg: (timeLeft: string) =>
-    `Your egg is staying warm and cozy. It will hatch in ${timeLeft}.`,
+  status_egg: (when: string) =>
+    `Your egg is staying warm and cozy. It will hatch ${when}.`,
   mood: {
     idle: (name: string) => `${name} is feeling cozy.`,
     cheerful: (name: string) => `${name} is feeling cheerful!`,
@@ -1318,7 +1326,7 @@ export const STRINGS = {
     have: (count: number) => `You have ${count}`,
     free: 'Free',
     // Next to the rice ball in the Feed panel while the jar is refilling.
-    riceJar: (time: string) => `+1 free in ${time}`,
+    riceJar: (when: string) => `+1 free ${when}`,
     bought: (item: string) => `You bought ${item}!`,
     boughtHat: (item: string, name: string) => `You bought ${item}! Hold ${name} to try it on.`,
     notEnoughGold: 'Not enough gold yet.',
@@ -1552,6 +1560,71 @@ export const STRINGS = {
     ownerPlaceholder: 'Your name',
     music: 'Music',
     sounds: 'Sounds',
+    about: 'About the game',
+    support: 'Help and feedback',
+    privacy: 'Privacy policy',
+    terms: 'Terms of use',
+    credits: 'Credits',
+    soon: 'Coming soon',
+    opensOutside: '(opens outside the game)',
+    version: (v: string) => `Version ${v}`,
+    // The Credits page.
+    creditsMusicTitle: 'Music and sounds',
+    creditsMusic: 'All the music and sound effects were made for this game from scratch, with no samples or loops.',
+    creditsArtTitle: 'Pets and art',
+    creditsArt: 'Every creature and picture in the game is original, drawn for it.',
+    creditsFontTitle: 'Font',
+    creditsFont: 'Nunito, by The Nunito Project Authors. Used under the SIL Open Font License 1.1.',
+    creditsFontLicence: 'Read the font licence',
+    // Back up your pet (Settings > Back up your pet).
+    backup: 'Back up your pet',
+    backupIntro: 'Your pet lives in this browser. Keep a backup code somewhere safe, so you can bring your pet back on a new phone or if this browser forgets it.',
+    backupMake: 'Make a backup',
+    backupCopy: 'Copy code',
+    backupDownload: 'Download file',
+    backupCopied: 'Backup code copied. Paste it somewhere safe, like a note or an email to yourself.',
+    backupCopyFailed: 'Couldn\'t copy it by itself. Here\'s the code: select it all and copy it.',
+    backupDownloaded: 'Backup file saved.',
+    backupWorking: 'Just a moment…',
+    backupFile: (date: string) => `pet-backup-${date}.txt`,
+    restore: 'Restore from code',
+    restoreHint: 'Paste a backup code, or open a backup file.',
+    restorePlaceholder: 'PET1:…',
+    restoreFile: 'Open file',
+    restoreButton: 'Restore',
+    restoreTitle: 'Restore this pet?',
+    restoreText: 'This replaces the pet you have now.',
+    restoreYes: 'Restore',
+    restoreNo: 'Keep my pet',
+    restoreErrors: {
+      empty: 'Paste a backup code first.',
+      unreadable: 'That code didn\'t work. Check it was copied in full.',
+      newer: 'That code is from a newer version of the game. Reload to update, then try again.',
+      noGzip: 'This browser can\'t open that code. Try a newer browser.',
+    },
+    saveFailed: 'Couldn\'t save just now. Make a backup in Settings.',
+    // Start over, asked in the game's own box.
+    resetTitle: 'Start over?',
+    resetYes: 'Start over',
+    resetNo: 'Keep my pet',
+  },
+  // When the saved pet can't be opened (see src/ui/saveTrouble.ts).
+  saveTrouble: {
+    newerTitle: 'Time to update',
+    newerText: 'This pet was saved by a newer version of the game. Reload to update.',
+    reload: 'Reload',
+    brokenTitle: 'Oh no!',
+    brokenText: 'We couldn\'t open your saved pet. A copy is kept safe.',
+    tryAgain: 'Try again',
+    startNew: 'Start a new pet',
+    startNewTitle: 'Start a new pet?',
+    startNewText: 'Your new pet takes the old one\'s place. The safe copy stays on this device.',
+    startNewYes: 'Start a new pet',
+    goBack: 'Go back',
+    // The pet is already open in another tab (or the installed app).
+    elsewhereTitle: 'Your pet is open in another tab',
+    elsewhereText: 'Only one tab can look after your pet at a time, so nothing gets lost.',
+    useHere: 'Use it here',
   },
   family: {
     generation: (n: number) => `Generation ${n}`,
@@ -1755,5 +1828,5 @@ export const STRINGS = {
     secondHelping: 'Second helping!',
     saved: (food: string) => `Waste not! You saved a ${food}.`,
   },
-  confirmReset: 'Start over with a new pet? Your current pet will be gone.',
+  confirmReset: 'Start over with a new pet? Your current pet and everything in your game will be gone. This can\'t be undone.',
 } as const;

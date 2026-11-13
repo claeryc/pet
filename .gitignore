@@ -3,3 +3,6 @@ dist
 .DS_Store
 art/previews
 art/map/.lab-backup
+*.log
+test-results
+playwright-report

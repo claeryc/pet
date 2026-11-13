@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Item Catalog</title>
+    <!-- Every item in the game, read from the game's own data: its art,
+         cost, how you get it, its theme and whether it's out yet. A tool
+         for the team, not part of the game. Open it with `npm run dev` at
+         /items.html (or from the Art preview's header). -->
+    <link rel="stylesheet" href="/src/art/art.css" />
+    <link rel="stylesheet" href="/src/art/items.css" />
+  </head>
+  <body class="items-page">
+    <header>
+      <h1>Item catalog</h1>
+      <div class="controls">
+        <input type="search" id="search" placeholder="Search names, ways, uses…" aria-label="Search" />
+        <label>How you get it <select id="way"></select></label>
+        <label>Theme <select id="theme"></select></label>
+        <label>Status <select id="status"></select></label>
+        <label>Sort <select id="sort"></select></label>
+        <label class="check"><input type="checkbox" id="noart" /> Missing art only</label>
+        <a class="nav-link" href="/art.html">Art preview</a>
+      </div>
+    </header>
+    <nav class="cats" id="cats" aria-label="Categories"></nav>
+    <p class="summary" id="summary"></p>
+    <main class="items" id="items"></main>
+    <script type="module" src="/src/art/items.ts"></script>
+  </body>
+</html>

@@ -55,7 +55,7 @@ export const CONFIG = {
   // tools in Settings to try this without waiting days.
   growth: {
     stageHours: {
-      egg: 0.5, // the egg hatches after 30 minutes
+      egg: 90 / 3600, // the egg hatches after 90 seconds (time to look around)
       baby: 24, // a baby for 1 day
       teen: 72, // a teen for 3 days, then an adult
     },
@@ -1127,9 +1127,10 @@ export const CONFIG = {
     limited: { chance: 0.3, perDay: 3 },
   },
 
-  // Testing helpers shown in Settings. Turn off before releasing the game.
+  // Testing helpers shown in Settings. Only while running `npm run dev`:
+  // the finished game (`npm run build`) never shows them.
   debug: {
-    showTools: true,
+    showTools: import.meta.env.DEV,
     fastForwardHours: [1, 6, 24],
     addGold: 100,
     // Buttons that set the Care Score, to test which characters appear.

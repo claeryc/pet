@@ -1,4 +1,4 @@
-// The menu inside the gear button's panel (it opens like Feed and Play). It
+// The menu inside the Menu (backpack) button's panel (it opens like Feed and Play). It
 // has a main list (Shop, Map, Messages, Collection, Skills, Family Tree,
 // Guide, Settings) and a page for each, plus the Wardrobe, which opens when you
 // hold the pet. The Map tile opens the map over the whole screen (see
@@ -28,10 +28,13 @@ import { audioSettings, setAudioSettings } from '../audio/audio';
 import type { JourneysCallbacks } from './journeys';
 import { hasBackpack, isAway } from '../game/presence';
 import { badgeCount } from '../game/achievements';
+import { MILESTONES } from '../game/milestones';
 import { dailySpecial, getHat, ownsSpecial } from '../game/economy';
 import { GUIDES, guideOpen, type GuideId } from '../game/guides';
 import { MAPS, START_MAP, areaCard } from '../game/map';
 import { GUIDE_ICONS, guideName, guidePageCount } from './guide';
+import { LINKS, VERSION, type LinkId } from '../about';
+import fontLicence from '../fonts/Nunito-OFL.txt?raw';
 
 export interface DebugCallbacks {
   onFastForward: (hours: number) => void;
@@ -49,6 +52,10 @@ export interface DebugCallbacks {
 
 export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks, FamilyCallbacks, SkillsCallbacks, JourneysCallbacks, MeadowCallbacks {
   onReset: () => void;
+  onBackupCode: () => Promise<string>; // the backup code for the game as it is now
+  // Checks a pasted backup code. Returns what's wrong with it, or null once
+  // the player is being asked whether to restore it.
+  onRestore: (code: string) => Promise<string | null>;
   onOwner: (name: string) => void; // the player typed their name in Settings
   onSeen: (id: UnlockId) => void; // the player has looked at something new
   onMessagesSeen: () => void; // the player opened Messages
@@ -72,7 +79,9 @@ export interface Menu {
   reset: () => void; // go back to the main list
   update: (state: GameState) => void;
   showWardrobe: () => void;
-  showShop: (category?: ShopCategory) => void; // open the Shop, at `category`'s tab
+  // Opens the Shop, at `category`'s tab. With `back`, the Shop's back
+  // button goes there (e.g. back to the garden) instead of the menu.
+  showShop: (category?: ShopCategory, back?: () => void) => void;
   showJournal: (place: string) => void; // the travel journal, at a place
   showMeadow: () => void; // the Meadow and its keepsakes
   showMessages: (tab?: MessagesTab) => void; // Messages, at Mail or Friends
@@ -91,7 +100,7 @@ function item(label: string, onClick: () => void): HTMLButtonElement {
   return b;
 }
 
-export type MenuPage = 'main' | 'settings' | 'shop' | 'wardrobe' | 'collection' | 'skills' | 'familyTree' | 'meadow' | 'messages' | 'guide' | 'journal';
+export type MenuPage = 'main' | 'settings' | 'credits' | 'backup' | 'shop' | 'wardrobe' | 'collection' | 'skills' | 'familyTree' | 'meadow' | 'messages' | 'guide' | 'journal';
 
 // `isOpen` says whether the panel is showing; `close` folds it up.
 // `onPage` hears which page is showing, each time one is drawn.
@@ -119,7 +128,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
   // saying where it goes, so it doesn't read as a second way to close.
   // (The menu button at the bottom, the one that opened it, closes the
   // whole panel, as it does for Feed and Play.)
-  function header(title: string, onBack: () => void, right?: HTMLElement): HTMLElement {
+  function header(title: string, onBack: () => void, right?: HTMLElement, backLabel: string = STRINGS.menu.backTo): HTMLElement {
     const h = document.createElement('div');
     h.className = 'menu-header';
     const back = document.createElement('button');
@@ -128,8 +137,8 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     arrow.className = 'menu-header-arrow';
     arrow.textContent = '‹';
     arrow.setAttribute('aria-hidden', 'true');
-    back.append(arrow, STRINGS.menu.backTo);
-    back.setAttribute('aria-label', STRINGS.menu.back);
+    back.append(arrow, backLabel);
+    back.setAttribute('aria-label', backLabel === STRINGS.menu.backTo ? STRINGS.menu.back : STRINGS.family.backTo(backLabel));
     back.addEventListener('click', onBack);
     const t = document.createElement('h2');
     t.textContent = title;
@@ -209,6 +218,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     big.className = 'menu-grid is-big';
     big.append(
       ...unlockable('shop', 'big', M.shop, () => {
+        shopBack = null;
         showShop();
         cb.onGuide('shop');
       }, s ? shopLine(s) : ''),
@@ -222,7 +232,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
       ...unlockable('collection', 'mid', M.collection, () => {
         showCollection();
         cb.onGuide('collection');
-      }, s ? M.collectionLine(badgeCount(s).earned, badgeCount(s).total) : ''),
+      }, s ? M.collectionLine(badgeCount(s).earned + s.milestones.length, badgeCount(s).total + MILESTONES.length) : ''),
       ...skillsItem(),
       ...unlockable('familyTree', 'mid', M.familyTree, () => showFamilyTree(), s ? M.familyLine : ''),
       // The Meadow, once a pet has moved there.
@@ -376,7 +386,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
           // A new tab starts at the top; a sheet opening or closing stays put.
           if (shopView.tab !== tabBefore) toTop();
           else panel.parentElement?.scrollTo(0, scroll);
-        }, showMain));
+        }, leaveShop));
         return;
       } else if (which === 'wardrobe') list.append(...wardrobePage(state, cb));
       else if (which === 'collection') {
@@ -409,6 +419,15 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     panel.replaceChildren(header(title, showMain, right), list);
   }
   const showShop = (fresh = true) => showList('shop', fresh);
+  // Where the Shop's back button goes: the menu, unless the Shop was opened
+  // from somewhere else to come back to.
+  let shopBack: (() => void) | null = null;
+  const leaveShop = () => {
+    const back = shopBack;
+    shopBack = null;
+    if (back) back();
+    else showMain();
+  };
   const showWardrobe = (fresh = true) => showList('wardrobe', fresh);
   const collectionView: CollectionView = { tab: 'badges' };
   const showCollection = (fresh = true) => {
@@ -616,6 +635,56 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     return field;
   }
 
+  // A row that opens one of the game's web pages (help, privacy, terms)
+  // outside the game. Until its link is filled in (src/about.ts) it shows
+  // greyed out, saying it's coming soon.
+  function linkRow(id: LinkId): HTMLElement {
+    const url = LINKS[id];
+    const label = STRINGS.settings[id];
+    if (!url) {
+      const b = item(label, () => {});
+      b.disabled = true;
+      const soon = document.createElement('span');
+      soon.className = 'menu-soon';
+      soon.textContent = STRINGS.settings.soon;
+      b.append(soon);
+      return b;
+    }
+    const a = document.createElement('a');
+    a.className = 'menu-item settings-link';
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    a.textContent = label;
+    const arrow = document.createElement('span');
+    arrow.className = 'settings-link-arrow';
+    arrow.textContent = '↗';
+    arrow.setAttribute('aria-hidden', 'true');
+    a.setAttribute('aria-label', `${label} ${STRINGS.settings.opensOutside}`);
+    a.append(arrow);
+    return a;
+  }
+
+  // About the game: help, the privacy policy and terms, the credits, and
+  // which version this is.
+  function aboutSection(): HTMLElement {
+    const section = document.createElement('div');
+    section.className = 'settings-about';
+    const h = document.createElement('h3');
+    h.textContent = STRINGS.settings.about;
+    const credits = item(STRINGS.settings.credits, showCredits);
+    const arrow = document.createElement('span');
+    arrow.className = 'settings-link-arrow';
+    arrow.textContent = '›';
+    arrow.setAttribute('aria-hidden', 'true');
+    credits.append(arrow);
+    const version = document.createElement('small');
+    version.className = 'settings-version';
+    version.textContent = STRINGS.settings.version(VERSION);
+    section.append(h, linkRow('support'), linkRow('privacy'), linkRow('terms'), credits, version);
+    return section;
+  }
+
   function showSettings(): void {
     setPage('settings');
     toTop();
@@ -624,8 +693,153 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
       cb.onReset();
     });
     reset.classList.add('menu-item-danger');
-    panel.replaceChildren(header(STRINGS.menu.settings, showMain), ownerField(), audioToggles(), reset);
+    const backup = item(STRINGS.settings.backup, showBackup);
+    const arrow = document.createElement('span');
+    arrow.className = 'settings-link-arrow';
+    arrow.textContent = '›';
+    arrow.setAttribute('aria-hidden', 'true');
+    backup.append(arrow);
+    panel.replaceChildren(header(STRINGS.menu.settings, showMain), ownerField(), audioToggles(), backup, aboutSection(), reset);
     if (CONFIG.debug.showTools) panel.append(debugSection());
+  }
+
+  // Back up your pet: copy the backup code or save it as a file, and
+  // restore from a code (pasted, or read from a file).
+  function showBackup(): void {
+    setPage('backup');
+    toTop();
+    const S = STRINGS.settings;
+    const el = <K extends keyof HTMLElementTagNameMap>(tag: K, className = '', text = '') => {
+      const e = document.createElement(tag);
+      if (className) e.className = className;
+      if (text) e.textContent = text;
+      return e;
+    };
+
+    // Making a backup.
+    const make = el('section', 'settings-field settings-backup');
+    const intro = el('p', '', S.backupIntro);
+    const buttons = el('div', 'settings-backup-buttons');
+    const copy = el('button', 'shop-btn', S.backupCopy);
+    const download = el('button', 'shop-btn shop-btn-soft', S.backupDownload);
+    buttons.append(copy, download);
+    const status = el('small', 'settings-backup-status');
+    status.setAttribute('role', 'status');
+    const shown = el('textarea', 'settings-backup-code');
+    shown.readOnly = true;
+    shown.hidden = true;
+    shown.rows = 4;
+    shown.setAttribute('aria-label', S.backupCopy);
+    make.append(el('b', '', S.backupMake), intro, buttons, status, shown);
+
+    const busy = async (button: HTMLButtonElement, work: () => Promise<void>) => {
+      if (button.disabled) return;
+      button.disabled = true;
+      status.textContent = S.backupWorking;
+      try {
+        await work();
+      } finally {
+        button.disabled = false;
+      }
+    };
+    copy.addEventListener('click', () => busy(copy, async () => {
+      const code = await cb.onBackupCode();
+      try {
+        await navigator.clipboard.writeText(code);
+        shown.hidden = true;
+        status.textContent = S.backupCopied;
+      } catch {
+        // No clipboard (or no permission): show the code, all selected.
+        shown.value = code;
+        shown.hidden = false;
+        status.textContent = S.backupCopyFailed;
+        shown.focus();
+        shown.select();
+      }
+    }));
+    download.addEventListener('click', () => busy(download, async () => {
+      const code = await cb.onBackupCode();
+      const url = URL.createObjectURL(new Blob([code], { type: 'text/plain' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = S.backupFile(new Date().toISOString().slice(0, 10));
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      status.textContent = S.backupDownloaded;
+    }));
+
+    // Restoring one.
+    const restore = el('section', 'settings-field settings-backup');
+    const paste = el('textarea', 'settings-backup-code');
+    paste.rows = 4;
+    paste.placeholder = S.restorePlaceholder;
+    paste.setAttribute('aria-label', S.restore);
+    paste.spellcheck = false;
+    paste.setAttribute('autocapitalize', 'off');
+    paste.setAttribute('autocomplete', 'off');
+    const file = el('input');
+    file.type = 'file';
+    file.accept = '.txt,text/plain';
+    file.hidden = true;
+    const restoreButtons = el('div', 'settings-backup-buttons');
+    const openFile = el('button', 'shop-btn shop-btn-soft', S.restoreFile);
+    const go = el('button', 'shop-btn', S.restoreButton);
+    restoreButtons.append(openFile, go);
+    const problem = el('small', 'settings-backup-status settings-backup-problem');
+    problem.setAttribute('role', 'alert');
+    restore.append(el('b', '', S.restore), el('small', '', S.restoreHint), paste, file, restoreButtons, problem);
+
+    openFile.addEventListener('click', () => file.click());
+    file.addEventListener('change', async () => {
+      const picked = file.files?.[0];
+      if (!picked) return;
+      paste.value = (await picked.text()).trim();
+      file.value = '';
+      problem.textContent = '';
+    });
+    go.addEventListener('click', async () => {
+      if (go.disabled) return;
+      go.disabled = true;
+      try {
+        problem.textContent = (await cb.onRestore(paste.value)) ?? '';
+        if (problem.textContent) problem.scrollIntoView({ block: 'nearest' });
+      } finally {
+        go.disabled = false;
+      }
+    });
+
+    panel.replaceChildren(header(S.backup, showSettings, undefined, STRINGS.menu.settings), make, restore);
+  }
+
+  // Who made what: the music and sounds, the art, and the font, with the
+  // font's licence (which has to travel with it) folded up underneath.
+  function showCredits(): void {
+    setPage('credits');
+    toTop();
+    const S = STRINGS.settings;
+    const list = document.createElement('div');
+    list.className = 'settings-credits';
+    for (const [title, text] of [[S.creditsArtTitle, S.creditsArt], [S.creditsMusicTitle, S.creditsMusic], [S.creditsFontTitle, S.creditsFont]]) {
+      const block = document.createElement('section');
+      block.className = 'settings-field';
+      const b = document.createElement('b');
+      b.textContent = title;
+      const p = document.createElement('p');
+      p.textContent = text;
+      block.append(b, p);
+      list.append(block);
+    }
+    const licence = document.createElement('details');
+    licence.className = 'settings-licence';
+    const summary = document.createElement('summary');
+    summary.textContent = S.creditsFontLicence;
+    const pre = document.createElement('pre');
+    pre.textContent = fontLicence;
+    licence.append(summary, pre);
+    list.lastElementChild!.append(licence);
+    panel.replaceChildren(header(S.credits, showSettings, undefined, STRINGS.menu.settings), list);
   }
 
   showMain();
@@ -633,7 +847,8 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     el: panel,
     reset: showMain,
     showWardrobe: () => showWardrobe(),
-    showShop: (category) => {
+    showShop: (category, back) => {
+      shopBack = back ?? null;
       showShop();
       if (category) {
         shopView.tab = category;

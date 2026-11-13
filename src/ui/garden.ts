@@ -44,7 +44,7 @@ import type { GardenScene } from '../render/garden';
 import { createDrawer } from './drawer';
 import { ITEM_ICONS, STAT_ICONS } from './icons';
 import type { ShopCategory } from './shop';
-import { formatDuration } from './time';
+import { formatDuration, formatIn } from './time';
 import { sunflower } from './sunflower';
 
 export interface GardenCallbacks {
@@ -379,7 +379,7 @@ export function createGarden(cb: GardenCallbacks): Garden {
       when.title = STRINGS.garden.timeLeft(formatDuration(left));
     } else if (stage === 'sick') {
       when.innerHTML = `${STAT_ICONS.skull}<b>${hours(diesAt(plot)! - now)}</b>`;
-      when.title = STRINGS.garden.diesIn(formatDuration(diesAt(plot)! - now));
+      when.title = STRINGS.garden.diesIn(formatIn(diesAt(plot)! - now));
     }
     if (crop) name.title = `${getCrop(crop).hours}h`;
     status.innerHTML =

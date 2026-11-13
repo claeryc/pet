@@ -865,7 +865,7 @@ body {
 
 /* ---- The menu opens like Feed and Play ---- */
 
-/* Closed, the gear button is a small square like the lights button; open,
+/* Closed, the Menu button is a small square like the lights button; open,
    it slides wide like the others. */
 .drawer[data-drawer='menu'] {
   flex: 0 0 56px;
@@ -1760,14 +1760,17 @@ body {
 }
 
 .shop-name {
+  /* Up to two lines, so "Windowsill cactus" reads whole on a small phone. */
+  display: -webkit-box;
   width: 100%;
+  min-height: 2.3em;
   font-size: 0.8rem;
   font-weight: 800;
   line-height: 1.15;
   text-align: center;
-  white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 /* Small cards: names on up to two lines, so "Energy drink" fits. */
@@ -1849,6 +1852,7 @@ body {
 
 .shop-swatch-row {
   display: flex;
+  flex-wrap: wrap; /* a long name keeps its words: the price drops below */
   align-items: center;
   justify-content: space-between;
   gap: 4px;
@@ -1859,9 +1863,11 @@ body {
   min-width: 0;
   font-size: 0.82rem;
   font-weight: 800;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.15; /* a long name takes two lines rather than "…" */
+}
+
+.shop-swatch-row > :last-child {
+  margin-left: auto;
 }
 
 .shop-swatch-row .shop-buy {
@@ -4614,7 +4620,7 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
   background: var(--accent);
 }
 
-/* On the Feed or gear button (which are pink): a yellow dot in the top
+/* On the Feed or Menu button (which are pink): a yellow dot in the top
    corner. */
 .drawer-head.has-new::after {
   content: '';
@@ -4980,8 +4986,9 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 
 .tree-name {
   display: flex;
+  flex-wrap: wrap; /* on a narrow phone Rename drops below, not the name */
   align-items: center;
-  gap: 6px;
+  gap: 4px 6px;
 }
 
 .tree-name b {
@@ -8345,6 +8352,16 @@ body:not(:has(.drawer[data-drawer='menu'].is-open .shop-page)) .try-tag {
 
 .trip-pc-postmark b {
   font-size: 0.62rem;
+}
+
+/* On a narrow phone the note runs to more lines, so the postmark gets
+   smaller and sits lower, off the words. */
+@media (max-width: 359px) {
+  .trip-pc-postmark {
+    width: 50px;
+    height: 50px;
+    bottom: -18px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -13407,6 +13424,12 @@ button.trip-bars-name.is-on {
   flex-direction: row-reverse;
 }
 
+/* Two or more reach back over the sign, so they sit higher, clear of its
+   name. */
+.map-badges.is-many {
+  top: -20px;
+}
+
 .map-badges > .map-badge + .map-badge {
   margin-right: -7px;
 }
@@ -13824,5 +13847,129 @@ button.trip-bars-name.is-on {
 }
 
 .yard-row[hidden] {
+  display: none;
+}
+
+/* ---- Settings: About the game, and the Credits page ---- */
+
+.settings-about {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.settings-about h3 {
+  margin: 4px 4px 0;
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.6;
+}
+
+.menu-panel .settings-link {
+  text-decoration: none;
+}
+
+.settings-link-arrow {
+  font-weight: 800;
+  opacity: 0.55;
+}
+
+.settings-version {
+  margin: 2px 4px 4px;
+  font-size: 0.78rem;
+  opacity: 0.6;
+  text-align: center;
+}
+
+.settings-credits {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-credits p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.settings-licence summary {
+  margin-top: 4px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--plum);
+  cursor: pointer;
+}
+
+.settings-licence pre {
+  max-height: 260px;
+  overflow: auto;
+  margin: 8px 0 0;
+  padding: 10px;
+  border-radius: 10px;
+  background: white;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ---- Settings: Back up your pet ---- */
+
+.settings-backup p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.settings-backup-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-backup-buttons .shop-btn {
+  flex: 1 1 120px;
+  font-size: 0.95rem;
+  padding: 10px 12px;
+}
+
+.settings-backup-status:empty {
+  display: none;
+}
+
+.settings-backup-problem {
+  color: var(--accent-dark);
+  font-weight: 700;
+  opacity: 1;
+}
+
+.settings-field .settings-backup-status.settings-backup-problem {
+  opacity: 1;
+}
+
+.settings-backup-code {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  font: 0.75rem/1.35 ui-monospace, monospace;
+  padding: 8px 10px;
+  border: 2px solid var(--lavender);
+  border-radius: 12px;
+  background: white;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+.settings-backup-code:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.settings-backup-code[hidden] {
   display: none;
 }

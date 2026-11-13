@@ -27,7 +27,7 @@ import { drawHive, drawPerch, onHive, onPercy, YARD_HEIGHT, YARD_WIDTH, type Per
 import { createWalk } from './walk';
 import { createLift } from './lift';
 import { CRAFT_ART, ITEM_ICONS, STAT_ICONS } from './icons';
-import { formatDuration } from './time';
+import { formatIn } from './time';
 
 const T = STRINGS.backyard;
 const HOLDS = CONFIG.crafting.hive.holds;
@@ -246,7 +246,7 @@ export function createBackyard(cb: BackyardCallbacks): Backyard {
     const n = hiveStock(s);
     honeyRow.set(n);
     waxRow.set(n);
-    const wait = formatDuration(hiveNextAt(now) - now);
+    const wait = formatIn(hiveNextAt(now) - now);
     hiveNote.textContent = n >= HOLDS ? T.full : n === 0 ? T.empty(wait) : T.nextIn(wait);
     hiveNote.classList.toggle('good', n >= HOLDS);
     collectBtn.classList.toggle('faded', n === 0);
@@ -257,7 +257,7 @@ export function createBackyard(cb: BackyardCallbacks): Backyard {
     perchNote.textContent =
       percy === 'ready' ? T.percyReady
       : percy === 'away' ? T.percyAway
-      : T.percyResting(formatDuration(s.journeys.percyFreeAt - now));
+      : T.percyResting(formatIn(s.journeys.percyFreeAt - now));
     perchNote.classList.toggle('good', percy === 'ready');
     perchIcon.innerHTML = percy === 'resting' ? STAT_ICONS.gold : ITEM_ICONS.percy;
     perchText.textContent = percy === 'ready' ? T.journeys : percy === 'resting' ? `${T.wake}` : T.away;

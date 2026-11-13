@@ -1,16 +1,19 @@
 // Growing up: egg -> baby -> teen -> adult.
 //
-// Each stage lasts a set time (CONFIG.growth.stageHours). Every egg, baby
-// and teen looks the same. When the teen grows up, the game picks which
-// *character* it becomes from src/data/characters.json:
-//   1. roll a star rarity, with better odds for a higher Care Score (and
-//      better still for a little one of two 3-star parents),
-//   2. pick a character of that rarity. A first pet can become any theme.
-//      A little one takes after one of its parents' themes (now and then
-//      one they only carry), and only reaches 3 stars if a parent shows
-//      that theme as a 2-star or better ("climbing the family"),
-//   3. maybe pick one of that character's colour variants (more likely one
-//      a parent shows or carries, see genes.ts).
+// Each stage lasts a set time (CONFIG.growth.stageHours). Which *character*
+// a pet becomes (from src/data/characters.json) is decided in two parts:
+//   1. when its egg is made, roll its theme (rollTheme). A first pet can
+//      get any theme. A little one takes after one of its parents' themes
+//      (now and then one they only carry). The egg, baby and teen are drawn
+//      in that theme's colours, so every player's start looks different.
+//   2. when the teen grows up, roll a star rarity, with better odds for a
+//      higher Care Score (and better still for a little one of two 3-star
+//      parents). A little one only reaches 3 stars if a parent shows that
+//      theme as a 2-star or better ("climbing the family"). Then maybe pick
+//      one of that character's colour variants (more likely one a parent
+//      shows or carries, see genes.ts).
+// The theme roll doesn't depend on Care Score, so rolling it early gives
+// the same odds as rolling everything at grow-up.
 // The rolls are based on the pet's id, so reloading never changes them.
 
 import { CONFIG } from './config';
@@ -57,6 +60,8 @@ export const LATER_PACKS: readonly string[] = data.laterPacks;
 // The characters a pet (or a wanderer) can grow into now.
 export const IN_GAME = CHARACTERS.filter((c) => !LATER_PACKS.includes(c.theme));
 const STAGE_SHEETS: Record<Exclude<Stage, 'adult'>, string> = data.stages;
+// Themes with their own egg, baby and teen colours ('<sheet>-<theme>').
+const STAGE_THEMES: readonly string[] = data.stageThemes;
 
 export function getCharacter(id: string | null): Character | undefined {
   return CHARACTERS.find((c) => c.id === id);
@@ -72,10 +77,16 @@ export function characterSheet(id: string | null, variant: string | null): strin
   return getVariant(character, variant)?.sheet ?? character?.sheet ?? '';
 }
 
-// The sprite sheet the pet should be drawn with right now.
-export function sheetFor(pet: Pet): string {
-  if (pet.stage !== 'adult') return STAGE_SHEETS[pet.stage];
+// The sprite sheet the pet should be drawn with right now. Before it grows
+// up, that's the egg, baby or teen sheet in its theme's colours.
+export function sheetFor(pet: Pick<Pet, 'stage' | 'character' | 'variant'> & { destinedTheme?: string | null }): string {
+  if (pet.stage !== 'adult') return stageSheet(pet.stage, pet.destinedTheme);
   return characterSheet(pet.character, pet.variant);
+}
+
+export function stageSheet(stage: Exclude<Stage, 'adult'>, theme: string | null | undefined): string {
+  const sheet = STAGE_SHEETS[stage];
+  return theme && STAGE_THEMES.includes(theme) ? `${sheet}-${theme}` : sheet;
 }
 
 export function nextStage(stage: Stage): Stage | null {
@@ -209,18 +220,9 @@ export function littleOneChances(
   family: Partial<Inheritance>,
   parentLooks: readonly ParentLook[],
 ): Map<Character, number> {
-  const inGame = (t: string) => IN_GAME.some((c) => c.theme === t);
-  const shown = (family.themes ?? []).filter(inGame);
-  const carried = (family.carriedThemes ?? []).filter(inGame);
-  const themes = shown.length > 0 ? shown : [...new Set(IN_GAME.map((c) => c.theme))];
-  const outside = carried.length > 0 ? CONFIG.inheritance.outsideThemeChance / 100 : 0;
-  const pool: [string, number][] = [
-    ...themes.map((t): [string, number] => [t, (1 - outside) / themes.length]),
-    ...carried.map((t): [string, number] => [t, outside / carried.length]),
-  ];
   const odds = starOdds(careScore, parentLooks);
   const chances = new Map<Character, number>();
-  for (const [theme, weight] of pool) {
+  for (const [theme, weight] of themePool(family)) {
     for (const s of [1, 2, 3] as Stars[]) {
       if (!odds[s]) continue;
       const list = charactersIn(theme, Math.min(s, starCap(theme, parentLooks)) as Stars);
@@ -230,13 +232,49 @@ export function littleOneChances(
   return chances;
 }
 
-// Picks the character (and maybe a colour variant) a teen grows into.
+// The themes a pet can get, each with its chance (0 to 1, adding up to 1).
+// A first pet: every theme in the game, evenly (each has every rarity, so
+// this matches rolling the stars first). A little one: one of its parents'
+// themes, split evenly, or now and then (CONFIG.inheritance.
+// outsideThemeChance) a theme a parent only carries.
+export function themePool(family: Partial<Inheritance>): [string, number][] {
+  const inGame = (t: string) => IN_GAME.some((c) => c.theme === t);
+  const shown = (family.themes ?? []).filter(inGame);
+  const carried = (family.carriedThemes ?? []).filter(inGame);
+  const themes = shown.length > 0 ? shown : [...new Set(IN_GAME.map((c) => c.theme))];
+  const outside = carried.length > 0 ? CONFIG.inheritance.outsideThemeChance / 100 : 0;
+  return [
+    ...themes.map((t): [string, number] => [t, (1 - outside) / themes.length]),
+    ...carried.map((t): [string, number] => [t, outside / carried.length]),
+  ];
+}
+
+// Rolls the theme a new egg will grow into (see the top of this file).
+export function rollTheme(petId: string, family: Partial<Inheritance> = {}): string {
+  const pool = themePool(family);
+  const roll = seededRoll(petId, 'theme');
+  let total = 0;
+  return (pool.find(([, chance]) => roll < (total += chance)) ?? pool[pool.length - 1])[0];
+}
+
+// Picks the character (and maybe a colour variant) a teen grows into. With
+// `theme` (rolled when its egg was made) it only rolls the stars within
+// that theme; without one it rolls everything now.
 export function chooseCharacter(
   careScore: number,
   petId: string,
   family: Partial<Inheritance> = {},
   parentLooks: readonly ParentLook[] = [],
+  theme: string | null = null,
 ): { character: Character; variant: Variant | null } {
+  if (theme && IN_GAME.some((c) => c.theme === theme)) {
+    const rolled = rollStars(careScore, petId, parentLooks);
+    const littleOne = (family.themes ?? []).length > 0;
+    const stars = littleOne ? (Math.min(rolled, starCap(theme, parentLooks)) as Stars) : rolled;
+    const options = charactersIn(theme, stars);
+    const character = options[Math.floor(seededRoll(petId, 'character') * options.length)];
+    return { character, variant: variantOf(character, petId, family) };
+  }
   if ((family.themes ?? []).length === 0) return characterOfStars(rollStars(careScore, petId, parentLooks), petId, family);
   const chances = [...littleOneChances(careScore, family, parentLooks)];
   const roll = seededRoll(petId, 'character');
@@ -256,7 +294,13 @@ export function growUp(pet: Pet, t: number): void {
     pet.stats = { ...CONFIG.startingStats };
   }
   if (next === 'adult') {
-    const { character, variant } = chooseCharacter(pet.careScore, pet.id, inheritanceOf(pet), pet.parentLooks ?? []);
+    const { character, variant } = chooseCharacter(
+      pet.careScore,
+      pet.id,
+      inheritanceOf(pet),
+      pet.parentLooks ?? [],
+      pet.destinedTheme ?? null,
+    );
     pet.character = character.id;
     pet.variant = variant?.id ?? null;
     pet.carried = genesAtGrowUp(pet, character, pet.variant);
