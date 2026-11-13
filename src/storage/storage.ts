@@ -21,7 +21,7 @@ const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 43;
+export const SAVE_VERSION = 44;
 
 export interface SaveFile {
   version: number;
@@ -489,6 +489,11 @@ export function migrate(save: SaveFile): SaveFile {
       p.destinedTheme = p.stage === 'adult' ? null : rollTheme(p.id, inheritanceOf(p));
     }
     save.version = 43;
+  }
+  // Version 43 -> 44: rewarded ads, counted per day.
+  if (save.version === 43) {
+    save.state.ads = { day: '', watched: 0 };
+    save.version = 44;
   }
   return save;
 }

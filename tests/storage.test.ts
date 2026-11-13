@@ -250,6 +250,14 @@ describe('save migration to crafting', () => {
   });
 });
 
+describe('save migration to rewarded ads', () => {
+  it('gives old saves no ads watched yet', () => {
+    const out = migrate({ version: 43, state: { pet: { name: 'drip' } } }).state;
+    expect(out.ads).toEqual({ day: '', watched: 0 });
+    expect(SAVE_VERSION).toBe(44);
+  });
+});
+
 describe('save migration to themed eggs', () => {
   it('gives pets that are not grown up their theme, and grown-ups none', () => {
     const egg = { id: 'e1', stage: 'egg', themes: ['ocean'], parentCarried: [] };
@@ -260,7 +268,6 @@ describe('save migration to themed eggs', () => {
     expect(out.pet.destinedTheme).toBeNull();
     expect(out.housemates[0].destinedTheme).toBe(rollTheme('t1'));
     expect(out.nest.destinedTheme).toBe('ocean'); // its only parent theme, no carried ones
-    expect(SAVE_VERSION).toBe(43);
   });
 });
 

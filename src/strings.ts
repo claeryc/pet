@@ -1493,6 +1493,36 @@ export const STRINGS = {
     packBuy: (count: number, price: string) => `${count} star fragments for ${price}`,
     realMoney: 'Paid with real money. Star fragments are the only thing ever sold for money.',
   },
+  // Rewarded ads: the Free treats card in the Star counter, and the
+  // stand-in video (see src/ads.ts).
+  ads: {
+    freeTitle: 'Free treats',
+    treat: 'Daily treat',
+    treatNote: (fragments: number, gold: number) => `Watch a short video for +${fragments} star fragments and +${gold} gold.`,
+    extra: 'Bonus video',
+    extraNote: (gold: number, left: number) => `+${gold} gold · ${left} left today`,
+    watch: 'Watch',
+    watchTreat: (fragments: number, gold: number) => `Watch a short video for ${fragments} star fragments and ${gold} gold`,
+    watchExtra: (gold: number) => `Watch a short video for ${gold} gold`,
+    allDone: "That's all the videos for today",
+    allDoneNote: 'A new daily treat comes tomorrow.',
+    optional: 'Videos are always optional. Your pet never needs them.',
+    gotTreat: (fragments: number, gold: number) => `+${fragments} star fragments and +${gold} gold!`,
+    gotGold: (gold: number) => `+${gold} gold!`,
+    closedEarly: 'The video closed early, so no treat this time.',
+    unavailable: 'No video right now. Try again later.',
+    capped: "That's all the videos for today. Come back tomorrow!",
+    notNow: 'Videos are resting while a pet needs looking after.',
+    // The stand-in video.
+    playerLabel: 'Video',
+    tag: 'Ad',
+    tagPlain: 'Ad · not personalised',
+    close: 'Close the video',
+    standIn: 'A short video would play here.',
+    secondsLeft: (seconds: number) => `Your treat in ${seconds}…`,
+    done: 'All done!',
+    collect: 'Collect',
+  },
   // Opened by holding the pet.
   wardrobe: {
     title: 'Wardrobe',

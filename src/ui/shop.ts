@@ -31,6 +31,7 @@ import { formatDuration } from './time';
 import { ownsFamilyHome } from '../game/rooms';
 import { CURTAINS as CURTAIN_COLOURS, WALLPAPERS as WALL_PATTERNS } from '../render/room';
 import { PALETTE } from '../render/palette';
+import { adsAllowed, extrasLeft, nextAd, rewardOf } from '../game/ads';
 import { STORE_OPEN } from '../payments';
 
 // What the room above shows while a sheet is open: a hat on the pet, or a
@@ -62,6 +63,10 @@ export interface ShopCallbacks {
   onCompost: () => void; // picked-up poop into fertilizer
   onFragmentsHelp: () => void; // what star fragments are, in a card
   onWakePercy: () => void; // ends Percy's rest after a journey, for gold
+  // Plays a rewarded ad (only when tapped) and gives its reward. Resolves
+  // the fragments before and after when it gave some, for the fly-in.
+  // Unset: no ads in this build.
+  onWatchAd?: () => Promise<{ before: number; after: number } | null>;
   onTryOn: (preview: ShopPreview | null) => void; // shows it in the room above, or stops
   // The picture of a hat, as a URL (from its sprite sheet), if loaded.
   hatImage: (hat: string) => string | undefined;
@@ -602,6 +607,9 @@ export interface ShopView {
   open?: string; // an item's key
   trying?: boolean; // false once Take it off is pressed on the open sheet
   fresh?: boolean; // the sheet has just been opened (it slides up only then)
+  // Fragments just earned from an ad: they fly into the Revival Star bar,
+  // which fills from `from` to `to`.
+  fly?: { from: number; to: number };
 }
 
 interface Page {
@@ -808,7 +816,8 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
     const { perStar, perGoodDay } = CONFIG.fragments;
     const have = el('div', 'shop-stars-have');
     const num = el('div', 'shop-have-num', `<span class="shop-ic">${FRAGMENT_ICON}</span>`);
-    num.append(String(pieces), text('small', '', S.fragmentsHave));
+    const haveNum = document.createTextNode(String(pieces));
+    num.append(haveNum, text('small', '', S.fragmentsHave));
     const goal = el('div', 'shop-goal');
     const goalRow = el('div', 'shop-goal-row', `<span class="shop-goal-art">${ITEM_ICONS.revivalStar}</span>`);
     goalRow.append(text('b', '', S.revivalStar), text('span', '', S.fragmentsCount(Math.min(pieces, perStar), perStar)));
@@ -824,6 +833,9 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
     acts.append(ghostButton(S.howItWorks, cb.onFragmentsHelp), craft);
     goal.append(goalRow, bar, text('small', '', S.starNote(revivalStars(state), perGoodDay)), acts);
     have.append(num, goal);
+    const ad = adCard();
+    if (view.fly && ad) flyIn(view.fly, ad, bar, goalRow.lastElementChild as HTMLElement, haveNum);
+    view.fly = undefined;
     const packs = el('div', 'shop-packs');
     CONFIG.store.forEach((p, i) => {
       const best = i === CONFIG.store.length - 1;
@@ -837,8 +849,46 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
       pack.append(buy);
       packs.append(pack);
     });
-    if (!STORE_OPEN) return [have];
-    return [have, section(S.getFragments), packs, text('p', 'shop-fine', S.realMoney)];
+    const free = ad ? [section(STRINGS.ads.freeTitle), ad, text('p', 'shop-fine is-ads', STRINGS.ads.optional)] : [];
+    if (!STORE_OPEN) return [have, ...free];
+    return [have, ...free, section(S.getFragments), packs, text('p', 'shop-fine', S.realMoney)];
+  };
+
+  // Free treats: the next rewarded ad, if there are ads at all. Never
+  // while a pet is sick or has passed away.
+  const adCard = (): HTMLElement | null => {
+    const watch = cb.onWatchAd;
+    if (!watch || !adsAllowed(state)) return null;
+    const A = STRINGS.ads;
+    const now = state.lastUpdated;
+    const kind = nextAd(state, now);
+    const card = el('div', `shop-ad${kind === 'treat' ? ' is-treat' : ''}${kind ? '' : ' is-done'}`);
+    const icon = el('span', 'shop-ad-icon', kind === 'treat' ? FRAGMENT_ICON : STAT_ICONS.gold);
+    const words = el('div', 'shop-ad-words');
+    if (!kind) {
+      words.append(text('b', '', A.allDone), text('small', '', A.allDoneNote));
+      card.append(icon, words);
+      return card;
+    }
+    const r = rewardOf(kind);
+    if (kind === 'treat') words.append(text('b', '', A.treat), text('small', '', A.treatNote(r.fragments, r.gold)));
+    else words.append(text('b', '', A.extra), text('small', '', A.extraNote(r.gold, extrasLeft(state, now))));
+    let busy = false;
+    const button = text('button', 'shop-buy is-ad', A.watch);
+    button.setAttribute('aria-label', kind === 'treat' ? A.watchTreat(r.fragments, r.gold) : A.watchExtra(r.gold));
+    button.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (busy) return;
+      busy = true;
+      void watch().then((got) => {
+        busy = false;
+        if (!got) return;
+        view.fly = { from: got.before, to: got.after };
+        redraw();
+      });
+    });
+    card.append(icon, words, button);
+    return card;
   };
 
   const pages: Page[] = [
@@ -916,6 +966,66 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
 }
 
 // [today][FOOD][garden][fishing][journeys][room][hats][stars]
+// Fragments from an ad fly from its card into the Revival Star bar, which
+// then fills up and its count ticks over. Runs once the page is showing;
+// with "reduce motion" on, the bar is just shown full.
+function flyIn(fly: { from: number; to: number }, from: HTMLElement, bar: HTMLElement, count: HTMLElement, have: Text): void {
+  const { perStar } = CONFIG.fragments;
+  const fill = bar.firstElementChild as HTMLElement;
+  const width = (n: number) => `${Math.min(100, (n / perStar) * 100)}%`;
+  const show = (n: number) => {
+    count.textContent = STRINGS.shop.fragmentsCount(Math.min(n, perStar), perStar);
+    have.textContent = String(n);
+  };
+  const reduced = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced || typeof Element.prototype.animate !== 'function') return;
+  fill.style.width = width(fly.from);
+  show(fly.from);
+  requestAnimationFrame(() => {
+    if (!bar.isConnected) return;
+    const a = from.getBoundingClientRect();
+    const b = fill.getBoundingClientRect();
+    const pieces = Math.max(1, Math.min(6, fly.to - fly.from));
+    const end = { x: b.right, y: b.top + b.height / 2 };
+    let landed = 0;
+    for (let i = 0; i < pieces; i++) {
+      const bit = el('span', 'shop-fly', FRAGMENT_ICON);
+      const start = { x: a.left + 28 + i * 14, y: a.top + a.height / 2 };
+      bit.style.left = `${start.x}px`;
+      bit.style.top = `${start.y}px`;
+      document.body.append(bit);
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      const move = bit.animate([
+        { transform: 'translate(-50%, -50%) scale(0.6)', opacity: 0 },
+        { transform: `translate(calc(-50% + ${dx * 0.3}px), calc(-50% + ${dy * 0.3 - 40}px)) scale(1.2)`, opacity: 1, offset: 0.35 },
+        { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.5)`, opacity: 0.9 },
+      ], { duration: 750, delay: i * 140, easing: 'ease-in', fill: 'backwards' });
+      move.onfinish = move.oncancel = () => {
+        bit.remove();
+        landed += 1;
+        // Each piece moves the bar on a little; the last one lands the total.
+        const n = landed >= pieces ? fly.to : Math.round(fly.from + ((fly.to - fly.from) * landed) / pieces);
+        fill.style.width = width(n);
+        show(n);
+        if (landed < pieces) return;
+        bar.classList.add('is-glow');
+        // "+2" pops up over the count, so the gift reads bigger than a number ticking over.
+        const plus = text('span', 'shop-fly-plus', `+${fly.to - fly.from}`);
+        const c = count.getBoundingClientRect();
+        plus.style.left = `${c.left + c.width / 2}px`;
+        plus.style.top = `${c.top}px`;
+        document.body.append(plus);
+        plus.animate([
+          { transform: 'translate(-50%, 0) scale(0.6)', opacity: 0 },
+          { transform: 'translate(-50%, -18px) scale(1.15)', opacity: 1, offset: 0.3 },
+          { transform: 'translate(-50%, -34px) scale(1)', opacity: 0 },
+        ], { duration: 1100, easing: 'ease-out' }).onfinish = () => plus.remove();
+      };
+    }
+  });
+}
+
 // Folder tabs with pictures, the picked one white like the page under it.
 // They share the width while each can stay at least 36px wide (set in the
 // CSS); past that (a small phone, or more tabs) the row scrolls sideways
