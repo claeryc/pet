@@ -12,7 +12,8 @@ import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import type { GameState } from '../game/state';
 import { isNew, isUnlocked, type UnlockId } from '../game/unlocks';
-import { LOCK_ICON, MENU_ICONS } from './icons';
+import { ITEM_ICONS, LOCK_ICON, MENU_ICONS } from './icons';
+import { FURNITURE, SPOTS, piecesFor } from '../game/decor';
 import { goldPill, shopPage, wardrobePage, type ShopCallbacks, type ShopCategory, type ShopView } from './shop';
 import { collectionPage, type CollectionView } from './collection';
 import { journalPage, newestPlace } from './journal';
@@ -26,10 +27,6 @@ import { canLearnIn, showPickedSkill, skillsPage, type SkillsCallbacks, type Ski
 import { TREES, keeperLevel, pointsToSpend } from '../game/skills';
 import { audioSettings, setAudioSettings } from '../audio/audio';
 import type { JourneysCallbacks } from './journeys';
-import { hasBackpack, isAway } from '../game/presence';
-import { badgeCount } from '../game/achievements';
-import { MILESTONES } from '../game/milestones';
-import { dailySpecial, getHat, ownsSpecial } from '../game/economy';
 import { GUIDES, guideOpen, type GuideId } from '../game/guides';
 import { MAPS, START_MAP, areaCard } from '../game/map';
 import { GUIDE_ICONS, guideName, guidePageCount } from './guide';
@@ -71,7 +68,9 @@ export interface MenuActions {
   onOpenDelivery: () => void; // go out to Percy to fill Percy's order
   onOpenMeet: () => void; // meet whoever is over (Play > Meet)
   onOpenJourneys: () => void; // the journey board (Play > Journeys)
-  onOpenMap: () => void; // the map of the island and the sea (Menu > Map)
+  onOpenMap: () => void; // the map of the island and the sea (the dock's Map button)
+  onOpenPlay?: () => void; // the Play list, from the pop-up (until its places move to the map)
+  onDecorate?: () => void; // the room edit tray
 }
 
 export interface Menu {
@@ -86,10 +85,6 @@ export interface Menu {
   showMeadow: () => void; // the Meadow and its keepsakes
   showMessages: (tab?: MessagesTab) => void; // Messages, at Mail or Friends
 }
-
-// Text for a tile's line, which is set as HTML (for the special's pink
-// "25% off").
-const escapeHtml = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
 // A row button (Settings' Start over).
 function item(label: string, onClick: () => void): HTMLButtonElement {
@@ -158,8 +153,8 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
   // pill at the bottom (Guide, Settings). `badge` is a number in its
   // corner (new mail, skill points), `dot` a "new" dot, each with what
   // screen readers say for it.
-  type TileSize = 'big' | 'mid' | 'quiet';
-  function tile(size: TileSize, label: string, icon: string, onClick: () => void, line = '', dot: string | null = null, badge = 0): HTMLButtonElement {
+  type TileSize = 'big' | 'mid' | 'row' | 'quiet';
+  function tile(size: TileSize, label: string, icon: string, onClick: () => void, line = '', dot: string | null = null, badge = 0, end?: HTMLElement): HTMLButtonElement {
     const b = document.createElement('button');
     b.className = `menu-tile is-${size}`;
     const pic = document.createElement('span');
@@ -171,13 +166,14 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     name.className = 'menu-tile-label';
     name.textContent = label;
     text.append(name);
-    if (line && size !== 'quiet') {
+    if (line && (size === 'big' || size === 'mid')) {
       const small = document.createElement('small');
       small.className = 'menu-tile-line';
       small.innerHTML = line;
       text.append(small);
     }
     b.append(pic, text);
+    if (end) b.append(end);
     if (badge > 0) {
       const n = document.createElement('span');
       n.className = 'menu-badge';
@@ -196,102 +192,74 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
 
   // A tile that only shows once it has opened up. Opening it the first
   // time clears its "new" dot.
-  function unlockable(id: UnlockId, size: TileSize, label: string, onClick: () => void, line = '', dot: string | null = null, badge = 0): HTMLButtonElement[] {
+  function unlockable(id: UnlockId, size: TileSize, label: string, onClick: () => void, line = '', dot: string | null = null, badge = 0, end?: HTMLElement): HTMLButtonElement[] {
     if (!state || !isUnlocked(state, id)) return [];
     const fresh = isNew(state, id);
     const b = tile(size, label, MENU_ICONS[id], () => {
       cb.onSeen(id);
       onClick();
-    }, line, fresh ? STRINGS.menu.new : dot, fresh ? 0 : badge);
+    }, line, fresh ? STRINGS.menu.new : dot, fresh ? 0 : badge, end);
     b.dataset.id = id;
     return [b];
   }
 
-  // The main page: Shop and Map first and biggest, then the places
-  // you visit now and then, then Guide and Settings, quietly at the bottom.
+  // The main page is the pop-up over the "···" button: one list of rows,
+  // the places you go most at the top, then Guide and Settings under a
+  // line. Rows only show once their part of the game has opened up. The
+  // Map has its own button in the dock, so it isn't here.
   function showMain(): void {
     setPage('main');
     toTop();
     const s = state;
     const M = STRINGS.menu;
-    const big = document.createElement('div');
-    big.className = 'menu-grid is-big';
-    big.append(
-      ...unlockable('shop', 'big', M.shop, () => {
+    const list = document.createElement('div');
+    list.className = 'menu-list';
+    const roomPiece = FURNITURE[0] ? ITEM_ICONS[`furniture_${FURNITURE[0].id}`] : '';
+    list.append(
+      ...unlockable('shop', 'row', M.shop, () => {
         shopBack = null;
         showShop();
         cb.onGuide('shop');
-      }, s ? shopLine(s) : ''),
-      ...mapItem(),
-    );
-    const mid = document.createElement('div');
-    mid.className = 'menu-grid is-mid';
-    mid.append(...menuRows([
-      ...journalItem(),
+      }, '', null, 0, s ? goldPill(s.gold) : undefined),
+      // Room: the decorating tray, once there's a piece to put somewhere.
+      ...(s && cb.onDecorate && SPOTS.some((spot) => piecesFor(s, spot).length > 0)
+        ? [tile('row', M.room, roomPiece, () => {
+          close();
+          cb.onDecorate?.();
+        })]
+        : []),
+      ...skillsItem(),
       ...messagesItem(),
-      ...unlockable('collection', 'mid', M.collection, () => {
+      ...journalItem(),
+      ...unlockable('collection', 'row', M.collection, () => {
         showCollection();
         cb.onGuide('collection');
-      }, s ? M.collectionLine(badgeCount(s).earned + s.milestones.length, badgeCount(s).total + MILESTONES.length) : ''),
-      ...skillsItem(),
-      ...unlockable('familyTree', 'mid', M.familyTree, () => showFamilyTree(), s ? M.familyLine : ''),
+      }),
+      ...unlockable('familyTree', 'row', M.family, () => showFamilyTree()),
       // The Meadow, once a pet has moved there.
-      ...(s && (s.meadow.length > 0 || s.keepsakes.length > 0) ? [tile('mid', M.meadow, MENU_ICONS.meadow, () => showMeadow(), M.meadowLine(s.meadow.length))] : []),
-    ]));
+      ...(s && (s.meadow.length > 0 || s.keepsakes.length > 0) ? [tile('row', M.meadow, MENU_ICONS.meadow, () => showMeadow())] : []),
+      // Play keeps its place here until the pond, garden and friends are
+      // scenes on the map.
+      ...(s && s.pet.stage !== 'egg' && cb.onOpenPlay ? [tile('row', STRINGS.buttons.play, ITEM_ICONS.cuddle, () => {
+        close();
+        cb.onOpenPlay?.();
+      })] : []),
+    );
     const quiet = document.createElement('div');
-    quiet.className = 'menu-grid is-quiet';
+    quiet.className = 'menu-list is-quiet';
     quiet.append(
       ...(s && guideOpen(s, 'basics') ? [tile('quiet', M.guide, MENU_ICONS.guide, () => showGuide())] : []),
       tile('quiet', M.settings, MENU_ICONS.settings, showSettings),
     );
-    panel.replaceChildren(...[big, mid, quiet].filter((g) => g.children.length > 0));
-  }
-
-  // The middle tiles in rows that share the width evenly, three at most to
-  // a row: four make 2 + 2, five 3 + 2, seven 3 + 2 + 2. No tile is ever
-  // left on its own at the end of a row.
-  function menuRows(tiles: HTMLElement[]): HTMLElement[] {
-    const sizes = rowSizes(tiles.length);
-    let at = 0;
-    return sizes.map((n) => {
-      const row = document.createElement('div');
-      row.className = 'menu-row';
-      row.append(...tiles.slice(at, at + n));
-      at += n;
-      return row;
-    });
-  }
-
-  // Under the Shop's name: today's special while it's still to buy.
-  function shopLine(s: GameState): string {
-    const special = dailySpecial(s);
-    if (!special || ownsSpecial(s, special)) return STRINGS.menu.shopLine;
-    const names = special.kind === 'wallpaper' ? STRINGS.shop.wallpapers : special.kind === 'curtains' ? STRINGS.shop.curtains : STRINGS.shop.furniture;
-    const name = special.kind === 'hat' ? getHat(special.id)?.name ?? special.id : names[special.id] ?? special.id;
-    return STRINGS.menu.shopSpecial(Math.round(CONFIG.dailySpecial.off * 100), escapeHtml(name));
+    panel.replaceChildren(...[list, quiet].filter((g) => g.children.length > 0));
   }
 
   // Messages, with the number of new letters from Percy (or a "new" dot
   // until it's been looked at once).
   function messagesItem(): HTMLButtonElement[] {
     const unread = state ? unreadMail(state) : 0;
-    return unlockable('messages', 'mid', STRINGS.menu.messages, () => showMessages(),
+    return unlockable('messages', 'row', STRINGS.menu.messages, () => showMessages(),
       unread > 0 ? STRINGS.menu.messagesNew(unread) : STRINGS.menu.messagesLine, STRINGS.messages.unread, unread);
-  }
-
-  // The map: the island and, past the ship, the journey places. It says
-  // what's going on out there, with a dot when an area needs you.
-  function mapItem(): HTMLButtonElement[] {
-    if (!state) return [];
-    const backpack = [state.pet, ...state.housemates].some(hasBackpack);
-    const M = STRINGS.menu;
-    const line = backpack ? M.journeysBackpack : isAway(state.pet) ? M.journeysAway(escapeHtml(state.pet.name)) : STRINGS.map.menuLine;
-    const now = state.lastUpdated;
-    const dot = backpack ? STRINGS.journeys.backpackNote : MAPS[START_MAP].areas.some((a) => areaCard(state!, now, a).dot) ? STRINGS.menu.new : null;
-    return [tile('big', STRINGS.map.menuTile, MENU_ICONS.map, () => {
-      close();
-      cb.onOpenMap();
-    }, line, dot)];
   }
 
   // The travel journal, once journeys are open: how many places and
@@ -301,14 +269,14 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     const pages = Object.values(state.journeys.journal).filter((p) => p.trips > 0);
     const postcards = pages.reduce((n, p) => n + p.postcards.length, 0);
     const line = pages.length ? STRINGS.menu.journalLine(postcards) : STRINGS.menu.journalEmpty;
-    return [tile('mid', STRINGS.menu.journal, MENU_ICONS.journal, () => showJournal(newestPlace(state!) ?? journalPlace), line)];
+    return [tile('row', STRINGS.menu.journal, MENU_ICONS.journal, () => showJournal(newestPlace(state!) ?? journalPlace), line)];
   }
 
   // Skills, with the number of points to spend.
   function skillsItem(): HTMLButtonElement[] {
     if (!state) return [];
     const points = pointsToSpend(state);
-    return unlockable('skills', 'mid', STRINGS.menu.skills, () => {
+    return unlockable('skills', 'row', STRINGS.menu.skills, () => {
       showSkills();
       cb.onGuide('skills');
     }, points > 0 ? STRINGS.skills.points(points) : STRINGS.menu.skillsLine(keeperLevel(state)), STRINGS.skills.points(points), points);
@@ -903,12 +871,3 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
   };
 }
 
-// How many tiles go on each row of the menu, three at most, the fuller
-// rows first: 4 -> [2, 2], 5 -> [3, 2], 7 -> [3, 2, 2].
-export function rowSizes(n: number): number[] {
-  if (n <= 0) return [];
-  const rows = Math.ceil(n / 3);
-  const small = Math.floor(n / rows);
-  const extra = n % rows;
-  return Array.from({ length: rows }, (_, i) => small + (i < extra ? 1 : 0));
-}

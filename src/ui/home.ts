@@ -13,8 +13,9 @@ import { createMap } from './map';
 import { visitor } from '../game/friends';
 import { foodCount, revivalStars } from '../game/economy';
 import { BAITS, baitCount, baitInUse, type BaitId, type Bite } from '../game/fishing';
+import { NEED_ICONS, needStep } from './needIcons';
 import { createDrawer, type DrawerOption, type Effect } from './drawer';
-import { ITEM_ICONS, STAT_ICONS } from './icons';
+import { ITEM_ICONS, MENU_ICONS, STAT_ICONS } from './icons';
 import type { ActivityId, Food, FoodId } from '../game/actions';
 import type { CatchGrade } from '../game/fishing';
 import { createFishing, DRAIN_MS, type FishingPhase } from './fishing';
@@ -385,7 +386,20 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const tryTag = document.createElement('div');
   tryTag.className = 'try-tag';
   tryTag.hidden = true;
-  roomWrap.append(canvas, fx.el, bubble, corner, door, tryTag);
+  // The four needs, pinned to the top of the room: each icon shows its own
+  // level (see needIcons.ts), so the room can fill the screen.
+  const needs = document.createElement('div');
+  needs.className = 'needs-pill';
+  needs.setAttribute('role', 'group');
+  const needIcons = {} as Record<keyof PetStats, HTMLElement>;
+  for (const key of ['hunger', 'happiness', 'health', 'energy'] as (keyof PetStats)[]) {
+    const i = document.createElement('span');
+    i.className = 'need';
+    i.dataset.need = key;
+    needIcons[key] = i;
+    needs.append(i);
+  }
+  roomWrap.append(canvas, needs, fx.el, bubble, corner, door, tryTag);
 
   // Warning / sick / recovering / passed away banner, hidden when all is well.
   const banner = document.createElement('div');
@@ -550,6 +564,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const DIG_ROW = JOURNEYS_ROW + 1;
   const WORKBENCH_ROW = DIG_ROW + 1;
   const feedDrawer = createDrawer({ id: 'feed', label: STRINGS.buttons.feed, options: feedOptions, ...drawerSetup });
+  // In the dock, Feed wears a rice ball next to its name, like Map's island.
+  feedDrawer.el.querySelector('.drawer-label')!.innerHTML = `<span class="dock-icon" aria-hidden="true">${ITEM_ICONS.riceBall}</span>${STRINGS.buttons.feed}`;
   const playDrawer = createDrawer({ id: 'play', label: STRINGS.buttons.play, options: playOptions, ...drawerSetup });
 
   // The backpack button opens the menu (shop, inventory, settings and more) the
@@ -559,11 +575,16 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   // shopping), so its rows get the room under its tabs.
   let menuOverStats = false;
   const menu = createMenu(
-    { ...cb, onOpenDelivery: () => startDelivery(), onOpenMeet: () => startMeet(), onOpenJourneys: () => openJourneys(), onOpenMap: () => openMap(), onDecorate: () => openDecorate() },
+    {
+      ...cb, onOpenDelivery: () => startDelivery(), onOpenMeet: () => startMeet(), onOpenJourneys: () => openJourneys(), onOpenMap: () => openMap(), onDecorate: () => openDecorate(),
+      onOpenPlay: () => playDrawer.open(),
+    },
     () => menuDrawer?.isOpen() ?? false,
     () => menuDrawer?.close(),
     (page) => {
-      if (menuOverStats === (page === 'shop')) return;
+      // The main page is the pop-up over "···"; the rest are sheets or
+      // full pages (see style.css, "the dock").
+      actions.dataset.page = page;
       menuOverStats = page === 'shop';
       if (menuDrawer) fitDrawers();
     },
@@ -580,27 +601,54 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     },
     beforeOpen: () => null,
   });
-  const lights = button('', 'btn btn-icon', cb.onLights);
+  // Sleep: a moon in the room, by where the lamp will be.
+  const lights = button('', 'room-lights', cb.onLights);
+  roomWrap.append(lights);
+
+  // The dock: Feed, Map, and "···" for everything else. While anything is
+  // open, "···" turns into "×", which always goes back to the room.
+  const mapButton = button('', 'dock-btn dock-map', () => openMap());
+  mapButton.innerHTML = `<span class="dock-icon" aria-hidden="true">${MENU_ICONS.map}</span><span class="dock-label">${STRINGS.map.menuTile}</span>`;
+  const moreButton = button('', 'dock-btn dock-more', () => {
+    if (actions.dataset.open) return closePanels();
+    menuDrawer!.open();
+  });
+  moreButton.innerHTML = '<span class="dock-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="dock-x" aria-hidden="true"></span>';
+  const closePanels = () => {
+    feedDrawer.close();
+    playDrawer.close();
+    menuDrawer!.close();
+  };
+  // "···" or "×", and what screen readers hear, follow whatever is open.
+  const syncMore = () => {
+    const open = !!actions.dataset.open;
+    moreButton.classList.toggle('is-close', open);
+    moreButton.setAttribute('aria-label', open ? STRINGS.menu.close : STRINGS.menu.more);
+  };
+  new MutationObserver(syncMore).observe(actions, { attributes: true, attributeFilter: ['data-open'] });
+  syncMore();
 
   // An open Feed, Play or Menu panel reaches up to just under the stat bars,
   // so taller screens show more rows. Small screens keep the old height
   // (the panel covers the bars there). The panel's button, frame and
   // padding take about 74px. The Shop goes over the bars, its top edge
   // lined up with theirs (the frame itself is 58px).
+  // Two heights, whatever is open (see "the dock" in style.css): a tall
+  // sheet comes up to the bottom of the room, so the pet stays in view,
+  // and a full page (the "books": Journal, Collection, Skills, Family)
+  // comes up to just under the needs.
   function fitDrawers(): void {
-    const bottom = actions.getBoundingClientRect().bottom;
-    const slot = statSlot.getBoundingClientRect();
-    const fit = (room: number) => `${Math.max(DRAWER_MIN, Math.floor(room))}px`;
-    const underBars = fit(bottom - slot.bottom - DRAWER_GAP - 74);
-    actions.style.setProperty('--drawer-fit', underBars);
-    menuDrawer?.el.style.setProperty('--drawer-fit', menuOverStats ? fit(bottom - slot.top - 58) : underBars);
-    // The travel journal is a book, so it takes the whole screen above the
-    // button, over the room too.
-    actions.style.setProperty('--drawer-full', fit(bottom - roomWrap.getBoundingClientRect().top - 74));
+    const top = actions.getBoundingClientRect().top;
+    const room = roomWrap.getBoundingClientRect();
+    const fit = (h: number) => `${Math.max(DRAWER_MIN, Math.floor(h))}px`;
+    // The panel floats DRAWER_GAP over the dock, and keeps the same gap
+    // under the room (or the needs).
+    actions.style.setProperty('--sheet-h', fit(top - room.bottom - 2 * DRAWER_GAP));
+    actions.style.setProperty('--page-h', fit(top - room.top - needs.offsetTop - needs.offsetHeight - 2 * DRAWER_GAP));
   }
   window.addEventListener('resize', fitDrawers);
 
-  actions.append(feedDrawer.el, playDrawer.el, menuDrawer.el, lights);
+  actions.append(feedDrawer.el, mapButton, playDrawer.el, menuDrawer.el, moreButton);
 
   // Journeys: the board of trips, then the lunchbox, over the stat bars.
   function openJourneys(slot?: number): void {
@@ -743,6 +791,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       return;
     }
     if (actions.hidden) return;
+    // Tapping the room while something is open goes back to the room.
+    if (actions.dataset.open) return closePanels();
     // A poop on the floor: pick it up.
     if (tapPoop(e)) return;
     // The keepsake shelf: see it up close.
@@ -1366,7 +1416,18 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       for (const key of Object.keys(bars) as (keyof PetStats)[]) {
         if (switched) bars[key].slide(pet.stats[key]);
         else bars[key].set(pet.stats[key]);
+        const step = needStep(pet.stats[key]);
+        const icon = needIcons[key];
+        if (icon.dataset.step !== String(step)) {
+          icon.dataset.step = String(step);
+          icon.innerHTML = NEED_ICONS[key][step];
+        }
+        const words = `${STRINGS.stats[key]}: ${Math.round(pet.stats[key])}%`;
+        icon.setAttribute('aria-label', words);
+        icon.setAttribute('role', 'img');
+        icon.title = words;
       }
+      needs.hidden = isEgg || petAway;
       // With two pets, the craving bubble floats over the one you're
       // looking after.
       roomWrap.dataset.spot = !twoHome(state) ? 'middle' : petStandsLeft(state) ? 'left' : 'right';
@@ -1398,7 +1459,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       const cookIsNew = isNew(state, 'cooking');
       feedDrawer.setOptionNew(COOK_ROW, cookIsNew);
       feedDrawer.setNew(cookIsNew);
-      menuDrawer!.setNew(
+      moreButton.classList.toggle('has-new',
         isNew(state, 'shop') || isNew(state, 'collection') || isNew(state, 'familyTree') || isNew(state, 'journeys') ||
           [pet, ...state.housemates].some(hasBackpack) ||
           isNew(state, 'messages') || unreadMail(state) > 0 || isNew(state, 'skills') ||

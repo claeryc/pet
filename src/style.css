@@ -13973,3 +13973,413 @@ button.trip-bars-name.is-on {
 .settings-backup-code[hidden] {
   display: none;
 }
+
+/* ==========================================================================
+   The dock (redesign, part 1)
+
+   One row at the bottom: Feed (pink), Map (blue) and "···" (purple), which
+   turns into "×" while anything is open and always goes back to the room.
+   What opens sits above the dock, which stays put:
+   - the pop-up: the menu's main page, a short list over "···";
+   - a tall sheet (Feed, Shop, Messages, Settings...): up to the bottom of
+     the room, so the pet stays in view (--sheet-h, set in home.ts);
+   - a full page (Journal, Collection, Skills, Family): up to just under
+     the needs (--page-h).
+   The needs sit in a pill pinned to the top of the room.
+   ========================================================================== */
+
+:root {
+  --dock-h: 56px;
+  --sheet-bg: #fff7ec;
+  --sheet-edge: #f1e1d6;
+  --map-blue: #7cb6ec;
+  --map-blue-dark: #4f86c6;
+}
+
+/* No sliding: the dock's buttons keep their places whatever is open. */
+.actions {
+  height: var(--dock-h);
+  gap: 10px;
+  align-items: stretch;
+}
+.actions > * + * {
+  margin-left: 0;
+}
+.actions > *,
+.actions[data-open] > * {
+  transition: none;
+  overflow: visible;
+}
+.actions[data-open] > :not(.is-open),
+.actions[data-open] > .is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.actions > .drawer[data-drawer='feed'],
+.actions > .dock-map,
+.actions[data-open] > .drawer[data-drawer='feed'],
+.actions[data-open] > .dock-map {
+  flex: 1 1 0;
+}
+.actions[data-open] > .dock-more {
+  flex: 0 0 var(--dock-h);
+}
+/* Play and the menu have no button of their own: "···" (and, for now, the
+   Play row in the pop-up) opens them. */
+.actions > .drawer[data-drawer='play'],
+.actions > .drawer[data-drawer='menu'],
+.actions[data-open] > .drawer[data-drawer='play'],
+.actions[data-open] > .drawer[data-drawer='menu'] {
+  flex: 0 0 0;
+  width: 0;
+  margin: 0;
+  background: none;
+  box-shadow: none;
+}
+.drawer[data-drawer='play'] > .drawer-head,
+.drawer[data-drawer='menu'] > .drawer-head {
+  display: none;
+}
+
+/* Feed: the pink button, with its chevron gone (the "×" closes). */
+.drawer[data-drawer='feed'] .drawer-chevron {
+  display: none;
+}
+.drawer[data-drawer='feed'] > .drawer-head {
+  height: var(--dock-h);
+}
+.drawer[data-drawer='feed'].is-open {
+  box-shadow: 0 2px 0 var(--accent-dark);
+}
+.actions > .drawer {
+  position: static;
+}
+
+.dock-btn {
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 800;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 16px;
+  color: white;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.dock-btn:active {
+  transform: translateY(2px);
+}
+.dock-map {
+  background: var(--map-blue);
+  box-shadow: 0 4px 0 var(--map-blue-dark);
+}
+.dock-map:active {
+  box-shadow: 0 2px 0 var(--map-blue-dark);
+}
+.dock-icon {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+}
+.dock-icon svg {
+  width: 100%;
+  height: 100%;
+}
+.dock-more {
+  flex: 0 0 var(--dock-h);
+  background: var(--lilac);
+  box-shadow: 0 4px 0 var(--plum);
+}
+.dock-more:active {
+  box-shadow: 0 2px 0 var(--plum);
+}
+.dock-dots {
+  display: flex;
+  gap: 4px;
+}
+.dock-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background: white;
+}
+/* "×", from two bars, in place of the dots while something is open. */
+.dock-x {
+  display: none;
+  position: relative;
+  width: 20px;
+  height: 20px;
+}
+.dock-x::before,
+.dock-x::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: -1px;
+  width: 4px;
+  height: 22px;
+  border-radius: 2px;
+  background: white;
+  transform: rotate(45deg);
+}
+.dock-x::after {
+  transform: rotate(-45deg);
+}
+.dock-more.is-close .dock-dots {
+  display: none;
+}
+.dock-more.is-close .dock-x {
+  display: block;
+}
+/* Something new behind "···": one dot, the same as on the other buttons. */
+.dock-more.has-new:not(.is-close)::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent-dark);
+  box-shadow: 0 0 0 3px var(--bg);
+}
+
+/* ---- What opens above the dock ---- */
+
+.actions .drawer-body {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 12px);
+  z-index: 6;
+}
+/* One cream skin with a grabber, for every sheet and page. */
+.actions .drawer-inner {
+  background: var(--sheet-bg);
+  border-radius: 24px;
+  box-shadow: 0 0 0 3px var(--sheet-edge), 0 6px 0 3px rgba(43, 33, 64, 0.1);
+}
+.drawer.is-open .drawer-inner {
+  overflow: hidden;
+}
+.actions .drawer:not(.is-open) .drawer-inner {
+  box-shadow: none;
+}
+.actions .drawer-options {
+  margin: 0;
+  padding: 18px 12px 12px;
+  background: transparent;
+  border-radius: 0;
+  max-height: var(--sheet-h, 360px);
+}
+.actions .drawer-options::before {
+  content: '';
+  position: absolute;
+  top: 7px;
+  left: 50%;
+  width: 40px;
+  height: 5px;
+  margin-left: -20px;
+  border-radius: 3px;
+  background: var(--lavender);
+}
+.actions .drawer-inner {
+  position: relative;
+}
+.actions .drawer-content {
+  height: var(--sheet-h, 360px);
+  max-height: none;
+}
+/* The books get the full page. */
+.actions[data-page='journal'] .drawer[data-drawer='menu'] .drawer-content,
+.actions[data-page='collection'] .drawer[data-drawer='menu'] .drawer-content,
+.actions[data-page='skills'] .drawer[data-drawer='menu'] .drawer-content,
+.actions[data-page='familyTree'] .drawer[data-drawer='menu'] .drawer-content,
+.actions[data-page='guide'] .drawer[data-drawer='menu'] .drawer-content {
+  height: var(--page-h, var(--sheet-h, 360px));
+  max-height: none;
+}
+
+/* ---- The pop-up: the menu's main page, over "···" ---- */
+
+.actions[data-page='main'] .drawer[data-drawer='menu'] .drawer-body {
+  left: auto;
+  width: min(250px, 72vw);
+}
+.actions[data-page='main'] .drawer[data-drawer='menu'] .drawer-content {
+  height: auto;
+  max-height: var(--page-h, 520px);
+  padding: 8px;
+}
+.actions[data-page='main'] .drawer[data-drawer='menu'] .drawer-options::before {
+  display: none;
+}
+/* A little tail pointing down at "···". */
+.actions[data-page='main'] .drawer[data-drawer='menu'] .drawer-inner::after {
+  content: '';
+  position: absolute;
+  right: 20px;
+  bottom: -7px;
+  width: 14px;
+  height: 14px;
+  background: var(--sheet-bg);
+  transform: rotate(45deg);
+  box-shadow: 3px 3px 0 0 var(--sheet-edge);
+}
+.drawer .menu-panel:has(> .menu-list) {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.menu-list.is-quiet {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 2px solid var(--sheet-edge);
+}
+.menu-list .menu-tile {
+  min-height: 48px;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+}
+.menu-list .menu-tile:active {
+  transform: none;
+  box-shadow: none;
+  background: #fbe9ef;
+}
+.menu-list .menu-tile-icon {
+  width: 26px;
+  height: 26px;
+}
+.menu-list .menu-tile-text {
+  flex: 1;
+}
+.menu-list .menu-tile-label {
+  font-size: 1rem;
+  font-weight: 800;
+}
+.menu-list.is-quiet .menu-tile {
+  min-height: 42px;
+}
+.menu-list.is-quiet .menu-tile-label {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #6b5a80;
+}
+.menu-list.is-quiet .menu-tile-icon {
+  width: 20px;
+  height: 20px;
+}
+.menu-list .menu-badge,
+.menu-list .new-dot {
+  position: static;
+  margin-left: auto;
+}
+.menu-list .gold-pill {
+  margin-left: auto;
+}
+
+/* ---- In the room: the needs and the moon ---- */
+
+.needs-pill {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #fff7ecee;
+  box-shadow: 0 0 0 2px #e9d6e6, 0 3px 0 2px rgba(43, 33, 64, 0.12);
+  z-index: 2;
+  pointer-events: auto;
+}
+.needs-pill[hidden] {
+  display: none;
+}
+.need {
+  display: inline-flex;
+  width: 24px;
+  height: 22px;
+}
+.need svg {
+  width: 100%;
+  height: 100%;
+}
+.need[data-step='0'],
+.need[data-step='1'] {
+  animation: need-low 1.6s ease-in-out infinite;
+}
+@keyframes need-low {
+  50% {
+    transform: translateY(-2px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .need[data-step='0'],
+  .need[data-step='1'] {
+    animation: none;
+  }
+}
+/* The bars gave way to the needs pill. They stay in the page (the pond,
+   the kitchen and the rest still rise into their place), just unseen. */
+.stat-slot > .stats {
+  display: none;
+}
+
+.room-lights {
+  position: absolute;
+  right: 12px;
+  bottom: 14px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--plum);
+  box-shadow: 0 0 0 3px #fff7ec, 0 3px 0 3px rgba(43, 33, 64, 0.2);
+  color: var(--butter);
+  cursor: pointer;
+  z-index: 2;
+}
+.room-lights svg {
+  width: 22px;
+  height: 22px;
+}
+.room-lights.dim {
+  opacity: 0.5;
+}
+.drawer[data-drawer='feed'] .drawer-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+/* The Shop row is a plain row in the pop-up (its awning is on the Shop). */
+.menu-list .menu-tile[data-id='shop'] {
+  padding-top: 6px;
+  background: transparent;
+}
+.menu-list .menu-tile[data-id='shop']::before {
+  display: none;
+}
+/* Every sheet has one top edge, however few rows it has. */
+.actions .drawer[data-drawer='feed'] .drawer-options,
+.actions .drawer[data-drawer='play'] .drawer-options {
+  height: var(--sheet-h, 360px);
+}
