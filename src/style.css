@@ -15080,3 +15080,123 @@ button.trip-bars-name.is-on {
   line-height: 1.3;
   text-wrap: pretty;
 }
+
+/* ---- Item 4: a resting place for pets that passed away ---- */
+.banner-buttons.is-three {
+  flex-wrap: wrap;
+}
+.banner-buttons.is-three .btn {
+  flex: 1 1 30%;
+  padding-left: 6px;
+  padding-right: 6px;
+  white-space: nowrap;
+}
+.btn.btn-rest {
+  background: var(--lilac);
+  box-shadow: 0 4px 0 var(--plum);
+}
+.banner-buttons.is-three .btn-soft {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--lavender);
+  color: var(--plum);
+}
+.rest-card .away-head img {
+  width: 56px;
+  height: 56px;
+  margin: -8px 0;
+  image-rendering: pixelated;
+}
+.rest-bar {
+  height: 10px;
+  margin: 6px 0 4px;
+  border-radius: 99px;
+  background: var(--lavender);
+  overflow: hidden;
+}
+.rest-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--butter);
+  box-shadow: inset 0 -2px 0 #e9c35a;
+}
+.rest-card p {
+  margin: 0 0 10px;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  text-wrap: pretty;
+}
+.rest-card small {
+  display: block;
+  margin-bottom: 14px;
+  font-weight: 800;
+  color: var(--plum);
+}
+.rest-card .away-ok.is-off {
+  opacity: 0.5;
+}
+.rest-card .rest-close {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 800;
+  color: var(--plum);
+}
+
+.rest-card .rest-note {
+  color: var(--plum);
+}
+.rest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rest-pet {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.rest-pet img {
+  width: 36px;
+  height: 36px;
+  image-rendering: pixelated;
+}
+.rest-pet b {
+  flex: 1;
+  min-width: 0;
+}
+.rest-pet .away-ok {
+  flex: 1 1 100%;
+}
+.rest-list:has(img) .rest-pet .away-ok {
+  flex: none;
+  width: auto;
+  height: 42px;
+  padding: 0 16px;
+}
+.rest-goodbye {
+  flex: 1 1 100%;
+  padding: 4px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--plum);
+  opacity: 0.8;
+  cursor: pointer;
+}
+.rest-list:has(img) .rest-goodbye {
+  flex: none;
+}
+.btn-rest:disabled {
+  opacity: 0.5;
+}

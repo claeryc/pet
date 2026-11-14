@@ -58,6 +58,9 @@ export interface Pet {
   // How many hours it has from falling sick to passing away, fixed when it
   // falls sick (see passingHours in simulate.ts). Missing: the usual 24.
   sickWindowHours?: number;
+  // When it passed away, so a revived pet picks its life up where it left
+  // off instead of growing up on the spot.
+  passedAt?: number;
   recoveryUntil: number | null; // resting after medicine until this time
   careScore: number; // hidden 0-100 long-term care rating
   buffs: Buff[]; // active timed effects
@@ -504,6 +507,9 @@ export interface GameState {
   // The keeper's choices that change the game itself (Settings).
   // autoHoliday: use a Holiday ticket by itself when a pet would fall sick.
   settings: { autoHoliday: boolean };
+  // Pets that passed away and rest under the stars (see resting.ts),
+  // waiting for a Revival Star. Nothing happens to them meanwhile.
+  resting: Pet[];
   // Extra time added by the debug fast-forward button, in milliseconds.
   // The game's clock is always: real time + clockOffsetMs.
   clockOffsetMs: number;
@@ -667,6 +673,7 @@ export function createNewGame(now: number): GameState {
     lastUpdated: now,
     startedAt: now,
     settings: { autoHoliday: false },
+    resting: [],
     clockOffsetMs: 0,
     riceJarAt: null,
     gold: CONFIG.economy.startingGold,

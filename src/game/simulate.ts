@@ -200,6 +200,7 @@ function tick(pet: Pet, t: number, wasNight: boolean, perks: CarePerks, startedA
     pet.sickMinutes += cfg.tickMinutes;
     if (pet.sickMinutes >= (pet.sickWindowHours ?? cfg.sickness.hoursBeforePassing) * 60) {
       pet.condition = 'passed';
+      pet.passedAt = t;
       pet.asleep = false;
       pet.buffs = [];
       s.health = 0;

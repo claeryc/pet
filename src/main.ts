@@ -91,6 +91,9 @@ import { forecast } from './game/forecast';
 import { fortuneOf, useFortuneCookie } from './game/fortune';
 import { fortuneArt, skipFortuneOnTap } from './ui/fortune';
 import { createAwayCard } from './ui/away';
+import { createRestCard } from './ui/resting';
+import { goodbyeResting, layToRest, reviveResting } from './game/resting';
+import { capacity } from './game/rooms';
 import { awayNotes } from './game/away';
 import type { Pet, Room } from './game/state';
 import { askToKeepStorage, BackupError, blockSaves, clearSave, exportSave, importSave, loadGame, saveGame, whenSaveFails } from './storage/storage';
@@ -685,6 +688,51 @@ function askGoodbye(): void {
   });
 }
 
+// ...or let it rest under the stars (a star in the window) while you raise
+// a new pet.
+function letRest(): void {
+  const name = state.pet.name;
+  const result = layToRest(state, gameNow());
+  setState(result.state);
+  if (result.blocked === 'full') return blocked(STRINGS.revival.restFull(state.resting.length));
+  if (result.blocked) return;
+  home.toast(STRINGS.revival.laidToRest(name));
+}
+
+// The star in the window: who's resting, and bringing one back.
+function showRestCard(): void {
+  restCard.open({
+    pets: state.resting,
+    pieces: state.fragments.pieces,
+    perStar: CONFIG.fragments.perStar,
+    stars: revivalStars(state),
+    room: allPets(state).length < capacity(state),
+    portrait: portraitOf,
+    onBringBack: (id) => {
+      const name = state.resting.find((p) => p.id === id)?.name ?? '';
+      const result = reviveResting(state, gameNow(), id);
+      setState(result.state);
+      if (result.blocked === 'noRoom') return blocked(STRINGS.revival.restNoRoom);
+      if (result.blocked === 'noRevival') return blocked(STRINGS.blocked.noRevival(name));
+      if (result.blocked) return;
+      sound('starMade');
+      home.toast(STRINGS.revival.back(name));
+      react('happy');
+    },
+    onGoodbye: (id) => {
+      const name = state.resting.find((p) => p.id === id)?.name ?? '';
+      choice.open({
+        title: STRINGS.revival.goodbyeTitle(name),
+        text: STRINGS.revival.restGoodbyeAsk(name),
+        options: [
+          { label: STRINGS.revival.keep, onPick: () => {} },
+          { label: STRINGS.revival.goodbyeYes, soft: true, onPick: () => setState(goodbyeResting(state, id)) },
+        ],
+      });
+    },
+  });
+}
+
 // Friends: says why something was refused.
 function friendBlocked(reason: FriendBlock | MingleBlock): void {
   blocked(STRINGS.friends.blocked[reason](state.pet.name));
@@ -1043,6 +1091,8 @@ const home = createHomeScreen(root, {
   onMedicine: () => medicineNow(),
   onRevive: askRevive,
   onGoodbye: askGoodbye,
+  onLetRest: letRest,
+  onRestingStar: showRestCard,
   onCast: (streak) => {
     const result = cast(state, gameNow());
     setState(result.state);
@@ -1683,6 +1733,7 @@ const growUp = createGrowUpReveal(root, (moment) => {
 });
 skipFortuneOnTap();
 const away = createAwayCard(root);
+const restCard = createRestCard(root);
 // If saving fails (storage full, private browsing), say so once.
 let saveFailShown = false;
 whenSaveFails(() => {
@@ -1798,6 +1849,7 @@ function drawFrame(timeMs: number): void {
       mess: away ? undefined : messOf(pet, home.hidesSmell()),
       bath,
       glow: !away && pet.starGlow && pet.condition !== 'passed',
+      restingStar: (state.resting ?? []).length > 0,
       note: away,
       night: isNight(gameNow()),
       lightsOff: pet.asleep,

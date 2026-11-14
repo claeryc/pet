@@ -20,6 +20,8 @@ export const STRINGS = {
     energy: 'Energy',
   },
   buttons: {
+    bringBack: 'Bring back',
+    letRest: 'Let rest',
     feed: 'Feed',
     play: 'Play',
     lightsOff: 'Lights off',
@@ -1180,7 +1182,7 @@ export const STRINGS = {
     sick: (name: string) => `${name} is sick and needs medicine.`,
     critical: (name: string, timeLeft: string) =>
       `${name} is very sick! Give medicine within ${timeLeft}, or ${name} will pass away.`,
-    passed: (name: string) => `${name} was sick for too long and passed away. A Revival Star can bring ${name} back.`,
+    passed: (name: string) => `${name} was sick for too long and passed away. Bring ${name} back with a Revival Star, or let ${name} rest under the stars while you raise a new pet.`,
     recovering: (name: string, timeLeft: string) =>
       `${name} is resting after medicine (${timeLeft} left). No mini-games for now, but cuddles and snacks are fine.`,
   },
@@ -1303,6 +1305,18 @@ export const STRINGS = {
     debugVisit: 'Meadow visit now',
   },
   revival: {
+    // Resting under the stars (see src/game/resting.ts).
+    restTitle: (name: string) => `${name} is resting`,
+    restTitleMany: 'Resting under the stars',
+    restChip: 'Under the stars',
+    restText: (name: string) => `${name} sleeps in the star in your window. A Revival Star brings ${name} back, as soon as you have one.`,
+    restTextMany: 'They sleep in the star in your window. A Revival Star brings one back, as soon as you have one.',
+    restProgress: (pieces: number, perStar: number) => `${pieces} / ${perStar} star fragments`,
+    restClose: 'Close',
+    restFull: (n: number) => `${n} pets are already resting. Bring one back or say goodbye first.`,
+    restNoRoom: "There's no free spot at home. Make room first, then bring them back.",
+    laidToRest: (name: string) => `${name} is resting under the stars. Look for the star in the window.`,
+    restGoodbyeAsk: (name: string) => `${name} will go to the Family Tree for good. This can't be undone.`,
     title: (name: string) => `Bring ${name} back?`,
     useAsk: (name: string, have: number) =>
       `A Revival Star brings ${name} back, a little weak and needing rest. You have ${have}.`,
@@ -1660,6 +1674,7 @@ export const STRINGS = {
     raisedByYou: 'Raised by you',
     raisedInWild: 'Raised in the wild',
     atHome: 'At home',
+    resting: 'Resting',
     meadow: 'In the Meadow',
     age: (days: number) => (days === 0 ? 'Born today' : days === 1 ? '1 day old' : `${days} days old`),
     born: (date: string) => `Born ${date}`,

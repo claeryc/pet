@@ -39,6 +39,7 @@ export interface OtherPet {
 export interface Scene {
   animation: string; // which pet animation to play
   glow?: boolean; // the pet was brought back with a Revival Star
+  restingStar?: boolean; // a pet rests under the stars: a star in the window
   face?: Expression; // the pet's face (see src/game/expressions.ts)
   idleEveryMs?: number; // how often it plays idle moves (its trait)
   mess?: PetMess; // the pet's poops and smell (see src/render/hygiene.ts)
@@ -142,6 +143,24 @@ function drawWindow(ctx: CanvasRenderingContext2D, night: boolean, timeMs: numbe
   ctx.fillRect(x + w / 2, y, 1, h);
   ctx.fillRect(x, y + h / 2, w, 1);
 }
+
+// A pet resting under the stars: a star twinkling in the window's top
+// pane, on its own little patch of night sky (day or night, over curtains).
+function drawRestingStar(ctx: CanvasRenderingContext2D, timeMs: number): void {
+  const sx = WINDOW.x + 1, sy = WINDOW.y + 1;
+  const tw = Math.floor(timeMs / 600) % 2;
+  ctx.fillStyle = PALETTE.plum;
+  ctx.fillRect(sx, sy, 6, 5);
+  ctx.fillStyle = PALETTE.butter;
+  ctx.fillRect(sx + 1, sy + 2, 3 + tw, 1);
+  ctx.fillRect(sx + 2, sy + 1, 1, 3);
+  ctx.fillStyle = PALETTE.white;
+  ctx.fillRect(sx + 2, sy + 2, 1, 1);
+}
+
+// True when a point (in room pixels) is on the window, curtains and all.
+export const onWindow = (x: number, y: number): boolean =>
+  x >= WINDOW.x - 2 && x <= WINDOW.x + WINDOW.w + 2 && y >= WINDOW.y - 2 && y <= WINDOW.y + WINDOW.h + 2;
 
 // The pixel column the fishing line hangs down from the rod tip. The pond
 // below lines its own line up with it (see src/ui/home.ts).
@@ -489,6 +508,7 @@ export function drawRoom(
     drawCeiling(ctx, ROOM_WIDTH, top, scene.night, timeMs);
     drawWindow(ctx, scene.night, timeMs);
     if (scene.room?.curtains) drawCurtains(ctx, scene.room.curtains, WINDOW.x, WINDOW.y, WINDOW.w, WINDOW.h);
+    if (scene.restingStar) drawRestingStar(ctx, timeMs);
     if (scene.room?.furniture && (!scene.fishing || scene.fishing === 'off')) drawFurniture(ctx, scene.room.furniture);
     if (scene.keepsakes) drawKeepsakes(ctx, scene.keepsakes, scene.room?.furniture ?? {}, timeMs);
     if (scene.fishing && scene.fishing !== 'off') drawFishing(ctx, scene.fishing, timeMs);

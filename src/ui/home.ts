@@ -31,10 +31,11 @@ import { unreadMail } from '../game/messages';
 import { needsTending, type CropId } from '../game/garden';
 import { isNew, isUnlocked } from '../game/unlocks';
 import { pointsToSpend, reelPerks } from '../game/skills';
-import { FISHING_LINE_X, fitRoomHeight, petAt, ROOM_HEIGHT, ROOM_WIDTH } from '../render/canvas';
+import { FISHING_LINE_X, fitRoomHeight, onWindow, petAt, ROOM_HEIGHT, ROOM_WIDTH } from '../render/canvas';
 import { createMeet, MEET_OUT_MS } from './meet';
 import { petStandsLeft } from '../game/friends';
 import { needsYou, otherRoom, petsIn, roommates } from '../game/rooms';
+import { restingFull } from '../game/resting';
 import type { Friend } from '../game/state';
 import type { CookOptions } from '../game/cooking';
 import { potAt, type GardenScene } from '../render/garden';
@@ -70,6 +71,8 @@ export interface HomeCallbacks extends MenuCallbacks, DigCallbacks {
   onMedicine: () => void;
   onRevive: () => void; // a pet that passed away: use (or buy) a Revival Star
   onGoodbye: () => void; // ...or let it go
+  onLetRest: () => void; // ...or let it rest under the stars while you raise a new pet
+  onRestingStar: () => void; // tapped the star in the window: who's resting
   onCast: (streak: number) => Bite | null; // throws the fishing line; what will bite, or null if refused
   onLand: (grade: CatchGrade, bite: Bite) => string | null; // the fish landed (a food id), or null
   onPickBait: () => void;
@@ -421,11 +424,12 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   banner.className = 'banner';
   const bannerText = document.createElement('p');
   const medicine = button(STRINGS.buttons.medicine, 'btn btn-medicine', cb.onMedicine);
-  const revive = button(STRINGS.buttons.revive, 'btn', cb.onRevive);
+  const revive = button(STRINGS.buttons.bringBack, 'btn', cb.onRevive);
+  const rest = button(STRINGS.buttons.letRest, 'btn btn-rest', cb.onLetRest);
   const goodbye = button(STRINGS.buttons.goodbye, 'btn btn-soft', cb.onGoodbye);
   const passedButtons = document.createElement('div');
-  passedButtons.className = 'banner-buttons';
-  passedButtons.append(revive, goodbye);
+  passedButtons.className = 'banner-buttons is-three';
+  passedButtons.append(revive, rest, goodbye);
   // A pet out on a journey can be called home, and one that's back has a
   // backpack to open.
   const openBackpack = button(STRINGS.journeys.openBackpack, 'btn', () => {
@@ -872,6 +876,11 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     if (actions.dataset.open) return closePanels();
     // A poop on the floor: pick it up.
     if (tapPoop(e)) return;
+    // The star in the window: a pet resting under the stars.
+    if (latest && (latest.state.resting ?? []).length > 0) {
+      const { x, y } = roomPoint(e);
+      if (onWindow(x, y)) return cb.onRestingStar();
+    }
     // The keepsake shelf: see it up close.
     if (latest) {
       const { x, y } = roomPoint(e);
@@ -1653,6 +1662,9 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       bannerText.textContent = text;
       medicine.hidden = pet.condition !== 'sick' || !!pet.trip;
       passedButtons.hidden = !passed || !!pet.trip;
+      // Every resting spot taken: say so, and Let rest waits.
+      rest.disabled = restingFull(state);
+      if (passed && rest.disabled) bannerText.textContent = `${text} ${STRINGS.revival.restFull(state.resting.length)}`;
       // Hidden while the sack is out over the stat bars, waiting for its tap.
       openBackpack.hidden = !hasBackpack(pet) || !backpack.el.hidden;
       makeRoom.hidden = !nestWaits;

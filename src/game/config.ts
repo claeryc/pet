@@ -148,6 +148,9 @@ export const CONFIG = {
   // with these stats (at least), and rests like it does after medicine.
   revival: {
     stats: { hunger: 60, happiness: 60, health: 60, energy: 60 },
+    // A pet that passed away can rest under the stars (the star in the
+    // window) while you raise a new one. This many can rest at once.
+    restingSpots: 3,
   },
 
   // Star fragments (see src/game/fragments.ts): the one currency for

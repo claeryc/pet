@@ -145,19 +145,24 @@ export function revive(state: GameState, now: number): ActionResult {
   const stars = revivalStars(s);
   if (stars < 1) return { state: s, blocked: 'noRevival' };
   const used = { ...s, inventory: { ...s.inventory, supplies: { ...s.inventory.supplies, revivalStar: stars - 1 } } };
-  return {
-    state: withPet(used, (pet) => {
-      pet.condition = 'healthy';
-      pet.warningMinutes = 0;
-      pet.sickMinutes = 0;
-      pet.asleep = false;
-      for (const [stat, least] of Object.entries(CONFIG.revival.stats) as [keyof Pet['stats'], number][]) {
-        pet.stats[stat] = Math.max(pet.stats[stat], least);
-      }
-      pet.recoveryUntil = now + CONFIG.sickness.recoveryHours * 3_600_000;
-      pet.starGlow = true;
-    }),
-  };
+  return { state: withPet(used, (pet) => wakeUp(pet, now)) };
+}
+
+// A pet brought back by a Revival Star: a bit weak, resting like after
+// medicine, with a star's glow. Changes `pet` in place.
+export function wakeUp(pet: Pet, now: number): void {
+  pet.condition = 'healthy';
+  pet.warningMinutes = 0;
+  pet.sickMinutes = 0;
+  pet.asleep = false;
+  for (const [stat, least] of Object.entries(CONFIG.revival.stats) as [keyof Pet['stats'], number][]) {
+    pet.stats[stat] = Math.max(pet.stats[stat], least);
+  }
+  pet.recoveryUntil = now + CONFIG.sickness.recoveryHours * 3_600_000;
+  pet.starGlow = true;
+  // Its life picks up where it left off: no growing up on the spot.
+  if (pet.passedAt !== undefined) pet.stageStartedAt += Math.max(0, now - pet.passedAt);
+  delete pet.passedAt;
 }
 
 // Lets a pet that passed away go: it moves into the Family Tree. The next
