@@ -6,7 +6,7 @@
 import { STRINGS } from '../strings';
 import type { AwayNote } from '../game/away';
 import type { FoodId } from '../game/actions';
-import { ITEM_ICONS, STAT_ICONS } from './icons';
+import { ITEM_ICONS, MENU_ICONS, STAT_ICONS } from './icons';
 import { formatDuration } from './time';
 
 export interface AwayCard {
@@ -43,6 +43,8 @@ function line(note: AwayNote, name: string): { icon: string; text: string } {
       return { icon: STAT_ICONS.health, text: t.critical(note.name, formatDuration(note.timeLeft)) };
     case 'passed':
       return { icon: ITEM_ICONS.revivalStar, text: t.passed(note.name) };
+    case 'autoHoliday':
+      return { icon: MENU_ICONS.meadow, text: STRINGS.journeys.autoHoliday(note.name, note.days) };
     case 'tripHome':
       return { icon: ITEM_ICONS.journey, text: t.tripHome(note.name, STRINGS.journeys.places[note.place] ?? note.place) };
   }

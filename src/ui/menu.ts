@@ -54,6 +54,7 @@ export interface MenuCallbacks extends DebugCallbacks, ShopCallbacks, FamilyCall
   // the player is being asked whether to restore it.
   onRestore: (code: string) => Promise<string | null>;
   onOwner: (name: string) => void; // the player typed their name in Settings
+  onAutoHoliday: (on: boolean) => void; // Settings' "Use a ticket if a pet gets unwell"
   onSeen: (id: UnlockId) => void; // the player has looked at something new
   onMessagesSeen: () => void; // the player opened Messages
   onRemoveFriend: (friend: string) => void;
@@ -68,6 +69,7 @@ export interface MenuActions {
   onOpenDelivery: () => void; // go out to Percy to fill Percy's order
   onOpenMeet: () => void; // meet whoever is over (Play > Meet)
   onOpenJourneys: () => void; // the journey board (Play > Journeys)
+  onOpenHoliday?: () => void; // the journey board, at the Holiday
   onOpenMap: () => void; // the map of the island and the sea (the dock's Map button)
   onOpenPlay?: () => void; // the Play list, from the pop-up (until its places move to the map)
   onDecorate?: () => void; // the room edit tray
@@ -583,7 +585,62 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     return field;
   }
 
-  // Music and Sounds, each switched on or off.
+  // Going away: the Holiday picker (or the Shop, with no ticket), and a
+  // switch to use a ticket by itself when a pet would get sick while
+  // you're away.
+  function holidayField(): HTMLElement {
+    const H = STRINGS.settings;
+    const field = document.createElement('div');
+    field.className = 'settings-field settings-holiday';
+    const head = document.createElement('div');
+    head.className = 'settings-holiday-head';
+    const pic = document.createElement('span');
+    pic.className = 'settings-holiday-icon';
+    pic.innerHTML = MENU_ICONS.meadow;
+    const words = document.createElement('div');
+    const name = document.createElement('b');
+    name.textContent = H.goingAway;
+    const count = document.createElement('small');
+    const n = state ? (state.inventory.supplies['ticket:holiday'] ?? 0) : 0;
+    count.textContent = H.ticketsHave(n);
+    words.append(name, count);
+    const go = document.createElement('button');
+    go.className = 'settings-holiday-go';
+    go.textContent = n > 0 ? H.holidayGo : H.holidayGetTicket;
+    go.addEventListener('click', () => {
+      if (n > 0) {
+        close();
+        cb.onOpenHoliday?.();
+      } else {
+        shopBack = showSettings;
+        showShop();
+        shopView.tab = 'revival';
+        showShop(false);
+      }
+    });
+    // The Holiday is picked on the journey board, so until that's open
+    // only the switch shows.
+    go.hidden = !state || (n > 0 && !isUnlocked(state, 'journeys'));
+    head.append(pic, words, go);
+    const row = document.createElement('label');
+    row.className = 'settings-toggle';
+    const auto = document.createElement('span');
+    auto.className = 'settings-toggle-words';
+    const autoName = document.createElement('b');
+    autoName.textContent = H.autoHoliday;
+    const autoHelp = document.createElement('small');
+    autoHelp.textContent = H.autoHolidayHelp;
+    auto.append(autoName, autoHelp);
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.setAttribute('role', 'switch');
+    box.checked = !!state?.settings.autoHoliday;
+    box.addEventListener('change', () => cb.onAutoHoliday(box.checked));
+    row.append(auto, box);
+    field.append(head, row);
+    return field;
+  }
+
   function audioToggles(): HTMLElement {
     const field = document.createElement('div');
     field.className = 'settings-field';
@@ -667,7 +724,7 @@ export function createMenu(cb: MenuCallbacks & MenuActions, isOpen: () => boolea
     arrow.textContent = '›';
     arrow.setAttribute('aria-hidden', 'true');
     backup.append(arrow);
-    panel.replaceChildren(header(STRINGS.menu.settings, showMain), ownerField(), audioToggles(), backup, aboutSection(), reset);
+    panel.replaceChildren(header(STRINGS.menu.settings, showMain), ownerField(), holidayField(), audioToggles(), backup, aboutSection(), reset);
     if (CONFIG.debug.showTools) panel.append(debugSection());
   }
 

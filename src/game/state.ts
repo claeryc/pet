@@ -203,7 +203,8 @@ export interface Journeys {
   nightOf?: string;
   // A Holiday everyone is on (or was on, until the garden has caught up):
   // the garden waits from `from` to `until`.
-  holiday?: { from: number; until: number } | null;
+  // `auto`: started by itself, when a pet was about to fall sick.
+  holiday?: { from: number; until: number; auto?: boolean } | null;
 }
 
 // Sniff and dig (see src/game/dig.ts).
@@ -427,6 +428,8 @@ export type Message =
   | { kind: 'tripFriend'; at: number; name: string; friend: string; place: string }
   // Everyone came home from a Holiday in the Meadow.
   | { kind: 'holidayHome'; at: number; names: string[] }
+  // A ticket was used by itself because a pet was about to fall sick.
+  | { kind: 'autoHoliday'; at: number; name: string; days: number }
   // A regular (Percy) reached a new heart and gave its reward.
   | { kind: 'regular'; at: number; id: string; hearts: number }
   // A project's stage was built (`stage` counts from 0; `done`: it was the last).
@@ -498,6 +501,9 @@ export interface GameState {
   // When this game began (0 for saves from before it was kept). A keeper's
   // first week is gentler on sick pets.
   startedAt: number;
+  // The keeper's choices that change the game itself (Settings).
+  // autoHoliday: use a Holiday ticket by itself when a pet would fall sick.
+  settings: { autoHoliday: boolean };
   // Extra time added by the debug fast-forward button, in milliseconds.
   // The game's clock is always: real time + clockOffsetMs.
   clockOffsetMs: number;
@@ -660,6 +666,7 @@ export function createNewGame(now: number): GameState {
     nest: null,
     lastUpdated: now,
     startedAt: now,
+    settings: { autoHoliday: false },
     clockOffsetMs: 0,
     riceJarAt: null,
     gold: CONFIG.economy.startingGold,

@@ -1613,6 +1613,7 @@ const home = createHomeScreen(root, {
   onReadGuide: (id) => guide.replay(id, state.pet.name),
   onRename: askName,
   onOwner: (name) => setState(setOwner(state, name)),
+  onAutoHoliday: (on) => setState({ ...state, settings: { ...state.settings, autoHoliday: on } }),
   onShowAllMenus: (showAllMenus) => setState({ ...state, showAllMenus }),
   // Going back to real time can't undo what happened, so we keep the pet as
   // it is and just restart the clock from now. Timers the pet is waiting on

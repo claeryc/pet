@@ -804,7 +804,12 @@ export const CONFIG = {
     // everything waits while they're away. Hunger, energy and health stay
     // as they were, the garden stops, growing up pauses, nothing is found
     // and no good care days are counted. They come home `joy` happier.
-    holiday: { fragments: 30, days: [1, 2, 3], joy: 10 },
+    holiday: {
+      fragments: 30, days: [1, 2, 3], joy: 10,
+      // With "Use a ticket if a pet gets unwell" on (Settings), a pet that
+      // would fall sick while you're away goes on a Holiday this long.
+      autoDays: 3,
+    },
     // Snapshots (see snapshots.ts): each look at a trip has `chance` of a
     // little moment after a few seconds, and another try every `againMs`
     // while you keep looking; a moment lasts `momentMs`. `freshShare` of the

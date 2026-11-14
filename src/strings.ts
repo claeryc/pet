@@ -564,6 +564,8 @@ export const STRINGS = {
     holidayLeft: 'Off to the Meadow for a holiday!',
     holidayAway: (time: string) => `On holiday in the Meadow. Back ${time}.`,
     holidayHome: (names: string) => `${names} came home from a holiday in the Meadow.`,
+    autoHoliday: (name: string, days: number) =>
+      `${name} wasn't feeling well, so a Holiday ticket sent everyone to the Meadow for ${days} days.`,
     tripFriend: (name: string, friend: string, place: string) => `${name} made a friend at ${place}: ${friend} is your friend now!`,
     ready: 'Ready',
     percyWoke: 'Percy is ready to go!',
@@ -1575,6 +1577,12 @@ export const STRINGS = {
     'Snickers', 'Poppy', 'Ember', 'Twinkle', 'Puddle', 'Sesame', 'Truffle', 'Acorn', 'Wren', 'Zuzu',
   ],
   settings: {
+    goingAway: 'Going away?',
+    ticketsHave: (n: number) => (n === 1 ? '1 Holiday ticket' : `${n} Holiday tickets`),
+    holidayGo: 'Go on holiday',
+    holidayGetTicket: 'Get a ticket',
+    autoHoliday: 'Use a ticket if a pet gets unwell',
+    autoHolidayHelp: "While you're away, a pet that would get sick goes to the Meadow for 3 days instead. Not while a pet is on a journey.",
     owner: 'Your name',
     ownerHint: 'Optional. Shown in the Family Tree.',
     ownerPlaceholder: 'Your name',

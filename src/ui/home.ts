@@ -47,7 +47,7 @@ import type { ShopCategory } from './shop';
 import { createFx, type Gains } from './fx';
 import { hasBackpack, isAway, nobodyHome } from '../game/presence';
 import { formatClock } from './time';
-import { createJourneys, JOURNEYS_OUT_MS } from './journeys';
+import { createJourneys, HOLIDAY_SLOT, JOURNEYS_OUT_MS } from './journeys';
 import { createDig, type DigCallbacks } from './dig';
 import { createTripView, tripNotes, type TripMoment } from './trip';
 import { newestPlace } from './journal';
@@ -635,7 +635,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   let menuOverStats = false;
   const menu = createMenu(
     {
-      ...cb, onOpenDelivery: () => startDelivery(), onOpenMeet: () => startMeet(), onOpenJourneys: () => openJourneys(), onOpenMap: () => openMap(), onDecorate: () => openDecorate(),
+      ...cb, onOpenDelivery: () => startDelivery(), onOpenMeet: () => startMeet(), onOpenJourneys: () => openJourneys(), onOpenHoliday: () => openJourneys(HOLIDAY_SLOT), onOpenMap: () => openMap(), onDecorate: () => openDecorate(),
       onOpenPlay: () => playDrawer.open(),
     },
     () => menuDrawer?.isOpen() ?? false,
