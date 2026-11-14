@@ -63,7 +63,7 @@ export const CONFIG = {
     // need anything at all.
     decayMultiplier: {
       egg: 0,
-      baby: 1.25,
+      baby: 1, // babies need the same as teens: a first day shouldn't be harder
       teen: 1,
       adult: 0.9,
     },
@@ -137,6 +137,9 @@ export const CONFIG = {
     // the room, greyed out, until a Revival Star brings it back or you say
     // goodbye. With the warning first, that's over a day of neglect.
     hoursBeforePassing: 24,
+    // Babies, and every pet in a keeper's first week, get twice as long.
+    hoursBeforePassingGentle: 48,
+    gentleFirstDays: 7,
     // In its last hours the banner turns urgent and counts down.
     criticalHours: 6,
   },

@@ -943,10 +943,21 @@ function mingleNow(id: string): void {
 // Shows the "While you were away" card, if you were gone a while and
 // something happened. `before` is the game as you left it at `leftAt`.
 // Skipped while the pet is being named or a choice is open.
+// Medicine, from the Medicine button or the away card.
+function medicineNow(): void {
+  const before = simulate(state, gameNow()).pet;
+  if (!runAction(giveMedicine)) return;
+  playMoment('medicine');
+  // Yuck! Then better.
+  window.setTimeout(() => pullFace('grumpy'), MOMENT_MS.medicine * 0.38);
+  window.setTimeout(() => showGains(before, { health: 1 }), MOMENT_MS.medicine * 0.72);
+}
+
 function showAway(before: GameState, leftAt: number): void {
   if (naming.isOpen() || choice.isOpen() || away.isOpen()) return;
   const notes = awayNotes(before, simulate(state, gameNow()), leftAt, gameNow());
-  if (notes.length > 0) away.open(notes, state.pet.name, gameNow() - leftAt);
+  const sick = simulate(state, gameNow()).pet.condition === 'sick';
+  if (notes.length > 0) away.open(notes, state.pet.name, gameNow() - leftAt, sick ? medicineNow : undefined);
 }
 
 function tryCheckIn(): void {
@@ -1029,14 +1040,7 @@ const home = createHomeScreen(root, {
     playMoment(state.pet.asleep ? 'doze' : 'wake');
     if (!state.pet.asleep && (getTrait(state.pet.trait)?.grumpyWhenWoken || feeling(state.pet, 'woken') === 'disliked')) pullFace('grumpy');
   },
-  onMedicine: () => {
-    const before = simulate(state, gameNow()).pet;
-    if (!runAction(giveMedicine)) return;
-    playMoment('medicine');
-    // Yuck! Then better.
-    window.setTimeout(() => pullFace('grumpy'), MOMENT_MS.medicine * 0.38);
-    window.setTimeout(() => showGains(before, { health: 1 }), MOMENT_MS.medicine * 0.72);
-  },
+  onMedicine: () => medicineNow(),
   onRevive: askRevive,
   onGoodbye: askGoodbye,
   onCast: (streak) => {

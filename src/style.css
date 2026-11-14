@@ -14873,3 +14873,155 @@ button.trip-bars-name.is-on {
   color: var(--butter);
   opacity: 0.85;
 }
+
+/* ---- Item 2 (mockup): "While you were away" as a sheet ----
+   It comes up from the bottom like the other sheets, the room still in
+   view above it: the title and how long you were gone, the news as tiles
+   (the worst first, with Medicine right on the sick line), then one
+   button back to the pet. */
+.name-backdrop:has(> .away-sheet) {
+  align-items: flex-end;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  background: rgba(43, 33, 64, 0.3);
+}
+.away-sheet {
+  position: relative;
+  width: 100%;
+  max-width: 388px;
+  box-sizing: border-box;
+  padding: 20px 16px 16px;
+  border: 2px solid var(--sheet-edge);
+  border-radius: 24px;
+  background: var(--sheet-bg);
+  box-shadow: 0 -4px 24px rgba(43, 33, 64, 0.18);
+  animation: sheet-rise 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.15);
+}
+.away-sheet::before {
+  content: '';
+  position: absolute;
+  top: 7px;
+  left: 50%;
+  width: 36px;
+  height: 4px;
+  margin-left: -18px;
+  border-radius: 2px;
+  background: var(--lavender);
+}
+.away-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.away-head h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 900;
+}
+.away-gone {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--lavender);
+  color: var(--plum);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+.away-sheet .away-list {
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.away-sheet .away-list li {
+  gap: 12px;
+  padding: 10px 12px;
+  border: 2px solid var(--sheet-edge);
+  border-radius: 16px;
+  background: white;
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.3;
+  text-wrap: pretty;
+}
+.away-sheet .away-list li.is-urgent {
+  border-color: #f7c3d0;
+  background: #fff0f3;
+}
+.away-sheet .away-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 6px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  background: #fff7ec;
+}
+.away-sheet .is-urgent .away-icon {
+  background: white;
+}
+.away-words {
+  flex: 1;
+  min-width: 0;
+}
+.away-medicine {
+  flex: none;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 800;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 3px 0 var(--accent-dark);
+  cursor: pointer;
+}
+.away-medicine:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--accent-dark);
+}
+.away-ok {
+  display: block;
+  width: 100%;
+  height: 52px;
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 800;
+  border: 0;
+  border-radius: 16px;
+  background: var(--lilac);
+  color: white;
+  box-shadow: 0 4px 0 var(--plum);
+  cursor: pointer;
+}
+.away-ok:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 var(--plum);
+}
+@media (prefers-reduced-motion: reduce) {
+  .away-sheet {
+    animation: none;
+  }
+}
+
+/* Guide cards: no lonely word at the end of a line. */
+.guide-text {
+  text-wrap: pretty;
+}
+.away-ok:focus:not(:focus-visible) {
+  outline: none;
+}
+/* On the narrowest phones the Medicine button drops under the words, so
+   the words never squeeze into a thin column. */
+@media (max-width: 359px) {
+  .away-sheet .away-list li:has(.away-medicine) {
+    flex-wrap: wrap;
+  }
+  .away-sheet .away-list li:has(.away-medicine) .away-words {
+    flex-basis: calc(100% - 60px);
+  }
+  .away-sheet .away-list li .away-medicine {
+    margin-left: auto;
+  }
+}

@@ -263,7 +263,7 @@ describe('save migration to the starting Holiday ticket', () => {
     expect(none.inventory.supplies['ticket:holiday']).toBe(1);
     const used = migrate({ version: 44, state: { pet: { name: 'a' }, inventory: { food: {}, hats: [], supplies: { 'ticket:holiday': 0 } } } }).state;
     expect(used.inventory.supplies['ticket:holiday']).toBe(0);
-    expect(SAVE_VERSION).toBe(45);
+    expect(SAVE_VERSION).toBeGreaterThanOrEqual(45);
   });
 });
 

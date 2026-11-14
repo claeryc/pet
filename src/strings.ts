@@ -868,7 +868,7 @@ export const STRINGS = {
       sick: {
         name: 'Sick pets',
         pages: [
-          { title: (pet: string) => `${pet} is sick`, text: (pet: string) => `A sick pet needs medicine. Tap Give medicine. Wait too long and ${pet} gets very sick.` },
+          { title: (pet: string) => `${pet} is sick`, text: (pet: string) => `A sick pet needs medicine: tap Give medicine. Left sick too long (a day, or two for a baby or in your first week), ${pet} can pass away. The banner counts down.` },
           { title: 'Revival Stars', text: 'If a pet passes away, a Revival Star brings them back. Every good care day gives star fragments. 500 make a star in the Shop.' },
         ],
       },
@@ -1776,6 +1776,9 @@ export const STRINGS = {
   away: {
     title: 'While you were away',
     gone: (time: string) => `You were gone for ${time}.`,
+    awayFor: (time: string) => `Away ${time}`,
+    backTo: (name: string) => `Back to ${name}`,
+    giveMedicine: 'Medicine',
     ok: 'Got it',
     ready: (n: number) => (n === 1 ? 'A plant is ready to harvest.' : `${n} plants are ready to harvest.`),
     dry: (n: number) => (n === 1 ? 'A pot dried out. Give it some water!' : `${n} pots dried out. Give them some water!`),
@@ -1788,7 +1791,7 @@ export const STRINGS = {
       energy: (name: string) => `${name} got tired.`,
       happiness: (name: string) => `${name} got a bit lonely.`,
     },
-    sick: (name: string) => `${name} got sick. Medicine will help.`,
+    sick: (name: string) => `${name} got sick. Medicine now keeps ${name} safe.`,
     critical: (name: string, timeLeft: string) => `${name} is very sick! Only ${timeLeft} left to give medicine.`,
     passed: (name: string) => `${name} was sick for too long and passed away.`,
     warning: (name: string) => `${name} isn't feeling well.`,

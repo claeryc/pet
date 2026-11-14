@@ -49,12 +49,13 @@ export function simulate(state: GameState, now: number): GameState {
 
   // The keeper's Care skills help every pet.
   const perks = carePerks(state);
+  const startedAt = state.startedAt ?? 0;
   let t = state.lastUpdated;
   for (let i = 0; i < ticks; i++) {
     const wasNight = isNight(t);
     t += tickMs;
-    tick(pet, t, wasNight, perks);
-    for (const other of housemates) tick(other, t, wasNight, perks);
+    tick(pet, t, wasNight, perks, startedAt);
+    for (const other of housemates) tick(other, t, wasNight, perks, startedAt);
   }
 
   // The garden grows on its own clock, so it catches up in one go.
@@ -86,7 +87,15 @@ function hatchDueEggs(state: GameState, now: number): GameState {
 
 // Advances the pet by one tick ending at time `t`. Changes `pet` in place
 // (it's our private copy from simulate()).
-function tick(pet: Pet, t: number, wasNight: boolean, perks: CarePerks): void {
+// How long a pet that falls sick at `t` has before it passes away: longer
+// for a baby, and for any pet in the keeper's first week.
+export function passingHours(pet: Pet, t: number, startedAt: number): number {
+  const cfg = CONFIG.sickness;
+  const firstWeek = startedAt > 0 && t - startedAt < cfg.gentleFirstDays * 86_400_000;
+  return pet.stage === 'baby' || firstWeek ? cfg.hoursBeforePassingGentle : cfg.hoursBeforePassing;
+}
+
+function tick(pet: Pet, t: number, wasNight: boolean, perks: CarePerks, startedAt: number): void {
   const cfg = CONFIG;
 
   // A pet that passed away stays just as it was until it's revived.
@@ -158,6 +167,7 @@ function tick(pet: Pet, t: number, wasNight: boolean, perks: CarePerks): void {
       if (warnedLongEnough && !recovering) {
         pet.condition = 'sick';
         pet.sickMinutes = 0;
+        pet.sickWindowHours = passingHours(pet, t, startedAt);
       }
     }
   }
@@ -165,7 +175,7 @@ function tick(pet: Pet, t: number, wasNight: boolean, perks: CarePerks): void {
   // sick for too long, it passes away.
   if (pet.condition === 'sick') {
     pet.sickMinutes += cfg.tickMinutes;
-    if (pet.sickMinutes >= cfg.sickness.hoursBeforePassing * 60) {
+    if (pet.sickMinutes >= (pet.sickWindowHours ?? cfg.sickness.hoursBeforePassing) * 60) {
       pet.condition = 'passed';
       pet.asleep = false;
       pet.buffs = [];

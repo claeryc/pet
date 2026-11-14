@@ -10,7 +10,8 @@ import { ITEM_ICONS, STAT_ICONS } from './icons';
 import { formatDuration } from './time';
 
 export interface AwayCard {
-  open: (notes: AwayNote[], petName: string, awayMs: number) => void;
+  // `onMedicine`, when medicine would help now: a button on the sick line.
+  open: (notes: AwayNote[], petName: string, awayMs: number, onMedicine?: () => void) => void;
   isOpen: () => boolean;
 }
 
@@ -52,21 +53,23 @@ export function createAwayCard(root: HTMLElement): AwayCard {
   backdrop.className = 'name-backdrop';
   backdrop.hidden = true;
   const box = document.createElement('div');
-  box.className = 'name-box away-box';
+  box.className = 'away-sheet';
   box.setAttribute('role', 'dialog');
   box.setAttribute('aria-modal', 'true');
   box.setAttribute('aria-labelledby', 'away-box-title');
+  const head = document.createElement('div');
+  head.className = 'away-head';
   const title = document.createElement('h2');
   title.id = 'away-box-title';
   title.textContent = STRINGS.away.title;
-  const gone = document.createElement('p');
-  gone.className = 'name-ask';
+  const gone = document.createElement('span');
+  gone.className = 'away-gone';
+  head.append(title, gone);
   const list = document.createElement('ul');
   list.className = 'away-list';
   const ok = document.createElement('button');
-  ok.className = 'shop-btn choice-btn';
-  ok.textContent = STRINGS.away.ok;
-  box.append(title, gone, list, ok);
+  ok.className = 'away-ok';
+  box.append(head, list, ok);
   backdrop.append(box);
   root.append(backdrop);
 
@@ -81,18 +84,37 @@ export function createAwayCard(root: HTMLElement): AwayCard {
   });
 
   return {
-    open(notes, petName, awayMs) {
+    open(notes, petName, awayMs, onMedicine) {
       open = true;
-      gone.textContent = STRINGS.away.gone(formatDuration(awayMs));
+      gone.textContent = STRINGS.away.awayFor(formatDuration(awayMs));
+      ok.textContent = STRINGS.away.backTo(petName);
+      // The worst news first: sick, then the rest as it came.
+      const urgent = (n: AwayNote) => n.kind === 'critical' || n.kind === 'sick' || n.kind === 'warning' || n.kind === 'passed';
+      const sorted = [...notes.filter(urgent), ...notes.filter((n) => !urgent(n))];
       list.replaceChildren(
-        ...notes.map((note) => {
+        ...sorted.map((note) => {
           const { icon, text } = line(note, petName);
           const li = document.createElement('li');
+          li.dataset.kind = note.kind;
+          if (urgent(note)) li.classList.add('is-urgent');
           const pic = document.createElement('span');
           pic.className = 'away-icon';
           pic.innerHTML = icon;
           pic.setAttribute('aria-hidden', 'true');
-          li.append(pic, text);
+          const words = document.createElement('span');
+          words.className = 'away-words';
+          words.textContent = text;
+          li.append(pic, words);
+          if (onMedicine && (note.kind === 'sick' || note.kind === 'critical')) {
+            const give = document.createElement('button');
+            give.className = 'away-medicine';
+            give.textContent = STRINGS.away.giveMedicine;
+            give.addEventListener('click', () => {
+              close();
+              onMedicine();
+            });
+            li.append(give);
+          }
           return li;
         }),
       );
