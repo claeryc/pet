@@ -68,9 +68,9 @@ describe('milestones', () => {
     s.recipesFound = RECIPES.map((r) => r.id);
     s.caught = Object.keys(CONFIG.fishing.fish);
     const out = updateMilestones(s);
-    expect(out.earned).toEqual(['explorer', 'threeStar', 'allRecipes', 'allFish']);
-    expect(out.state.messages.filter((m) => m.kind === 'milestone')).toHaveLength(4);
-    expect(out.state.keeper.xp).toBe(4 * CONFIG.skills.milestoneXp);
+    expect(out.earned).toEqual(['explorer', 'threeStar', 'allRecipes', 'allFish', 'firstDish', 'firstJourney']);
+    expect(out.state.messages.filter((m) => m.kind === 'milestone')).toHaveLength(6);
+    expect(out.state.keeper.xp).toBe(6 * CONFIG.skills.milestoneXp);
     // Handed out once.
     expect(updateMilestones(out.state).earned).toEqual([]);
   });
@@ -105,5 +105,21 @@ describe('save upgrade to v23', () => {
     expect(out.version).toBe(SAVE_VERSION);
     expect(out.state.milestones).toEqual([]);
     expect(out.state.tally).toEqual({ journeys: 3, adventures: 1, goldOrders: 1 });
+  });
+});
+
+describe('first-step milestones', () => {
+  it('each comes once, with its star fragments', () => {
+    const s = newTeen(START);
+    s.recipesFound = ['x'];
+    s.friends = [{} as never];
+    s.grown = ['carrot'];
+    s.tally = { ...s.tally, littleOnes: 1, perfectCatches: 1 };
+    s.journeys.journal.market = { trips: 1, postcards: [], found: [] };
+    const before = s.fragments.pieces;
+    const out = updateMilestones(s);
+    expect(out.earned).toEqual(['firstDish', 'firstJourney', 'firstFriend', 'firstLittleOne', 'firstHarvest', 'firstGoldCatch']);
+    expect(out.state.fragments.pieces).toBe(before + 6 * CONFIG.fragments.perMilestone);
+    expect(updateMilestones(out.state).earned).toEqual([]);
   });
 });

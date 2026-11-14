@@ -468,6 +468,7 @@ export function mingle(state: GameState, friendId: string, now: number, roll: nu
     nest: nested ? egg : s.nest,
   };
   s = logMessage(s, { kind: 'littleOne', at: now, name: parent.name, friend: friend.name });
+  s = countUp(s, 'littleOnes');
   s = addTally(s, 'littleOnes');
   return { state: s, egg, nested };
 }

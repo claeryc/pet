@@ -34,6 +34,13 @@ const RULES = {
   retired: counted('retired'),
   // A Revival Star made from star fragments.
   starMaker: counted('starsMade'),
+  // The first steps, each one once: early fragments for a new keeper.
+  firstDish: (state: GameState) => state.recipesFound.length > 0,
+  firstJourney: (state: GameState) => Object.values(state.journeys.journal).some((p) => p.trips > 0),
+  firstFriend: (state: GameState) => state.friends.length > 0,
+  firstLittleOne: (state: GameState) => state.messages.some((m) => m.kind === 'littleOne') || counted('littleOnes')(state),
+  firstHarvest: (state: GameState) => state.grown.length > 0,
+  firstGoldCatch: counted('perfectCatches'),
 } satisfies Record<string, (state: GameState) => boolean>;
 
 export type MilestoneId = keyof typeof RULES;

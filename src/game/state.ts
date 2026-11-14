@@ -656,7 +656,7 @@ export function createNewGame(now: number): GameState {
     clockOffsetMs: 0,
     riceJarAt: null,
     gold: CONFIG.economy.startingGold,
-    inventory: { food: { ...CONFIG.economy.startingFood }, hats: [], seeds: {}, supplies: {}, decor: [], bags: [] },
+    inventory: { food: { ...CONFIG.economy.startingFood }, hats: [], seeds: {}, supplies: { ...CONFIG.economy.startingSupplies }, decor: [], bags: [] },
     checkIn: { day: '', count: 0, lastAt: 0 },
     recipesFound: [],
     kitchen: [],

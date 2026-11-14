@@ -14850,3 +14850,26 @@ button.trip-bars-name.is-on {
 .actions .shop-page.is-night .shop-top {
   box-shadow: 0 -28px 0 0 #3b2b55;
 }
+
+/* ---- Item 1 (mockup): the Star counter ----
+   The Holiday ticket sits on the night page like the packs do: glass, not
+   a white card. Under the goal, what a Revival Star costs in plain words. */
+.shop-page.is-night .shop-wide.is-holiday {
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.12);
+  color: white;
+}
+.shop-page.is-night .shop-wide.is-holiday small {
+  color: var(--lavender);
+  opacity: 0.9;
+}
+.shop-page.is-night .shop-wide.is-holiday .shop-wide-art {
+  background: rgba(255, 255, 255, 0.12);
+}
+.shop-cash {
+  display: block;
+  margin-top: 4px;
+  font-weight: 700;
+  color: var(--butter);
+  opacity: 0.85;
+}

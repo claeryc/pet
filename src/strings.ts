@@ -1509,6 +1509,9 @@ export const STRINGS = {
     packExtra: '+30% extra',
     packBuy: (count: number, price: string) => `${count} star fragments for ${price}`,
     realMoney: 'Paid with real money. Star fragments are the only thing ever sold for money.',
+    starCash: 'A Revival Star is 500 fragments: a few months of good care, or about €4.50.',
+    goingAway: 'Going away?',
+    packWhat: ['3 holidays', '10 holidays', '1 Revival Star'],
   },
   // Rewarded ads: the Free treats card in the Star counter, and the
   // stand-in video (see src/ads.ts).
@@ -1740,6 +1743,12 @@ export const STRINGS = {
       allFish: 'Full Net',
       retired: 'The Meadow',
       starMaker: 'Star Maker',
+      firstDish: 'First Dish',
+      firstJourney: 'First Journey',
+      firstFriend: 'New Friend',
+      firstLittleOne: 'Little One',
+      firstHarvest: 'First Harvest',
+      firstGoldCatch: 'Gold Catch',
     },
     // How to earn it.
     goals: {
@@ -1751,10 +1760,17 @@ export const STRINGS = {
       allFish: 'Catch every kind of fish',
       retired: 'Send a grown-up pet to the Meadow',
       starMaker: 'Make a Revival Star from star fragments',
+      firstDish: 'Cook your first dish',
+      firstJourney: 'Come home from your first journey',
+      firstFriend: 'Make a friend',
+      firstLittleOne: 'Welcome a little one',
+      firstHarvest: 'Harvest your first crop',
+      firstGoldCatch: 'Land a perfect catch',
     },
     done: 'Earned!',
     earned: (name: string) => `New milestone: ${name}!`,
     newMilestone: 'Milestone reached!',
+    andMore: (n: number) => `Milestone reached! And ${n} more in the Collection.`,
   },
   // The "While you were away" card.
   away: {

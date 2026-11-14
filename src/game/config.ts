@@ -187,7 +187,7 @@ export const CONFIG = {
   store: [
     { id: 'fragments100', fragments: 100, price: '€0.99' },
     { id: 'fragments300', fragments: 300, price: '€2.99' },
-    { id: 'fragments650', fragments: 650, price: '€4.99' },
+    { id: 'fragments550', fragments: 550, price: '€4.99' },
   ],
 
   // Rewarded ads (see src/game/ads.ts), only ever watched when the player
@@ -801,7 +801,7 @@ export const CONFIG = {
     // everything waits while they're away. Hunger, energy and health stay
     // as they were, the garden stops, growing up pauses, nothing is found
     // and no good care days are counted. They come home `joy` happier.
-    holiday: { fragments: 50, days: [1, 2, 3], joy: 10 },
+    holiday: { fragments: 30, days: [1, 2, 3], joy: 10 },
     // Snapshots (see snapshots.ts): each look at a trip has `chance` of a
     // little moment after a few seconds, and another try every `againMs`
     // while you keep looking; a moment lasts `momentMs`. `freshShare` of the
@@ -1117,6 +1117,9 @@ export const CONFIG = {
     startingGold: 50,
     // Food in a brand new pet's pantry.
     startingFood: { riceBall: 3, strawberry: 2, cookie: 1 },
+    // Supplies a brand new game starts with: one Holiday ticket, so going
+    // away is never a reason to lose a pet.
+    startingSupplies: { 'ticket:holiday': 1 } as Record<string, number>,
     // Coming back to check on your pet earns a little gold: more for the
     // first visit of the day, a bit for later visits at least
     // `minHoursBetween` apart, up to `maxPerDay` rewards a day.

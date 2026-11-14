@@ -259,8 +259,12 @@ function showAwards({ badges, milestones }: Pick<ReturnType<typeof updateProgres
       caption: STRINGS.achievements.newBadge(STRINGS.achievements.tiers[b.tier]), tier: b.tier, sound: 'badge',
     });
   }
-  for (const id of milestones) {
-    home.reveal({ icon: MILESTONE_ICONS[id], name: STRINGS.milestones.names[id], count: 1, stars: 0, caption: STRINGS.milestones.newMilestone, tier: 'gold', sound: 'badge' });
+  // One reveal at a time: an old save can reach several at once (the
+  // first-step ones came later), so the rest are counted on the first.
+  const [first, ...more] = milestones;
+  if (first) {
+    const caption = more.length ? STRINGS.milestones.andMore(more.length) : STRINGS.milestones.newMilestone;
+    home.reveal({ icon: MILESTONE_ICONS[first], name: STRINGS.milestones.names[first], count: 1, stars: 0, caption, tier: 'gold', sound: 'badge' });
   }
 }
 
