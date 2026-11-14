@@ -28,10 +28,10 @@ describe('life stages', () => {
   // Some of these leave the pet alone for days to watch it grow, which
   // would see it pass away from being sick so long. Passing away has its
   // own tests (passing.test.ts), so here the pet just stays sick.
-  const sickness = CONFIG.sickness as { hoursBeforePassing: number };
-  const passing = sickness.hoursBeforePassing;
-  beforeAll(() => void (sickness.hoursBeforePassing = Infinity));
-  afterAll(() => void (sickness.hoursBeforePassing = passing));
+  const sickness = CONFIG.sickness as { hoursBeforePassing: number; hoursBeforePassingGentle: number };
+  const { hoursBeforePassing: passing, hoursBeforePassingGentle: gentle } = sickness;
+  beforeAll(() => void (sickness.hoursBeforePassing = sickness.hoursBeforePassingGentle = Infinity));
+  afterAll(() => void Object.assign(sickness, { hoursBeforePassing: passing, hoursBeforePassingGentle: gentle }));
 
   it('starts as an egg that needs nothing', () => {
     const s = createNewGame(START);

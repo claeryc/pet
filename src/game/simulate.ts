@@ -18,7 +18,8 @@ import { growGardenAround } from './garden';
 import { stepDelivery } from './delivery';
 import { stepCraving } from './craving';
 import { stepVisits } from './friends';
-import { stepJourneys, travelTick } from './journeys';
+import { logMessage } from './messages';
+import { cantHoliday, goHoliday, stepJourneys, travelTick } from './journeys';
 import type { GameState, Pet } from './state';
 import { carePerks, gardenPerks, type CarePerks } from './skills';
 import { hygieneTick } from './hygiene';
@@ -49,12 +50,24 @@ export function simulate(state: GameState, now: number): GameState {
 
   // The keeper's Care skills help every pet.
   const perks = carePerks(state);
+  const startedAt = state.startedAt ?? 0;
+  // With the switch on, a pet about to fall sick sends everyone on a
+  // Holiday instead, if a ticket is there and nobody's out or unwell.
+  const escape = state.settings?.autoHoliday && cantHoliday(state) === null
+    ? () => ![pet, ...housemates].some((p) => p.condition === 'sick' || p.trip)
+    : undefined;
+  let holidayAt: number | null = null;
+  let unwell = '';
   let t = state.lastUpdated;
-  for (let i = 0; i < ticks; i++) {
+  for (let i = 0; i < ticks && holidayAt === null; i++) {
     const wasNight = isNight(t);
     t += tickMs;
-    tick(pet, t, wasNight, perks);
-    for (const other of housemates) tick(other, t, wasNight, perks);
+    for (const p of [pet, ...housemates]) {
+      if (tick(p, t, wasNight, perks, startedAt, escape) === 'holiday') {
+        holidayAt = t;
+        unwell ||= p.name;
+      }
+    }
   }
 
   // The garden grows on its own clock, so it catches up in one go.
@@ -65,6 +78,15 @@ export function simulate(state: GameState, now: number): GameState {
   // visitors dropping by.
   const next = stepJourneys(state, { ...state, pet, housemates, garden, lastUpdated: t }, t);
   const stepped = stepCrafting(stepRiceJar(stepVisits(stepCraving(stepDelivery(next, t), t), t), t), t);
+  if (holidayAt !== null) {
+    const days = CONFIG.journeys.holiday.autoDays;
+    const went = goHoliday(stepped, t, days).state;
+    const h = went.journeys.holiday;
+    if (h) {
+      const auto = { ...went, journeys: { ...went.journeys, holiday: { ...h, auto: true } } };
+      return simulate(logMessage(auto, { kind: 'autoHoliday', at: t, name: unwell, days }), now);
+    }
+  }
   return hatchDueEggs(stepped, now);
 }
 
@@ -84,9 +106,18 @@ function hatchDueEggs(state: GameState, now: number): GameState {
   return { ...state, pet: hatch(state.pet), housemates: state.housemates.map(hatch) };
 }
 
+// How long a pet that falls sick at `t` has before it passes away: longer
+// for a baby, and for any pet in the keeper's first week.
+export function passingHours(pet: Pet, t: number, startedAt: number): number {
+  const cfg = CONFIG.sickness;
+  const firstWeek = startedAt > 0 && t - startedAt < cfg.gentleFirstDays * 86_400_000;
+  return pet.stage === 'baby' || firstWeek ? cfg.hoursBeforePassingGentle : cfg.hoursBeforePassing;
+}
+
 // Advances the pet by one tick ending at time `t`. Changes `pet` in place
-// (it's our private copy from simulate()).
-function tick(pet: Pet, t: number, wasNight: boolean, perks: CarePerks): void {
+// (it's our private copy from simulate()). Returns 'holiday' when the pet
+// was about to fall sick and `escape` sent everyone on a Holiday instead.
+function tick(pet: Pet, t: number, wasNight: boolean, perks: CarePerks, startedAt: number, escape?: () => boolean): 'holiday' | void {
   const cfg = CONFIG;
 
   // A pet that passed away stays just as it was until it's revived.
@@ -156,8 +187,10 @@ function tick(pet: Pet, t: number, wasNight: boolean, perks: CarePerks): void {
       const warnedLongEnough = pet.warningMinutes >= cfg.sickness.warningHoursBeforeSick * 60;
       // A pet resting after medicine can't fall sick again straight away.
       if (warnedLongEnough && !recovering) {
+        if (escape?.()) return 'holiday';
         pet.condition = 'sick';
         pet.sickMinutes = 0;
+        pet.sickWindowHours = passingHours(pet, t, startedAt);
       }
     }
   }
@@ -165,8 +198,9 @@ function tick(pet: Pet, t: number, wasNight: boolean, perks: CarePerks): void {
   // sick for too long, it passes away.
   if (pet.condition === 'sick') {
     pet.sickMinutes += cfg.tickMinutes;
-    if (pet.sickMinutes >= cfg.sickness.hoursBeforePassing * 60) {
+    if (pet.sickMinutes >= (pet.sickWindowHours ?? cfg.sickness.hoursBeforePassing) * 60) {
       pet.condition = 'passed';
+      pet.passedAt = t;
       pet.asleep = false;
       pet.buffs = [];
       s.health = 0;

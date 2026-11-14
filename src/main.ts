@@ -91,6 +91,9 @@ import { forecast } from './game/forecast';
 import { fortuneOf, useFortuneCookie } from './game/fortune';
 import { fortuneArt, skipFortuneOnTap } from './ui/fortune';
 import { createAwayCard } from './ui/away';
+import { createRestCard } from './ui/resting';
+import { goodbyeResting, layToRest, reviveResting } from './game/resting';
+import { capacity } from './game/rooms';
 import { awayNotes } from './game/away';
 import type { Pet, Room } from './game/state';
 import { askToKeepStorage, BackupError, blockSaves, clearSave, exportSave, importSave, loadGame, saveGame, whenSaveFails } from './storage/storage';
@@ -259,8 +262,12 @@ function showAwards({ badges, milestones }: Pick<ReturnType<typeof updateProgres
       caption: STRINGS.achievements.newBadge(STRINGS.achievements.tiers[b.tier]), tier: b.tier, sound: 'badge',
     });
   }
-  for (const id of milestones) {
-    home.reveal({ icon: MILESTONE_ICONS[id], name: STRINGS.milestones.names[id], count: 1, stars: 0, caption: STRINGS.milestones.newMilestone, tier: 'gold', sound: 'badge' });
+  // One reveal at a time: an old save can reach several at once (the
+  // first-step ones came later), so the rest are counted on the first.
+  const [first, ...more] = milestones;
+  if (first) {
+    const caption = more.length ? STRINGS.milestones.andMore(more.length) : STRINGS.milestones.newMilestone;
+    home.reveal({ icon: MILESTONE_ICONS[first], name: STRINGS.milestones.names[first], count: 1, stars: 0, caption, tier: 'gold', sound: 'badge' });
   }
 }
 
@@ -681,6 +688,51 @@ function askGoodbye(): void {
   });
 }
 
+// ...or let it rest under the stars (a star in the window) while you raise
+// a new pet.
+function letRest(): void {
+  const name = state.pet.name;
+  const result = layToRest(state, gameNow());
+  setState(result.state);
+  if (result.blocked === 'full') return blocked(STRINGS.revival.restFull(state.resting.length));
+  if (result.blocked) return;
+  home.toast(STRINGS.revival.laidToRest(name));
+}
+
+// The star in the window: who's resting, and bringing one back.
+function showRestCard(): void {
+  restCard.open({
+    pets: state.resting,
+    pieces: state.fragments.pieces,
+    perStar: CONFIG.fragments.perStar,
+    stars: revivalStars(state),
+    room: allPets(state).length < capacity(state),
+    portrait: portraitOf,
+    onBringBack: (id) => {
+      const name = state.resting.find((p) => p.id === id)?.name ?? '';
+      const result = reviveResting(state, gameNow(), id);
+      setState(result.state);
+      if (result.blocked === 'noRoom') return blocked(STRINGS.revival.restNoRoom);
+      if (result.blocked === 'noRevival') return blocked(STRINGS.blocked.noRevival(name));
+      if (result.blocked) return;
+      sound('starMade');
+      home.toast(STRINGS.revival.back(name));
+      react('happy');
+    },
+    onGoodbye: (id) => {
+      const name = state.resting.find((p) => p.id === id)?.name ?? '';
+      choice.open({
+        title: STRINGS.revival.goodbyeTitle(name),
+        text: STRINGS.revival.restGoodbyeAsk(name),
+        options: [
+          { label: STRINGS.revival.keep, onPick: () => {} },
+          { label: STRINGS.revival.goodbyeYes, soft: true, onPick: () => setState(goodbyeResting(state, id)) },
+        ],
+      });
+    },
+  });
+}
+
 // Friends: says why something was refused.
 function friendBlocked(reason: FriendBlock | MingleBlock): void {
   blocked(STRINGS.friends.blocked[reason](state.pet.name));
@@ -939,10 +991,21 @@ function mingleNow(id: string): void {
 // Shows the "While you were away" card, if you were gone a while and
 // something happened. `before` is the game as you left it at `leftAt`.
 // Skipped while the pet is being named or a choice is open.
+// Medicine, from the Medicine button or the away card.
+function medicineNow(): void {
+  const before = simulate(state, gameNow()).pet;
+  if (!runAction(giveMedicine)) return;
+  playMoment('medicine');
+  // Yuck! Then better.
+  window.setTimeout(() => pullFace('grumpy'), MOMENT_MS.medicine * 0.38);
+  window.setTimeout(() => showGains(before, { health: 1 }), MOMENT_MS.medicine * 0.72);
+}
+
 function showAway(before: GameState, leftAt: number): void {
   if (naming.isOpen() || choice.isOpen() || away.isOpen()) return;
   const notes = awayNotes(before, simulate(state, gameNow()), leftAt, gameNow());
-  if (notes.length > 0) away.open(notes, state.pet.name, gameNow() - leftAt);
+  const sick = simulate(state, gameNow()).pet.condition === 'sick';
+  if (notes.length > 0) away.open(notes, state.pet.name, gameNow() - leftAt, sick ? medicineNow : undefined);
 }
 
 function tryCheckIn(): void {
@@ -1025,16 +1088,11 @@ const home = createHomeScreen(root, {
     playMoment(state.pet.asleep ? 'doze' : 'wake');
     if (!state.pet.asleep && (getTrait(state.pet.trait)?.grumpyWhenWoken || feeling(state.pet, 'woken') === 'disliked')) pullFace('grumpy');
   },
-  onMedicine: () => {
-    const before = simulate(state, gameNow()).pet;
-    if (!runAction(giveMedicine)) return;
-    playMoment('medicine');
-    // Yuck! Then better.
-    window.setTimeout(() => pullFace('grumpy'), MOMENT_MS.medicine * 0.38);
-    window.setTimeout(() => showGains(before, { health: 1 }), MOMENT_MS.medicine * 0.72);
-  },
+  onMedicine: () => medicineNow(),
   onRevive: askRevive,
   onGoodbye: askGoodbye,
+  onLetRest: letRest,
+  onRestingStar: showRestCard,
   onCast: (streak) => {
     const result = cast(state, gameNow());
     setState(result.state);
@@ -1605,6 +1663,7 @@ const home = createHomeScreen(root, {
   onReadGuide: (id) => guide.replay(id, state.pet.name),
   onRename: askName,
   onOwner: (name) => setState(setOwner(state, name)),
+  onAutoHoliday: (on) => setState({ ...state, settings: { ...state.settings, autoHoliday: on } }),
   onShowAllMenus: (showAllMenus) => setState({ ...state, showAllMenus }),
   // Going back to real time can't undo what happened, so we keep the pet as
   // it is and just restart the clock from now. Timers the pet is waiting on
@@ -1674,6 +1733,7 @@ const growUp = createGrowUpReveal(root, (moment) => {
 });
 skipFortuneOnTap();
 const away = createAwayCard(root);
+const restCard = createRestCard(root);
 // If saving fails (storage full, private browsing), say so once.
 let saveFailShown = false;
 whenSaveFails(() => {
@@ -1789,6 +1849,7 @@ function drawFrame(timeMs: number): void {
       mess: away ? undefined : messOf(pet, home.hidesSmell()),
       bath,
       glow: !away && pet.starGlow && pet.condition !== 'passed',
+      restingStar: (state.resting ?? []).length > 0,
       note: away,
       night: isNight(gameNow()),
       lightsOff: pet.asleep,

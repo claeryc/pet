@@ -97,6 +97,7 @@ const placeName = (id: string) => STRINGS.journeys.places[id] ?? id;
 const placeIcon = (id: string) => ITEM_ICONS[`place_${id}`] ?? ITEM_ICONS.journey;
 // The Holiday ticket's spot on the board (after the night ticket).
 const HOLIDAY = 4;
+export const HOLIDAY_SLOT = HOLIDAY; // the Holiday's place on the board
 // "Stroll", or "Night trip" for the night ticket.
 const tripName = (o: Offer) => (o.night ? STRINGS.journeys.night : STRINGS.journeys.trips[o.rarity]);
 

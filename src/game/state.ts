@@ -55,6 +55,12 @@ export interface Pet {
   condition: Condition;
   warningMinutes: number; // how long the current warning has lasted
   sickMinutes: number; // how long it has been sick without medicine
+  // How many hours it has from falling sick to passing away, fixed when it
+  // falls sick (see passingHours in simulate.ts). Missing: the usual 24.
+  sickWindowHours?: number;
+  // When it passed away, so a revived pet picks its life up where it left
+  // off instead of growing up on the spot.
+  passedAt?: number;
   recoveryUntil: number | null; // resting after medicine until this time
   careScore: number; // hidden 0-100 long-term care rating
   buffs: Buff[]; // active timed effects
@@ -200,7 +206,8 @@ export interface Journeys {
   nightOf?: string;
   // A Holiday everyone is on (or was on, until the garden has caught up):
   // the garden waits from `from` to `until`.
-  holiday?: { from: number; until: number } | null;
+  // `auto`: started by itself, when a pet was about to fall sick.
+  holiday?: { from: number; until: number; auto?: boolean } | null;
 }
 
 // Sniff and dig (see src/game/dig.ts).
@@ -424,6 +431,8 @@ export type Message =
   | { kind: 'tripFriend'; at: number; name: string; friend: string; place: string }
   // Everyone came home from a Holiday in the Meadow.
   | { kind: 'holidayHome'; at: number; names: string[] }
+  // A ticket was used by itself because a pet was about to fall sick.
+  | { kind: 'autoHoliday'; at: number; name: string; days: number }
   // A regular (Percy) reached a new heart and gave its reward.
   | { kind: 'regular'; at: number; id: string; hearts: number }
   // A project's stage was built (`stage` counts from 0; `done`: it was the last).
@@ -492,6 +501,15 @@ export interface GameState {
   // The moment the simulation last caught up to. simulate() moves the world
   // forward from here to "now".
   lastUpdated: number;
+  // When this game began (0 for saves from before it was kept). A keeper's
+  // first week is gentler on sick pets.
+  startedAt: number;
+  // The keeper's choices that change the game itself (Settings).
+  // autoHoliday: use a Holiday ticket by itself when a pet would fall sick.
+  settings: { autoHoliday: boolean };
+  // Pets that passed away and rest under the stars (see resting.ts),
+  // waiting for a Revival Star. Nothing happens to them meanwhile.
+  resting: Pet[];
   // Extra time added by the debug fast-forward button, in milliseconds.
   // The game's clock is always: real time + clockOffsetMs.
   clockOffsetMs: number;
@@ -653,10 +671,13 @@ export function createNewGame(now: number): GameState {
     housemates: [],
     nest: null,
     lastUpdated: now,
+    startedAt: now,
+    settings: { autoHoliday: false },
+    resting: [],
     clockOffsetMs: 0,
     riceJarAt: null,
     gold: CONFIG.economy.startingGold,
-    inventory: { food: { ...CONFIG.economy.startingFood }, hats: [], seeds: {}, supplies: {}, decor: [], bags: [] },
+    inventory: { food: { ...CONFIG.economy.startingFood }, hats: [], seeds: {}, supplies: { ...CONFIG.economy.startingSupplies }, decor: [], bags: [] },
     checkIn: { day: '', count: 0, lastAt: 0 },
     recipesFound: [],
     kitchen: [],

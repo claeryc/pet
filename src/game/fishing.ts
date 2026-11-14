@@ -346,6 +346,7 @@ export function land(
   // without XP.
   next = rewarded ? addTally(next, 'fish', count) : countUp(next, 'fish', count);
   if (grade === 'perfect' && rewarded) next = addXp(next, CONFIG.skills.perfectFishXp);
+  if (grade === 'perfect') next = countUp(next, 'perfectCatches'); // for the first Gold Catch milestone
   return { state: next, caught, count, baited, rewarded };
 }
 

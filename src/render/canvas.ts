@@ -3,7 +3,7 @@
 
 import { drawBag } from './bags';
 import { PALETTE } from './palette';
-import { drawCurtains, drawWall } from './room';
+import { drawCeiling, drawCurtains, drawFairyGlow, drawFloor, drawWall } from './room';
 import { drawFurniture, drawSpots } from './furniture';
 import type { FurnitureSlot } from '../game/state';
 import { frameFor } from './animations';
@@ -39,6 +39,7 @@ export interface OtherPet {
 export interface Scene {
   animation: string; // which pet animation to play
   glow?: boolean; // the pet was brought back with a Revival Star
+  restingStar?: boolean; // a pet rests under the stars: a star in the window
   face?: Expression; // the pet's face (see src/game/expressions.ts)
   idleEveryMs?: number; // how often it plays idle moves (its trait)
   mess?: PetMess; // the pet's poops and smell (see src/render/hygiene.ts)
@@ -96,6 +97,19 @@ export function setupCanvas(canvas: HTMLCanvasElement): CanvasRenderingContext2D
   return ctx;
 }
 
+// The room is as tall as the screen has room for: the old 64x48 room sits
+// at the bottom of the canvas, and the wall goes on up above it (see
+// drawRoom). Everything else still counts in the old room's pixels.
+export function fitRoomHeight(canvas: HTMLCanvasElement, height: number): void {
+  const h = Math.max(ROOM_HEIGHT, Math.min(ROOM_HEIGHT * 4, Math.round(height)));
+  if (canvas.height === h) return;
+  canvas.height = h;
+  canvas.getContext('2d')!.imageSmoothingEnabled = false;
+}
+
+// How many rows of wall there are over the old room.
+export const roomTop = (canvas: HTMLCanvasElement): number => Math.max(0, canvas.height - ROOM_HEIGHT);
+
 // The window's glass, in room pixels (its frame is one pixel bigger).
 const WINDOW = { x: 6, y: 6, w: 14, h: 12 };
 
@@ -129,6 +143,24 @@ function drawWindow(ctx: CanvasRenderingContext2D, night: boolean, timeMs: numbe
   ctx.fillRect(x + w / 2, y, 1, h);
   ctx.fillRect(x, y + h / 2, w, 1);
 }
+
+// A pet resting under the stars: a star twinkling in the window's top
+// pane, on its own little patch of night sky (day or night, over curtains).
+function drawRestingStar(ctx: CanvasRenderingContext2D, timeMs: number): void {
+  const sx = WINDOW.x + 1, sy = WINDOW.y + 1;
+  const tw = Math.floor(timeMs / 600) % 2;
+  ctx.fillStyle = PALETTE.plum;
+  ctx.fillRect(sx, sy, 6, 5);
+  ctx.fillStyle = PALETTE.butter;
+  ctx.fillRect(sx + 1, sy + 2, 3 + tw, 1);
+  ctx.fillRect(sx + 2, sy + 1, 1, 3);
+  ctx.fillStyle = PALETTE.white;
+  ctx.fillRect(sx + 2, sy + 2, 1, 1);
+}
+
+// True when a point (in room pixels) is on the window, curtains and all.
+export const onWindow = (x: number, y: number): boolean =>
+  x >= WINDOW.x - 2 && x <= WINDOW.x + WINDOW.w + 2 && y >= WINDOW.y - 2 && y <= WINDOW.y + WINDOW.h + 2;
 
 // The pixel column the fishing line hangs down from the rod tip. The pond
 // below lines its own line up with it (see src/ui/home.ts).
@@ -444,7 +476,7 @@ function clipBelowGrass(ctx: CanvasRenderingContext2D, edge: number, timeMs: num
   ctx.beginPath();
   for (let x = 0; x < ROOM_WIDTH; x += 2) {
     const tuft = [0, 2, 1][(x / 2 + sway) % 3];
-    ctx.rect(x, Math.round(edge) - tuft, 2, ROOM_HEIGHT);
+    ctx.rect(x, Math.round(edge) - tuft, 2, ROOM_HEIGHT * 5);
   }
   ctx.clip();
 }
@@ -457,15 +489,26 @@ export function drawRoom(
   hat?: SpriteSheet, // the hat's sheet, if the pet wears one
 ): void {
   const { mix, outside } = stepOutside(scene, timeMs);
+  // The old room's top left corner, under the extra wall.
+  const top = roomTop(ctx.canvas);
+  ctx.save();
+  ctx.translate(0, top);
+  // Copies the old room's top row up over the extra wall, for scenes that
+  // only fill the old room (the garden, trips, the shelf close-up).
+  const fillAbove = (alpha: number) => {
+    if (top === 0 || alpha <= 0) return;
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(ctx.canvas, 0, top, ROOM_WIDTH, 1, 0, -top, ROOM_WIDTH, top);
+    ctx.globalAlpha = 1;
+  };
   if (mix < 1) {
     // Wall and floor (the wall is a little bluer at night).
-    drawWall(ctx, scene.room?.wallpaper ?? 'plain', scene.night, ROOM_WIDTH, 34);
-    ctx.fillStyle = PALETTE.peach;
-    ctx.fillRect(0, 34, ROOM_WIDTH, ROOM_HEIGHT - 34);
-    ctx.fillStyle = PALETTE.butter;
-    ctx.fillRect(0, 34, ROOM_WIDTH, 1);
+    drawWall(ctx, scene.room?.wallpaper ?? 'plain', scene.night, ROOM_WIDTH, 34, top);
+    drawFloor(ctx, ROOM_WIDTH, 34, ROOM_HEIGHT);
+    drawCeiling(ctx, ROOM_WIDTH, top, scene.night, timeMs);
     drawWindow(ctx, scene.night, timeMs);
     if (scene.room?.curtains) drawCurtains(ctx, scene.room.curtains, WINDOW.x, WINDOW.y, WINDOW.w, WINDOW.h);
+    if (scene.restingStar) drawRestingStar(ctx, timeMs);
     if (scene.room?.furniture && (!scene.fishing || scene.fishing === 'off')) drawFurniture(ctx, scene.room.furniture);
     if (scene.keepsakes) drawKeepsakes(ctx, scene.keepsakes, scene.room?.furniture ?? {}, timeMs);
     if (scene.fishing && scene.fishing !== 'off') drawFishing(ctx, scene.fishing, timeMs);
@@ -520,14 +563,16 @@ export function drawRoom(
   if (outside) {
     // The garden or Percy's meadow, rising up from the bottom (or all of it,
     // once it's in).
-    const edge = (ROOM_HEIGHT + 3) * (1 - mix);
+    const edge = (ROOM_HEIGHT + 3 + top) * (1 - mix) - top;
     ctx.save();
     if (mix < 1) clipBelowGrass(ctx, edge, timeMs);
     if ('garden' in outside) {
       drawGardenBackground(ctx, ROOM_WIDTH, ROOM_HEIGHT, scene.night, timeMs);
+      fillAbove(1);
       drawGardenPots(ctx, outside.garden, timeMs);
     } else {
       drawDelivery(ctx, ROOM_WIDTH, ROOM_HEIGHT, outside.delivery, scene.night, timeMs);
+      fillAbove(1);
     }
     ctx.restore();
   }
@@ -541,13 +586,14 @@ export function drawRoom(
   if (scene.lightsOff && mix < 1) {
     ctx.save();
     ctx.beginPath();
-    ctx.rect(0, 0, ROOM_WIDTH, Math.round((ROOM_HEIGHT + 3) * (1 - mix)));
+    ctx.rect(0, -top, ROOM_WIDTH, Math.round((ROOM_HEIGHT + 3 + top) * (1 - mix)));
     ctx.clip();
     ctx.fillStyle = PALETTE.ink;
     ctx.globalAlpha = 0.45;
-    ctx.fillRect(0, 0, ROOM_WIDTH, ROOM_HEIGHT);
+    ctx.fillRect(0, -top, ROOM_WIDTH, ROOM_HEIGHT + top);
     ctx.globalAlpha = 1;
     if (!scene.room?.curtains) drawWindowLight(ctx, WINDOW, scene.night);
+    drawFairyGlow(ctx, ROOM_WIDTH, top, timeMs);
     ctx.restore();
   }
   if (mix < 1) for (const p of sleepers) drawSleepZs(ctx, p.sheet, p.x, timeMs);
@@ -557,6 +603,7 @@ export function drawRoom(
     ctx.globalAlpha = trip;
     drawTrip(ctx, lastTrip, scene.night, timeMs);
     ctx.globalAlpha = 1;
+    fillAbove(trip);
   }
 
   const close = stepCloseup(scene, timeMs);
@@ -564,6 +611,8 @@ export function drawRoom(
     ctx.globalAlpha = close;
     drawShelfCloseup(ctx, scene.room?.wallpaper ?? 'plain', lastCloseup.things, lastCloseup.picked, scene.night, ROOM_WIDTH, ROOM_HEIGHT, timeMs);
     ctx.globalAlpha = 1;
+    fillAbove(close);
   }
+  ctx.restore();
 
 }

@@ -21,7 +21,7 @@ const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 44;
+export const SAVE_VERSION = 48;
 
 export interface SaveFile {
   version: number;
@@ -494,6 +494,33 @@ export function migrate(save: SaveFile): SaveFile {
   if (save.version === 43) {
     save.state.ads = { day: '', watched: 0 };
     save.version = 44;
+  }
+  // Version 44 -> 45: everyone starts with a Holiday ticket. A save that
+  // has never had one gets it now.
+  if (save.version === 44) {
+    const inv = save.state.inventory;
+    if (inv) {
+      inv.supplies ??= {};
+      if (inv.supplies['ticket:holiday'] === undefined) inv.supplies['ticket:holiday'] = 1;
+    }
+    save.version = 45;
+  }
+  // Version 45 -> 46: games now remember when they began. Older games are
+  // past their first week, so they get 0 (no first-week cushion).
+  if (save.version === 45) {
+    save.state.startedAt ??= 0;
+    save.version = 46;
+  }
+  // Version 46 -> 47: the auto-holiday switch, off.
+  if (save.version === 46) {
+    save.state.settings ??= { autoHoliday: false };
+    save.version = 47;
+  }
+  // Version 47 -> 48: a resting place for pets that passed away, empty.
+  // A pet already passed stays in the room and can be laid to rest there.
+  if (save.version === 47) {
+    save.state.resting ??= [];
+    save.version = 48;
   }
   return save;
 }

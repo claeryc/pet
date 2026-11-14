@@ -34,7 +34,7 @@
         "name": { "type": "string", "description": "The name on its sign. A journey place can leave it out to use the place's own name." },
         "opens": {
           "type": "string",
-          "description": "What its button does: home, garden, meadow, friends, soon (not there yet), map:<map id> (another map) or journey:<place id> (the trip board, about that place)."
+          "description": "What its button does: home, garden, meadow, pond (fishing), friends, soon (not there yet), map:<map id> (another map) or journey:<place id> (the trip board, about that place)."
         },
         "unlock": {
           "type": "string",

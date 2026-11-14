@@ -10,11 +10,14 @@ import type { FurnitureSlot, GameState, PetStats } from '../game/state';
 import { meadowVisitor } from '../game/meadow';
 import { createMenu, type MenuCallbacks } from './menu';
 import { createMap } from './map';
+import { sound } from '../audio/audio';
+import { firstPick, START_MAP } from '../game/map';
 import { visitor } from '../game/friends';
 import { foodCount, revivalStars } from '../game/economy';
 import { BAITS, baitCount, baitInUse, type BaitId, type Bite } from '../game/fishing';
+import { NEED_ICONS, needStep } from './needIcons';
 import { createDrawer, type DrawerOption, type Effect } from './drawer';
-import { ITEM_ICONS, STAT_ICONS } from './icons';
+import { ITEM_ICONS, MENU_ICONS, STAT_ICONS } from './icons';
 import type { ActivityId, Food, FoodId } from '../game/actions';
 import type { CatchGrade } from '../game/fishing';
 import { createFishing, DRAIN_MS, type FishingPhase } from './fishing';
@@ -28,10 +31,11 @@ import { unreadMail } from '../game/messages';
 import { needsTending, type CropId } from '../game/garden';
 import { isNew, isUnlocked } from '../game/unlocks';
 import { pointsToSpend, reelPerks } from '../game/skills';
-import { FISHING_LINE_X, petAt, ROOM_HEIGHT, ROOM_WIDTH } from '../render/canvas';
+import { FISHING_LINE_X, fitRoomHeight, onWindow, petAt, ROOM_HEIGHT, ROOM_WIDTH } from '../render/canvas';
 import { createMeet, MEET_OUT_MS } from './meet';
 import { petStandsLeft } from '../game/friends';
 import { needsYou, otherRoom, petsIn, roommates } from '../game/rooms';
+import { restingFull } from '../game/resting';
 import type { Friend } from '../game/state';
 import type { CookOptions } from '../game/cooking';
 import { potAt, type GardenScene } from '../render/garden';
@@ -44,7 +48,7 @@ import type { ShopCategory } from './shop';
 import { createFx, type Gains } from './fx';
 import { hasBackpack, isAway, nobodyHome } from '../game/presence';
 import { formatClock } from './time';
-import { createJourneys, JOURNEYS_OUT_MS } from './journeys';
+import { createJourneys, HOLIDAY_SLOT, JOURNEYS_OUT_MS } from './journeys';
 import { createDig, type DigCallbacks } from './dig';
 import { createTripView, tripNotes, type TripMoment } from './trip';
 import { newestPlace } from './journal';
@@ -67,6 +71,8 @@ export interface HomeCallbacks extends MenuCallbacks, DigCallbacks {
   onMedicine: () => void;
   onRevive: () => void; // a pet that passed away: use (or buy) a Revival Star
   onGoodbye: () => void; // ...or let it go
+  onLetRest: () => void; // ...or let it rest under the stars while you raise a new pet
+  onRestingStar: () => void; // tapped the star in the window: who's resting
   onCast: (streak: number) => Bite | null; // throws the fishing line; what will bite, or null if refused
   onLand: (grade: CatchGrade, bite: Bite) => string | null; // the fish landed (a food id), or null
   onPickBait: () => void;
@@ -385,18 +391,45 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const tryTag = document.createElement('div');
   tryTag.className = 'try-tag';
   tryTag.hidden = true;
-  roomWrap.append(canvas, fx.el, bubble, corner, door, tryTag);
+  // The four needs, pinned to the top of the room: each icon shows its own
+  // level (see needIcons.ts), so the room can fill the screen.
+  const needs = document.createElement('div');
+  needs.className = 'needs-pill';
+  needs.setAttribute('role', 'group');
+  const needIcons = {} as Record<keyof PetStats, HTMLElement>;
+  for (const key of ['hunger', 'happiness', 'health', 'energy'] as (keyof PetStats)[]) {
+    const i = document.createElement('span');
+    i.className = 'need';
+    i.dataset.need = key;
+    needIcons[key] = i;
+    needs.append(i);
+  }
+  // The old 4:3 room at the bottom of the (taller) canvas: what sits on
+  // the pet, its bubble and the Shop's tag are placed in it.
+  const scene = document.createElement('div');
+  scene.className = 'room-scene';
+  scene.append(fx.el, bubble, tryTag);
+  roomWrap.append(canvas, needs, scene, corner, door);
+  // The canvas grows to fill the room's box, a row of wall at a time (see
+  // fitRoomHeight). Folded back to 4:3 (a sheet open, or a game on), it
+  // keeps its height and shows just its bottom.
+  new ResizeObserver(() => {
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    if (w && h / w > ROOM_HEIGHT / ROOM_WIDTH + 0.02) fitRoomHeight(canvas, (h / w) * ROOM_WIDTH);
+  }).observe(canvas);
 
   // Warning / sick / recovering / passed away banner, hidden when all is well.
   const banner = document.createElement('div');
   banner.className = 'banner';
   const bannerText = document.createElement('p');
   const medicine = button(STRINGS.buttons.medicine, 'btn btn-medicine', cb.onMedicine);
-  const revive = button(STRINGS.buttons.revive, 'btn', cb.onRevive);
+  const revive = button(STRINGS.buttons.bringBack, 'btn', cb.onRevive);
+  const rest = button(STRINGS.buttons.letRest, 'btn btn-rest', cb.onLetRest);
   const goodbye = button(STRINGS.buttons.goodbye, 'btn btn-soft', cb.onGoodbye);
   const passedButtons = document.createElement('div');
-  passedButtons.className = 'banner-buttons';
-  passedButtons.append(revive, goodbye);
+  passedButtons.className = 'banner-buttons is-three';
+  passedButtons.append(revive, rest, goodbye);
   // A pet out on a journey can be called home, and one that's back has a
   // backpack to open.
   const openBackpack = button(STRINGS.journeys.openBackpack, 'btn', () => {
@@ -419,7 +452,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   stats.append(...Object.values(bars).map((b) => b.el));
 
   const actions = document.createElement('div');
-  actions.className = 'actions';
+  actions.className = 'actions dock';
 
   // Turns stat changes like { hunger: 20, energy: -8 } into effect chips.
   const statEffects = (changes: Partial<Record<keyof PetStats, number>>): Effect[] =>
@@ -549,7 +582,53 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const JOURNEYS_ROW = GARDEN_ROW + 1;
   const DIG_ROW = JOURNEYS_ROW + 1;
   const WORKBENCH_ROW = DIG_ROW + 1;
-  const feedDrawer = createDrawer({ id: 'feed', label: STRINGS.buttons.feed, options: feedOptions, ...drawerSetup });
+  // Feed's sheet: its name and the cooking pot at the top, then chips to
+  // narrow the pantry down by kind, then the food as a grid of tiles. A tap
+  // picks a food; the bar under the grid says what it does and feeds it.
+  const feedHead = document.createElement('div');
+  feedHead.className = 'sheet-head';
+  const feedTitle = document.createElement('h2');
+  feedTitle.textContent = STRINGS.buttons.feed;
+  const cookButton = button('', 'sheet-head-btn', () => {
+    feedDrawer.close();
+    startCooking();
+  });
+  cookButton.innerHTML = `<span class="sheet-head-btn-icon" aria-hidden="true">${ITEM_ICONS.cooking}</span>${STRINGS.cooking.open}`;
+  feedHead.append(feedTitle, cookButton);
+  const FEED_KINDS: { id: string; label: string; tags: string[] }[] = [
+    { id: 'all', label: STRINGS.feedKinds.all, tags: [] },
+    { id: 'fruitVeg', label: STRINGS.feedKinds.fruitVeg, tags: ['fruit', 'veg'] },
+    { id: 'seafood', label: STRINGS.feedKinds.seafood, tags: ['seafood'] },
+    { id: 'sweets', label: STRINGS.feedKinds.sweets, tags: ['sweet'] },
+    { id: 'soups', label: STRINGS.feedKinds.soups, tags: ['soup', 'drink'] },
+  ];
+  let feedKind = 'all';
+  const foodTags = (row: number): readonly string[] => (CONFIG.foods as readonly Food[])[row - 1]?.tags ?? [];
+  const kindShows = (kind: string, row: number) => {
+    const k = FEED_KINDS.find((f) => f.id === kind)!;
+    return row !== COOK_ROW && (k.tags.length === 0 || foodTags(row).some((t) => k.tags.includes(t)));
+  };
+  const feedChips = document.createElement('div');
+  feedChips.className = 'sheet-chips';
+  const chipButtons = FEED_KINDS.map((k) => {
+    const b = button(k.label, 'sheet-chip', () => {
+      feedKind = k.id;
+      chipButtons.forEach((c, i) => c.classList.toggle('is-on', FEED_KINDS[i].id === feedKind));
+      feedDrawer.setShown((row) => kindShows(feedKind, row));
+    });
+    b.classList.toggle('is-on', k.id === feedKind);
+    return b;
+  });
+  feedChips.append(...chipButtons);
+  const feedTop = document.createElement('div');
+  feedTop.className = 'sheet-top';
+  feedTop.append(feedHead, feedChips);
+  const feedDrawer = createDrawer({
+    id: 'feed', label: STRINGS.buttons.feed, options: feedOptions, ...drawerSetup,
+    header: feedTop, grid: { pickLabel: STRINGS.buttons.feed },
+  });
+  // In the dock, Feed wears a rice ball next to its name, like Map's island.
+  feedDrawer.el.querySelector('.drawer-label')!.innerHTML = `<span class="dock-icon" aria-hidden="true">${ITEM_ICONS.riceBall}</span>${STRINGS.buttons.feed}`;
   const playDrawer = createDrawer({ id: 'play', label: STRINGS.buttons.play, options: playOptions, ...drawerSetup });
 
   // The backpack button opens the menu (shop, inventory, settings and more) the
@@ -559,11 +638,16 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   // shopping), so its rows get the room under its tabs.
   let menuOverStats = false;
   const menu = createMenu(
-    { ...cb, onOpenDelivery: () => startDelivery(), onOpenMeet: () => startMeet(), onOpenJourneys: () => openJourneys(), onOpenMap: () => openMap(), onDecorate: () => openDecorate() },
+    {
+      ...cb, onOpenDelivery: () => startDelivery(), onOpenMeet: () => startMeet(), onOpenJourneys: () => openJourneys(), onOpenHoliday: () => openJourneys(HOLIDAY_SLOT), onOpenMap: () => openMap(), onDecorate: () => openDecorate(),
+      onOpenPlay: () => playDrawer.open(),
+    },
     () => menuDrawer?.isOpen() ?? false,
     () => menuDrawer?.close(),
     (page) => {
-      if (menuOverStats === (page === 'shop')) return;
+      // The main page is the pop-up over "···"; the rest are sheets or
+      // full pages (see style.css, "the dock").
+      actions.dataset.page = page;
       menuOverStats = page === 'shop';
       if (menuDrawer) fitDrawers();
     },
@@ -580,27 +664,62 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     },
     beforeOpen: () => null,
   });
-  const lights = button('', 'btn btn-icon', cb.onLights);
+  // Sleep: a moon in the room, by where the lamp will be.
+  const lights = button('', 'room-lights', cb.onLights);
+  roomWrap.append(lights);
+
+  // The dock: Feed, Map, and "···" for everything else. While anything is
+  // open, "···" turns into "×", which always goes back to the room.
+  const mapButton = button('', 'dock-btn dock-map', () => openMap());
+  mapButton.innerHTML = `<span class="dock-icon" aria-hidden="true">${MENU_ICONS.map}</span><span class="dock-label">${STRINGS.map.menuTile}</span>`;
+  const moreButton = button('', 'dock-btn dock-more', () => {
+    if (actions.dataset.open) return closePanels();
+    menuDrawer!.open();
+  });
+  moreButton.innerHTML = '<span class="dock-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="dock-x" aria-hidden="true"></span>';
+  const closePanels = () => {
+    feedDrawer.close();
+    playDrawer.close();
+    menuDrawer!.close();
+  };
+  // "···" or "×", and what screen readers hear, follow whatever is open.
+  // A soft swish as something opens over the dock, or goes away.
+  let wasOpen = false;
+  const syncMore = () => {
+    const open = !!actions.dataset.open;
+    if (open !== wasOpen) sound(open ? 'sheetOpen' : 'sheetClose');
+    wasOpen = open;
+    moreButton.classList.toggle('is-close', open);
+    moreButton.setAttribute('aria-label', open ? STRINGS.menu.close : STRINGS.menu.more);
+  };
+  new MutationObserver(syncMore).observe(actions, { attributes: true, attributeFilter: ['data-open'] });
+  moreButton.classList.toggle('is-close', false);
+  moreButton.setAttribute('aria-label', STRINGS.menu.more);
 
   // An open Feed, Play or Menu panel reaches up to just under the stat bars,
   // so taller screens show more rows. Small screens keep the old height
   // (the panel covers the bars there). The panel's button, frame and
   // padding take about 74px. The Shop goes over the bars, its top edge
   // lined up with theirs (the frame itself is 58px).
+  // Two heights, whatever is open (see "the dock" in style.css): a tall
+  // sheet comes up to the bottom of the room, so the pet stays in view,
+  // and a full page (the "books": Journal, Collection, Skills, Family)
+  // comes up to just under the needs.
   function fitDrawers(): void {
-    const bottom = actions.getBoundingClientRect().bottom;
-    const slot = statSlot.getBoundingClientRect();
-    const fit = (room: number) => `${Math.max(DRAWER_MIN, Math.floor(room))}px`;
-    const underBars = fit(bottom - slot.bottom - DRAWER_GAP - 74);
-    actions.style.setProperty('--drawer-fit', underBars);
-    menuDrawer?.el.style.setProperty('--drawer-fit', menuOverStats ? fit(bottom - slot.top - 58) : underBars);
-    // The travel journal is a book, so it takes the whole screen above the
-    // button, over the room too.
-    actions.style.setProperty('--drawer-full', fit(bottom - roomWrap.getBoundingClientRect().top - 74));
+    const top = actions.getBoundingClientRect().top;
+    const room = roomWrap.getBoundingClientRect();
+    const fit = (h: number) => `${Math.max(DRAWER_MIN, Math.floor(h))}px`;
+    // The panel floats DRAWER_GAP over the dock, and keeps the same gap
+    // under the room (or the needs). With a sheet open the room folds back
+    // to 4:3, whatever its height now.
+    const border = canvas.offsetWidth - canvas.clientWidth;
+    const folded = room.top + canvas.clientWidth * (ROOM_HEIGHT / ROOM_WIDTH) + border;
+    actions.style.setProperty('--sheet-h', fit(top - folded - 2 * DRAWER_GAP));
+    actions.style.setProperty('--page-h', fit(top - room.top - needs.offsetTop - needs.offsetHeight - 2 * DRAWER_GAP));
   }
   window.addEventListener('resize', fitDrawers);
 
-  actions.append(feedDrawer.el, playDrawer.el, menuDrawer.el, lights);
+  actions.append(feedDrawer.el, mapButton, playDrawer.el, menuDrawer.el, moreButton);
 
   // Journeys: the board of trips, then the lunchbox, over the stat bars.
   function openJourneys(slot?: number): void {
@@ -627,9 +746,16 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       switch (opens.kind) {
         case 'garden':
           return startGarden();
+        case 'pond':
+          return startFishing();
         case 'meadow':
         case 'friends':
-          if (opens.kind === 'friends' && latest && visitor(latest.state)) return startMeet();
+          // Friends: play with whoever's over, or meet one (letters first
+          // when there are new ones and nobody's over).
+          if (opens.kind === 'friends' && latest) {
+            const s = latest.state;
+            if (visitor(s) || (isUnlocked(s, 'meet') && unreadMail(s) === 0)) return startMeet();
+          }
           if (actions.hidden) return;
           feedDrawer.close();
           playDrawer.close();
@@ -689,10 +815,13 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   let press: { x: number; y: number; held: boolean } | null = null;
   let lastCuddle = -Infinity;
   const roomPoint = (e: PointerEvent) => {
+    // The old room fills the canvas's width and sits at its bottom.
     const rect = canvas.getBoundingClientRect();
+    const scale = canvas.clientWidth / ROOM_WIDTH;
+    const bottom = rect.top + canvas.clientTop + canvas.clientHeight;
     return {
-      x: ((e.clientX - rect.left) / rect.width) * ROOM_WIDTH,
-      y: ((e.clientY - rect.top) / rect.height) * ROOM_HEIGHT,
+      x: (e.clientX - rect.left - canvas.clientLeft) / scale,
+      y: ROOM_HEIGHT - (bottom - e.clientY) / scale,
     };
   };
   // Which pet a tap is on: the one you're looking after, the other one in
@@ -743,8 +872,15 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       return;
     }
     if (actions.hidden) return;
+    // Tapping the room while something is open goes back to the room.
+    if (actions.dataset.open) return closePanels();
     // A poop on the floor: pick it up.
     if (tapPoop(e)) return;
+    // The star in the window: a pet resting under the stars.
+    if (latest && (latest.state.resting ?? []).length > 0) {
+      const { x, y } = roomPoint(e);
+      if (onWindow(x, y)) return cb.onRestingStar();
+    }
     // The keepsake shelf: see it up close.
     if (latest) {
       const { x, y } = roomPoint(e);
@@ -1366,7 +1502,18 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       for (const key of Object.keys(bars) as (keyof PetStats)[]) {
         if (switched) bars[key].slide(pet.stats[key]);
         else bars[key].set(pet.stats[key]);
+        const step = needStep(pet.stats[key]);
+        const icon = needIcons[key];
+        if (icon.dataset.step !== String(step)) {
+          icon.dataset.step = String(step);
+          icon.innerHTML = NEED_ICONS[key][step];
+        }
+        const words = `${STRINGS.stats[key]}: ${Math.round(pet.stats[key])}%`;
+        icon.setAttribute('aria-label', words);
+        icon.setAttribute('role', 'img');
+        icon.title = words;
       }
+      needs.hidden = isEgg || petAway;
       // With two pets, the craving bubble floats over the one you're
       // looking after.
       roomWrap.dataset.spot = !twoHome(state) ? 'middle' : petStandsLeft(state) ? 'left' : 'right';
@@ -1379,6 +1526,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       // Caught fish and cooked dishes also show their stars. Dishes only
       // show up once you have some, to keep the list short.
       // Only food you have is listed.
+      const have: boolean[] = [];
       CONFIG.foods.forEach((f: Food, i) => {
         const count = foodCount(state, f.id);
         const stars = f.stars ? `${STRINGS.stars(f.stars)}  ` : '';
@@ -1386,6 +1534,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
         const refill = f.id === 'riceBall' && state.riceJarAt ? `  ${STRINGS.shop.riceJar(formatIn(state.riceJarAt - now))}` : '';
         feedDrawer.setNote(foodRow(i), count === Infinity ? STRINGS.shop.free : `${stars}× ${count}${refill}`);
         feedDrawer.setHidden(foodRow(i), count === 0);
+        have[i] = count > 0;
         // A heart on what the pet is craving.
         const craved = state.craving.food === f.id;
         if (craved !== cravedRows.has(i)) {
@@ -1394,11 +1543,25 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
           else cravedRows.delete(i);
         }
       });
-      feedDrawer.setHidden(COOK_ROW, !isUnlocked(state, 'cooking'));
+      // The pot is the Cook button at the top of the sheet, not a tile.
+      feedDrawer.setHidden(COOK_ROW, true);
+      cookButton.hidden = !isUnlocked(state, 'cooking');
+      // Only the kinds you have something of, and back to All if the one
+      // picked has run out.
+      chipButtons.forEach((c, k) => {
+        c.hidden = k > 0 && !have.some((h, i) => h && kindShows(FEED_KINDS[k].id, foodRow(i)));
+      });
+      if (chipButtons.find((c, k) => FEED_KINDS[k].id === feedKind)?.hidden) chipButtons[0].click();
+      feedChips.hidden = chipButtons.filter((c) => !c.hidden).length < 3;
       const cookIsNew = isNew(state, 'cooking');
       feedDrawer.setOptionNew(COOK_ROW, cookIsNew);
+      cookButton.classList.toggle('has-new', cookIsNew);
       feedDrawer.setNew(cookIsNew);
-      menuDrawer!.setNew(
+      // Something going on at a place on the island (a crop to pick, a
+      // friend over, a new place to try): a dot on Map.
+      mapButton.classList.toggle('has-new', firstPick(state, now, START_MAP) !== '' ||
+        isNew(state, 'garden') || isNew(state, 'meet') || isNew(state, 'journeys'));
+      moreButton.classList.toggle('has-new',
         isNew(state, 'shop') || isNew(state, 'collection') || isNew(state, 'familyTree') || isNew(state, 'journeys') ||
           [pet, ...state.housemates].some(hasBackpack) ||
           isNew(state, 'messages') || unreadMail(state) > 0 || isNew(state, 'skills') ||
@@ -1416,6 +1579,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
         feedOrderKey = orderKey;
         feedDrawer.setOrder(order);
       }
+      // The bar under the grid follows the picked food's count.
+      feedDrawer.refreshPick();
       cooking.update(state);
       workbench.update(state, now);
       fishing.setBait(baitInUse(state), Object.fromEntries(BAITS.map((id) => [id, baitCount(state, id)])) as Record<BaitId, number>);
@@ -1432,13 +1597,15 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       refreshNotes(state);
       refreshParcel();
       parcel.classList.toggle('all-full', !!state.delivery.order?.boxes.every((b) => b.have >= b.want));
-      playDrawer.setHidden(GARDEN_ROW, !isUnlocked(state, 'garden'));
+      // Meet, Fishing, the Garden and Journeys are places on the map now.
+      playDrawer.setHidden(GARDEN_ROW, true);
       const gardenIsNew = isNew(state, 'garden');
       playDrawer.setOptionNew(GARDEN_ROW, gardenIsNew);
-      playDrawer.setHidden(MEET_ROW, !isUnlocked(state, 'meet'));
+      playDrawer.setHidden(MEET_ROW, true);
+      playDrawer.setHidden(MEET_ROW + 1, true);
       const meetIsNew = isNew(state, 'meet');
       playDrawer.setOptionNew(MEET_ROW, meetIsNew);
-      playDrawer.setHidden(JOURNEYS_ROW, !isUnlocked(state, 'journeys'));
+      playDrawer.setHidden(JOURNEYS_ROW, true);
       const journeysIsNew = isNew(state, 'journeys');
       playDrawer.setOptionNew(JOURNEYS_ROW, journeysIsNew);
       playDrawer.setHidden(DIG_ROW, !isUnlocked(state, 'dig'));
@@ -1447,7 +1614,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       playDrawer.setHidden(WORKBENCH_ROW, !isUnlocked(state, 'workbench'));
       const benchIsNew = isNew(state, 'workbench');
       playDrawer.setOptionNew(WORKBENCH_ROW, benchIsNew);
-      playDrawer.setNew(gardenIsNew || meetIsNew || journeysIsNew || digIsNew || benchIsNew);
+      playDrawer.setNew(digIsNew || benchIsNew);
       // A drop on Play when a pot is dry, sick or ready to harvest.
       const tend = isUnlocked(state, 'garden') && needsTending(state.garden, now);
       // ...or a jar of honey when the beehive is full.
@@ -1495,6 +1662,9 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       bannerText.textContent = text;
       medicine.hidden = pet.condition !== 'sick' || !!pet.trip;
       passedButtons.hidden = !passed || !!pet.trip;
+      // Every resting spot taken: say so, and Let rest waits.
+      rest.disabled = restingFull(state);
+      if (passed && rest.disabled) bannerText.textContent = `${text} ${STRINGS.revival.restFull(state.resting.length)}`;
       // Hidden while the sack is out over the stat bars, waiting for its tap.
       openBackpack.hidden = !hasBackpack(pet) || !backpack.el.hidden;
       makeRoom.hidden = !nestWaits;

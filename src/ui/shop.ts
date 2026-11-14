@@ -215,7 +215,6 @@ function text<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, 
 }
 
 const CHECK = `<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 5.5l2 2 4-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-const BACK = `<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M7.5 2.5L4 6l3.5 3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
 type Cur = 'gold' | 'frag';
 
@@ -731,6 +730,11 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
   const percy = () => wideCard(ITEM_ICONS.percy, '#e9f6ff', STRINGS.journeys.percyRest,
     resting ? STRINGS.journeys.percyRestNote(formatDuration(state.journeys.percyFreeAt - now)) : STRINGS.journeys.percyReady,
     resting ? priceButton({ cur: 'gold', cost: CONFIG.journeys.percy.resetPrice, onBuy: cb.onWakePercy }, gold) : fact(STRINGS.journeys.ready));
+  const holidayCard = () => {
+    const c = holiday();
+    c.classList.add('is-holiday');
+    return c;
+  };
   const holiday = () => wideCard(MENU_ICONS.meadow, '#f1ecfa', STRINGS.journeys.holidayTicket, STRINGS.journeys.holidayShopNote(holidayTickets(state)),
     priceButton({ cur: 'frag', cost: CONFIG.journeys.holiday.fragments, onBuy: cb.onBuyHolidayTicket }, pieces));
 
@@ -831,18 +835,18 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
     craft.classList.add('is-craft');
     craft.classList.toggle('is-short', pieces < perStar);
     acts.append(ghostButton(S.howItWorks, cb.onFragmentsHelp), craft);
-    goal.append(goalRow, bar, text('small', '', S.starNote(revivalStars(state), perGoodDay)), acts);
+    goal.append(goalRow, bar, text('small', '', S.starNote(revivalStars(state), perGoodDay)), text('small', 'shop-cash', S.starCash), acts);
     have.append(num, goal);
     const ad = adCard();
     if (view.fly && ad) flyIn(view.fly, ad, bar, goalRow.lastElementChild as HTMLElement, haveNum);
     view.fly = undefined;
     const packs = el('div', 'shop-packs');
     CONFIG.store.forEach((p, i) => {
-      const best = i === CONFIG.store.length - 1;
+      const best = false;
       const pack = el('div', `shop-pack${best ? ' is-best' : ''}`);
       if (best) pack.append(text('span', 'shop-best', S.bestValue));
       pack.insertAdjacentHTML('beforeend', fragmentPile(i + 1));
-      pack.append(text('b', '', String(p.fragments)), text('small', '', best ? S.packExtra : ''));
+      pack.append(text('b', '', String(p.fragments)), text('small', '', S.packWhat[i] ?? ''));
       const buy = text('button', 'shop-buy is-cash', p.price);
       buy.setAttribute('aria-label', S.packBuy(p.fragments, p.price));
       buy.addEventListener('click', () => cb.onBuyPack(p.id));
@@ -850,8 +854,10 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
       packs.append(pack);
     });
     const free = ad ? [section(STRINGS.ads.freeTitle), ad, text('p', 'shop-fine is-ads', STRINGS.ads.optional)] : [];
-    if (!STORE_OPEN) return [have, ...free];
-    return [have, ...free, section(S.getFragments), packs, text('p', 'shop-fine', S.realMoney)];
+    // Going away: the Holiday ticket, right by the fragments it costs.
+    const away = journeysOpen ? [section(S.goingAway), holidayCard()] : [];
+    if (!STORE_OPEN) return [have, ...away, ...free];
+    return [have, ...away, ...free, section(S.getFragments), packs, text('p', 'shop-fine', S.realMoney)];
   };
 
   // Free treats: the next rewarded ad, if there are ads at all. Never
@@ -937,7 +943,8 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
   const awning = el('div', 'shop-awning');
   awning.setAttribute('aria-hidden', 'true');
   const head = el('div', 'shop-head');
-  const back = el('button', 'shop-back', BACK);
+  // The same "‹ Menu" pill as every other page's header.
+  const back = el('button', 'shop-back menu-header-btn', `<span class="menu-header-arrow" aria-hidden="true">‹</span>${STRINGS.menu.backTo}`);
   back.setAttribute('aria-label', STRINGS.menu.back);
   back.addEventListener('click', onBack);
   const purse = el('div', 'shop-purse');

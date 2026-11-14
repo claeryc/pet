@@ -132,6 +132,7 @@ function card(m: TreeMember, state: GameState, cb: FamilyCallbacks): HTMLElement
   top.append(el('b', '', m.name || '…'));
   if (m.current) top.append(el('span', 'tree-now', STRINGS.family.you));
   else if (m.home) top.append(el('span', 'tree-now tree-home', STRINGS.family.atHome));
+  else if (m.resting) top.append(el('span', 'tree-now tree-home', STRINGS.family.resting));
   else if (m.meadow) top.append(el('span', 'tree-now tree-home', STRINGS.family.meadow));
   if (m.current && state.pet.named) {
     const rename = el('button', 'shop-btn shop-btn-soft tree-rename', STRINGS.family.rename);

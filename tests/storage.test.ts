@@ -254,7 +254,16 @@ describe('save migration to rewarded ads', () => {
   it('gives old saves no ads watched yet', () => {
     const out = migrate({ version: 43, state: { pet: { name: 'drip' } } }).state;
     expect(out.ads).toEqual({ day: '', watched: 0 });
-    expect(SAVE_VERSION).toBe(44);
+  });
+});
+
+describe('save migration to the starting Holiday ticket', () => {
+  it('gives one to saves that never had one, and leaves the rest alone', () => {
+    const none = migrate({ version: 44, state: { pet: { name: 'a' }, inventory: { food: {}, hats: [], supplies: {} } } }).state;
+    expect(none.inventory.supplies['ticket:holiday']).toBe(1);
+    const used = migrate({ version: 44, state: { pet: { name: 'a' }, inventory: { food: {}, hats: [], supplies: { 'ticket:holiday': 0 } } } }).state;
+    expect(used.inventory.supplies['ticket:holiday']).toBe(0);
+    expect(SAVE_VERSION).toBeGreaterThanOrEqual(45);
   });
 });
 

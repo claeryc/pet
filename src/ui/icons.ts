@@ -1979,6 +1979,72 @@ export const MILESTONE_ICONS: Record<string, string> = {
     '..kk.kk.',
     '......y.',
   ], PALETTE.pink),
+  // A steaming bowl.
+  firstDish: medalIcon([
+    '..y..y..',
+    '...y..y.',
+    '........',
+    'kkkkkkkk',
+    'kooooook',
+    '.kooook.',
+    '..kkkk..',
+    '........',
+  ], PALETTE.peach),
+  // A backpack.
+  firstJourney: medalIcon([
+    '..kkkk..',
+    '.k....k.',
+    'kkkkkkkk',
+    'krrrrrrk',
+    'krkkkkrk',
+    'krrrrrrk',
+    'krrrrrrk',
+    'kkkkkkkk',
+  ], PALETTE.leaf),
+  // Two hearts.
+  firstFriend: medalIcon([
+    '........',
+    'pp.pp...',
+    'ppppp...',
+    '.ppp.ss.',
+    '..p.ssss',
+    '....ssss',
+    '.....ss.',
+    '........',
+  ], PALETTE.pink),
+  // An egg.
+  firstLittleOne: medalIcon([
+    '...kk...',
+    '..kwwk..',
+    '.kwwwwk.',
+    '.kwpwwk.',
+    'kwwwwpwk',
+    'kwpwwwwk',
+    '.kwwwwk.',
+    '..kkkk..',
+  ], PALETTE.lavender),
+  // A carrot.
+  firstHarvest: medalIcon([
+    '....g.g.',
+    '.....g..',
+    '....oo..',
+    '...ooo..',
+    '..ooo...',
+    '.ooo....',
+    '.oo.....',
+    'o.......',
+  ], PALETTE.mint),
+  // A fish with a sparkle.
+  firstGoldCatch: medalIcon([
+    '......y.',
+    '.....yyy',
+    '......y.',
+    '.bbb...b',
+    'bsssb.bb',
+    'bskssbbb',
+    'bsssb.bb',
+    '.bbb...b',
+  ], PALETTE.butter),
 };
 
 // A star: a skill point, and a new Keeper level.

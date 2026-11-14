@@ -104,6 +104,8 @@ function text(m: Message): string {
       return STRINGS.journeys.tripFriend(m.name, m.friend, STRINGS.journeys.places[m.place] ?? m.place);
     case 'holidayHome':
       return STRINGS.journeys.holidayHome(STRINGS.list(m.names));
+    case 'autoHoliday':
+      return STRINGS.journeys.autoHoliday(m.name, m.days);
     case 'built': {
       const T = STRINGS.crafting;
       if (m.done) return T.projectDone[m.project] ?? '';
@@ -175,7 +177,7 @@ function messageRow(m: Message, now: number): HTMLElement {
     : m.kind === 'tripHome' ? ITEM_ICONS.journey
     : m.kind === 'built' ? ITEM_ICONS.workbench
     : m.kind === 'tripFriend' ? ITEM_ICONS.meet
-    : m.kind === 'holidayHome' ? MENU_ICONS.meadow
+    : m.kind === 'holidayHome' || m.kind === 'autoHoliday' ? MENU_ICONS.meadow
     : m.kind === 'courier' || m.kind === 'regular' ? ITEM_ICONS.percy
     : ITEM_ICONS.letter;
   const body = el('span', 'shop-row-text');
