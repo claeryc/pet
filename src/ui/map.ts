@@ -110,6 +110,7 @@ const FLAGS = Object.fromEntries(Object.entries(FLAG_ROWS).map(([k, rows]) => [k
 
 // The little picture on a sign for what's waiting there.
 const BADGES: Record<Badge, string> = {
+  project: ITEM_ICONS.workbench,
   water: STAT_ICONS.drop,
   honey: ITEM_ICONS.honey,
   crop: ITEM_ICONS.carrot,
@@ -170,7 +171,11 @@ export function createMap(cb: MapCallbacks): WorldMap {
   text.setAttribute('aria-live', 'polite');
   const cards = el('div', 'map-bubble-cards');
   const go = el('button', 'map-go');
-  bubble.append(shut, head, text, cards, go);
+  // A second button beside it: the Backyard's Workshop.
+  const go2 = el('button', 'map-go is-workshop');
+  const gos = el('div', 'map-gos');
+  gos.append(go, go2);
+  bubble.append(shut, head, text, cards, gos);
   shut.addEventListener('click', () => pick(''));
 
   const row = el('div', 'map-row');
@@ -227,6 +232,10 @@ export function createMap(cb: MapCallbacks): WorldMap {
     if (!opens) return;
     if (opens.kind === 'map') return show(opens.map);
     cb.onOpen(opens);
+  });
+  go2.addEventListener('click', () => {
+    const c = cardFor(picked);
+    if (c?.second && c.enabled) cb.onOpen(c.second.opens);
   });
   back.addEventListener('click', () => {
     const to = MAPS[mapId].back;
@@ -420,6 +429,9 @@ export function createMap(cb: MapCallbacks): WorldMap {
     go.hidden = trips.length > 0 || c.locked;
     go.classList.toggle('is-soft', !!c.mist);
     go.classList.toggle('is-trip', c.button === S.planTrip || c.button === S.setSail || c.button === S.sailHome);
+    go2.textContent = c.second?.label ?? '';
+    go2.hidden = go.hidden || !c.second;
+    go2.classList.toggle('is-news', c.second?.opens.kind === 'workshop' && !!c.second.opens.projects);
     if (bubble.parentElement !== pop) pop.replaceChildren(bubble);
     place(at.label);
   }

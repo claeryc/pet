@@ -48,7 +48,7 @@ const RULES: Record<UnlockId, (s: GameState) => boolean> = {
   // Sniff and dig (Windmill Fields on the map) after the first harvest or the first fish:
   // there's a seed or a fish worth digging for by then.
   dig: (s) => (s.grown ?? []).length > 0 || s.caught.length > 0,
-  // The workbench (the Backyard's Workshop) with the first material or key part found.
+  // The workbench (Map > Backyard > Workshop) with the first material or key part found.
   workbench: (s) => hasAnyMaterial(s),
 };
 

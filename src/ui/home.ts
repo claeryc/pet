@@ -91,6 +91,7 @@ export interface HomeCallbacks extends MenuCallbacks, DigCallbacks {
   onCook: (items: FoodId[], opts: CookOptions) => FoodId | null; // the dish made, or null if refused
   onCraft: (pattern: string) => Pattern | null; // the workbench: what was made, or null if refused
   onBuild: (project: string) => boolean; // a project's next stage started
+  onSeeProject: (project: string) => void; // looked at a project with a finished stage
   onPlant: (pot: number, crop: CropId) => void;
   onWater: (pot: number, perfect: boolean) => void;
   onFertilize: (pot: number) => void;
@@ -791,6 +792,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
           return startFishing();
         case 'dig':
           return openDig();
+        case 'workshop':
+          return startWorkbench(opens.projects);
         case 'meadow':
         case 'friends':
           // Friends: play with whoever's over, or meet one (letters first
@@ -1233,6 +1236,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const workbench = createWorkbench({
     onCraft: cb.onCraft,
     onBuild: cb.onBuild,
+    onSeeProject: cb.onSeeProject,
     onHang: () => {
       showActions(0);
       openDecorate();
@@ -1241,7 +1245,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     toast: showToast,
     roomBox: () => roomWrap.getBoundingClientRect(),
   });
-  function startWorkbench(): void {
+  function startWorkbench(projects = false): void {
     if (actions.hidden) return;
     cb.onSeen('workbench');
     feedDrawer.close();
@@ -1251,7 +1255,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     stats.setAttribute('aria-hidden', 'true');
     roomWrap.setAttribute('aria-hidden', 'true');
     if (latest) workbench.update(latest.state, latest.now);
-    workbench.start();
+    workbench.start(projects);
     cb.onGuide('workbench');
   }
   // The garden too: its own buttons, and a bed of pots that slides up over
@@ -1278,10 +1282,6 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     onJourneys: () => {
       leaveBackyard(0);
       openJourneys();
-    },
-    onWorkbench: () => {
-      leaveBackyard(0);
-      startWorkbench();
     },
     onExit: () => leaveBackyard(GARDEN_OUT_MS),
     onGardenTap: (x, y) => {

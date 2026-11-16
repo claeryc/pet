@@ -116,7 +116,7 @@ import { DISH_MS, DONE_MS as COOKED_MS } from './ui/cooking';
 import { sound, startAudio, type SoundId } from './audio/audio';
 import { dig, digToday, sniff, type DigBlock } from './game/dig';
 import { placeName as digPlaceName } from './ui/dig';
-import { buildStage, collectHive, craft, getProject } from './game/crafting';
+import { buildStage, collectHive, craft, getProject, seeProject } from './game/crafting';
 import { patternIcon } from './ui/workbench';
 import { buyCharm, buyHolidayTicket, callHome, goHoliday, goTogether, offerAt, openBackpack, placeLevel, restPercy } from './game/journeys';
 import { postcardArt } from './ui/journal';
@@ -1285,6 +1285,7 @@ const home = createHomeScreen(root, {
     }, 700);
     return p;
   },
+  onSeeProject: (id) => setState(seeProject(state, id)),
   onBuild: (id) => {
     const result = buildStage(simulate(state, gameNow()), gameNow(), id);
     setState(result.state);

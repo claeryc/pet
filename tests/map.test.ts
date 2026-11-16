@@ -104,6 +104,22 @@ describe('area cards', () => {
     expect(c.text).toBe(c.news![0].text);
   });
 
+  it('the Backyard gets a Workshop button, which says when a project stage is ready', () => {
+    let s = newTeen(NOW);
+    s.unlocked.push('garden');
+    expect(areaCard(s, NOW, area('island', 'backyard')).second).toBeUndefined();
+    s.unlocked.push('workbench');
+    s = { ...s, crafting: { ...s.crafting, materials: { twig: 1 } } };
+    const c = areaCard(s, NOW, area('island', 'backyard'));
+    expect(c.button).toBe('Garden');
+    expect(c.second).toEqual({ label: 'Workshop', opens: { kind: 'workshop' } });
+    s = { ...s, crafting: { ...s.crafting, projects: { beehive: { built: 1, until: 0 } }, seen: { beehive: 0 } } };
+    const ready = areaCard(s, NOW, area('island', 'backyard'));
+    expect(ready.dot).toBe(true);
+    expect(ready.news?.map((n) => n.badge)).toContain('project');
+    expect(ready.second).toEqual({ label: 'See project', opens: { kind: 'workshop', projects: true } });
+  });
+
   it('an island with an Adventure and a Stroll shows both, the Adventure first', () => {
     const s = newTeen(NOW);
     s.unlocked.push('journeys');

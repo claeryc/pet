@@ -9,7 +9,7 @@ import { STRINGS } from '../strings';
 import { CONFIG } from './config';
 import { plotStage, needsTending } from './garden';
 import { NIGHT, PLACES, isEpicOffer, placeOpen } from './journeys';
-import { hiveBuilt, hiveStock } from './crafting';
+import { PROJECTS, hiveBuilt, hiveStock, stageReady } from './crafting';
 import { meadowVisitor } from './meadow';
 import { unreadMail } from './messages';
 import { visitor } from './friends';
@@ -38,7 +38,10 @@ export const START_MAP = data.start;
 export type Opens =
   | { kind: 'home' | 'garden' | 'meadow' | 'pond' | 'friends' | 'dig' | 'soon' }
   | { kind: 'map'; map: string }
-  | { kind: 'journey'; place: string };
+  | { kind: 'journey'; place: string }
+  // Not in map.json: the Backyard's second button, to the Workshop
+  // (`projects`: straight to a project with news).
+  | { kind: 'workshop'; projects?: boolean };
 
 export function parseOpens(opens: string): Opens | null {
   if (['home', 'garden', 'meadow', 'pond', 'friends', 'dig', 'soon'].includes(opens)) return { kind: opens as 'home' };
@@ -82,9 +85,11 @@ export interface AreaCard {
   // A journey place: the trips on the board that go there.
   tickets?: Ticket[];
   mist?: boolean; // open, but no trip goes there right now
+  // A second button beside the first (the Backyard's Workshop).
+  second?: { label: string; opens: Opens };
 }
 
-export type Badge = 'water' | 'honey' | 'crop' | 'visitor' | 'mail' | 'backpack' | 'epic' | 'night' | 'trip';
+export type Badge = 'project' | 'water' | 'honey' | 'crop' | 'visitor' | 'mail' | 'backpack' | 'epic' | 'night' | 'trip';
 export interface News {
   badge: Badge;
   text: string;
@@ -142,8 +147,17 @@ export function areaCard(state: GameState, now: number, area: MapAreaDef): AreaC
       if (needsTending(state.garden, now)) news.push({ badge: 'water', text: S.gardenNeeds });
       if (ready > 0) news.push({ badge: 'crop', text: S.gardenReady(ready) });
       if (hiveBuilt(state) && hiveStock(state) > 0) news.push({ badge: 'honey', text: S.honeyReady });
-      if (news.length) return busy(news, S.go);
-      return card(stages.every((s) => s === 'empty') ? S.gardenEmpty : S.gardenGrowing, S.go);
+      // The Workshop, once it's open: its own button, and news when a
+      // project stage has finished.
+      const shop = isUnlocked(state, 'workbench');
+      const built = shop && PROJECTS.some((p) => stageReady(state, p.id));
+      if (built) news.push({ badge: 'project', text: S.projectReady });
+      const extra: Partial<AreaCard> = shop
+        ? { second: built ? { label: S.seeProject, opens: { kind: 'workshop', projects: true } } : { label: S.goWorkshop, opens: { kind: 'workshop' } } }
+        : {};
+      const go = shop ? S.goGarden : S.go;
+      if (news.length) return busy(news, go, extra);
+      return card(stages.every((s) => s === 'empty') ? S.gardenEmpty : S.gardenGrowing, go, extra);
     }
     case 'meadow': {
       const v = meadowVisitor(state);

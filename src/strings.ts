@@ -162,12 +162,7 @@ export const STRINGS = {
   // The Backyard (Play > Garden, see src/ui/backyard.ts): the garden, and
   // the beehive and Percy's perch once they're built.
   backyard: {
-    stops: { garden: 'Garden', shed: 'Workshop', hive: 'Beehive', perch: 'Perch' } as Record<string, string>,
-    shed: 'Workshop',
-    shedNote: 'Make things from your materials, and build projects.',
-    shedBuilding: (when: string) => `A project is building. Ready ${when}.`,
-    shedReady: 'A project stage is ready to see!',
-    openBench: 'Open',
+    stops: { garden: 'Garden', hive: 'Beehive', perch: 'Perch' } as Record<string, string>,
     close: 'Close',
     hive: 'Beehive',
     honey: 'Honey',
@@ -189,7 +184,7 @@ export const STRINGS = {
     wakeLabel: (price: number) => `Wake Percy up for ${price} gold`,
     away: 'Away',
   },
-  // The workbench and projects (the Backyard's Workshop, see src/game/crafting.ts).
+  // The workbench and projects (Map > Backyard > Workshop, see src/game/crafting.ts).
   crafting: {
     tabs: { bench: 'Bench', projects: 'Projects' } as Record<string, string>,
     close: 'Close',
@@ -323,6 +318,11 @@ export const STRINGS = {
     digsLeft: (left: number, all: number) => (left === all ? `${all} digs today. Something's buried here!` : `${left} of ${all} digs left today`),
     digsDone: 'No digs left today. New ones tomorrow!',
     goDig: 'Sniff and dig',
+    // The Backyard's two buttons once the Workshop is open.
+    goGarden: 'Garden',
+    goWorkshop: 'Workshop',
+    projectReady: 'A project stage is ready',
+    seeProject: 'See project',
     soonText: 'Coming later',
     youAreHere: 'You are here',
     yourEgg: 'Your egg',
@@ -962,7 +962,7 @@ export const STRINGS = {
     skills: 'New in the Menu: Skills! Spend your first skill point there.',
     journeys: 'New in Play: Journeys! Send your pet out to explore.',
     dig: 'The clouds lifted over Windmill Fields! Sniff and dig there on the Map, a little treasure hunt every day.',
-    workbench: 'New in the Backyard: the Workshop! Make things from what you find at its Workbench.',
+    workbench: 'New on the Map: the Workshop! Tap the Backyard, then Workshop, to make things from what you find.',
   },
   // Meeting other pets, friends and little ones (Play > Meet).
   // Regulars (Percy for now): characters who aren't pets, with hearts that

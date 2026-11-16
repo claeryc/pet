@@ -20,11 +20,10 @@
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import { hiveBuilt, hiveNextAt, hiveStock, perchBuilt } from '../game/crafting';
-import { isUnlocked } from '../game/unlocks';
 import { percyFree } from '../game/journeys';
 import type { Pet } from '../game/state';
 import type { GameState } from '../game/state';
-import { drawHive, drawPerch, drawShed, onHive, onPercy, onShed, YARD_HEIGHT, YARD_WIDTH, type PercyAtPerch } from '../render/backyard';
+import { drawHive, drawPerch, onHive, onPercy, YARD_HEIGHT, YARD_WIDTH, type PercyAtPerch } from '../render/backyard';
 import { createWalk } from './walk';
 import { createLift } from './lift';
 import { CRAFT_ART, ITEM_ICONS, STAT_ICONS } from './icons';
@@ -34,14 +33,13 @@ const T = STRINGS.backyard;
 const HOLDS = CONFIG.crafting.hive.holds;
 const WAKE_PRICE = CONFIG.journeys.percy.resetPrice;
 
-export type Stop = 'garden' | 'shed' | 'hive' | 'perch';
-const STOPS: readonly Stop[] = ['garden', 'shed', 'hive', 'perch'];
+export type Stop = 'garden' | 'hive' | 'perch';
+const STOPS: readonly Stop[] = ['garden', 'hive', 'perch'];
 
 export interface BackyardCallbacks {
   onCollect: () => void;
   onWakePercy: () => void;
   onJourneys: () => void;
-  onWorkbench: () => void; // the Workshop's door: the Workbench
   onExit: () => void;
   // A tap on the garden, in room pixels (to pick a pot).
   onGardenTap: (x: number, y: number) => void;
@@ -131,13 +129,6 @@ export function createBackyard(cb: BackyardCallbacks): Backyard {
   });
   hiveScene.append(hiveCanvas);
 
-  const shedScene = el('div', 'kitchen-scene yard-scene');
-  const shedCanvas = canvas(T.shed);
-  shedCanvas.addEventListener('click', (e) => {
-    if (onShed(...pixel(shedCanvas, e)) && at === 'shed') cb.onWorkbench();
-  });
-  shedScene.append(shedCanvas);
-
   const perchScene = el('div', 'kitchen-scene yard-scene');
   const perchCanvas = canvas(T.perch);
   perchCanvas.addEventListener('click', (e) => {
@@ -193,20 +184,10 @@ export function createBackyard(cb: BackyardCallbacks): Backyard {
   perchBtn.addEventListener('click', perchAction);
   perchControls.append(perchInfo, perchBtn);
 
-  const shedControls = el('div', 'kitchen-controls yard-controls');
-  const shedInfo = el('div', 'yard-info');
-  shedInfo.append(el('b', 'yard-name', T.shed), el('small', 'yard-note', T.shedNote));
-  const shedBtn = el('button', 'kitchen-cook yard-go');
-  const shedIcon = el('span', 'yard-go-icon');
-  shedIcon.innerHTML = ITEM_ICONS.workbench ?? '';
-  shedBtn.append(shedIcon, el('span', '', T.openBench));
-  shedBtn.addEventListener('click', () => cb.onWorkbench());
-  shedControls.append(shedInfo, shedBtn);
-
   room.append(ledge, pourSlot);
-  counter.append(gardenSlot, shedControls, hiveControls, perchControls);
-  const scenes: Record<Stop, HTMLElement> = { garden: gardenScene, shed: shedScene, hive: hiveScene, perch: perchScene };
-  const icons: Record<Stop, string> = { garden: ITEM_ICONS.garden, shed: ITEM_ICONS.workbench, hive: CRAFT_ART.beehive, perch: ITEM_ICONS.percy };
+  counter.append(gardenSlot, hiveControls, perchControls);
+  const scenes: Record<Stop, HTMLElement> = { garden: gardenScene, hive: hiveScene, perch: perchScene };
+  const icons: Record<Stop, string> = { garden: ITEM_ICONS.garden, hive: CRAFT_ART.beehive, perch: ITEM_ICONS.percy };
   const walk = createWalk({
     stations: STOPS.map((s) => ({ id: s, icon: icons[s], label: T.stops[s], scene: scenes[s] })),
     pick: (s) => go(s),
@@ -228,8 +209,7 @@ export function createBackyard(cb: BackyardCallbacks): Backyard {
   });
   row.append(close);
 
-  const shown = (s: Stop): boolean => !state || s === 'garden'
-    || (s === 'shed' ? isUnlocked(state, 'workbench') : s === 'hive' ? hiveBuilt(state) : perchBuilt(state));
+  const shown = (s: Stop): boolean => !state || s === 'garden' || (s === 'hive' ? hiveBuilt(state) : perchBuilt(state));
 
   function go(s: Stop): void {
     if (s === at) return;
@@ -258,7 +238,6 @@ export function createBackyard(cb: BackyardCallbacks): Backyard {
     frame.dataset.stop = at;
     frame.classList.toggle('night', cb.isNight());
     gardenSlot.hidden = at !== 'garden';
-    shedControls.hidden = at !== 'shed';
     hiveControls.hidden = at !== 'hive';
     perchControls.hidden = at !== 'perch';
     row.hidden = !active || at === 'garden';
@@ -301,10 +280,6 @@ export function createBackyard(cb: BackyardCallbacks): Backyard {
     if (g) {
       g.clearRect(0, 0, YARD_WIDTH, YARD_HEIGHT);
       g.drawImage(cb.roomCanvas(), 0, 0, YARD_WIDTH, YARD_HEIGHT);
-    }
-    if (isUnlocked(state, 'workbench')) {
-      const w = shedCanvas.getContext('2d');
-      if (w) drawShed(w, night, t);
     }
     if (hiveBuilt(state)) {
       const h = hiveCanvas.getContext('2d');

@@ -487,6 +487,10 @@ export interface Crafting {
   // Days of honey and beeswax waiting in the beehive to be collected (up to
   // CONFIG.crafting.hive.holds). Missing in older saves: none.
   hiveStock?: number;
+  // How many stages of each project you'd seen built when you last looked
+  // at it (set as a stage starts): more built than that is a finished
+  // stage waiting to be seen. Missing in older saves: nothing waiting.
+  seen?: Record<string, number>;
 }
 
 export interface GameState {
