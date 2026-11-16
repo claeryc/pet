@@ -11,7 +11,7 @@
         { "id": "meadow", "name": "Meadow", "opens": "meadow", "unlock": "familyTree", "lockedText": "Opens when a pet grows up" },
         { "id": "pond", "name": "Pond", "opens": "pond" },
         { "id": "friends", "name": "Friends", "opens": "friends", "unlock": "messages" },
-        { "id": "fields", "name": "Windmill Fields", "opens": "soon", "soonText": "Under the clouds for now" },
+        { "id": "fields", "name": "Windmill Fields", "opens": "dig", "unlock": "dig", "lockedText": "Under the clouds for now. They lift after your first catch or harvest." },
         { "id": "ship", "name": "The ship", "opens": "map:sea" }
       ]
     },

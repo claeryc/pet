@@ -3,6 +3,7 @@
 // are in src/data/map.json; the pictures and tap shapes come from
 // art/map/ (see docs/MAP_GUIDE.md). The screen is src/ui/map.ts.
 
+import { digsLeft, digToday } from './dig';
 import data from '../data/map.json';
 import { STRINGS } from '../strings';
 import { CONFIG } from './config';
@@ -35,12 +36,12 @@ export const START_MAP = data.start;
 
 // What an area's button does.
 export type Opens =
-  | { kind: 'home' | 'garden' | 'meadow' | 'pond' | 'friends' | 'soon' }
+  | { kind: 'home' | 'garden' | 'meadow' | 'pond' | 'friends' | 'dig' | 'soon' }
   | { kind: 'map'; map: string }
   | { kind: 'journey'; place: string };
 
 export function parseOpens(opens: string): Opens | null {
-  if (['home', 'garden', 'meadow', 'pond', 'friends', 'soon'].includes(opens)) return { kind: opens as 'home' };
+  if (['home', 'garden', 'meadow', 'pond', 'friends', 'dig', 'soon'].includes(opens)) return { kind: opens as 'home' };
   const [kind, id] = opens.split(':');
   if (kind === 'map' && MAPS[id]) return { kind: 'map', map: id };
   if (kind === 'journey' && PLACES.some((p) => p.id === id)) return { kind: 'journey', place: id };
@@ -156,6 +157,12 @@ export function areaCard(state: GameState, now: number, area: MapAreaDef): AreaC
       const landed = state.pond.day === today ? state.pond.fish : 0;
       const left = Math.max(0, CONFIG.fishing.rewardedPerDay - landed);
       return left > 0 ? card(S.pondBiting, S.goFishing, { good: landed === 0 }) : card(S.pondFull, S.goFishing);
+    }
+    case 'dig': {
+      // Sniff and dig: today's digs left.
+      const left = digsLeft(digToday(state, now));
+      const all = CONFIG.dig.digsPerDay;
+      return left > 0 ? card(S.digsLeft(left, all), S.goDig, { good: left === all }) : card(S.digsDone, S.goDig);
     }
     case 'friends': {
       const over = visitor(state);

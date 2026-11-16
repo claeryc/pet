@@ -789,6 +789,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
           return startGarden();
         case 'pond':
           return startFishing();
+        case 'dig':
+          return openDig();
         case 'meadow':
         case 'friends':
           // Friends: play with whoever's over, or meet one (letters first
@@ -1276,6 +1278,10 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     onJourneys: () => {
       leaveBackyard(0);
       openJourneys();
+    },
+    onWorkbench: () => {
+      leaveBackyard(0);
+      startWorkbench();
     },
     onExit: () => leaveBackyard(GARDEN_OUT_MS),
     onGardenTap: (x, y) => {
@@ -1792,10 +1798,10 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       playDrawer.setHidden(JOURNEYS_ROW, true);
       const journeysIsNew = isNew(state, 'journeys');
       playDrawer.setOptionNew(JOURNEYS_ROW, journeysIsNew);
-      playDrawer.setHidden(DIG_ROW, !isUnlocked(state, 'dig'));
-      const digIsNew = isNew(state, 'dig');
-      playDrawer.setOptionNew(DIG_ROW, digIsNew);
-      playDrawer.setHidden(WORKBENCH_ROW, !isUnlocked(state, 'workbench'));
+      // Sniff and dig is at Windmill Fields on the map now, and the
+      // Workbench in the Backyard's Workshop.
+      playDrawer.setHidden(DIG_ROW, true);
+      playDrawer.setHidden(WORKBENCH_ROW, true);
       // Toys: the ones you don't have point to the Shop. The favourite
       // wears a heart once the pet has shown it.
       playTipText.innerHTML = '';
@@ -1810,9 +1816,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
         playDrawer.setLocked(i, ownsToy(state, t.id) ? null : STRINGS.toys.inShop);
         playDrawer.setOptionBadge(i, t.id === lovedToy ? STAT_ICONS.happiness : null);
       });
-      const benchIsNew = isNew(state, 'workbench');
-      playDrawer.setOptionNew(WORKBENCH_ROW, benchIsNew);
-      playDrawer.setNew(digIsNew || benchIsNew);
+      playDrawer.setNew(false);
       // A drop on Play when a pot is dry, sick or ready to harvest.
       const tend = isUnlocked(state, 'garden') && needsTending(state.garden, now);
       // ...or a jar of honey when the beehive is full.

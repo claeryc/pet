@@ -162,7 +162,12 @@ export const STRINGS = {
   // The Backyard (Play > Garden, see src/ui/backyard.ts): the garden, and
   // the beehive and Percy's perch once they're built.
   backyard: {
-    stops: { garden: 'Garden', hive: 'Beehive', perch: 'Perch' } as Record<string, string>,
+    stops: { garden: 'Garden', shed: 'Workshop', hive: 'Beehive', perch: 'Perch' } as Record<string, string>,
+    shed: 'Workshop',
+    shedNote: 'Make things from your materials, and build projects.',
+    shedBuilding: (when: string) => `A project is building. Ready ${when}.`,
+    shedReady: 'A project stage is ready to see!',
+    openBench: 'Open',
     close: 'Close',
     hive: 'Beehive',
     honey: 'Honey',
@@ -184,7 +189,7 @@ export const STRINGS = {
     wakeLabel: (price: number) => `Wake Percy up for ${price} gold`,
     away: 'Away',
   },
-  // The workbench and projects (Play > Workbench, see src/game/crafting.ts).
+  // The workbench and projects (the Backyard's Workshop, see src/game/crafting.ts).
   crafting: {
     tabs: { bench: 'Bench', projects: 'Projects' } as Record<string, string>,
     close: 'Close',
@@ -263,7 +268,7 @@ export const STRINGS = {
       perch: "Percy's perch is finished! He'll rest less after a courier trip.",
     } as Record<string, string>,
   },
-  // Sniff and dig (Play > Sniff and dig).
+  // Sniff and dig (Windmill Fields on the map).
   dig: {
     digsChip: (left: number, total: number) => `${left} of ${total} digs`,
     places: { meadow: 'Meadow', market: 'Market Town', woods: 'Mossy Woods', cove: 'Coral Cove', hill: 'Starlit Hill' } as Record<string, string>,
@@ -315,6 +320,9 @@ export const STRINGS = {
     soon: 'Soon',
     locked: 'Locked',
     lockedText: 'Opens as you play',
+    digsLeft: (left: number, all: number) => (left === all ? `${all} digs today. Something's buried here!` : `${left} of ${all} digs left today`),
+    digsDone: 'No digs left today. New ones tomorrow!',
+    goDig: 'Sniff and dig',
     soonText: 'Coming later',
     youAreHere: 'You are here',
     yourEgg: 'Your egg',
@@ -953,8 +961,8 @@ export const STRINGS = {
     meet: 'Someone is visiting! Say hello under Play > Meet.',
     skills: 'New in the Menu: Skills! Spend your first skill point there.',
     journeys: 'New in Play: Journeys! Send your pet out to explore.',
-    dig: 'New in Play: Sniff and dig! A little treasure hunt every day.',
-    workbench: 'New in Play: the Workbench! Make things from what you find.',
+    dig: 'The clouds lifted over Windmill Fields! Sniff and dig there on the Map, a little treasure hunt every day.',
+    workbench: 'New in the Backyard: the Workshop! Make things from what you find at its Workbench.',
   },
   // Meeting other pets, friends and little ones (Play > Meet).
   // Regulars (Percy for now): characters who aren't pets, with hearts that

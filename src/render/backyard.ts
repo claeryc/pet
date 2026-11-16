@@ -488,3 +488,53 @@ export function drawPerch(ctx: CanvasRenderingContext2D, percy: PercyAtPerch, ni
 
 // Is (x, y) on Percy (or where he'd stand)?
 export const onPercy = (x: number, y: number): boolean => x >= PERCY_X && x < PERCY_X + 20 && y >= 0 && y <= PERCY_FOOT + 1;
+
+// The Workshop (the Workbench lives in it): a little wooden shed with a
+// pink roof, a window, and its door open on the bench and the tools
+// hanging over it. The window glows at night. Its bottom sits on the grass.
+const SHED = { x: 17, w: 30, wall: 16, floor: 40 };
+export function drawShed(ctx: CanvasRenderingContext2D, night: boolean, timeMs: number): void {
+  drawGardenBackground(ctx, YARD_WIDTH, YARD_HEIGHT, night, timeMs);
+  const { x, w, wall, floor } = SHED;
+  // Walls: planks with dark seams, outlined.
+  fill(ctx, PALETTE.ink, x - 1, wall - 1, w + 2, floor - wall + 1);
+  fill(ctx, PALETTE.peach, x, wall, w, floor - wall);
+  for (let i = 3; i < w; i += 4) fill(ctx, PALETTE.cocoa, x + i, wall, 1, floor - wall);
+  // The roof: rows getting shorter towards the ridge, with an eave.
+  for (let i = 0; i < 10; i++) {
+    const rx = x - 3 + i;
+    const rw = w + 6 - i * 2;
+    fill(ctx, PALETTE.ink, rx - 1, wall - 2 - i, rw + 2, 1);
+    fill(ctx, i % 3 === 0 ? PALETTE.berry : PALETTE.rose, rx, wall - 2 - i, rw, 1);
+  }
+  fill(ctx, PALETTE.ink, x - 3, wall - 1, w + 6, 1);
+  // The window, on the left: glowing at night.
+  fill(ctx, PALETTE.bark, x + 2, wall + 4, 8, 7);
+  fill(ctx, night ? PALETTE.butter : PALETTE.sky, x + 3, wall + 5, 6, 5);
+  fill(ctx, PALETTE.bark, x + 5, wall + 5, 1, 5);
+  fill(ctx, PALETTE.bark, x + 3, wall + 7, 6, 1);
+  // The open door: the bench inside, a hammer and a saw on the wall.
+  const dx = x + 14;
+  const dw = 12;
+  fill(ctx, PALETTE.bark, dx - 1, wall + 3, dw + 2, floor - wall - 3);
+  fill(ctx, night ? PALETTE.plum : PALETTE.deep, dx, wall + 4, dw, floor - wall - 4);
+  fill(ctx, PALETTE.cocoa, dx + 1, floor - 7, dw - 2, 2); // the bench top
+  fill(ctx, PALETTE.bark, dx + 2, floor - 5, 1, 5); // its legs
+  fill(ctx, PALETTE.bark, dx + dw - 3, floor - 5, 1, 5);
+  fill(ctx, PALETTE.white, dx + 2, wall + 7, 1, 4); // the hammer's handle...
+  fill(ctx, PALETTE.lilac, dx + 1, wall + 6, 3, 1); // ...and head
+  fill(ctx, PALETTE.lilac, dx + 6, wall + 6, 4, 3); // the saw
+  fill(ctx, PALETTE.butter, dx + 9, wall + 6, 1, 3);
+  // A plank leaning on the wall, and a little sign over the door.
+  fill(ctx, PALETTE.butter, x + w + 1, floor - 9, 2, 9);
+  fill(ctx, PALETTE.bark, dx + 3, wall + 1, 6, 2);
+  fill(ctx, PALETTE.cream, dx + 4, wall + 1, 4, 1);
+  // Lamp glow on the step at night.
+  if (night) {
+    ctx.globalAlpha = 0.35;
+    fill(ctx, PALETTE.butter, dx, floor, dw, 1);
+    ctx.globalAlpha = 1;
+  }
+}
+// Is (x, y) on the shed?
+export const onShed = (x: number, y: number): boolean => x >= SHED.x - 3 && x <= SHED.x + SHED.w + 3 && y >= SHED.wall - 12 && y <= SHED.floor;

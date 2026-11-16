@@ -45,10 +45,10 @@ const RULES: Record<UnlockId, (s: GameState) => boolean> = {
   skills: (s) => !!s.keeper && keeperLevel(s) >= 2,
   // Journeys (in Play and the Menu) once a pet is old enough to go out.
   journeys: (s) => [s.pet, ...(s.housemates ?? [])].some((p) => p.stage === 'teen' || p.stage === 'adult'),
-  // Sniff and dig (in Play) after the first harvest or the first fish:
+  // Sniff and dig (Windmill Fields on the map) after the first harvest or the first fish:
   // there's a seed or a fish worth digging for by then.
   dig: (s) => (s.grown ?? []).length > 0 || s.caught.length > 0,
-  // The workbench (in Play) with the first material or key part found.
+  // The workbench (the Backyard's Workshop) with the first material or key part found.
   workbench: (s) => hasAnyMaterial(s),
 };
 
