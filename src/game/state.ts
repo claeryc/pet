@@ -244,6 +244,7 @@ export interface Inventory {
   supplies: Record<string, number>; // 'fertilizer' / 'plantCure' / 'bait' / 'revivalStar' / 'poop' / 'fortuneCookie' -> how many
   decor: string[]; // room decorations bought, e.g. "wallpaper:dots", "curtains:rose"
   bags: string[]; // journey bags besides the plain sack (see src/render/bags.ts)
+  toys?: string[]; // toy ids owned (see src/game/toys.ts); everyone starts with the ball
 }
 
 // How the room is decorated (see src/game/decor.ts).
@@ -682,7 +683,7 @@ export function createNewGame(now: number): GameState {
     clockOffsetMs: 0,
     riceJarAt: null,
     gold: CONFIG.economy.startingGold,
-    inventory: { food: { ...CONFIG.economy.startingFood }, hats: [], seeds: {}, supplies: { ...CONFIG.economy.startingSupplies }, decor: [], bags: [] },
+    inventory: { food: { ...CONFIG.economy.startingFood }, hats: [], seeds: {}, supplies: { ...CONFIG.economy.startingSupplies }, decor: [], bags: [], toys: [...CONFIG.toyPlay.startWith] },
     checkIn: { day: '', count: 0, lastAt: 0 },
     recipesFound: [],
     kitchen: [],

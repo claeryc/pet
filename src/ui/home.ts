@@ -39,6 +39,10 @@ import { restingFull } from '../game/resting';
 import { stampDue, stampsOf, nextDay } from '../game/stamps';
 import { wishesToClaim } from '../game/wishes';
 import { calendarIcon } from './stampArt';
+import { createToyGame } from './toys';
+import { TOYS, favouriteToy, ownsToy } from '../game/toys';
+import { likesOf } from '../game/likes';
+import type { ToyScene } from '../render/toys';
 import type { Friend } from '../game/state';
 import type { CookOptions } from '../game/cooking';
 import { potAt, type GardenScene } from '../render/garden';
@@ -77,6 +81,10 @@ export interface HomeCallbacks extends MenuCallbacks, DigCallbacks {
   onLetRest: () => void; // ...or let it rest under the stars while you raise a new pet
   onRestingStar: () => void; // tapped the star in the window: who's resting
   onOpenCalendar: () => void; // the stamp calendar chip in the room
+  onToyStart: (toy: string) => string | null; // why the pet can't play with it now, or null
+  onToyCount: () => void; // the pet caught the toy
+  onToyEnd: (toy: string, count: number) => void; // the game with a toy is over
+  onStroke: () => void; // stroked until the heart filled: a tickle
   onCast: (streak: number) => Bite | null; // throws the fishing line; what will bite, or null if refused
   onLand: (grade: CatchGrade, bite: Bite) => string | null; // the fish landed (a food id), or null
   onPickBait: () => void;
@@ -135,6 +143,7 @@ export interface HomeScreen {
   decorateScene: () => { spot: FurnitureSlot | null } | null; // decorating: the spot picked
   shelfScene: () => { picked: number | null } | null; // the keepsake shelf up close
   bathScene: (timeMs: number) => BathScene | null; // the suds, drips and sponge or dryer
+  toyScene: (timeMs: number) => ToyScene | null; // playing with a toy
   hidesSmell: () => boolean; // soapy, wet or just washed: no smell lines
   // With every pet out on a journey, shows the trip instead of the empty room.
   showTripIfEmpty: () => void;
@@ -425,6 +434,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   todayChip.append(chipIc, chipText);
   todayChip.addEventListener('click', () => cb.onOpenCalendar());
   roomWrap.append(canvas, needs, scene, corner, door, todayChip);
+  // (the toy game's hint and the stroking heart are added below)
   // The canvas grows to fill the room's box, a row of wall at a time (see
   // fitRoomHeight). Folded back to 4:3 (a sheet open, or a game on), it
   // keeps its height and shows just its bottom.
@@ -544,11 +554,12 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   // The food rows wearing the craving heart right now.
   const cravedRows = new Set<number>();
   const playOptions: DrawerOption[] = [
-    ...CONFIG.activities.map((a) => ({
-      icon: ITEM_ICONS[a.id],
-      label: STRINGS.activities[a.id],
-      effects: statEffects({ happiness: a.happiness, energy: a.energy }),
-      onPick: () => cb.onPlay(a.id),
+    // Toys. Cuddles and tickles are done by touching the pet in the room.
+    ...TOYS.map((t) => ({
+      icon: ITEM_ICONS[`toy_${t.id}`],
+      label: STRINGS.toys.names[t.id] ?? t.id,
+      effects: statEffects({ happiness: t.happiness, energy: t.energy }),
+      onPick: () => pickToy(t.id),
     })),
     // Meeting friends, right after the quick ones.
     {
@@ -592,7 +603,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     },
   ];
 
-  const MEET_ROW = CONFIG.activities.length; // after Cuddle and Tickle
+  const MEET_ROW = TOYS.length; // after the toys
   const GARDEN_ROW = MEET_ROW + 2; // after Meet and Fishing
   const JOURNEYS_ROW = GARDEN_ROW + 1;
   const DIG_ROW = JOURNEYS_ROW + 1;
@@ -644,7 +655,22 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   });
   // In the dock, Feed wears a rice ball next to its name, like Map's island.
   feedDrawer.el.querySelector('.drawer-label')!.innerHTML = `<span class="dock-icon" aria-hidden="true">${ITEM_ICONS.riceBall}</span>${STRINGS.buttons.feed}`;
-  const playDrawer = createDrawer({ id: 'play', label: STRINGS.buttons.play, options: playOptions, ...drawerSetup });
+  // Over the toys: how to cuddle and tickle (touch the pet), then "Toys".
+  const playTop = document.createElement('div');
+  playTop.className = 'play-top';
+  const playTip = document.createElement('p');
+  playTip.className = 'play-tip';
+  const playTipIcon = document.createElement('span');
+  playTipIcon.className = 'play-tip-icon';
+  playTipIcon.setAttribute('aria-hidden', 'true');
+  playTipIcon.innerHTML = ITEM_ICONS.cuddle;
+  const playTipText = document.createElement('span');
+  playTip.append(playTipIcon, playTipText);
+  const toysLabel = document.createElement('div');
+  toysLabel.className = 'play-label';
+  toysLabel.textContent = STRINGS.toys.toysTitle;
+  playTop.append(playTip, toysLabel);
+  const playDrawer = createDrawer({ id: 'play', label: STRINGS.buttons.play, options: playOptions, ...drawerSetup, header: playTop });
 
   // The backpack button opens the menu (shop, inventory, settings and more) the
   // same way Feed and Play open. It always opens, even for an egg.
@@ -886,6 +912,13 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       trip.tap(x, y);
       return;
     }
+    // Playing with a toy: swipes, drags and taps go to the toy.
+    if (toyGame.active()) {
+      const { x, y } = roomPoint(e);
+      canvas.setPointerCapture?.(e.pointerId);
+      toyGame.down(x, y);
+      return;
+    }
     if (actions.hidden) return;
     // Tapping the room while something is open goes back to the room.
     if (actions.dataset.open) return closePanels();
@@ -907,6 +940,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     const other = latest && roommate(latest.state);
     if (which === 'housemate' && other) return cb.onSwitchPet(other.id);
     press = { x: e.clientX, y: e.clientY, held: false };
+    canvas.setPointerCapture?.(e.pointerId);
     clearTimeout(holdTimer);
     holdTimer = window.setTimeout(() => {
       if (!press) return;
@@ -921,13 +955,31 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       bath.move(x, y, petBody());
       return;
     }
-    // Moving a finger away (to scroll, say) cancels the tap or hold.
-    if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 10) {
+    if (toyGame.active()) {
+      const { x, y } = roomPoint(e);
+      toyGame.move(x, y);
+      return;
+    }
+    if (stroke) return strokeMove(e);
+    // Moving a finger over the pet strokes it (once it has moved a few
+    // pixels, so a tap still cuddles and a hold still opens the Wardrobe).
+    // Moving away cancels the tap or hold.
+    if (press && !press.held && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 10) {
       clearTimeout(holdTimer);
       press = null;
+      if (canStroke() && tappedPet(e) === 'pet') {
+        const { x, y } = roomPoint(e);
+        startStroke(x, y);
+      }
     }
   });
-  canvas.addEventListener('pointerup', () => {
+  canvas.addEventListener('pointerup', (e) => {
+    if (toyGame.active()) {
+      const { x, y } = roomPoint(e);
+      toyGame.up(x, y);
+      return;
+    }
+    if (stroke) endStroke();
     bath.up();
     clearTimeout(holdTimer);
     if (press && !press.held) {
@@ -941,6 +993,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     press = null;
   });
   canvas.addEventListener('pointercancel', () => {
+    if (stroke) endStroke();
     bath.up();
     clearTimeout(holdTimer);
     press = null;
@@ -1026,6 +1079,112 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     bath.stop();
     roomWrap.classList.remove('is-bathing');
     showActions(BATH_OUT_MS);
+  }
+
+  // Playing with a toy: the tray under the tall room, in place of the
+  // stat bars and the dock (see src/ui/toys.ts).
+  const toyGame = createToyGame({
+    onCount: () => {
+      const r = canvas.getBoundingClientRect();
+      const box = petBody();
+      const scale = canvas.clientWidth / ROOM_WIDTH;
+      const bottom = r.top + canvas.clientTop + canvas.clientHeight;
+      const dx = toyGame.petDx();
+      fx.hearts(r.left + ((box.x0 + box.x1) / 2 + dx) * scale, bottom - (ROOM_HEIGHT - box.y0) * scale);
+      cb.onToyCount();
+    },
+    onFinish: (toy, count) => {
+      roomWrap.classList.remove('is-toy');
+      showActions(0);
+      cb.onToyEnd(toy, count);
+    },
+  });
+  function pickToy(id: string): void {
+    const s = latest?.state;
+    if (!s) return;
+    if (!ownsToy(s, id)) return goShop('toys');
+    const why = cb.onToyStart(id);
+    if (why) return showToast(why);
+    if (actions.hidden) return;
+    feedDrawer.close();
+    playDrawer.close();
+    menuDrawer!.close();
+    hideActions();
+    roomWrap.classList.add('is-toy');
+    const sheet = cb.petSheet();
+    toyGame.start(id, petName, petLefts(s).pet + (sheet?.frameWidth ?? 32) / 2);
+  }
+
+  // Stroking: a slow drag over the pet fills a little heart over its head;
+  // full, it counts as a tickle. Then the heart rests a moment.
+  const strokeHeart = document.createElement('div');
+  strokeHeart.className = 'stroke-heart';
+  strokeHeart.hidden = true;
+  strokeHeart.setAttribute('aria-hidden', 'true');
+  strokeHeart.innerHTML = `<span class="sh-empty">${ITEM_ICONS.cuddle}</span><span class="sh-fill">${ITEM_ICONS.cuddle}</span>`;
+  const strokeHint = document.createElement('div');
+  strokeHint.className = 'toy-hint stroke-hint';
+  strokeHint.hidden = true;
+  let stroke: { x: number; y: number; dist: number; heartsAt: number } | null = null;
+  let strokeRestUntil = 0;
+  let strokeHide = 0;
+  function placeHeart(): void {
+    const s = latest?.state;
+    if (!s) return;
+    const sheet = cb.petSheet();
+    const left = petLefts(s).pet;
+    const scale = canvas.clientWidth / ROOM_WIDTH;
+    const cx = left + (sheet?.head?.x ?? (sheet?.frameWidth ?? 32) / 2);
+    const top = 40 - (sheet?.frameHeight ?? 32) + (sheet?.head?.y ?? 6) - 13;
+    const wrap = roomWrap.getBoundingClientRect();
+    const r = canvas.getBoundingClientRect();
+    const bottom = r.top + canvas.clientTop + canvas.clientHeight;
+    strokeHeart.style.left = `${r.left - wrap.left + canvas.clientLeft + cx * scale}px`;
+    strokeHeart.style.top = `${bottom - wrap.top - (ROOM_HEIGHT - top) * scale}px`;
+    strokeHeart.style.setProperty('--px', `${scale}px`);
+  }
+  function setHeart(level: number): void {
+    strokeHeart.style.setProperty('--fill', String(Math.max(0, Math.min(1, level))));
+  }
+  const canStroke = () => !petIsEgg && !petAsleep && !petAway && !smelly() && !!latest && !hasPassed(latest.state.pet) && performance.now() >= strokeRestUntil;
+  function startStroke(x: number, y: number): void {
+    clearTimeout(strokeHide);
+    stroke = { x, y, dist: 0, heartsAt: 0 };
+    placeHeart();
+    setHeart(0);
+    strokeHeart.classList.remove('is-full');
+    strokeHeart.hidden = false;
+    strokeHint.textContent = STRINGS.toys.stroking(petName);
+    strokeHint.hidden = false;
+  }
+  function endStroke(): void {
+    stroke = null;
+    strokeHint.hidden = true;
+    clearTimeout(strokeHide);
+    strokeHide = window.setTimeout(() => (strokeHeart.hidden = true), strokeHeart.classList.contains('is-full') ? 700 : 250);
+  }
+  function strokeMove(e: PointerEvent): void {
+    if (!stroke) return;
+    const { x, y } = roomPoint(e);
+    const d = Math.hypot(x - stroke.x, y - stroke.y);
+    stroke.x = x;
+    stroke.y = y;
+    if (tappedPet(e) !== 'pet') return; // only counts over the pet
+    stroke.dist += d;
+    setHeart(stroke.dist / CONFIG.petting.strokeNeeded);
+    const now = performance.now();
+    if (now - stroke.heartsAt > 350) {
+      stroke.heartsAt = now;
+      fx.hearts(e.clientX, e.clientY);
+    }
+    if (stroke.dist >= CONFIG.petting.strokeNeeded) {
+      strokeRestUntil = now + CONFIG.petting.strokeCooldownMs;
+      lastCuddle = now; // no cuddle on top of it
+      strokeHeart.classList.add('is-full');
+      navigator.vibrate?.(15);
+      cb.onStroke();
+      endStroke();
+    }
   }
 
   // Fishing swaps the button row for its own [Cancel] [Cast] row, and the
@@ -1406,7 +1565,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const reveal = createReveal();
   const craft = createCraft();
   const backpack = createBackpack();
-  statSlot.append(stats, bath.panel, journeys.panel, dig.panel, trip.panel, decorate.panel, shelf.panel, fishing.pond, cooking.kitchen, workbench.bench, backyard.frame, delivery.panel, meet.panel, backpack.el, reveal.el, craft.el);
+  roomWrap.append(toyGame.hint, strokeHeart, strokeHint);
+  statSlot.append(stats, toyGame.panel, bath.panel, journeys.panel, dig.panel, trip.panel, decorate.panel, shelf.panel, fishing.pond, cooking.kitchen, workbench.bench, backyard.frame, delivery.panel, meet.panel, backpack.el, reveal.el, craft.el);
 
   // A short message that pops up and fades, e.g. "Mochi is asleep". When
   // you've run out of something the Shop sells, it has a Shop button too.
@@ -1636,6 +1796,20 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       const digIsNew = isNew(state, 'dig');
       playDrawer.setOptionNew(DIG_ROW, digIsNew);
       playDrawer.setHidden(WORKBENCH_ROW, !isUnlocked(state, 'workbench'));
+      // Toys: the ones you don't have point to the Shop. The favourite
+      // wears a heart once the pet has shown it.
+      playTipText.innerHTML = '';
+      {
+        const [lead, ...rest] = STRINGS.toys.touchTip(pet.name).split(':');
+        const b = document.createElement('b');
+        b.textContent = lead;
+        playTipText.append(b, rest.length ? `:${rest.join(':')}` : '');
+      }
+      const lovedToy = likesOf(pet).found.includes('toy') ? favouriteToy(pet) : null;
+      TOYS.forEach((t, i) => {
+        playDrawer.setLocked(i, ownsToy(state, t.id) ? null : STRINGS.toys.inShop);
+        playDrawer.setOptionBadge(i, t.id === lovedToy ? STAT_ICONS.happiness : null);
+      });
       const benchIsNew = isNew(state, 'workbench');
       playDrawer.setOptionNew(WORKBENCH_ROW, benchIsNew);
       playDrawer.setNew(digIsNew || benchIsNew);
@@ -1644,7 +1818,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       // ...or a jar of honey when the beehive is full.
       const honey = !tend && stopNeedsYou(state, now, 'hive');
       playDrawer.setBadge(tend ? STAT_ICONS.drop : honey ? ITEM_ICONS.honey : null, tend ? STRINGS.garden.needsYou : STRINGS.backyard.hiveFull);
-      stats.hidden = isEgg || journeys.active() || dig.active() || trip.active() || decorate.active() || shelf.active(); // an egg has no needs yet
+      stats.hidden = isEgg || toyGame.active() || journeys.active() || dig.active() || trip.active() || decorate.active() || shelf.active(); // an egg has no needs yet
       const mood = petAway ? STRINGS.blocked.away(pet.name) : isEgg ? STRINGS.mood.egg : STRINGS.mood[getLook(pet)](pet.name);
       const mess = [
         ...(!petAway && pet.hygiene.smelly ? [STRINGS.bath.smelly(pet.name)] : []),
@@ -1711,6 +1885,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       }
       // The bath stops if the pet falls asleep, sets off, or you switch pets.
       if (bath.active() && (pet.asleep || petAway || isEgg || passed || switched || !pet.hygiene.smelly)) stopBath();
+      // A toy game ends if the pet falls asleep, sets off, or you switch pets.
+      if (toyGame.active() && (pet.asleep || petAway || isEgg || passed || switched)) toyGame.stop();
       // Fishing stops if the pet falls asleep or gets sick.
       if (!canPlayMinigames(pet, now) || isEgg) stopFishing();
       // Looking after an egg now (it can't meet anyone): the friend goes
@@ -1744,6 +1920,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     decorateScene: () => decorate.scene(),
     shelfScene: () => shelf.scene(),
     bathScene: (timeMs) => bath.scene(timeMs),
+    toyScene: () => toyGame.scene(performance.now()),
     hidesSmell: () => bath.hidesSmell(),
     showTripIfEmpty,
   };

@@ -97,6 +97,7 @@ import { createCalendar, rewardWords, type Calendar, type CalendarInfo } from '.
 import { dayReward, isGiftDay, nextDay, stamp, stampDue, stampsOf } from './game/stamps';
 import { claimWish, rollWishes, wishesOf, wishProgress } from './game/wishes';
 import { localDay } from './game/economy';
+import { buyToy, getToy, playToy, toyBlocked } from './game/toys';
 import { capacity } from './game/rooms';
 import { awayNotes } from './game/away';
 import type { Pet, Room } from './game/state';
@@ -1146,6 +1147,44 @@ const home = createHomeScreen(root, {
   onLetRest: letRest,
   onRestingStar: showRestCard,
   onOpenCalendar: openCalendar,
+  onToyStart: (id) => {
+    const why = toyBlocked(simulate(state, gameNow()), id);
+    return why ? STRINGS.blocked[why](state.pet.name) : null;
+  },
+  onToyCount: () => {
+    lastTouched = performance.now();
+  },
+  onToyEnd: (id, count) => {
+    lastTouched = performance.now();
+    if (count === 0) return; // it never got going: nothing counts
+    const before = simulate(state, gameNow()).pet;
+    const result = playToy(state, gameNow(), id);
+    setState(result.state);
+    if (result.blocked) return;
+    const toy = getToy(id)!;
+    showGains(before, { happiness: toy.happiness, energy: toy.energy, hunger: toy.hunger });
+    react('happy', CONFIG.reactionMs, result.felt === 'loved' ? 'inLove' : undefined);
+    sound('hearts');
+    luckySeed('play');
+  },
+  onStroke: () => playWith('tickle'),
+  onBuyToy: (id) => {
+    const toy = getToy(id);
+    const name = STRINGS.toys.names[id] ?? id;
+    const buy = () => runShop(buyToy(state, id), STRINGS.toys.bought(name));
+    const { perStar } = CONFIG.fragments;
+    const left = state.fragments.pieces - (toy?.fragments ?? 0);
+    // Fragments going on a toy: first say how far that leaves a free star.
+    if (!toy?.fragments || left < 0 || left >= perStar) return buy();
+    choice.open({
+      title: STRINGS.shop.spendTitle,
+      text: STRINGS.shop.spendAsk(name, toy.fragments, left, perStar),
+      options: [
+        { label: STRINGS.shop.spendYes, onPick: buy },
+        { label: STRINGS.shop.spendNo, soft: true, onPick: () => {} },
+      ],
+    });
+  },
   onCast: (streak) => {
     const result = cast(state, gameNow());
     setState(result.state);
@@ -1911,6 +1950,7 @@ function drawFrame(timeMs: number): void {
       bath,
       glow: !away && pet.starGlow && pet.condition !== 'passed',
       restingStar: (state.resting ?? []).length > 0,
+      toy: away ? null : home.toyScene(timeMs),
       note: away,
       night: isNight(gameNow()),
       lightsOff: pet.asleep,

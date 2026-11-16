@@ -17,6 +17,7 @@ import { drawPlace } from './places';
 import { drawFlash, drawSnapMoment } from './snapshots';
 import { drawWalk, drawWalkFront, legFor, stepWalk, WALK_SPEED, type Walk } from './journey';
 import { drawBath, drawMess, type BathScene, type PetMess } from './hygiene';
+import { drawToys, type ToyScene } from './toys';
 import { drawMoment, drawSendOffBag, drawSickCloud, drawSleepZs, drawWindowLight, momentMotion, playHop, type Moment, type MomentMotion } from './moments';
 import { drawKeepsakes, drawShelfCloseup, type RoomKeepsakes, type ShelfThing } from './keepsakes';
 
@@ -40,6 +41,7 @@ export interface Scene {
   animation: string; // which pet animation to play
   glow?: boolean; // the pet was brought back with a Revival Star
   restingStar?: boolean; // a pet rests under the stars: a star in the window
+  toy?: ToyScene | null; // playing with a toy (see src/ui/toys.ts): the toy, and the pet chasing it
   face?: Expression; // the pet's face (see src/game/expressions.ts)
   idleEveryMs?: number; // how often it plays idle moves (its trait)
   mess?: PetMess; // the pet's poops and smell (see src/render/hygiene.ts)
@@ -530,7 +532,8 @@ export function drawRoom(
   const sleepers: { sheet: SpriteSheet | undefined; x: number }[] = [];
   const drawPet = (slide: number) => {
     const centre = SPOTS[spot];
-    const x = Math.round(centre + (-2 - centre) * slide);
+    const toy = inRoom && !meeting ? scene.toy : null;
+    const x = Math.round(centre + (-2 - centre) * slide + (toy?.petDx ?? 0));
     if (housemate) {
       drawRug(ctx, x);
       const hx = SPOTS[spot === 'left' ? 'right' : 'left'];
@@ -541,12 +544,14 @@ export function drawRoom(
       if (housemate.mess) drawMess(ctx, housemate.mess, housemate.sheet, hx, timeMs);
     }
     // Playing with a friend, the two hop in turn.
-    const motion = meeting?.hearts && !scene.moment ? playHop(timeMs, 1) : momentMotion(scene.moment);
+    const motion = meeting?.hearts && !scene.moment ? playHop(timeMs, 1)
+      : toy?.hop && !scene.moment ? { ...playHop(timeMs, 1), dx: 0 } : momentMotion(scene.moment);
     if (scene.moment) drawSendOffBag(ctx, scene.moment, x, scene.bag ?? 'sack');
     drawPetMoving(ctx, sheet, scene.animation, x, timeMs, hat, scene, motion);
     if (scene.glow) drawGlow(ctx, x, timeMs);
     if (scene.animation === 'sick') drawSickCloud(ctx, sheet, x, timeMs);
     if (scene.moment) drawMoment(ctx, scene.moment, sheet, x);
+    if (toy) drawToys(ctx, toy);
     if (scene.animation === 'sleep') sleepers.push({ sheet, x });
     // Poop and bath time only show in the room.
     if (inRoom && !meeting) {

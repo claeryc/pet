@@ -96,6 +96,46 @@ export const STRINGS = {
     cuddle: 'Cuddle',
     tickle: 'Tickle',
   },
+  // Toys (Play > Toys) and stroking the pet (src/ui/toys.ts).
+  toys: {
+    names: { ball: 'Ball', wand: 'Feather wand', bubbles: 'Bubble wand', starKite: 'Star kite' } as Record<string, string>,
+    about: {
+      ball: 'Swipe to throw it, and your pet brings it back.',
+      wand: 'Wiggle the feather about and watch your pet pounce.',
+      bubbles: 'Tap to blow bubbles for your pet to pop.',
+      starKite: 'A little star on a string. Fly it and your pet leaps for it.',
+    } as Record<string, string>,
+    touchTip: (name: string) => `Touch ${name} in the room: tap for a cuddle, stroke slowly for a tickle, hold for the Wardrobe.`,
+    toysTitle: 'Toys',
+    inShop: 'In the Shop',
+    favourite: (name: string) => `${name}'s favourite`,
+    hint: {
+      ball: 'Swipe to throw the ball',
+      wand: 'Drag the feather around',
+      bubbles: 'Tap to blow bubbles',
+      starKite: 'Drag to fly the kite',
+    } as Record<string, string>,
+    playing: {
+      ball: 'Playing ball',
+      wand: 'Playing with the feather',
+      bubbles: 'Blowing bubbles',
+      starKite: 'Flying the star kite',
+    } as Record<string, string>,
+    count: {
+      ball: (name: string, n: number) => (n === 0 ? `${name} is ready to chase it` : n === 1 ? `${name} brought it back once` : `${name} brought it back ${n} times`),
+      wand: (name: string, n: number) => (n === 0 ? `${name} is watching the feather` : n === 1 ? `${name} pounced once` : `${name} pounced ${n} times`),
+      bubbles: (name: string, n: number) => (n === 0 ? `${name} is waiting for bubbles` : n === 1 ? `${name} popped a bubble` : `${name} popped ${n} bubbles`),
+      starKite: (name: string, n: number) => (n === 0 ? `${name} is looking up at the kite` : n === 1 ? `${name} leapt for it once` : `${name} leapt for it ${n} times`),
+    } as Record<string, (name: string, n: number) => string>,
+    done: 'Done',
+    stroking: (name: string) => `${name} loves this`,
+    // The Shop's Toys tab.
+    shopTitle: 'Toys',
+    shopKind: 'Toy',
+    starToy: 'Star toy',
+    favouriteTag: 'Favourite',
+    bought: (toy: string) => `You got the ${toy}! Find it in Play.`,
+  },
   effects: {
     full: 'Full', // a stat that was already full, floating up from the pet
     slowHunger: (percent: number, hours: number) =>
@@ -766,7 +806,7 @@ export const STRINGS = {
         name: (pet: string) => `Looking after ${pet}`,
         pages: [
           { title: (pet: string) => `Meet ${pet}!`, text: (pet: string) => `${pet} has four needs: Tummy, Joy, Health and Energy. Keep the bars from running low.` },
-          { title: 'Feed and play', text: 'Tap Feed for snacks and Play for cuddles, tickles and games. Each one fills a different bar.' },
+          { title: 'Feed and play', text: 'Tap Feed for snacks and Play for toys. Tap your pet for a cuddle, or stroke it slowly for a tickle. Each one fills a different bar.' },
           { title: 'Lights off for bed', text: (pet: string) => `When Energy runs low, tap the moon so ${pet} can sleep. Time keeps going while the game is closed.` },
           { title: 'Growing up', text: (pet: string) => `Good care adds up. How you look after ${pet} decides who ${pet} grows into. There are lots to find!` },
         ],
@@ -1197,6 +1237,7 @@ export const STRINGS = {
     passed: (name: string) => `${name} has passed away. A Revival Star can bring ${name} back.`,
     noRevival: (_name: string) => "You don't have a Revival Star.",
     away: (name: string) => `${name} is away on a journey. Back soon!`,
+    noToy: (_name: string) => 'Find that toy in the Shop first.',
   },
   // Bringing back a pet that passed away, and the Star Shop that sells
   // Revival Stars for real money (a stand-in purchase for now).
@@ -1694,6 +1735,7 @@ export const STRINGS = {
     likes: {
       food: (food: string) => `Loves ${food}`,
       play: (activity: string) => `Favourite: ${activity}`,
+      toy: (toy: string) => `Favourite toy: ${toy}`,
       dislike: (what: string) => `Dislikes ${what}`,
       place: (place: string) => `Favourite place: ${place}`,
       bath: 'baths',

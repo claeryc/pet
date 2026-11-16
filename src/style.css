@@ -15779,3 +15779,230 @@ button.trip-bars-name.is-on {
     animation: none;
   }
 }
+
+/* ---- Item 6: toys and stroking (src/ui/toys.ts, home.ts) ---- */
+/* Play: how to cuddle and tickle, then the toys. */
+.play-top {
+  padding: 18px 14px 0;
+}
+.play-tip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1.5px #f1e6ee;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  color: #6b5a7c;
+}
+.play-tip b {
+  color: var(--ink, #2b2140);
+}
+.play-tip-icon {
+  flex: none;
+  width: 26px;
+  height: 26px;
+}
+.play-tip-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.play-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 2px 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #a68bc9;
+}
+.play-label::after {
+  content: '';
+  flex: 1;
+  height: 1.5px;
+  background: #eadff3;
+}
+.drawer-option.is-locked .drawer-option-icon,
+.drawer-option.is-locked .drawer-option-label {
+  opacity: 0.62;
+}
+.drawer-option.is-locked .chip-effect {
+  display: none;
+}
+.drawer-option-lock {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 99px;
+  background: #f3ecfa;
+  color: #6b5a7c;
+  font-size: 0.76rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* The room stays tall while playing with a toy, and takes swipes. */
+#app:has(> .stat-slot > .toy-panel:not([hidden])) > .room-wrap {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+}
+#app:has(> .stat-slot > .toy-panel:not([hidden])) > .room-wrap > .room {
+  flex: 1 1 0;
+  height: 0;
+  aspect-ratio: auto;
+  min-height: calc((min(100vw, 420px) - 32px) * 0.75);
+}
+.room-wrap.is-toy .room,
+#app:has(> .dock:not([hidden]):not([data-open])) > .room-wrap > .room {
+  touch-action: none;
+}
+.toy-panel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 22px;
+  background: var(--sheet-bg, #fff8f0);
+  border: 2px solid var(--sheet-edge, #f1e1d6);
+  color: var(--ink, #2b2140);
+  animation: sheet-rise 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.15);
+}
+.toy-panel[hidden] {
+  display: none;
+}
+.toy-icon {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  padding: 6px;
+  border-radius: 12px;
+  background: #fbf2f6;
+}
+.toy-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.toy-words {
+  flex: 1;
+  min-width: 0;
+}
+.toy-title {
+  display: block;
+  font-size: 0.95rem;
+}
+.toy-count {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #8a7a99;
+}
+.toy-time {
+  height: 6px;
+  margin-top: 7px;
+  border-radius: 9px;
+  background: #efe6f5;
+  overflow: hidden;
+}
+.toy-time i {
+  display: block;
+  height: 100%;
+  border-radius: 9px;
+  background: var(--accent, #f48fb1);
+}
+.toy-done {
+  flex: none;
+  height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 12px;
+  background: #f3ecfa;
+  color: var(--plum, #5b3f6e);
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.86rem;
+  box-shadow: 0 2px 0 #ddd0ea;
+  cursor: pointer;
+}
+.toy-hint {
+  position: absolute;
+  top: 56px;
+  left: 50%;
+  z-index: 4;
+  transform: translateX(-50%);
+  max-width: calc(100% - 24px);
+  padding: 7px 14px;
+  border-radius: 99px;
+  background: rgba(43, 33, 64, 0.78);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+.toy-hint[hidden] {
+  display: none;
+}
+.room-wrap:has(.stroke-hint:not([hidden])) .today-chip {
+  visibility: hidden;
+}
+
+/* The stroking heart over the pet's head: it fills from the bottom. */
+.stroke-heart {
+  --fill: 0;
+  position: absolute;
+  z-index: 3;
+  width: calc(var(--px, 5px) * 10);
+  height: calc(var(--px, 5px) * 10);
+  transform: translate(-50%, 0);
+  pointer-events: none;
+}
+.stroke-heart[hidden] {
+  display: none;
+}
+.stroke-heart span {
+  position: absolute;
+  inset: 0;
+}
+.stroke-heart svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.stroke-heart .sh-empty {
+  filter: grayscale(1) brightness(1.5);
+  opacity: 0.75;
+}
+.stroke-heart .sh-fill {
+  clip-path: inset(calc((1 - var(--fill)) * 100%) 0 0 0);
+}
+.stroke-heart.is-full {
+  animation: stroke-pop 0.6s ease-out forwards;
+}
+@keyframes stroke-pop {
+  0% { transform: translate(-50%, 0) scale(1); }
+  35% { transform: translate(-50%, -4px) scale(1.25); }
+  100% { transform: translate(-50%, -14px) scale(1.1); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toy-panel,
+  .stroke-heart.is-full {
+    animation: none;
+  }
+}
+.play-tip > span:last-child {
+  flex: 1;
+  min-width: 0;
+  white-space: normal;
+}

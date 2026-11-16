@@ -359,6 +359,27 @@ export const CONFIG = {
   petting: {
     holdMs: 500,
     tapCooldownMs: 1400,
+    // Stroking: a slow drag over the pet (it starts once the finger has
+    // moved a few pixels, so a tap still cuddles and a hold still opens the
+    // Wardrobe). This many room pixels of stroking fill the heart, and
+    // count as a Tickle. Then the heart rests for a little while.
+    strokeNeeded: 80,
+    strokeCooldownMs: 8000,
+  },
+
+  // Toys (Play > Toys, sold in the Shop's Toys tab). Playing with one is a
+  // short game in the room, about `playSeconds` long; what it does to the
+  // pet's needs counts once a game, like a play. Every keeper starts with
+  // the ball. One toy is each pet's favourite (rolled from its id).
+  toys: [
+    { id: 'ball', price: 90, fragments: 0, happiness: 16, hunger: -2, energy: -6 },
+    { id: 'wand', price: 140, fragments: 0, happiness: 18, hunger: -2, energy: -8 },
+    { id: 'bubbles', price: 180, fragments: 0, happiness: 20, hunger: -2, energy: -6 },
+    { id: 'starKite', price: 0, fragments: 120, happiness: 26, hunger: -3, energy: -6 },
+  ],
+  toyPlay: {
+    playSeconds: 15,
+    startWith: ['ball'],
   },
 
   // Poop and bath time (see src/game/hygiene.ts). Now and then the pet

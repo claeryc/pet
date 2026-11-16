@@ -51,6 +51,9 @@ export interface Drawer {
   // A small picture on the corner of an option's icon (e.g. the heart on
   // what the pet is craving), or null to take it off.
   setOptionBadge: (index: number, badge: string | null) => void;
+  // A pill in place of an option's effects ("In the Shop"), or null to
+  // show its effects again. The row still calls its onPick.
+  setLocked: (index: number, text: string | null) => void;
 }
 
 export interface DrawerSetup {
@@ -286,6 +289,20 @@ export function createDrawer(setup: DrawerSetup): Drawer {
       b.setAttribute('role', 'img');
       b.setAttribute('aria-label', label);
       head.append(b);
+    },
+    setLocked(index, text) {
+      const row = rows[index];
+      if (!row) return;
+      row.classList.toggle('is-locked', !!text);
+      const effects = row.querySelector('.drawer-option-effects')!;
+      let pill = effects.querySelector<HTMLElement>('.drawer-option-lock');
+      if (!text) return pill?.remove();
+      if (!pill) {
+        pill = document.createElement('span');
+        pill.className = 'drawer-option-lock';
+        effects.append(pill);
+      }
+      pill.textContent = text;
     },
     setOptionBadge(index, badge) {
       const icon = rows[index]?.querySelector('.drawer-option-icon');

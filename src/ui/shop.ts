@@ -33,6 +33,8 @@ import { CURTAINS as CURTAIN_COLOURS, WALLPAPERS as WALL_PATTERNS } from '../ren
 import { PALETTE } from '../render/palette';
 import { adsAllowed, extrasLeft, nextAd, rewardOf } from '../game/ads';
 import { STORE_OPEN } from '../payments';
+import { TOYS, favouriteToy, ownsToy, type Toy } from '../game/toys';
+import { likesOf } from '../game/likes';
 
 // What the room above shows while a sheet is open: a hat on the pet, or a
 // decoration up in the room, before it's bought.
@@ -44,6 +46,7 @@ export interface ShopPreview {
 export interface ShopCallbacks {
   onBuyFood: (food: FoodId) => void;
   onBuyHat: (hat: string) => void;
+  onBuyToy: (toy: string) => void;
   onBuyGardenItem: (item: ShopItem) => void;
   onWearHat: (hat: string | null) => void;
   onBuyBait: (id: BaitId) => void;
@@ -436,6 +439,31 @@ function hatItem(state: GameState, id: string, cb: ShopCallbacks): Item {
   return item;
 }
 
+// A toy: its price until it's yours (star fragments for a star toy).
+// Once the pet has shown which one it loves, that one says so.
+function toyItem(state: GameState, t: Toy, cb: ShopCallbacks): Item {
+  const T = STRINGS.toys;
+  const owned = ownsToy(state, t.id);
+  const loved = likesOf(state.pet).found.includes('toy') && favouriteToy(state.pet) === t.id;
+  const star = t.fragments > 0;
+  const item: Item = {
+    key: `toy:${t.id}`,
+    art: ITEM_ICONS[`toy_${t.id}`],
+    name: T.names[t.id] ?? t.id,
+    kind: T.shopKind,
+    about: T.about[t.id] ?? '',
+    tint: star ? TINT.starHat : TINT.hat,
+    tag: loved ? `♥ ${T.favouriteTag}` : star ? T.starToy : undefined,
+    starTag: star && !loved,
+    effects: foodEffects(t as unknown as Food),
+  };
+  if (owned) item.fact = STRINGS.shop.owned;
+  else item.price = star
+    ? { cur: 'frag', cost: t.fragments, onBuy: () => cb.onBuyToy(t.id) }
+    : { cur: 'gold', cost: t.price, onBuy: () => cb.onBuyToy(t.id) };
+  return item;
+}
+
 // What a food does, as little chips: [tummy] +10 [joy] +6.
 function foodEffects(f: Food): string {
   const chips: string[] = [];
@@ -592,7 +620,7 @@ function untilTomorrow(now: number): number {
 
 // The Shop's categories, in order. Other screens can open the Shop at one.
 // ('revival' is the Star counter.)
-export type ShopCategory = 'today' | 'revival' | 'food' | 'garden' | 'fishing' | 'journeys' | 'room' | 'hats';
+export type ShopCategory = 'today' | 'revival' | 'food' | 'garden' | 'fishing' | 'journeys' | 'room' | 'hats' | 'toys';
 
 // Food the Shop sells: only plain ingredients (the energy drink only on its days).
 export const soldInShop = (f: Food) => f.price > 0 && (f.source === 'shop' || f.source === 'staple');
@@ -670,6 +698,10 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
   const kitchenCards = () => KITCHEN_FOR_SALE.map((id) => wideCard(ITEM_ICONS[id], '#fbeedd', kitchenText[id].name,
     kitchenText[id].note,
     hasKitchen(state, id) ? fact(S.owned) : priceButton({ cur: 'gold', cost: kitchenPrice(id)!, onBuy: () => cb.onBuyKitchen(id) }, gold)));
+
+  // Toys.
+  const toys = TOYS.map((t) => toyItem(state, t, cb));
+  const toysOwned = TOYS.filter((t) => ownsToy(state, t.id)).length;
 
   // Hats.
   const hats = HATS.map((h) => hatItem(state, h.id, cb));
@@ -932,6 +964,7 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
       ],
     },
     { id: 'hats', title: S.hats, icon: hatIcon(cb.hatImage(HATS[1]?.id ?? '')), items: hats, body: () => [section(S.hats, S.ofAll(hatsOwned, HATS.length)), grid('', hats.map((h) => card(h, state, open)))] },
+    { id: 'toys', title: STRINGS.toys.shopTitle, icon: ITEM_ICONS.toy_ball, items: toys, body: () => [section(STRINGS.toys.shopTitle, S.ofAll(toysOwned, TOYS.length)), grid('', toys.map((t) => card(t, state, open)))] },
     { id: 'revival', title: S.starCounter, icon: FRAGMENT_ICON, items: [], body: stars },
   ];
   const shown = pages.find((p) => p.id === view.tab) ?? pages[0];
@@ -972,7 +1005,7 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
   return [page];
 }
 
-// [today][FOOD][garden][fishing][journeys][room][hats][stars]
+// [today][FOOD][garden][fishing][journeys][room][hats][toys][stars]
 // Fragments from an ad fly from its card into the Revival Star bar, which
 // then fills up and its count ticks over. Runs once the page is showing;
 // with "reduce motion" on, the bar is just shown full.
