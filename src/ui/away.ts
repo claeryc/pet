@@ -50,7 +50,7 @@ function line(note: AwayNote, name: string): { icon: string; text: string } {
   }
 }
 
-export function createAwayCard(root: HTMLElement): AwayCard {
+export function createAwayCard(root: HTMLElement, onClose?: () => void): AwayCard {
   const backdrop = document.createElement('div');
   backdrop.className = 'name-backdrop';
   backdrop.hidden = true;
@@ -79,6 +79,7 @@ export function createAwayCard(root: HTMLElement): AwayCard {
   const close = () => {
     open = false;
     backdrop.hidden = true;
+    onClose?.();
   };
   ok.addEventListener('click', close);
   backdrop.addEventListener('click', (e) => {

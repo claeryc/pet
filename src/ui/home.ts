@@ -36,6 +36,9 @@ import { createMeet, MEET_OUT_MS } from './meet';
 import { petStandsLeft } from '../game/friends';
 import { needsYou, otherRoom, petsIn, roommates } from '../game/rooms';
 import { restingFull } from '../game/resting';
+import { stampDue, stampsOf, nextDay } from '../game/stamps';
+import { wishesToClaim } from '../game/wishes';
+import { calendarIcon } from './stampArt';
 import type { Friend } from '../game/state';
 import type { CookOptions } from '../game/cooking';
 import { potAt, type GardenScene } from '../render/garden';
@@ -73,6 +76,7 @@ export interface HomeCallbacks extends MenuCallbacks, DigCallbacks {
   onGoodbye: () => void; // ...or let it go
   onLetRest: () => void; // ...or let it rest under the stars while you raise a new pet
   onRestingStar: () => void; // tapped the star in the window: who's resting
+  onOpenCalendar: () => void; // the stamp calendar chip in the room
   onCast: (streak: number) => Bite | null; // throws the fishing line; what will bite, or null if refused
   onLand: (grade: CatchGrade, bite: Bite) => string | null; // the fish landed (a food id), or null
   onPickBait: () => void;
@@ -409,7 +413,18 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const scene = document.createElement('div');
   scene.className = 'room-scene';
   scene.append(fx.el, bubble, tryTag);
-  roomWrap.append(canvas, needs, scene, corner, door);
+  // The stamp calendar's chip, under the corner: the day on the card, and a
+  // dot while today's stamp or a wish is waiting.
+  const todayChip = document.createElement('button');
+  todayChip.className = 'today-chip';
+  todayChip.type = 'button';
+  const chipIc = document.createElement('span');
+  chipIc.className = 'chip-ic';
+  chipIc.innerHTML = calendarIcon();
+  const chipText = document.createElement('span');
+  todayChip.append(chipIc, chipText);
+  todayChip.addEventListener('click', () => cb.onOpenCalendar());
+  roomWrap.append(canvas, needs, scene, corner, door, todayChip);
   // The canvas grows to fill the room's box, a row of wall at a time (see
   // fitRoomHeight). Folded back to 4:3 (a sheet open, or a game on), it
   // keeps its height and shows just its bottom.
@@ -1514,6 +1529,15 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
         icon.title = words;
       }
       needs.hidden = isEgg || petAway;
+      {
+        const due = stampDue(state, now);
+        const day = due ? nextDay(state) : Math.max(1, stampsOf(state).stamped);
+        const fresh = due || wishesToClaim(state) > 0;
+        chipText.textContent = STRINGS.stamps.chip(day);
+        todayChip.classList.toggle('has-new', fresh);
+        todayChip.setAttribute('aria-label', `${STRINGS.stamps.chipLabel}: ${STRINGS.stamps.chip(day)}`);
+        todayChip.hidden = hasPassed(pet) || !!state.journeys.holiday;
+      }
       // With two pets, the craving bubble floats over the one you're
       // looking after.
       roomWrap.dataset.spot = !twoHome(state) ? 'middle' : petStandsLeft(state) ? 'left' : 'right';

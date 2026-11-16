@@ -510,6 +510,9 @@ export interface GameState {
   // Pets that passed away and rest under the stars (see resting.ts),
   // waiting for a Revival Star. Nothing happens to them meanwhile.
   resting: Pet[];
+  // The stamp calendar (stamps.ts) and today's wishes (wishes.ts).
+  stamps: { stamped: number; day: string };
+  wishes: { day: string; list: { id: string; goal: number; from: number; claimed: boolean }[] };
   // Extra time added by the debug fast-forward button, in milliseconds.
   // The game's clock is always: real time + clockOffsetMs.
   clockOffsetMs: number;
@@ -674,6 +677,8 @@ export function createNewGame(now: number): GameState {
     startedAt: now,
     settings: { autoHoliday: false },
     resting: [],
+    stamps: { stamped: 0, day: '' },
+    wishes: { day: '', list: [] },
     clockOffsetMs: 0,
     riceJarAt: null,
     gold: CONFIG.economy.startingGold,

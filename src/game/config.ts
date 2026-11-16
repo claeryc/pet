@@ -161,6 +161,41 @@ export const CONFIG = {
   // money can't buy directly. A daily player earns about 150 a month.
   fragments: { perGoodDay: 5, perMilestone: 25, perStar: 500 },
 
+  // The stamp calendar (see src/game/stamps.ts): 28 days, one stamp on the
+  // first visit of each day, so a missed day is never lost. Each day is
+  // written like the journey finds ("gold:20", "seed:carrot", "mat:twig", a
+  // food id) or "frag:n" for star fragments. Days 7, 14, 21 and 28 are the
+  // gifts. Keep a whole calendar at about 56 fragments, so all free
+  // sources stay near 480 a month.
+  stamps: {
+    days: [
+      ['gold:20'], ['seed:carrot'], ['frag:2'], ['mat:twig'], ['gold:30'], ['strawberry'], ['frag:5', 'honeyCake'],
+      ['gold:20'], ['seed:pumpkin'], ['frag:2'], ['mat:pebble'], ['gold:30'], ['cookie'], ['frag:8', 'mat:beeswax'],
+      ['gold:25'], ['seed:dragonFruit'], ['frag:3'], ['mat:clay'], ['gold:30'], ['honey'], ['frag:8', 'starCookies'],
+      ['gold:25'], ['seed:carrot'], ['frag:3'], ['mat:shell'], ['gold:40'], ['starCookies'], ['frag:25'],
+    ] as string[][],
+    fullMaterialGold: 10, // a material you can't hold more of turns into this much gold
+  },
+
+  // Three wishes a day, from the pet (see src/game/wishes.ts). Each pays a
+  // little gold and Keeper XP, never fragments.
+  wishes: {
+    perDay: 3,
+    gold: 12,
+    xp: 5,
+    // Each wish: what it counts (a tally) and how many, and what must be
+    // open for it.
+    pool: [
+      { id: 'fish', goal: 3, needs: null },
+      { id: 'cravings', goal: 1, needs: null },
+      { id: 'harvests', goal: 2, needs: 'garden' },
+      { id: 'dishes', goal: 1, needs: 'cooking' },
+      { id: 'journeys', goal: 1, needs: 'journeys' },
+      { id: 'deliveries', goal: 1, needs: 'delivery' },
+      { id: 'gifts', goal: 1, needs: 'meet' },
+    ] as { id: string; goal: number; needs: string | null }[],
+  },
+
   // The Family Home: a second room with `friends.maxPets` more spots (see
   // src/game/rooms.ts). Pets there lose tummy, joy and energy at
   // `needsSpeed` of the usual rate; poop, baths and sickness don't change.

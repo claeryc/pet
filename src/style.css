@@ -15200,3 +15200,582 @@ button.trip-bars-name.is-on {
 .btn-rest:disabled {
   opacity: 0.5;
 }
+
+/* ---- Item 5: the stamp calendar ----
+   A paper desk calendar: binder rings, a rose header with a perforated
+   edge, ruled days, an ink paw for each day visited and ribbon-wrapped
+   gift boxes on days 7, 14, 21 and 28. Pixel art is in ui/stampArt.ts. */
+.px {
+  display: block;
+  flex: none;
+  width: calc(var(--c) * var(--u, 2px));
+  height: calc(var(--r) * var(--u, 2px));
+}
+.name-backdrop.cal-backdrop {
+  align-items: flex-end;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  background: rgba(43, 33, 64, 0.3);
+}
+.cal-sheet {
+  --u: 2px;
+  --ic: 24px;
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  max-height: calc(100% - 56px);
+  overflow-y: auto;
+  padding: 10px 14px 14px;
+  border-radius: 26px;
+  background: #fff8f0;
+  box-shadow: 0 -8px 40px rgba(43, 33, 64, 0.28);
+  color: var(--ink);
+  animation: sheet-rise 0.2s ease-out;
+}
+.cal-sheet::before {
+  content: '';
+  display: block;
+  width: 38px;
+  height: 5px;
+  margin: 0 auto 10px;
+  border-radius: 9px;
+  background: #e2d4f1;
+}
+.cal {
+  position: relative;
+  margin-top: 12px;
+  border-radius: 8px 8px 12px 12px;
+  background: #fffdf8;
+  box-shadow: 0 0 0 1.5px #ead8c4, 0 4px 0 0 #fbf3e7, 0 4px 0 1.5px #ead8c4, 0 8px 0 -1px #f7ecdd, 0 8px 0 0.5px #ead8c4;
+}
+.cal-rings {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -8px;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 16px;
+}
+.cal-top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 15px 12px 9px 14px;
+  border-radius: 8px 8px 0 0;
+  background: #e05a7a;
+  background-image: radial-gradient(circle at 3px 100%, #fffdf8 2.2px, transparent 2.6px);
+  background-size: 8px 6px;
+  background-repeat: repeat-x;
+  background-position: 1px calc(100% + 3px);
+  color: #fff;
+}
+.cal-top h2 {
+  margin: 0;
+  min-width: 0;
+  font-size: 1.06rem;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.cal-top h2 small {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #ffdbe5;
+}
+.cal-tag {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 2px;
+  padding: 3px 9px 3px 6px;
+  border-radius: 6px;
+  background: #fffdf8;
+  color: #c2415f;
+  font-size: 0.74rem;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 2px 0 rgba(120, 30, 60, 0.25);
+}
+.cal-tag .paw {
+  --u: 1px;
+}
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.cal-day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  padding: 3px 0 5px;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  box-shadow: inset -1px 0 0 #f3e7d9, inset 0 -1px 0 #f3e7d9;
+}
+.cal-day:nth-child(7n) {
+  box-shadow: inset 0 -1px 0 #f3e7d9;
+  background: #fff8e3;
+}
+.cal-day:nth-last-child(-n + 7) {
+  box-shadow: inset -1px 0 0 #f3e7d9;
+}
+.cal-day:nth-child(22) {
+  border-radius: 0 0 0 12px;
+}
+.cal-day:nth-child(28) {
+  box-shadow: none;
+  border-radius: 0 0 12px 0;
+  background: #ffefc2;
+}
+.cal-n {
+  align-self: stretch;
+  height: 12px;
+  padding-left: 5px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  line-height: 12px;
+  text-align: left;
+  color: #c2ab97;
+}
+.cal-ic {
+  display: grid;
+  place-items: center;
+  width: var(--ic);
+  height: var(--ic);
+  margin-top: 1px;
+}
+.cal-ic svg {
+  display: block;
+  width: var(--ic);
+  height: var(--ic);
+}
+.cal-ic svg.gift {
+  width: calc(14 * var(--u));
+  height: calc(13 * var(--u));
+}
+.cal-day b {
+  height: 11px;
+  margin-top: 2px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  line-height: 11px;
+  white-space: nowrap;
+  color: #93705c;
+}
+.cal-day.is-gift b {
+  color: #b07a1a;
+}
+.cal-day.is-got .cal-ic,
+.cal-day.is-got b {
+  visibility: hidden;
+}
+.cal-st {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 13px;
+  bottom: 2px;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.cal-st .paw {
+  grid-area: 1 / 1;
+  opacity: 0.86;
+  mix-blend-mode: multiply;
+}
+.cal-st .ghost,
+.cal-page .ghost {
+  opacity: 0.18;
+}
+.cal-day.is-today {
+  z-index: 1;
+  border-radius: 8px;
+  background: #fff1f5;
+  box-shadow: inset 0 0 0 2px #e05a7a;
+  cursor: pointer;
+  animation: cal-nudge 1.6s ease-in-out infinite;
+}
+.cal-day.is-today .cal-n {
+  padding-left: 6px;
+  color: #e05a7a;
+}
+.cal-day.is-today b {
+  padding: 0 6px;
+  border-radius: 99px;
+  background: #e05a7a;
+  color: #fff;
+}
+@keyframes cal-nudge {
+  50% {
+    box-shadow: inset 0 0 0 2px #e05a7a, 0 0 0 3px rgba(224, 90, 122, 0.18);
+  }
+}
+.cal-foot {
+  margin: 12px 4px 0;
+  font-size: 0.78rem;
+  line-height: 1.38;
+  color: #6b5a7c;
+  text-wrap: pretty;
+}
+.cal-foot b {
+  color: var(--ink);
+}
+.cal-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 2px 6px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lilac);
+}
+.cal-label::after {
+  content: '';
+  flex: 1;
+  height: 1.5px;
+  border-radius: 2px;
+  background: #efe4f5;
+}
+.cal-wishes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cal-wish {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px 5px 6px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1.5px #f1e4d8;
+}
+.cal-wi {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: #fbf1e6;
+}
+.cal-wi svg {
+  width: 24px;
+  height: 24px;
+}
+.cal-wt {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.15;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.cal-wt small {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #9a8aa8;
+}
+.cal-wt small svg {
+  width: 12px;
+  height: 12px;
+}
+.cal-count {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #b9a4c9;
+}
+.cal-wish.is-claimed .cal-count {
+  color: var(--good-dark);
+}
+.cal-claim {
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--good);
+  box-shadow: 0 2px 0 var(--good-dark);
+  color: #fff;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.cal-claim:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+.cal-wish.is-done:not(.is-claimed) {
+  background: #f6fcf8;
+  box-shadow: inset 0 0 0 1.5px #c2f2d6;
+}
+.cal-wish.is-claimed {
+  opacity: 0.6;
+}
+/* The card for a day just stamped: a tear-off page with the ink paw. */
+.name-backdrop.cal-moment {
+  z-index: 60;
+  background: rgba(43, 33, 64, 0.46);
+}
+.cal-card {
+  position: relative;
+  width: 100%;
+  max-width: 310px;
+  padding: 22px 20px 18px;
+  border-radius: 26px;
+  background: #fff8f0;
+  box-shadow: 0 20px 50px rgba(43, 33, 64, 0.35);
+  color: var(--ink);
+  text-align: center;
+  animation: cal-card-in 0.25s ease-out;
+}
+@keyframes cal-card-in {
+  from {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+}
+.cal-card h3 {
+  margin: 0 0 5px;
+  font-size: 1.2rem;
+  letter-spacing: -0.01em;
+}
+.cal-card p {
+  max-width: 250px;
+  margin: 0 auto 14px;
+  font-size: 0.86rem;
+  line-height: 1.38;
+  color: #6b5a7c;
+  text-wrap: pretty;
+}
+.cal-stage {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  margin: 0 auto 16px;
+}
+.cal-stage .spark {
+  position: absolute;
+}
+.cal-page {
+  position: absolute;
+  left: 23px;
+  top: 8px;
+  width: 104px;
+  height: 124px;
+  border-radius: 6px 6px 10px 10px;
+  background: #fffdf8;
+  box-shadow: 0 0 0 1.5px #ead8c4, 0 4px 0 0 #fbf3e7, 0 4px 0 1.5px #ead8c4, 0 8px 0 -1px #f7ecdd, 0 8px 0 0.5px #ead8c4,
+    0 16px 22px rgba(138, 90, 68, 0.16);
+}
+.cal-page-hd {
+  height: 24px;
+  border-radius: 6px 6px 0 0;
+  background: #e05a7a;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  line-height: 28px;
+  text-transform: uppercase;
+}
+.cal-page-rings {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -8px;
+  display: flex;
+  justify-content: space-around;
+  padding: 0 14px;
+}
+.cal-page-num {
+  position: absolute;
+  left: 10px;
+  top: 28px;
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #d9c7b6;
+}
+.cal-page .paw {
+  --u: 5px;
+  position: absolute;
+  left: 20px;
+  top: 50px;
+  opacity: 0.9;
+  mix-blend-mode: multiply;
+  animation: cal-stamp 0.35s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+.cal-page .ghost {
+  left: 24px;
+  top: 53px;
+}
+@keyframes cal-stamp {
+  from {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+.cal-reward {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 4px 10px;
+  margin-bottom: 16px;
+  padding: 7px 15px 7px 11px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1.5px #f1e6ee;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+.cal-reward span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cal-reward svg {
+  width: 24px;
+  height: 24px;
+}
+.cal-reward i {
+  margin-right: 2px;
+  font-size: 0.7rem;
+  font-style: normal;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--lilac);
+}
+.cal-ok {
+  width: 100%;
+  height: 48px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--accent);
+  box-shadow: 0 4px 0 var(--accent-dark);
+  color: #fff;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.cal-ok:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 var(--accent-dark);
+}
+/* The chip in the room that opens it, with a dot when today's stamp waits. */
+.today-chip {
+  position: absolute;
+  left: 12px;
+  top: 56px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 13px 0 8px;
+  border: 0;
+  border-radius: 99px;
+  background: #fffaf2;
+  box-shadow: inset 0 0 0 1.5px #f0dfcc, 0 2px 0 rgba(138, 90, 68, 0.2), 0 6px 16px rgba(91, 63, 110, 0.12);
+  color: var(--plum);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.today-chip[hidden] {
+  display: none;
+}
+.today-chip .chip-ic {
+  --u: 2px;
+}
+.today-chip.has-new::after {
+  content: '';
+  position: absolute;
+  right: -2px;
+  top: -2px;
+  width: 10px;
+  height: 10px;
+  border: 2px solid #fffaf2;
+  border-radius: 50%;
+  background: var(--accent-dark);
+}
+/* Only in the tall room, with nothing open over it. */
+#app:not(:has(> .dock:not([hidden]):not([data-open]))) .today-chip {
+  display: none;
+}
+@media (max-width: 359px) {
+  .cal-sheet {
+    --u: 1.5px;
+    --ic: 20px;
+    padding: 8px 12px 12px;
+  }
+  .cal-day {
+    padding: 2px 0 4px;
+  }
+  .cal-n {
+    padding-left: 3px;
+    font-size: 0.56rem;
+  }
+  .cal-day b {
+    font-size: 0.54rem;
+  }
+  .cal-top {
+    padding-left: 11px;
+    padding-right: 9px;
+  }
+  .cal-top h2 {
+    font-size: 0.98rem;
+  }
+  .cal-top h2 small {
+    font-size: 0.6rem;
+    letter-spacing: 0;
+  }
+  .cal-tag {
+    padding: 3px 7px 3px 5px;
+    font-size: 0.68rem;
+  }
+  .cal-foot {
+    margin-top: 10px;
+    font-size: 0.72rem;
+  }
+  .cal-wish {
+    padding: 4px 9px 4px 5px;
+  }
+  .cal-wi {
+    width: 30px;
+    height: 30px;
+  }
+  .cal-wt {
+    font-size: 0.78rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cal-day.is-today,
+  .cal-card,
+  .cal-page .paw,
+  .cal-sheet {
+    animation: none;
+  }
+}

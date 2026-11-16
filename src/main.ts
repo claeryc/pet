@@ -29,7 +29,7 @@ import { standInAds, useAdProvider, watchRewardedAd } from './ads';
 import { adsAllowed, claimAd, nextAd } from './game/ads';
 import { createAdPlayer } from './ui/adPlayer';
 import { getDecor, placeFurniture, takeDownFurniture, useDecor } from './game/decor';
-import { getLook, isNight } from './game/stats';
+import { getLook, hasPassed, isNight } from './game/stats';
 import { feeling } from './game/likes';
 import { afterEating, chooseExpression, idleEveryMs, reactionMs, type Expression, type Reaction } from './game/expressions';
 import { getTrait, traitOf } from './game/traits';
@@ -93,6 +93,10 @@ import { fortuneArt, skipFortuneOnTap } from './ui/fortune';
 import { createAwayCard } from './ui/away';
 import { createRestCard } from './ui/resting';
 import { goodbyeResting, layToRest, reviveResting } from './game/resting';
+import { createCalendar, rewardWords, type Calendar, type CalendarInfo } from './ui/calendar';
+import { dayReward, isGiftDay, nextDay, stamp, stampDue, stampsOf } from './game/stamps';
+import { claimWish, rollWishes, wishesOf, wishProgress } from './game/wishes';
+import { localDay } from './game/economy';
 import { capacity } from './game/rooms';
 import { awayNotes } from './game/away';
 import type { Pet, Room } from './game/state';
@@ -169,6 +173,9 @@ const afterNaming: string[] = [];
 // Replaces the current state, saves it and refreshes the screen. If the pet
 // just grew into a new stage, celebrate it, and say if anything new opened
 // up. A freshly hatched pet is asked for its name first.
+// The stamp calendar, made once the screen is up (see below).
+let calendar: Calendar | undefined;
+
 function setState(next: GameState): void {
   const before = new Map(allPets(state).map((p) => [p.id, p.stage]));
   const foundBefore = state.charactersFound;
@@ -193,6 +200,7 @@ function setState(next: GameState): void {
   for (const id of guides) state = markGuideRead(state, id);
   saveGame(state);
   home.update(state, gameNow());
+  calendar?.update(calendarInfo());
   for (const pet of grew) {
     if (pet.stage === 'baby') continue;
     showGrowUp(pet, foundBefore);
@@ -1011,9 +1019,53 @@ function showAway(before: GameState, leftAt: number): void {
 function tryCheckIn(): void {
   const firstEver = state.checkIn.day === '';
   const { state: next, reward } = checkIn(simulate(state, gameNow()), gameNow());
-  setState(next);
+  setState(rollWishes(next, gameNow()));
   if (reward > 0) sound('coins');
   if (reward > 0) home.toast(firstEver ? STRINGS.gold.firstCheckIn(reward) : STRINGS.gold.checkIn(reward));
+  window.setTimeout(maybeOpenCalendar, 700);
+}
+
+// The stamp calendar (src/ui/calendar.ts): what it shows, from the state.
+function calendarInfo(): CalendarInfo {
+  const now = gameNow();
+  return {
+    stamped: stampsOf(state).stamped,
+    due: stampDue(state, now),
+    next: nextDay(state),
+    rewards: CONFIG.stamps.days,
+    petName: state.pet.name,
+    wishes: wishesOf(state).list.map((w) => ({ id: w.id, goal: w.goal, progress: wishProgress(state, w), claimed: w.claimed })),
+  };
+}
+
+function openCalendar(): void {
+  setState(rollWishes(state, gameNow()));
+  calendar?.open(calendarInfo());
+}
+
+// The calendar opens by itself once a day, on the first visit, while
+// today's stamp is waiting and nothing else is up.
+let calendarShownOn = '';
+function maybeOpenCalendar(): void {
+  const now = gameNow();
+  if (!stampDue(state, now) || calendarShownOn === localDay(now) || needsName(state) || hasPassed(state.pet)) return;
+  if (!calendar || calendar.isOpen() || document.querySelector('.name-backdrop:not([hidden])')) return;
+  calendarShownOn = localDay(now);
+  openCalendar();
+}
+
+function stampToday(): void {
+  const result = stamp(state, gameNow());
+  if (!result.stamped) return;
+  setState(result.state);
+  if (!calendar) return;
+  const cal = calendar;
+  cal.close();
+  sound('badge');
+  const { day, reward } = result.stamped;
+  const gift = Math.ceil(day / 7) * 7;
+  const toGift = isGiftDay(day) ? null : { days: gift - day, words: rewardWords(dayReward(gift)) };
+  cal.showStamp(day, reward, toGift, () => cal.open(calendarInfo()));
 }
 
 // The sprite sheets, filled in as they load: the pets at home first.
@@ -1093,6 +1145,7 @@ const home = createHomeScreen(root, {
   onGoodbye: askGoodbye,
   onLetRest: letRest,
   onRestingStar: showRestCard,
+  onOpenCalendar: openCalendar,
   onCast: (streak) => {
     const result = cast(state, gameNow());
     setState(result.state);
@@ -1732,7 +1785,15 @@ const growUp = createGrowUpReveal(root, (moment) => {
   else react('happy');
 });
 skipFortuneOnTap();
-const away = createAwayCard(root);
+const away = createAwayCard(root, () => window.setTimeout(maybeOpenCalendar, 500));
+calendar = createCalendar(root, {
+  onStamp: stampToday,
+  onClaim: (i) => {
+    const before = state.gold;
+    setState(claimWish(state, i));
+    if (state.gold > before) sound('coins');
+  },
+});
 const restCard = createRestCard(root);
 // If saving fails (storage full, private browsing), say so once.
 let saveFailShown = false;

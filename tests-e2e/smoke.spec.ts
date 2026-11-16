@@ -15,10 +15,11 @@ function watchErrors(page: Page): string[] {
 
 // A grown-up pet with every menu showing and every guide read, so nothing
 // pops up in the way. Written straight into the save, then the page reloads.
-async function seedAdult(page: Page): Promise<void> {
+async function seedAdult(page: Page, stampDue = false): Promise<void> {
   await page.goto('/');
-  await page.evaluate(async () => {
+  await page.evaluate(async (due) => {
     const { createNewGame } = await import('/src/game/state.ts');
+    const { localDay } = await import('/src/game/economy.ts');
     const { GUIDES } = await import('/src/game/guides.ts');
     const { SAVE_VERSION } = await import('/src/storage/storage.ts');
     const s = createNewGame(Date.now());
@@ -26,8 +27,10 @@ async function seedAdult(page: Page): Promise<void> {
     s.showAllMenus = true;
     s.guidesRead = [...GUIDES];
     s.gold = 5000;
+    // Today's stamp is done, so the stamp calendar doesn't open by itself.
+    s.stamps = due ? { stamped: 0, day: '' } : { stamped: 1, day: localDay(Date.now()) };
     localStorage.setItem('cozy-pixel-pet-save', JSON.stringify({ version: SAVE_VERSION, state: s }));
-  });
+  }, stampDue);
 }
 
 // Loads the seeded game fresh and waits for the dock.
@@ -95,3 +98,16 @@ for (const drawer of DRAWERS) {
     }
   });
 }
+
+test('the stamp calendar opens by itself and stamps today', async ({ page }) => {
+  const errors = watchErrors(page);
+  await seedAdult(page, true);
+  await openGame(page);
+  const today = page.locator('.cal-day.is-today');
+  await expect(today).toBeVisible({ timeout: 5000 });
+  await today.click();
+  await expect(page.locator('.cal-card')).toContainText('Day 1 stamped!');
+  await page.locator('.cal-ok').click();
+  await expect(page.locator('.cal-tag')).toContainText('1 / 28');
+  expect(errors).toEqual([]);
+});
