@@ -126,9 +126,10 @@
       <label class="check"><input type="checkbox" id="l-small"> Small phone crop</label>
     </div>
     <div class="group">
-      <h2>When you're done</h2>
+      <h2>Saving</h2>
+      <p>Every move saves by itself, so Claude can pick it up. Tell Claude in the thread when you're done.</p>
       <div class="row">
-        <button class="btn go" id="save">Save for Claude</button>
+        <button class="btn go" id="save">Save now</button>
         <button class="btn" id="download">Download</button>
       </div>
       <div class="row">
@@ -190,6 +191,7 @@
 
   // ---- drawing
   function draw() {
+    autosaveSoon();
     const m = M(), pc = P(), s = show();
     const W = pc.width, H = pc.height;
     $('wrap').style.width = `${W * zoom}px`; $('wrap').style.height = `${H * zoom}px`;
@@ -428,27 +430,47 @@
     return n;
   }
 
-  let db = null;
+  // Every change saves by itself: to this browser at once, and for Claude
+  // a moment after you stop moving things.
+  let db = null, ready = false, savedText = '', saveTimer = 0, saving = false;
+  const DRAFT = 'mossbun-map-draft';
+  function autosaveSoon() {
+    if (!ready) return;
+    const text = exportJson();
+    if (text === savedText) return;
+    try { localStorage.setItem(DRAFT, JSON.stringify({ layout: text, at: Date.now() })); } catch { /* no local copy */ }
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveNow, 1200);
+    say('Saving…');
+  }
+  async function saveNow() {
+    const text = exportJson();
+    if (!db) { say('Kept in this browser. Press Download to send it to Claude.'); return; }
+    if (saving) { saveTimer = setTimeout(saveNow, 600); return; }
+    saving = true;
+    try {
+      await db.doc('layouts/current').set({ layout: text, changes: changes(), savedAt: new Date().toISOString() });
+      savedText = text;
+      say(`Saved for Claude (${changes()} changes).`);
+    } catch (e) { say(`Couldn't save (${e && e.code || 'error'}). Your moves are kept in this browser; try Save again.`, true); }
+    saving = false;
+  }
   (async () => {
+    let draft = null;
+    try { draft = JSON.parse(localStorage.getItem(DRAFT) || 'null'); } catch { draft = null; }
     try { db = await window.claude?.use?.('db'); } catch { db = null; }
-    if (!db) { $('save').disabled = true; $('save').title = 'Saving needs you to be signed in. Use Download instead.'; return; }
-    try {
-      const snap = await db.doc('layouts/current').get();
-      if (snap.exists) {
-        const d = snap.data();
-        if (d && d.layout) { lay = JSON.parse(d.layout); draw(); say('Loaded your last saved layout.'); }
-      }
-    } catch { /* keep the original layout */ }
+    let stored = null;
+    if (db) { try { const snap = await db.doc('layouts/current').get(); if (snap.exists) stored = snap.data(); } catch { stored = null; } }
+    else { $('save').title = 'Saving needs you to be signed in. Use Download instead.'; }
+    const storedAt = stored && stored.savedAt ? Date.parse(stored.savedAt) : 0;
+    if (draft && draft.layout && draft.at > storedAt) { lay = JSON.parse(draft.layout); savedText = stored && stored.layout || ''; }
+    else if (stored && stored.layout) { lay = JSON.parse(stored.layout); savedText = stored.layout; }
+    else savedText = exportJson();
+    ready = true;
+    draw();
+    if (changes()) say(`Picked up where you left off (${changes()} changes).`);
   })();
-  $('save').addEventListener('click', async () => {
-    if (!db) return;
-    $('save').disabled = true; say('Saving…');
-    try {
-      await db.doc('layouts/current').set({ layout: exportJson(), changes: changes(), savedAt: new Date().toISOString() });
-      say(`Saved. Tell Claude in the thread and it rebuilds the map.`);
-    } catch (e) { say(`Couldn't save (${e && e.code || 'error'}). Try Download instead.`, true); }
-    $('save').disabled = false;
-  });
+  $('save').addEventListener('click', () => { clearTimeout(saveTimer); say('Saving…'); saveNow(); });
   $('download').addEventListener('click', async () => {
     let dl = null; try { dl = await window.claude?.use?.('downloads'); } catch { dl = null; }
     if (!dl) { say('Downloads are off here. Use Save for Claude.', true); return; }
