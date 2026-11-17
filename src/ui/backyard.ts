@@ -20,7 +20,7 @@
 import { STRINGS } from '../strings';
 import { CONFIG } from '../game/config';
 import { hiveBuilt, hiveNextAt, hiveStock, perchBuilt } from '../game/crafting';
-import { percyFree } from '../game/journeys';
+import { percyAtPerch } from '../game/journeys';
 import type { Pet } from '../game/state';
 import type { GameState } from '../game/state';
 import { drawHive, drawPerch, onHive, onPercy, YARD_HEIGHT, YARD_WIDTH, type PercyAtPerch } from '../render/backyard';
@@ -56,7 +56,7 @@ export interface Backyard {
   row: HTMLElement; // [Close], at the beehive and the perch
   gardenSlot: HTMLElement; // where the garden's panel goes, on the ledge
   pourSlot: HTMLElement; // where the garden's pour meter goes, over the ledge
-  start: () => void;
+  start: (stop?: Stop) => void; // at a stop (the garden unless said)
   stop: () => void;
   active: () => boolean;
   at: () => Stop;
@@ -64,11 +64,7 @@ export interface Backyard {
   update: (state: GameState, now: number) => void;
 }
 
-// Where Percy is: away on a trip, resting after one, or ready to go.
-export function percyAtPerch(state: GameState, now: number): PercyAtPerch {
-  if ([state.pet, ...state.housemates].some((p: Pet) => p.trip?.percy === 'coming')) return 'away';
-  return percyFree(state, now) ? 'ready' : 'resting';
-}
+export { percyAtPerch };
 
 // Whether a stop wants you there (a red dot on its tab, and the badge in
 // Play).
@@ -328,9 +324,9 @@ export function createBackyard(cb: BackyardCallbacks): Backyard {
     row,
     gardenSlot,
     pourSlot,
-    start() {
+    start(stop = 'garden') {
       active = true;
-      at = 'garden';
+      at = shown(stop) ? stop : 'garden';
       clearTimeout(outTimer);
       frame.hidden = false;
       render();

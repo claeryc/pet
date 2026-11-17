@@ -546,6 +546,9 @@ export interface GameState {
   // the ones the player has already looked at (the rest get a "new" dot).
   unlocked: string[];
   seen: string[];
+  // Unlocks whose place has been shown off on the map (the map points at
+  // it and says what it is, once). Missing in older saves: see storage.
+  introduced?: string[];
   // Testing tool: show every menu straight away, locked or not.
   showAllMenus: boolean;
   // The player's name, shown in the Family Tree ('' if they'd rather not).
@@ -697,6 +700,7 @@ export function createNewGame(now: number): GameState {
     charactersMet: [],
     unlocked: [],
     seen: [],
+    introduced: [],
     showAllMenus: false,
     owner: '',
     family: [],

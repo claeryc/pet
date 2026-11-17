@@ -8,8 +8,8 @@ import data from '../data/map.json';
 import { STRINGS } from '../strings';
 import { CONFIG } from './config';
 import { plotStage, needsTending } from './garden';
-import { NIGHT, PLACES, isEpicOffer, placeOpen } from './journeys';
-import { PROJECTS, hiveBuilt, hiveStock, stageReady } from './crafting';
+import { NIGHT, PLACES, isEpicOffer, percyAtPerch, percyBackAt, placeOpen } from './journeys';
+import { PROJECTS, hiveBuilt, hiveStock, perchBuilt, stageReady } from './crafting';
 import { meadowVisitor } from './meadow';
 import { unreadMail } from './messages';
 import { visitor } from './friends';
@@ -29,6 +29,7 @@ export interface MapAreaDef {
 export interface MapDef {
   title: string;
   back?: string;
+  plain?: boolean; // no name signs: round bubbles, a tap goes straight there
   areas: MapAreaDef[];
 }
 export const MAPS = data.maps as Record<string, MapDef>;
@@ -36,15 +37,15 @@ export const START_MAP = data.start;
 
 // What an area's button does.
 export type Opens =
-  | { kind: 'home' | 'garden' | 'meadow' | 'pond' | 'friends' | 'dig' | 'soon' }
+  | { kind: 'home' | 'garden' | 'meadow' | 'pond' | 'friends' | 'dig' | 'hive' | 'perch' | 'soon' }
   | { kind: 'map'; map: string }
   | { kind: 'journey'; place: string }
-  // Not in map.json: the Backyard's second button, to the Workshop
-  // (`projects`: straight to a project with news).
+  // The Workshop (`projects`: straight to a project with news).
   | { kind: 'workshop'; projects?: boolean };
 
 export function parseOpens(opens: string): Opens | null {
-  if (['home', 'garden', 'meadow', 'pond', 'friends', 'dig', 'soon'].includes(opens)) return { kind: opens as 'home' };
+  if (['home', 'garden', 'meadow', 'pond', 'friends', 'dig', 'hive', 'perch', 'soon'].includes(opens)) return { kind: opens as 'home' };
+  if (opens === 'workshop') return { kind: 'workshop' };
   const [kind, id] = opens.split(':');
   if (kind === 'map' && MAPS[id]) return { kind: 'map', map: id };
   if (kind === 'journey' && PLACES.some((p) => p.id === id)) return { kind: 'journey', place: id };
@@ -85,14 +86,20 @@ export interface AreaCard {
   // A journey place: the trips on the board that go there.
   tickets?: Ticket[];
   mist?: boolean; // open, but no trip goes there right now
-  // A second button beside the first (the Backyard's Workshop).
-  second?: { label: string; opens: Opens };
+  hidden?: boolean; // not there at all yet (the beehive before it's built)
+  // On a plain map: tapping it shows `text` in a little tooltip instead of
+  // going there (Percy's empty perch: when he's back).
+  tellOnly?: boolean;
+  // A plain map's round bubble: what's waiting there (also when there's
+  // no news, e.g. fish biting at the pond).
+  bubble?: Badge;
 }
 
-export type Badge = 'project' | 'water' | 'honey' | 'crop' | 'visitor' | 'mail' | 'backpack' | 'epic' | 'night' | 'trip';
+export type Badge = 'fish' | 'dig' | 'lock' | 'project' | 'water' | 'honey' | 'crop' | 'visitor' | 'mail' | 'backpack' | 'epic' | 'night' | 'trip';
 export interface News {
   badge: Badge;
   text: string;
+  count?: number; // how many (ripe crops): a number on the map's bubble
 }
 // A trip on the board: its spot (NIGHT for the night ticket) and the offer.
 export interface Ticket {
@@ -145,19 +152,28 @@ export function areaCard(state: GameState, now: number, area: MapAreaDef): AreaC
       const ready = stages.filter((s) => s === 'ready').length;
       const news: News[] = [];
       if (needsTending(state.garden, now)) news.push({ badge: 'water', text: S.gardenNeeds });
-      if (ready > 0) news.push({ badge: 'crop', text: S.gardenReady(ready) });
-      if (hiveBuilt(state) && hiveStock(state) > 0) news.push({ badge: 'honey', text: S.honeyReady });
-      // The Workshop, once it's open: its own button, and news when a
-      // project stage has finished.
-      const shop = isUnlocked(state, 'workbench');
-      const built = shop && PROJECTS.some((p) => stageReady(state, p.id));
-      if (built) news.push({ badge: 'project', text: S.projectReady });
-      const extra: Partial<AreaCard> = shop
-        ? { second: built ? { label: S.seeProject, opens: { kind: 'workshop', projects: true } } : { label: S.goWorkshop, opens: { kind: 'workshop' } } }
-        : {};
-      const go = shop ? S.goGarden : S.go;
-      if (news.length) return busy(news, go, extra);
-      return card(stages.every((s) => s === 'empty') ? S.gardenEmpty : S.gardenGrowing, go, extra);
+      if (ready > 0) news.push({ badge: 'crop', text: S.gardenReady(ready), count: ready });
+      if (news.length) return busy(news, S.go);
+      return card(stages.every((s) => s === 'empty') ? S.gardenEmpty : S.gardenGrowing, S.go);
+    }
+    case 'workshop': {
+      if (PROJECTS.some((p) => stageReady(state, p.id))) return busy([{ badge: 'project', text: S.projectReady }], S.go);
+      return card(S.workshopText, S.go);
+    }
+    case 'hive': {
+      if (!hiveBuilt(state)) return card('', S.go, { hidden: true, enabled: false });
+      if (hiveStock(state) > 0) return busy([{ badge: 'honey', text: S.honeyReady }], S.go);
+      return card(S.hiveFilling, S.go);
+    }
+    case 'perch': {
+      if (!perchBuilt(state)) return card('', S.go, { hidden: true, enabled: false });
+      const p = percyAtPerch(state, now);
+      if (p === 'away') {
+        const back = percyBackAt(state);
+        return card(back > now ? S.percyAwayUntil(homeLeft(back - now)) : S.percyAwayText, S.go, { tellOnly: true });
+      }
+      if (p === 'resting') return card(S.percyRestingText(homeLeft(state.journeys.percyFreeAt - now)), S.go);
+      return card(S.percyHome, S.go, { good: true });
     }
     case 'meadow': {
       const v = meadowVisitor(state);
@@ -170,13 +186,13 @@ export function areaCard(state: GameState, now: number, area: MapAreaDef): AreaC
       const today = localDay(now);
       const landed = state.pond.day === today ? state.pond.fish : 0;
       const left = Math.max(0, CONFIG.fishing.rewardedPerDay - landed);
-      return left > 0 ? card(S.pondBiting, S.goFishing, { good: landed === 0 }) : card(S.pondFull, S.goFishing);
+      return left > 0 ? card(S.pondBiting, S.goFishing, { good: landed === 0, bubble: landed === 0 ? 'fish' : undefined }) : card(S.pondFull, S.goFishing);
     }
     case 'dig': {
       // Sniff and dig: today's digs left.
       const left = digsLeft(digToday(state, now));
       const all = CONFIG.dig.digsPerDay;
-      return left > 0 ? card(S.digsLeft(left, all), S.goDig, { good: left === all }) : card(S.digsDone, S.goDig);
+      return left > 0 ? card(S.digsLeft(left, all), S.goDig, { good: left === all, bubble: left === all ? 'dig' : undefined }) : card(S.digsDone, S.goDig);
     }
     case 'friends': {
       const over = visitor(state);
@@ -189,6 +205,13 @@ export function areaCard(state: GameState, now: number, area: MapAreaDef): AreaC
     }
     case 'map': {
       if (opens.map === START_MAP) return card(S.homeIsland, S.sailHome);
+      if (MAPS[opens.map]?.plain) {
+        // A close-up (the Backyard): everything waiting in its places.
+        const inside = MAPS[opens.map].areas.map((a) => areaCard(state, now, a)).filter((c) => !c.locked && !c.hidden);
+        const news = inside.flatMap((c) => c.news ?? []);
+        if (news.length) return busy(news, S.go);
+        return card(inside[0]?.text ?? '', S.go);
+      }
       // Before journeys open you can still sail over and look around.
       if (!isUnlocked(state, 'journeys')) return card(S.shipLook, S.setSail);
       if (hasBackpack(pet)) return busy([{ badge: 'backpack', text: S.shipBackpack(pet.name) }], S.setSail);
@@ -215,6 +238,30 @@ export function areaCard(state: GameState, now: number, area: MapAreaDef): AreaC
     }
   }
   return card('', S.go);
+}
+
+// Whether a building laid over a map's picture is there (see the
+// "extras" in its .json): an unlock id, or the beehive and Percy's perch
+// (with Percy home, or away).
+export function extraShown(state: GameState, now: number, when: string): boolean {
+  if (when === 'hive') return hiveBuilt(state);
+  if (when === 'perch') return perchBuilt(state) && percyAtPerch(state, now) !== 'away';
+  if (when === 'perchAway') return perchBuilt(state) && percyAtPerch(state, now) === 'away';
+  return isUnlocked(state, when as UnlockId);
+}
+
+// Places that open with an unlock and haven't been shown off on the map
+// yet (see src/ui/map.ts intro): the unlock, and the map and area to show.
+export function placeToIntroduce(state: GameState): { unlock: UnlockId; map: string; area: string } | null {
+  const done = state.introduced ?? [];
+  for (const [mapId, m] of Object.entries(MAPS)) {
+    if (!m.plain) continue;
+    for (const a of m.areas) {
+      if (!a.unlock || done.includes(a.unlock) || !isUnlocked(state, a.unlock)) continue;
+      return { unlock: a.unlock, map: mapId, area: a.id };
+    }
+  }
+  return null;
 }
 
 // Which area's bubble is open when a map opens: the first that needs

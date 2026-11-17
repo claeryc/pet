@@ -22,6 +22,7 @@
       "properties": {
         "title": { "type": "string", "description": "The sign at the top." },
         "back": { "type": "string", "description": "The map the bottom-left button goes back to. Without it, that button closes the map." },
+        "plain": { "type": "boolean", "description": "No name signs: the art says what each place is, a round bubble shows what's waiting there, and a tap goes straight there (hold one to see its name)." },
         "areas": { "type": "array", "items": { "$ref": "#/definitions/area" } }
       }
     },
@@ -34,7 +35,7 @@
         "name": { "type": "string", "description": "The name on its sign. A journey place can leave it out to use the place's own name." },
         "opens": {
           "type": "string",
-          "description": "What its button does: home, garden, meadow, pond (fishing), friends, soon (not there yet), map:<map id> (another map) or journey:<place id> (the trip board, about that place)."
+          "description": "What its button does: home, garden, meadow, pond (fishing), friends, dig, workshop, hive, perch, soon (not there yet), map:<map id> (another map) or journey:<place id> (the trip board, about that place)."
         },
         "unlock": {
           "type": "string",

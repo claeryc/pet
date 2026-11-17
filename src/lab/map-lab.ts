@@ -142,7 +142,7 @@ function override(id: string): Override {
 
 // What each badge's line says in the preview.
 const SAMPLE: Record<Badge, string> = {
-  project: S.projectReady, water: S.gardenNeeds, crop: S.gardenReady(2), honey: S.honeyReady, visitor: S.friendOver('Bun'), mail: S.friendMail(1),
+  fish: S.pondBiting, dig: S.goDig, lock: S.lockedText, project: S.projectReady, water: S.gardenNeeds, crop: S.gardenReady(2), honey: S.honeyReady, visitor: S.friendOver('Bun'), mail: S.friendMail(1),
   backpack: S.shipBackpack('Mochi'), epic: S.epicHere, night: S.nightHere, trip: S.tripHere,
 };
 
@@ -158,7 +158,7 @@ function previewCard(a: MapAreaDef, c: AreaCard): AreaCard {
     card = { ...card, mist: false };
     if (opens?.kind !== 'soon') {
       // Open: the button a new game would show once it's unlocked.
-      const button = { home: S.goHome, garden: S.go, meadow: S.visit, pond: S.goFishing, friends: S.visit, dig: S.goDig, workshop: S.goWorkshop, map: S.setSail, journey: S.planTrip }[opens?.kind ?? 'garden'];
+      const button = { home: S.goHome, garden: S.go, meadow: S.visit, pond: S.goFishing, friends: S.visit, dig: S.goDig, workshop: S.go, hive: S.go, perch: S.go, map: S.setSail, journey: S.planTrip }[opens?.kind ?? 'garden'];
       card = { ...card, locked: false, enabled: true, button: card.button === S.locked ? button : card.button };
     }
     if (card.text === (a.lockedText ?? S.lockedText) || card.text.startsWith('Opens')) card.text = '';

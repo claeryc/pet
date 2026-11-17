@@ -3,6 +3,7 @@
 //                                  |
 //                            saving (src/storage)
 
+import { placeToIntroduce } from './game/map';
 import { CONFIG, STAT_MAX } from './game/config';
 import { createNewGame, type GameState, type Message } from './game/state';
 import { simulate } from './game/simulate';
@@ -208,7 +209,8 @@ function setState(next: GameState): void {
   }
   showLevels(progress.levels);
   showFragments(progress.fragments);
-  const notices = progress.unlocked.map((id) => STRINGS.unlocked[id]);
+  // Places on the map are shown off there instead of with a notice.
+  const notices = progress.unlocked.filter((id) => !(id in STRINGS.map.intros)).map((id) => STRINGS.unlocked[id]);
   if (needsName(state)) {
     afterNaming.push(
       ...progress.badges.map((b) => STRINGS.achievements.earned(STRINGS.achievements.names[b.id], STRINGS.achievements.tiers[b.tier])),
@@ -222,6 +224,7 @@ function setState(next: GameState): void {
   }
   announceMail(oldMessages);
   for (const id of guides) showGuide(id);
+  if (progress.unlocked.some((id) => id in STRINGS.map.intros)) window.setTimeout(maybeIntroduce, 1200);
 }
 
 // When the guides that aren't about opening something come up: Looking
@@ -2009,6 +2012,18 @@ function liveTick(): void {
   const next = simulate(state, gameNow());
   if (next !== state) setState(next);
   else home.update(state, gameNow());
+  maybeIntroduce();
+}
+
+// A place that just opened on the map gets shown off there, once, when
+// nothing else is going on (no name to give, no card or guide up).
+function maybeIntroduce(): void {
+  const next = placeToIntroduce(state);
+  if (!next || needsName(state) || hasPassed(state.pet)) return;
+  if (document.querySelector('.name-backdrop:not([hidden]), .guide-backdrop:not([hidden]), .cal-backdrop:not([hidden])')) return;
+  if (calendar?.isOpen()) return;
+  if (!home.introducePlace(next.map, next.area, next.unlock)) return;
+  setState({ ...state, introduced: [...(state.introduced ?? []), next.unlock] });
 }
 let ticker: ReturnType<typeof setInterval> | null = null;
 let tabLost = false; // another tab has the pet now

@@ -120,6 +120,9 @@ export interface HomeCallbacks extends MenuCallbacks, DigCallbacks {
 
 export interface HomeScreen {
   canvas: HTMLCanvasElement;
+  // Shows off a place that just opened on the map (`map`, `area`), when
+  // nothing else is going on. False if now isn't a good time.
+  introducePlace: (map: string, area: string, unlock: string) => boolean;
   update: (state: GameState, now: number) => void;
   toast: (message: string, shop?: ShopCategory) => void; // `shop`: offer a button to that part of the Shop
   // Like toast, but waits for the message showing now to finish first.
@@ -794,6 +797,9 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
           return openDig();
         case 'workshop':
           return startWorkbench(opens.projects);
+        case 'hive':
+        case 'perch':
+          return startGarden(opens.kind);
         case 'meadow':
         case 'friends':
           // Friends: play with whoever's over, or meet one (letters first
@@ -820,6 +826,13 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       goJournal(place ?? (latest && newestPlace(latest.state)) ?? 'market');
     },
   });
+  function introducePlace(map: string, area: string, unlock: string): boolean {
+    const words = STRINGS.map.intros[unlock];
+    if (!words || actions.hidden || worldMap.isOpen() || feedDrawer.isOpen() || playDrawer.isOpen() || menuDrawer!.isOpen()) return false;
+    if (latest) worldMap.update(latest.state, latest.now);
+    worldMap.intro(map, area, { ...words, button: STRINGS.map.takeALook, unlock }, () => {});
+    return true;
+  }
   function openMap(): void {
     if (actions.hidden) return; // busy with something else
     feedDrawer.close();
@@ -1301,7 +1314,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     backyard.stop();
     showActions(ms);
   }
-  function startGarden(): void {
+  function startGarden(stop: 'garden' | 'hive' | 'perch' = 'garden'): void {
     if (petAway) return showToast(STRINGS.blocked.away(petName));
     // Asleep: the same as Play > Garden, also from the map.
     if (petAsleep) return showToast(STRINGS.blocked.asleep(petName));
@@ -1318,7 +1331,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       backyard.update(latest.state, latest.now);
     }
     garden.start();
-    backyard.start();
+    backyard.start(stop);
     cb.onGuide('garden');
   }
   // Percy's order: his meadow, its own [Close] [Fill all] row, and a
@@ -1665,6 +1678,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
 
   return {
     canvas,
+    introducePlace,
     update(state, now) {
       const switched = barsFor !== null && barsFor !== state.pet.id && !stats.hidden;
       barsFor = state.pet.id;

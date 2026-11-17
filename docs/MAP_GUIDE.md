@@ -1,10 +1,12 @@
 # Map guide: drawing the map and adding areas
 
 The map (**Menu → Map**) is one picture per map, drawn in Aseprite, with a tap
-shape for every area on it. Two maps exist now:
+shape for every area on it. Three maps exist now:
 
 - **island**: the home island. Home in the middle, with Backyard, Meadow,
   Friends, Windmill Fields (a placeholder for now) and the ship around it.
+- **backyard**: a close-up of the Backyard (garden, Workshop, beehive,
+  Percy's perch), opened by tapping the Backyard on the island.
 - **sea**: what you see after tapping the ship. The four journey places, each
   its own island, and the home island at the bottom to sail back.
 
@@ -17,6 +19,38 @@ Everything about an area is in two places:
 
 The game code reads both, so **a new area needs no code** unless it opens a
 kind of screen the map doesn't know yet (see [What an area can open](#what-an-area-can-open)).
+
+## Plain maps (the island and the Backyard)
+
+A map with `"plain": true` in map.json has no signs. The picture fills the
+screen, and:
+
+- **A tap goes straight there.** A locked place, or Percy's perch while he's
+  away, shows a short note instead (the `tellOnly` case in `areaCard()`).
+- **Tap and hold** shows the place's name.
+- **Round bubbles** (`src/ui/mapBubbles.ts`) float over places with
+  something waiting: smooth vector shapes on purpose, so they never read as
+  part of the pixel art.
+- **A `map:<id>` area zooms in** to that map; Back (top left) or a tap on
+  the water zooms out.
+- **New places are introduced once.** When an unlock in `STRINGS.map.intros`
+  opens, the map dims, points at the place, its buildings pop up, and one
+  card says what it is with "Take a look". `placeToIntroduce()` picks it,
+  and `state.introduced` remembers which have been shown.
+
+These two maps aren't drawn in Aseprite: `art/map/v2/draw.py` draws them in
+Python and writes the pictures, the night and locked layers, the building
+layers (`<map>-x-<id>.png`, shown when their `when` key is true in
+`extraShown()`), and the json with the tap shapes:
+
+```
+python3 art/map/v2/draw.py game
+```
+
+The tap shapes come from seed points in `game()` there (one per area), so a
+new area needs a seed, a label point and a pin point. `art/map/island.aseprite`
+is the old island and isn't used any more. The sea still follows the
+Aseprite steps below.
 
 ## The Aseprite file
 
@@ -98,6 +132,8 @@ from another one, `back`: the map the **‹ Back** button goes to.
 | --- | --- | --- |
 | `home` | Go home | Closes the map. |
 | `garden` | Go | The Backyard and its garden. |
+| `workshop` | Go | The Workshop's projects. |
+| `hive` / `perch` | Go | The Backyard, at the beehive or Percy's perch. |
 | `meadow` | Visit | Menu → Meadow. |
 | `friends` | Visit | Meet a visitor if one's over, else Messages → Friends. |
 | `soon` | Soon | Not built yet: shown, never opens. |

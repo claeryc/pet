@@ -62,7 +62,14 @@ describe('aseprite layers and slices', () => {
 
   it('the map files have an area layer for every area in map.json', () => {
     const map = JSON.parse(readFileSync(new URL('../src/data/map.json', import.meta.url), 'utf8'));
-    for (const [id, m] of Object.entries(map.maps as Record<string, { areas: { id: string }[] }>)) {
+    for (const [id, m] of Object.entries(map.maps as Record<string, { plain?: boolean; areas: { id: string }[] }>)) {
+      // The plain maps are drawn by art/map/v2/draw.py, which writes the
+      // tap shapes straight into the exported json.
+      if (m.plain) {
+        const out = JSON.parse(readFileSync(new URL(`../public/sprites/map/${id}.json`, import.meta.url), 'utf8'));
+        expect(Object.keys(out.areas).sort(), id).toEqual(m.areas.map((a) => a.id).sort());
+        continue;
+      }
       const layers = readLayers(readFileSync(new URL(`../art/map/${id}.aseprite`, import.meta.url))).map((l) => layerArea(l.name)).filter(Boolean);
       expect(layers.sort(), id).toEqual(m.areas.map((a) => a.id).sort());
     }
