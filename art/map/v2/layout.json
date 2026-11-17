@@ -1,0 +1,1104 @@
+{
+ "island": {
+  "items": [
+   {
+    "id": "home-house",
+    "name": "Home house",
+    "make": "house(1, lit=lit)",
+    "x": 97,
+    "y": 198
+   },
+   {
+    "id": "well",
+    "name": "Well",
+    "make": "well(1)",
+    "x": 126,
+    "y": 214
+   },
+   {
+    "id": "mailbox-1",
+    "name": "Mailbox",
+    "make": "mailbox(1)",
+    "x": 76,
+    "y": 204
+   },
+   {
+    "id": "lamp-1",
+    "name": "Lamp",
+    "make": "lamp(1, lit=lit)",
+    "x": 114,
+    "y": 206
+   },
+   {
+    "id": "tree-1",
+    "name": "Tree",
+    "make": "tree(8, 'leaf', 3)",
+    "x": 66,
+    "y": 196
+   },
+   {
+    "id": "berry-bush-1",
+    "name": "Berry bush",
+    "make": "bush(4, 'leaf', 5, berries=R['rose'][3])",
+    "x": 124,
+    "y": 190
+   },
+   {
+    "id": "flowers-1",
+    "name": "Flowers",
+    "make": "flowers(5, 6, 1)",
+    "x": 82,
+    "y": 212
+   },
+   {
+    "id": "tree-2",
+    "name": "Tree",
+    "make": "tree(10, 'leaf', 11)",
+    "x": 30,
+    "y": 118
+   },
+   {
+    "id": "tree-3",
+    "name": "Tree",
+    "make": "tree(8, 'leaf', 12)",
+    "x": 66,
+    "y": 106
+   },
+   {
+    "id": "tree-4",
+    "name": "Tree",
+    "make": "tree(7, 'leaf', 13)",
+    "x": 84,
+    "y": 132
+   },
+   {
+    "id": "bench-1",
+    "name": "Bench",
+    "make": "bench(1)",
+    "x": 58,
+    "y": 138
+   },
+   {
+    "id": "reeds-1",
+    "name": "Reeds",
+    "make": "reeds(1)",
+    "x": 24,
+    "y": 152
+   },
+   {
+    "id": "reeds-2",
+    "name": "Reeds",
+    "make": "reeds(2)",
+    "x": 49,
+    "y": 148
+   },
+   {
+    "id": "lily-pad-1",
+    "name": "Lily pad",
+    "make": "lily(1)",
+    "x": 33,
+    "y": 150
+   },
+   {
+    "id": "lily-pad-2",
+    "name": "Lily pad",
+    "make": "lily(2)",
+    "x": 41,
+    "y": 154
+   },
+   {
+    "id": "rock",
+    "name": "Rock",
+    "make": "rock(3, 2, moss=True)",
+    "x": 22,
+    "y": 170
+   },
+   {
+    "id": "bush-1",
+    "name": "Bush",
+    "make": "bush(4, 'meadow', 7)",
+    "x": 20,
+    "y": 136
+   },
+   {
+    "id": "flowers-2",
+    "name": "Flowers",
+    "make": "flowers(7, 9, 4, ('cherry', 'butter', 'cream'))",
+    "x": 46,
+    "y": 172
+   },
+   {
+    "id": "flowers-3",
+    "name": "Flowers",
+    "make": "flowers(6, 8, 6, ('rose', 'butter', 'slate'))",
+    "x": 50,
+    "y": 96
+   },
+   {
+    "id": "fence-1",
+    "name": "Fence",
+    "make": "fence(30, 1)",
+    "x": 150,
+    "y": 82
+   },
+   {
+    "id": "workshop",
+    "name": "Workshop",
+    "make": "workshop(1)",
+    "x": 132,
+    "y": 112,
+    "when": "workshop"
+   },
+   {
+    "id": "flowers-4",
+    "name": "Flowers",
+    "make": "flowers(6, 9, 21, ('butter', 'cream', 'rose'))",
+    "x": 132,
+    "y": 108,
+    "when": "!workshop"
+   },
+   {
+    "id": "stump",
+    "name": "Stump",
+    "make": "stump(1)",
+    "x": 136,
+    "y": 100,
+    "when": "!workshop"
+   },
+   {
+    "id": "beehive-1",
+    "name": "Beehive",
+    "make": "skep(1)",
+    "x": 166,
+    "y": 110,
+    "when": "hive"
+   },
+   {
+    "id": "beehive-2",
+    "name": "Beehive",
+    "make": "skep(1)",
+    "x": 176,
+    "y": 118,
+    "when": "hive"
+   },
+   {
+    "id": "percys-perch",
+    "name": "Percy's perch",
+    "make": "perch(1, bird)",
+    "x": 174,
+    "y": 160,
+    "when": "perch"
+   },
+   {
+    "id": "garden-bed-1",
+    "name": "Garden bed",
+    "make": "bed(1, 'carrot', 20, 9)",
+    "x": 128,
+    "y": 140
+   },
+   {
+    "id": "garden-bed-2",
+    "name": "Garden bed",
+    "make": "bed(1, 'leafy', 20, 9)",
+    "x": 152,
+    "y": 140
+   },
+   {
+    "id": "garden-bed-3",
+    "name": "Garden bed",
+    "make": "bed(1, 'sprout', 20, 9)",
+    "x": 128,
+    "y": 158
+   },
+   {
+    "id": "tree-5",
+    "name": "Tree",
+    "make": "tree(8, 'leaf', 21)",
+    "x": 108,
+    "y": 92
+   },
+   {
+    "id": "tree-6",
+    "name": "Tree",
+    "make": "tree(7, 'leaf', 23)",
+    "x": 176,
+    "y": 86
+   },
+   {
+    "id": "berry-bush-2",
+    "name": "Berry bush",
+    "make": "bush(4, 'leaf', 9, berries=R['slate'][4])",
+    "x": 156,
+    "y": 166
+   },
+   {
+    "id": "water-barrel",
+    "name": "Water barrel",
+    "make": "barrel(1, True)",
+    "x": 114,
+    "y": 138
+   },
+   {
+    "id": "windmill",
+    "name": "Windmill",
+    "make": "windmill(1)",
+    "x": 46,
+    "y": 262
+   },
+   {
+    "id": "haystack-1",
+    "name": "Haystack",
+    "make": "haystack(5, 1)",
+    "x": 24,
+    "y": 248
+   },
+   {
+    "id": "haystack-2",
+    "name": "Haystack",
+    "make": "haystack(4, 2)",
+    "x": 70,
+    "y": 284
+   },
+   {
+    "id": "haystack-3",
+    "name": "Haystack",
+    "make": "haystack(5, 3)",
+    "x": 30,
+    "y": 276
+   },
+   {
+    "id": "fence-2",
+    "name": "Fence",
+    "make": "fence(26, 1)",
+    "x": 66,
+    "y": 244
+   },
+   {
+    "id": "friends-house",
+    "name": "Friends' house",
+    "make": "house(1, roof='blue', variant='friend', lit=lit)",
+    "x": 152,
+    "y": 268
+   },
+   {
+    "id": "cherry-tree-1",
+    "name": "Cherry tree",
+    "make": "tree(9, 'cherry', 31)",
+    "x": 130,
+    "y": 232
+   },
+   {
+    "id": "cherry-tree-2",
+    "name": "Cherry tree",
+    "make": "tree(10, 'cherry', 32)",
+    "x": 172,
+    "y": 228
+   },
+   {
+    "id": "cherry-tree-3",
+    "name": "Cherry tree",
+    "make": "tree(7, 'cherry', 33)",
+    "x": 176,
+    "y": 276
+   },
+   {
+    "id": "lamp-2",
+    "name": "Lamp",
+    "make": "lamp(1, lit=lit)",
+    "x": 128,
+    "y": 276
+   },
+   {
+    "id": "mailbox-2",
+    "name": "Mailbox",
+    "make": "mailbox(1)",
+    "x": 130,
+    "y": 290
+   },
+   {
+    "id": "bench-2",
+    "name": "Bench",
+    "make": "bench(1)",
+    "x": 120,
+    "y": 300
+   },
+   {
+    "id": "bush-2",
+    "name": "Bush",
+    "make": "bush(4, 'cherry', 8)",
+    "x": 164,
+    "y": 292
+   },
+   {
+    "id": "flowers-5",
+    "name": "Flowers",
+    "make": "flowers(5, 6, 9, ('cherry', 'cream'))",
+    "x": 142,
+    "y": 296
+   },
+   {
+    "id": "dock",
+    "name": "Dock",
+    "make": "dock(34, 11)",
+    "x": 100,
+    "y": 312
+   },
+   {
+    "id": "boat",
+    "name": "Boat",
+    "make": "boat()",
+    "x": 124,
+    "y": 366
+   },
+   {
+    "id": "sea-rock-1",
+    "name": "Sea rock",
+    "make": "searock(4, 1)",
+    "x": 180,
+    "y": 46
+   },
+   {
+    "id": "sea-rock-2",
+    "name": "Sea rock",
+    "make": "searock(3, 2)",
+    "x": 12,
+    "y": 334
+   },
+   {
+    "id": "sea-rock-3",
+    "name": "Sea rock",
+    "make": "searock(4, 3)",
+    "x": 178,
+    "y": 340
+   },
+   {
+    "id": "sea-rock-4",
+    "name": "Sea rock",
+    "make": "searock(3, 4)",
+    "x": 16,
+    "y": 78
+   },
+   {
+    "id": "signpost",
+    "name": "Signpost",
+    "make": "signpost(1)",
+    "x": 88,
+    "y": 306
+   }
+  ],
+  "paths": [
+   {
+    "points": [
+     [
+      97,
+      205
+     ],
+     [
+      97,
+      240
+     ],
+     [
+      99,
+      280
+     ],
+     [
+      100,
+      314
+     ]
+    ],
+    "width": 3.4
+   },
+   {
+    "points": [
+     [
+      97,
+      205
+     ],
+     [
+      78,
+      180
+     ],
+     [
+      62,
+      158
+     ],
+     [
+      48,
+      150
+     ]
+    ],
+    "width": 2.8
+   },
+   {
+    "points": [
+     [
+      97,
+      205
+     ],
+     [
+      120,
+      180
+     ],
+     [
+      134,
+      160
+     ],
+     [
+      142,
+      148
+     ]
+    ],
+    "width": 2.8
+   },
+   {
+    "points": [
+     [
+      97,
+      205
+     ],
+     [
+      72,
+      226
+     ],
+     [
+      56,
+      246
+     ],
+     [
+      50,
+      262
+     ]
+    ],
+    "width": 2.8
+   },
+   {
+    "points": [
+     [
+      97,
+      205
+     ],
+     [
+      122,
+      226
+     ],
+     [
+      138,
+      250
+     ],
+     [
+      146,
+      270
+     ]
+    ],
+    "width": 2.8
+   }
+  ],
+  "plazas": [
+   [
+    97,
+    204,
+    13,
+    6
+   ]
+  ],
+  "ponds": [
+   [
+    36,
+    150,
+    13,
+    7
+   ]
+  ],
+  "clouds": [
+   [
+    44,
+    30,
+    246,
+    1
+   ],
+   [
+    50,
+    62,
+    262,
+    2
+   ],
+   [
+    40,
+    28,
+    276,
+    3
+   ],
+   [
+    46,
+    56,
+    296,
+    4
+   ],
+   [
+    34,
+    78,
+    240,
+    5
+   ],
+   [
+    30,
+    20,
+    262,
+    6
+   ],
+   [
+    36,
+    76,
+    282,
+    8
+   ]
+  ],
+  "areas": {
+   "home": {
+    "seed": [
+     97,
+     205,
+     0
+    ],
+    "bubble": [
+     97,
+     170
+    ],
+    "pet": [
+     110,
+     224
+    ]
+   },
+   "meadow": {
+    "seed": [
+     56,
+     116,
+     0
+    ],
+    "bubble": [
+     62,
+     92
+    ],
+    "pet": [
+     58,
+     128
+    ]
+   },
+   "pond": {
+    "seed": [
+     36,
+     152,
+     17
+    ],
+    "bubble": [
+     36,
+     138
+    ],
+    "pet": [
+     36,
+     160
+    ]
+   },
+   "backyard": {
+    "seed": [
+     148,
+     122,
+     0
+    ],
+    "bubble": [
+     132,
+     86
+    ],
+    "pet": [
+     140,
+     128
+    ]
+   },
+   "fields": {
+    "seed": [
+     46,
+     266,
+     0
+    ],
+    "bubble": [
+     46,
+     232
+    ],
+    "pet": [
+     46,
+     270
+    ]
+   },
+   "friends": {
+    "seed": [
+     152,
+     262,
+     0
+    ],
+    "bubble": [
+     152,
+     238
+    ],
+    "pet": [
+     150,
+     286
+    ]
+   },
+   "ship": {
+    "seed": [
+     120,
+     352,
+     1
+    ],
+    "bubble": [
+     126,
+     334
+    ],
+    "pet": [
+     100,
+     330
+    ]
+   }
+  }
+ },
+ "backyard": {
+  "items": [
+   {
+    "id": "fence-1",
+    "name": "Fence",
+    "make": "fence(70, 2)",
+    "x": 60,
+    "y": 122
+   },
+   {
+    "id": "fence-2",
+    "name": "Fence",
+    "make": "fence(56, 2)",
+    "x": 138,
+    "y": 108
+   },
+   {
+    "id": "tree-1",
+    "name": "Tree",
+    "make": "tree(15, 'leaf', 41)",
+    "x": 22,
+    "y": 150
+   },
+   {
+    "id": "tree-2",
+    "name": "Tree",
+    "make": "tree(13, 'leaf', 42)",
+    "x": 160,
+    "y": 136
+   },
+   {
+    "id": "tree-3",
+    "name": "Tree",
+    "make": "tree(11, 'leaf', 44)",
+    "x": 112,
+    "y": 118
+   },
+   {
+    "id": "workshop",
+    "name": "Workshop",
+    "make": "workshop(2)",
+    "x": 64,
+    "y": 204,
+    "when": "workshop"
+   },
+   {
+    "id": "work-table",
+    "name": "Work table",
+    "make": "table(2)",
+    "x": 124,
+    "y": 208,
+    "when": "workshop"
+   },
+   {
+    "id": "barrel",
+    "name": "Barrel",
+    "make": "barrel(2, False)",
+    "x": 16,
+    "y": 206,
+    "when": "workshop"
+   },
+   {
+    "id": "stump-1",
+    "name": "Stump",
+    "make": "stump(2)",
+    "x": 64,
+    "y": 196,
+    "when": "!workshop"
+   },
+   {
+    "id": "flowers-1",
+    "name": "Flowers",
+    "make": "flowers(8, 18, 31, ('butter', 'cream', 'rose'))",
+    "x": 60,
+    "y": 204,
+    "when": "!workshop"
+   },
+   {
+    "id": "honey-crate",
+    "name": "Honey crate",
+    "make": "crate(2, 'honey')",
+    "x": 172,
+    "y": 256,
+    "when": "hive"
+   },
+   {
+    "id": "beehive-1",
+    "name": "Beehive",
+    "make": "skep(2)",
+    "x": 132,
+    "y": 256,
+    "when": "hive"
+   },
+   {
+    "id": "beehive-2",
+    "name": "Beehive",
+    "make": "skep(2)",
+    "x": 158,
+    "y": 264,
+    "when": "hive"
+   },
+   {
+    "id": "bee-1",
+    "name": "Bee",
+    "make": "bee(0)",
+    "x": 120,
+    "y": 232,
+    "when": "hive"
+   },
+   {
+    "id": "bee-2",
+    "name": "Bee",
+    "make": "bee(1)",
+    "x": 146,
+    "y": 226,
+    "when": "hive"
+   },
+   {
+    "id": "bee-3",
+    "name": "Bee",
+    "make": "bee(2)",
+    "x": 170,
+    "y": 240,
+    "when": "hive"
+   },
+   {
+    "id": "bee-4",
+    "name": "Bee",
+    "make": "bee(3)",
+    "x": 150,
+    "y": 246,
+    "when": "hive"
+   },
+   {
+    "id": "bee-5",
+    "name": "Bee",
+    "make": "bee(4)",
+    "x": 126,
+    "y": 244,
+    "when": "hive"
+   },
+   {
+    "id": "flowers-2",
+    "name": "Flowers",
+    "make": "flowers(8, 14, 3, ('cherry', 'butter', 'cream'))",
+    "x": 146,
+    "y": 278
+   },
+   {
+    "id": "flowers-3",
+    "name": "Flowers",
+    "make": "flowers(6, 10, 5, ('rose', 'butter'))",
+    "x": 114,
+    "y": 268
+   },
+   {
+    "id": "percys-perch",
+    "name": "Percy's perch",
+    "make": "perch(2, bird)",
+    "x": 166,
+    "y": 338,
+    "when": "perch"
+   },
+   {
+    "id": "berry-bush-1",
+    "name": "Berry bush",
+    "make": "bush(7, 'leaf', 9, berries=R['slate'][4])",
+    "x": 178,
+    "y": 356
+   },
+   {
+    "id": "garden-bed-1",
+    "name": "Garden bed",
+    "make": "bed(2, 'carrot', 26, 11)",
+    "x": 40,
+    "y": 300
+   },
+   {
+    "id": "garden-bed-2",
+    "name": "Garden bed",
+    "make": "bed(2, 'leafy', 26, 11)",
+    "x": 40,
+    "y": 336
+   },
+   {
+    "id": "garden-bed-3",
+    "name": "Garden bed",
+    "make": "bed(2, 'dry', 26, 11)",
+    "x": 114,
+    "y": 344
+   },
+   {
+    "id": "garden-bed-4",
+    "name": "Garden bed",
+    "make": "bed(2, 'sprout', 26, 11)",
+    "x": 114,
+    "y": 378
+   },
+   {
+    "id": "watering-can",
+    "name": "Watering can",
+    "make": "wateringcan(2)",
+    "x": 160,
+    "y": 392
+   },
+   {
+    "id": "water-barrel",
+    "name": "Water barrel",
+    "make": "barrel(2, True)",
+    "x": 8,
+    "y": 318
+   },
+   {
+    "id": "crate",
+    "name": "Crate",
+    "make": "crate(2, 'carrot')",
+    "x": 30,
+    "y": 244
+   },
+   {
+    "id": "bush",
+    "name": "Bush",
+    "make": "bush(6, 'leaf', 12)",
+    "x": 20,
+    "y": 372
+   },
+   {
+    "id": "rock-1",
+    "name": "Rock",
+    "make": "rock(5, 5, moss=True)",
+    "x": 20,
+    "y": 262
+   },
+   {
+    "id": "lamp",
+    "name": "Lamp",
+    "make": "lamp(2)",
+    "x": 96,
+    "y": 288
+   },
+   {
+    "id": "sea-rock-1",
+    "name": "Sea rock",
+    "make": "searock(5, 1)",
+    "x": 178,
+    "y": 70
+   },
+   {
+    "id": "sea-rock-2",
+    "name": "Sea rock",
+    "make": "searock(3, 2)",
+    "x": 30,
+    "y": 84
+   },
+   {
+    "id": "stump-2",
+    "name": "Stump",
+    "make": "stump(2)",
+    "x": 110,
+    "y": 160
+   },
+   {
+    "id": "berry-bush-2",
+    "name": "Berry bush",
+    "make": "bush(7, 'leaf', 15, berries=R['rose'][3])",
+    "x": 150,
+    "y": 180
+   },
+   {
+    "id": "flowers-4",
+    "name": "Flowers",
+    "make": "flowers(9, 16, 11, ('rose', 'butter', 'slate'))",
+    "x": 126,
+    "y": 176
+   },
+   {
+    "id": "rock-2",
+    "name": "Rock",
+    "make": "rock(4, 8)",
+    "x": 92,
+    "y": 150
+   }
+  ],
+  "paths": [
+   {
+    "points": [
+     [
+      -10,
+      400
+     ],
+     [
+      30,
+      372
+     ],
+     [
+      62,
+      350
+     ],
+     [
+      84,
+      318
+     ]
+    ],
+    "width": 5.5
+   },
+   {
+    "points": [
+     [
+      84,
+      318
+     ],
+     [
+      88,
+      290
+     ],
+     [
+      76,
+      250
+     ],
+     [
+      54,
+      214
+     ]
+    ],
+    "width": 4.2
+   },
+   {
+    "points": [
+     [
+      88,
+      290
+     ],
+     [
+      120,
+      262
+     ],
+     [
+      138,
+      240
+     ]
+    ],
+    "width": 3.6
+   },
+   {
+    "points": [
+     [
+      84,
+      318
+     ],
+     [
+      120,
+      322
+     ],
+     [
+      150,
+      316
+     ]
+    ],
+    "width": 3.6
+   }
+  ],
+  "plazas": [
+   [
+    50,
+    208,
+    15,
+    5
+   ],
+   [
+    90,
+    316,
+    14,
+    7
+   ]
+  ],
+  "ponds": [],
+  "clouds": [],
+  "areas": {
+   "workshop": {
+    "seed": [
+     64,
+     176,
+     0
+    ],
+    "bubble": [
+     64,
+     132
+    ],
+    "pet": [
+     64,
+     210
+    ]
+   },
+   "hive": {
+    "seed": [
+     148,
+     246,
+     0
+    ],
+    "bubble": [
+     145,
+     222
+    ],
+    "pet": [
+     145,
+     262
+    ]
+   },
+   "perch": {
+    "seed": [
+     168,
+     306,
+     30
+    ],
+    "bubble": [
+     166,
+     266
+    ],
+    "pet": [
+     166,
+     330
+    ]
+   },
+   "garden": {
+    "seed": [
+     76,
+     340,
+     0
+    ],
+    "bubble": [
+     40,
+     274
+    ],
+    "pet": [
+     76,
+     330
+    ]
+   }
+  }
+ }
+}

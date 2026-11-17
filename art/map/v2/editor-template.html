@@ -1,0 +1,463 @@
+<title>Mossbun Map Editor</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  /* Layout: a workbench. Tools on the left, the map in the middle on a
+     cutting mat, the picked piece on the right. Stacks on a phone. */
+  :root {
+    --bg: #f3eef6;        /* lavender paper */
+    --panel: #fffaf2;     /* the game's cream card */
+    --ink: #2b2140;       /* the map art's outline ink */
+    --muted: #6f6385;
+    --line: #ddd2e6;
+    --plum: #4a3566;      /* the game's plum */
+    --accent: #3f7d62;    /* the game's "go" green */
+    --accent-ink: #ffffff;
+    --mat: #3b5c97;       /* the sea behind the map */
+    --pick: #ffd34d;      /* butter: the picked piece */
+    --warn: #b8494f;
+    --font: "Nunito", ui-rounded, system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg: #1d1828; --panel: #29223a; --ink: #f2ecf8; --muted: #b3a6c6; --line: #3e3452;
+    --plum: #c9b6f0; --accent: #5fb38d; --accent-ink: #10231a; --mat: #22365c; --pick: #ffd34d; --warn: #f08a8f; color-scheme: dark } }
+  :root[data-theme="dark"] {
+    --bg: #1d1828; --panel: #29223a; --ink: #f2ecf8; --muted: #b3a6c6; --line: #3e3452;
+    --plum: #c9b6f0; --accent: #5fb38d; --accent-ink: #10231a; --mat: #22365c; --pick: #ffd34d; --warn: #f08a8f; color-scheme: dark }
+  html, body { height: 100%; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 14px; }
+  * { box-sizing: border-box; }
+  button, input, select { font: inherit; color: inherit; }
+  .app { display: grid; grid-template-columns: 250px minmax(0, 1fr) 260px; gap: 14px; height: 100%;
+    padding-block: 14px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; overflow: auto; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+  h1 { font-size: 1.15rem; font-weight: 900; margin: 0; color: var(--plum); text-wrap: balance; }
+  h2 { font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+  p { margin: 0; line-height: 1.45; color: var(--muted); }
+  .group { display: flex; flex-direction: column; gap: 6px; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--bg); border-radius: 10px; padding: 3px; gap: 3px; }
+  .seg button { border: 0; background: transparent; padding: 7px; border-radius: 8px; font-weight: 800; cursor: pointer; color: var(--muted); }
+  .seg button[aria-pressed="true"] { background: var(--panel); color: var(--plum); box-shadow: 0 1px 2px rgba(43,33,64,.15); }
+  label.check { display: flex; align-items: center; gap: 8px; font-weight: 700; cursor: pointer; }
+  label.check input { accent-color: var(--accent); width: 16px; height: 16px; }
+  .btn { border: 1px solid var(--line); background: var(--panel); padding: 8px 12px; border-radius: 10px; font-weight: 800; cursor: pointer; }
+  .btn:hover { border-color: var(--plum); }
+  .btn.go { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+  .btn.warn { color: var(--warn); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .btn:focus-visible, .seg button:focus-visible, .list button:focus-visible { outline: 2px solid var(--plum); outline-offset: 2px; }
+  .status { font-size: .8rem; color: var(--accent); min-height: 1.2em; font-weight: 700; }
+  .status.bad { color: var(--warn); }
+
+  /* the map */
+  .work { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+  .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .bar .zoom { display: flex; align-items: center; gap: 6px; font-weight: 800; color: var(--muted); }
+  .mat { flex: 1; min-height: 0; overflow: auto; background: var(--mat); border-radius: 14px; position: relative; touch-action: none; }
+  .stage-wrap { position: relative; margin: 20px auto; }
+  .stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  .stage img { position: absolute; image-rendering: pixelated; -webkit-user-drag: none; user-select: none; }
+  .stage .ground { left: 0; top: 0; }
+  .stage .shadow { pointer-events: none; }
+  .stage .piece { cursor: grab; }
+  .stage .piece.is-off { opacity: .28; }
+  .stage .piece.is-picked { filter: drop-shadow(0 0 .6px var(--pick)) drop-shadow(0 0 .6px var(--pick)) drop-shadow(0 0 .6px var(--pick)); }
+  .stage .clouds { left: 0; top: 0; pointer-events: none; opacity: .92; }
+  .over { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+  .over .h { pointer-events: auto; cursor: grab; }
+  .ui-hint { position: absolute; left: 0; pointer-events: none; }
+  .legend { font-size: .78rem; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
+
+  /* the picked piece */
+  .picked .name { font-size: 1.05rem; font-weight: 900; color: var(--plum); }
+  .picked .tag { display: inline-block; font-size: .72rem; font-weight: 800; padding: 2px 8px; border-radius: 99px; background: var(--bg); color: var(--muted); }
+  .xy { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .xy label { display: flex; flex-direction: column; gap: 3px; font-size: .75rem; font-weight: 800; color: var(--muted); }
+  .xy input { border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 6px 8px; font-family: var(--mono); font-variant-numeric: tabular-nums; width: 100%; }
+  .pad { display: grid; grid-template-columns: repeat(3, 38px); gap: 4px; justify-content: start; }
+  .pad button { height: 34px; }
+  .list { display: flex; flex-direction: column; gap: 2px; }
+  .list button { text-align: left; border: 0; background: transparent; padding: 5px 8px; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; gap: 8px; font-weight: 700; }
+  .list button:hover { background: var(--bg); }
+  .list button[aria-current="true"] { background: var(--bg); color: var(--plum); }
+  .list small { color: var(--muted); font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .list .moved::after { content: "moved"; font-size: .68rem; font-weight: 800; color: var(--accent); margin-left: 6px; }
+  .empty { padding: 10px; border: 1px dashed var(--line); border-radius: 10px; }
+
+  @media (max-width: 900px) {
+    .app { grid-template-columns: minmax(0, 1fr); height: auto; }
+    .work { order: -1; }
+    .mat { height: 70vh; flex: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <aside class="panel" aria-label="Tools">
+    <div class="group">
+      <h1>Map editor</h1>
+      <p>Drag anything on the map. Arrow keys nudge the picked piece by one pixel, Shift+arrow by five.</p>
+    </div>
+    <div class="group">
+      <h2>Map</h2>
+      <div class="seg" role="group" aria-label="Map">
+        <button id="m-island" aria-pressed="true">Island</button>
+        <button id="m-backyard" aria-pressed="false">Backyard</button>
+      </div>
+    </div>
+    <div class="group">
+      <h2>Show as built</h2>
+      <label class="check"><input type="checkbox" id="w-workshop" checked> Workshop</label>
+      <label class="check"><input type="checkbox" id="w-hive" checked> Beehive</label>
+      <label class="check"><input type="checkbox" id="w-perch" checked> Percy's perch</label>
+    </div>
+    <div class="group">
+      <h2>Layers</h2>
+      <label class="check"><input type="checkbox" id="l-shadows" checked> Shadows</label>
+      <label class="check"><input type="checkbox" id="l-bubbles" checked> Bubbles</label>
+      <label class="check"><input type="checkbox" id="l-paths"> Paths and plazas</label>
+      <label class="check"><input type="checkbox" id="l-areas"> Tap areas</label>
+      <label class="check"><input type="checkbox" id="l-clouds"> Fields clouds</label>
+      <label class="check"><input type="checkbox" id="l-ui" checked> Game buttons</label>
+      <label class="check"><input type="checkbox" id="l-small"> Small phone crop</label>
+    </div>
+    <div class="group">
+      <h2>When you're done</h2>
+      <div class="row">
+        <button class="btn go" id="save">Save for Claude</button>
+        <button class="btn" id="download">Download</button>
+      </div>
+      <div class="row">
+        <button class="btn" id="undo" disabled>Undo</button>
+        <button class="btn warn" id="reset">Start over</button>
+      </div>
+      <div class="status" id="status" role="status"></div>
+      <p id="reset-ask" hidden>Put every piece back where it was? <button class="btn warn" id="reset-yes">Yes, start over</button></p>
+    </div>
+  </aside>
+
+  <main class="work">
+    <div class="bar">
+      <div class="zoom"><label for="zoom">Zoom</label><input type="range" id="zoom" min="1" max="6" step="0.5" value="2"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="mat" id="mat">
+      <div class="stage-wrap" id="wrap"><div class="stage" id="stage"></div></div>
+    </div>
+  </main>
+
+  <aside class="panel" aria-label="Picked piece">
+    <div class="picked group" id="picked"></div>
+    <div class="group">
+      <h2>Pieces on this map</h2>
+      <div class="list" id="list"></div>
+    </div>
+  </aside>
+</div>
+
+<script id="data" type="application/json">__DATA__</script>
+<script>
+(() => {
+  const DATA = JSON.parse(document.getElementById('data').textContent);
+  const ORIGINAL = JSON.parse(JSON.stringify(DATA.layout));
+  let lay = JSON.parse(JSON.stringify(DATA.layout));
+  const $ = (id) => document.getElementById(id);
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  let mapId = 'island', zoom = 2, picked = null; // picked: {kind, key}
+  const undo = [];
+  const show = () => ({
+    workshop: $('w-workshop').checked, hive: $('w-hive').checked, perch: $('w-perch').checked,
+    shadows: $('l-shadows').checked, bubbles: $('l-bubbles').checked, paths: $('l-paths').checked,
+    areas: $('l-areas').checked, clouds: $('l-clouds').checked, ui: $('l-ui').checked, small: $('l-small').checked,
+  });
+  const AREA_NAMES = { home: 'Home', meadow: 'Meadow', pond: 'Pond', backyard: 'Backyard', fields: 'Windmill Fields', friends: 'Friends', ship: 'The ship', workshop: 'Workshop', hive: 'Beehive', perch: "Percy's perch", garden: 'Garden' };
+  const WHEN_NAMES = { workshop: 'with the Workshop', '!workshop': 'before the Workshop', hive: 'with the beehive', perch: 'with the perch' };
+
+  function snapshot() { undo.push(JSON.stringify(lay)); if (undo.length > 200) undo.shift(); $('undo').disabled = false; }
+  function on(e) {
+    if (!e.when) return true;
+    const s = show(); const k = e.when.replace('!', '');
+    return e.when.startsWith('!') ? !s[k] : s[k];
+  }
+  const M = () => lay[mapId];
+  const P = () => DATA.pieces[mapId];
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const origItem = (id) => ORIGINAL[mapId].items.find((e) => e.id === id);
+
+  // ---- drawing
+  function draw() {
+    const m = M(), pc = P(), s = show();
+    const W = pc.width, H = pc.height;
+    $('wrap').style.width = `${W * zoom}px`; $('wrap').style.height = `${H * zoom}px`;
+    const st = $('stage'); st.style.width = `${W}px`; st.style.height = `${H}px`; st.style.transform = `scale(${zoom})`;
+    st.replaceChildren();
+    const g = new Image(); g.src = pc.ground; g.className = 'ground'; g.width = W; g.height = H; g.alt = ''; st.append(g);
+    const live = m.items.filter((e) => on(e) && !e.hidden);
+    if (s.shadows) for (const e of live) {
+      const sh = pc.pieces[e.id].shadow; if (!sh) continue;
+      const im = new Image(); im.src = sh.src; im.className = 'shadow'; im.alt = '';
+      im.style.left = `${e.x + sh.dx}px`; im.style.top = `${e.y + sh.dy}px`; st.append(im);
+    }
+    // hidden pieces drawn faint so they can be brought back
+    const all = m.items.filter((e) => on(e)).sort((a, b) => a.y - b.y);
+    for (const e of all) {
+      const p = pc.pieces[e.id];
+      const im = new Image(); im.src = p.src; im.alt = e.name; im.draggable = false;
+      im.className = `piece${e.hidden ? ' is-off' : ''}${picked && picked.kind === 'item' && picked.key === e.id ? ' is-picked' : ''}`;
+      im.style.left = `${e.x - p.cx}px`; im.style.top = `${e.y - p.base}px`;
+      im.width = p.w; im.height = p.h;
+      im.addEventListener('pointerdown', (ev) => startDrag(ev, { kind: 'item', key: e.id }));
+      st.append(im);
+    }
+    if (s.clouds && pc.clouds && mapId === 'island') { const c = new Image(); c.src = pc.clouds; c.className = 'clouds'; c.alt = ''; st.append(c); }
+    st.append(overlay(W, H, s));
+    legend(s);
+    list(); pickedPanel();
+  }
+
+  function overlay(W, H, s) {
+    const m = M();
+    const svg = document.createElementNS(SVGNS, 'svg');
+    svg.setAttribute('class', 'over'); svg.setAttribute('width', W); svg.setAttribute('height', H); svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    const add = (tag, attrs, parent = svg) => { const n = document.createElementNS(SVGNS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); parent.append(n); return n; };
+    if (s.ui) {
+      // where the game's title sign and Home button sit on a 390 x 844 phone (2 css px per art pixel)
+      add('rect', { x: W / 2 - 22, y: 8, width: 44, height: 20, rx: 4, fill: 'rgba(92,58,46,.55)' });
+      add('rect', { x: 6, y: H - 30, width: W - 12, height: 22, rx: 7, fill: 'rgba(127,179,232,.6)' });
+      const t = add('text', { x: W / 2, y: H - 15.5, 'text-anchor': 'middle', 'font-size': 7, 'font-weight': 800, fill: '#fff', 'font-family': 'Nunito, sans-serif' }); t.textContent = 'Home';
+    }
+    if (s.small) {
+      // a 320 x 640 phone fills the width and cuts the top and bottom
+      const vis = W * 640 / 320, cut = (H - vis) / 2;
+      add('rect', { x: 0, y: 0, width: W, height: cut, fill: 'rgba(20,16,40,.55)' });
+      add('rect', { x: 0, y: H - cut, width: W, height: cut, fill: 'rgba(20,16,40,.55)' });
+    }
+    if (s.paths) {
+      m.paths.forEach((pa, i) => {
+        add('polyline', { points: pa.points.map((p) => p.join(',')).join(' '), fill: 'none', stroke: 'rgba(255,240,190,.75)', 'stroke-width': pa.width * 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' });
+        add('polyline', { points: pa.points.map((p) => p.join(',')).join(' '), fill: 'none', stroke: '#8a5a2e', 'stroke-width': .6, 'stroke-dasharray': '2 1.5' });
+      });
+      m.plazas.forEach((pl, i) => handle(add('ellipse', { cx: pl[0], cy: pl[1], rx: pl[2], ry: pl[3], fill: 'rgba(255,240,190,.45)', stroke: '#8a5a2e', 'stroke-width': .6, class: 'h' }), { kind: 'plaza', key: i }));
+      (m.ponds || []).forEach((pl, i) => handle(add('ellipse', { cx: pl[0], cy: pl[1], rx: pl[2], ry: pl[3], fill: 'rgba(90,170,240,.4)', stroke: '#245c9e', 'stroke-width': .6, class: 'h' }), { kind: 'pond', key: i }));
+      m.paths.forEach((pa, i) => pa.points.forEach((p, j) => handle(add('circle', { cx: p[0], cy: p[1], r: 2.4, fill: '#fff6dc', stroke: '#8a5a2e', 'stroke-width': .8, class: 'h' }), { kind: 'path', key: `${i}:${j}` })));
+    }
+    if (s.areas) for (const [k, a] of Object.entries(m.areas)) {
+      if (a.seed[2]) add('circle', { cx: a.seed[0], cy: a.seed[1], r: a.seed[2], fill: 'none', stroke: 'rgba(255,255,255,.5)', 'stroke-width': .5, 'stroke-dasharray': '2 2' });
+      const gq = add('g', { class: 'h' });
+      add('rect', { x: a.seed[0] - 3, y: a.seed[1] - 3, width: 6, height: 6, transform: `rotate(45 ${a.seed[0]} ${a.seed[1]})`, fill: '#e05a7a', stroke: '#fff', 'stroke-width': .8 }, gq);
+      const t = add('text', { x: a.seed[0], y: a.seed[1] + 10, 'text-anchor': 'middle', 'font-size': 6, 'font-weight': 800, fill: '#fff', stroke: '#2b2140', 'stroke-width': 1.6, 'paint-order': 'stroke', 'font-family': 'Nunito, sans-serif' }, gq);
+      t.textContent = AREA_NAMES[k] || k;
+      handle(gq, { kind: 'seed', key: k });
+    }
+    if (s.bubbles) for (const [k, a] of Object.entries(m.areas)) {
+      // the game's round bubble: 27 x 33 css px tall over its bottom tip, so about 13 x 16 art pixels
+      const [x, y] = a.bubble;
+      const gq = add('g', { class: 'h' });
+      add('path', { d: `M${x} ${y}l-3.4 -4.6a8 8 0 1 1 6.8 0z`, fill: '#ffffff', stroke: '#4a3566', 'stroke-width': 1 }, gq);
+      const t = add('text', { x, y: y - 9.6, 'text-anchor': 'middle', 'font-size': 4.2, 'font-weight': 900, fill: '#4a3566', 'font-family': 'Nunito, sans-serif' }, gq);
+      t.textContent = (AREA_NAMES[k] || k).slice(0, 2);
+      const sel = picked && picked.kind === 'bubble' && picked.key === k;
+      if (sel) add('circle', { cx: x, cy: y - 10, r: 10, fill: 'none', stroke: '#ffd34d', 'stroke-width': 1.2 }, gq);
+      handle(gq, { kind: 'bubble', key: k });
+    }
+    return svg;
+  }
+  function handle(node, what) { node.addEventListener('pointerdown', (ev) => startDrag(ev, what)); }
+
+  function legend(s) {
+    const bits = [];
+    if (s.bubbles) bits.push('<span><i style="background:#fff;border:1px solid #4a3566"></i>Bubbles: where each place\'s icon points</span>');
+    if (s.areas) bits.push('<span><i style="background:#e05a7a"></i>Tap areas: each spot on land goes to the nearest one</span>');
+    if (s.paths) bits.push('<span><i style="background:#fff6dc;border:1px solid #8a5a2e"></i>Paths: the ground redraws when Claude rebuilds the map</span>');
+    $('legend').innerHTML = bits.join('');
+  }
+
+  // ---- getting and setting a thing's position
+  function posOf(w) {
+    const m = M();
+    if (w.kind === 'item') { const e = m.items.find((i) => i.id === w.key); return [e.x, e.y]; }
+    if (w.kind === 'bubble') return [...m.areas[w.key].bubble];
+    if (w.kind === 'seed') return m.areas[w.key].seed.slice(0, 2);
+    if (w.kind === 'plaza') return m.plazas[w.key].slice(0, 2);
+    if (w.kind === 'pond') return m.ponds[w.key].slice(0, 2);
+    if (w.kind === 'path') { const [i, j] = w.key.split(':').map(Number); return [...m.paths[i].points[j]]; }
+  }
+  function setPos(w, x, y, group) {
+    const m = M();
+    if (w.kind === 'item') { const e = m.items.find((i) => i.id === w.key); e.x = x; e.y = y; }
+    else if (w.kind === 'bubble') m.areas[w.key].bubble = [x, y];
+    else if (w.kind === 'seed') { m.areas[w.key].seed[0] = x; m.areas[w.key].seed[1] = y; }
+    else if (w.kind === 'plaza') { m.plazas[w.key][0] = x; m.plazas[w.key][1] = y; }
+    else if (w.kind === 'pond') { m.ponds[w.key][0] = x; m.ponds[w.key][1] = y; }
+    else if (w.kind === 'path') for (const [i, j] of group) m.paths[i].points[j] = [x, y];
+  }
+  // path points that sit on the same spot (where paths meet) move together
+  function joined(w) {
+    if (w.kind !== 'path') return null;
+    const [i, j] = w.key.split(':').map(Number); const p = M().paths[i].points[j];
+    const out = [];
+    M().paths.forEach((pa, a) => pa.points.forEach((q, b) => { if (q[0] === p[0] && q[1] === p[1]) out.push([a, b]); }));
+    return out;
+  }
+
+  // ---- dragging
+  let drag = null;
+  function startDrag(ev, what) {
+    ev.preventDefault(); ev.stopPropagation();
+    picked = what;
+    const [x0, y0] = posOf(what);
+    drag = { what, x0, y0, px: ev.clientX, py: ev.clientY, moved: false, group: joined(what) };
+    window.addEventListener('pointermove', moveDrag);
+    window.addEventListener('pointerup', endDrag, { once: true });
+    draw();
+  }
+  function moveDrag(ev) {
+    if (!drag) return;
+    const dx = Math.round((ev.clientX - drag.px) / zoom), dy = Math.round((ev.clientY - drag.py) / zoom);
+    if (!drag.moved && (dx || dy)) { snapshot(); drag.moved = true; }
+    if (!drag.moved) return;
+    setPos(drag.what, drag.x0 + dx, drag.y0 + dy, drag.group);
+    drawSoon();
+  }
+  function endDrag() { window.removeEventListener('pointermove', moveDrag); drag = null; draw(); }
+  let raf = 0;
+  function drawSoon() { if (!raf) raf = requestAnimationFrame(() => { raf = 0; draw(); }); }
+  $('mat').addEventListener('pointerdown', (ev) => { if (ev.target === $('mat') || ev.target === $('wrap') || ev.target.classList.contains('ground')) { picked = null; draw(); } });
+
+  function nudge(dx, dy) {
+    if (!picked) return;
+    snapshot();
+    const [x, y] = posOf(picked);
+    setPos(picked, x + dx, y + dy, joined(picked));
+    draw();
+  }
+  window.addEventListener('keydown', (ev) => {
+    if (ev.target.tagName === 'INPUT' && ev.target.type !== 'checkbox' && ev.target.type !== 'range') return;
+    const k = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[ev.key];
+    if (k && picked) { ev.preventDefault(); const n = ev.shiftKey ? 5 : 1; nudge(k[0] * n, k[1] * n); }
+    if ((ev.metaKey || ev.ctrlKey) && ev.key === 'z') { ev.preventDefault(); doUndo(); }
+  });
+
+  // ---- side panels
+  function nameOf(w) {
+    if (w.kind === 'item') return M().items.find((i) => i.id === w.key).name;
+    if (w.kind === 'bubble') return `${AREA_NAMES[w.key] || w.key} bubble`;
+    if (w.kind === 'seed') return `${AREA_NAMES[w.key] || w.key} tap area`;
+    if (w.kind === 'plaza') return 'Plaza';
+    if (w.kind === 'pond') return 'Pond';
+    return 'Path point';
+  }
+  function pickedPanel() {
+    const box = $('picked');
+    if (!picked) { box.innerHTML = '<h2>Picked</h2><p class="empty">Tap a piece on the map, or one in the list below, to move it.</p>'; return; }
+    const [x, y] = posOf(picked);
+    const e = picked.kind === 'item' ? M().items.find((i) => i.id === picked.key) : null;
+    box.innerHTML = `<h2>Picked</h2><div class="name"></div>
+      ${e && e.when ? `<span class="tag">${WHEN_NAMES[e.when]}</span>` : ''}
+      <div class="xy"><label>x (middle)<input id="px" type="number" value="${x}"></label><label>y (${picked.kind === 'item' ? 'stands on' : 'point'})<input id="py" type="number" value="${y}"></label></div>
+      <div class="pad" aria-label="Nudge">
+        <span></span><button class="btn" data-n="0,-1" aria-label="Up">↑</button><span></span>
+        <button class="btn" data-n="-1,0" aria-label="Left">←</button><button class="btn" data-n="0,1" aria-label="Down">↓</button><button class="btn" data-n="1,0" aria-label="Right">→</button>
+      </div>
+      <div class="row">
+        ${e ? `<button class="btn" id="hide">${e.hidden ? 'Put back on the map' : 'Take off the map'}</button>` : ''}
+        <button class="btn" id="back">Back to where it was</button>
+      </div>`;
+    box.querySelector('.name').textContent = nameOf(picked);
+    box.querySelectorAll('[data-n]').forEach((b) => b.addEventListener('click', () => { const [dx, dy] = b.dataset.n.split(',').map(Number); nudge(dx, dy); }));
+    const typed = () => { const nx = Math.round(+$('px').value), ny = Math.round(+$('py').value); if (Number.isFinite(nx) && Number.isFinite(ny)) { snapshot(); setPos(picked, nx, ny, joined(picked)); draw(); } };
+    $('px').addEventListener('change', typed); $('py').addEventListener('change', typed);
+    if (e) $('hide').addEventListener('click', () => { snapshot(); e.hidden = !e.hidden; if (!e.hidden) delete e.hidden; draw(); });
+    $('back').addEventListener('click', () => {
+      const o = ORIGINAL[mapId]; snapshot();
+      if (picked.kind === 'item') { const oi = o.items.find((i) => i.id === picked.key); setPos(picked, oi.x, oi.y); if (e) delete e.hidden; }
+      else if (picked.kind === 'bubble') setPos(picked, ...o.areas[picked.key].bubble);
+      else if (picked.kind === 'seed') setPos(picked, ...o.areas[picked.key].seed.slice(0, 2));
+      else if (picked.kind === 'plaza') setPos(picked, ...o.plazas[picked.key].slice(0, 2));
+      else if (picked.kind === 'pond') setPos(picked, ...o.ponds[picked.key].slice(0, 2));
+      else { const [i, j] = picked.key.split(':').map(Number); setPos(picked, ...o.paths[i].points[j], joined(picked)); }
+      draw();
+    });
+  }
+  function list() {
+    const box = $('list'); box.replaceChildren();
+    const rows = [...M().items].sort((a, b) => a.name.localeCompare(b.name) || a.y - b.y);
+    for (const e of rows) {
+      const b = document.createElement('button');
+      const o = origItem(e.id);
+      const moved = o && (o.x !== e.x || o.y !== e.y || !!o.hidden !== !!e.hidden);
+      b.innerHTML = `<span class="${moved ? 'moved' : ''}"></span><small>${e.x}, ${e.y}</small>`;
+      b.firstChild.textContent = e.name + (e.hidden ? ' (off the map)' : '') + (!on(e) ? ` (${WHEN_NAMES[e.when]})` : '');
+      if (!on(e)) b.title = WHEN_NAMES[e.when];
+      b.setAttribute('aria-current', String(!!picked && picked.kind === 'item' && picked.key === e.id));
+      b.addEventListener('click', () => { picked = { kind: 'item', key: e.id }; draw(); });
+      box.append(b);
+    }
+  }
+
+  // ---- controls
+  function setMap(id) { mapId = id; picked = null; $('m-island').setAttribute('aria-pressed', String(id === 'island')); $('m-backyard').setAttribute('aria-pressed', String(id === 'backyard')); $('l-clouds').disabled = id !== 'island'; draw(); }
+  $('m-island').addEventListener('click', () => setMap('island'));
+  $('m-backyard').addEventListener('click', () => setMap('backyard'));
+  document.querySelectorAll('aside input[type=checkbox]').forEach((c) => c.addEventListener('change', draw));
+  $('zoom').addEventListener('input', () => { zoom = +$('zoom').value; draw(); });
+  function fitZoom() {
+    const mat = $('mat'); const h = mat.clientHeight - 40, w = mat.clientWidth - 40;
+    const z = Math.max(1, Math.min(6, Math.floor(Math.min(h / 422, w / 195) * 2) / 2));
+    zoom = z; $('zoom').value = z;
+  }
+  function doUndo() { const s = undo.pop(); if (!s) return; lay = JSON.parse(s); $('undo').disabled = !undo.length; draw(); }
+  $('undo').addEventListener('click', doUndo);
+  $('reset').addEventListener('click', () => { $('reset-ask').hidden = false; });
+  $('reset-yes').addEventListener('click', () => { snapshot(); lay = JSON.parse(JSON.stringify(ORIGINAL)); $('reset-ask').hidden = true; picked = null; draw(); say('Back to the original layout.'); });
+
+  function say(t, bad) { const s = $('status'); s.textContent = t; s.classList.toggle('bad', !!bad); }
+  const exportJson = () => JSON.stringify(lay, null, 1);
+  function changes() {
+    let n = 0;
+    for (const id of Object.keys(lay)) {
+      const a = lay[id], o = ORIGINAL[id];
+      a.items.forEach((e, i) => { if (!same(e, o.items[i])) n++; });
+      for (const k of Object.keys(a.areas)) if (!same(a.areas[k], o.areas[k])) n++;
+      if (!same(a.paths, o.paths) || !same(a.plazas, o.plazas) || !same(a.ponds, o.ponds)) n++;
+    }
+    return n;
+  }
+
+  let db = null;
+  (async () => {
+    try { db = await window.claude?.use?.('db'); } catch { db = null; }
+    if (!db) { $('save').disabled = true; $('save').title = 'Saving needs you to be signed in. Use Download instead.'; return; }
+    try {
+      const snap = await db.doc('layouts/current').get();
+      if (snap.exists) {
+        const d = snap.data();
+        if (d && d.layout) { lay = JSON.parse(d.layout); draw(); say('Loaded your last saved layout.'); }
+      }
+    } catch { /* keep the original layout */ }
+  })();
+  $('save').addEventListener('click', async () => {
+    if (!db) return;
+    $('save').disabled = true; say('Saving…');
+    try {
+      await db.doc('layouts/current').set({ layout: exportJson(), changes: changes(), savedAt: new Date().toISOString() });
+      say(`Saved. Tell Claude in the thread and it rebuilds the map.`);
+    } catch (e) { say(`Couldn't save (${e && e.code || 'error'}). Try Download instead.`, true); }
+    $('save').disabled = false;
+  });
+  $('download').addEventListener('click', async () => {
+    let dl = null; try { dl = await window.claude?.use?.('downloads'); } catch { dl = null; }
+    if (!dl) { say('Downloads are off here. Use Save for Claude.', true); return; }
+    try { await dl.save({ filename: 'layout.json', data: new Blob([exportJson()], { type: 'application/json' }) }); say('Downloaded layout.json.'); }
+    catch (e) { if (e && e.code !== 'declined') say(`Couldn't download (${e && e.code || 'error'}).`, true); }
+  });
+
+  fitZoom();
+  draw();
+  window.addEventListener('resize', () => { /* keep the zoom the person chose */ });
+})();
+</script>

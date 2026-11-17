@@ -1268,78 +1268,54 @@ ISLAND_POLY = [(22, 104), (44, 80), (74, 72), (97, 84), (112, 68), (140, 60), (1
                (28, 282), (11, 248), (8, 214), (14, 186), (7, 160), (10, 128)]
 
 
+# Where everything stands: layout.json, which the map editor exports
+# (paths, plazas, ponds, clouds, every prop, and each area's tap-shape
+# seed, bubble and pet spot). x is a prop's middle, y the line it stands on.
+LAYOUT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'layout.json')
+
+
+def layout(name):
+    import json
+    with open(LAYOUT_FILE) as f: return json.load(f)[name]
+
+
+def terrain_bits(name):
+    lay = layout(name)
+    paths = [([tuple(p) for p in pa['points']], pa['width']) for pa in lay['paths']]
+    return paths, [tuple(p) for p in lay['plazas']], [tuple(p) for p in lay['ponds']]
+
+
+def items_of(name, ws=False, hive=False, perch_=None, lit=False):
+    """The props of a map from layout.json: the workshop, the hives and the
+    perch only once they exist in the game (the game lays them over the
+    picture)."""
+    have = {'workshop': ws, 'hive': hive, 'perch': bool(perch_)}
+    env = dict(globals(), lit=lit, bird=perch_ == 'home')
+    it = []
+    for e in layout(name)['items']:
+        if e.get('hidden'): continue
+        w = e.get('when')
+        if w:
+            on = have[w.lstrip('!')]
+            if w.startswith('!'): on = not on
+            if not on: continue
+        it.append((eval(e['make'], env), e['x'], e['y']))
+    return it
+
+
 def island_terrain():
     seeds = [('meadow', 46, 124, 1.0), ('grass', 150, 112, 1.0), ('home', 97, 186, 0.85), ('wheat', 44, 262, 1.05), ('petal', 152, 258, 1.0)]
-    hub = (97, 205)
-    paths = [([hub, (97, 240), (99, 280), (100, 314)], 3.4),
-             ([hub, (78, 180), (62, 158), (48, 150)], 2.8),
-             ([hub, (120, 180), (134, 160), (142, 148)], 2.8),
-             ([hub, (72, 226), (56, 246), (50, 262)], 2.8),
-             ([hub, (122, 226), (138, 250), (146, 270)], 2.8)]
-    return build_terrain(ISLAND_POLY, seeds, paths, seed=7, ponds=[(36, 150, 13, 7)], plazas=[(97, 204, 13, 6)])
+    paths, plazas, ponds = terrain_bits('island')
+    return build_terrain(ISLAND_POLY, seeds, paths, seed=7, ponds=ponds, plazas=plazas)
 
 
 def island_items(ws=False, hive=False, perch_=None, lit=False):
-    """The island's props. The workshop, the hives and the perch only once
-    they exist in the game (the game lays them over the picture)."""
-    it = []
-    A = lambda s, x, y: it.append((s, x, y))
-    # --- home
-    A(house(1, lit=lit), 97, 198)
-    A(well(1), 126, 214)
-    A(mailbox(1), 76, 204)
-    A(lamp(1, lit=lit), 114, 206)
-    A(tree(8, 'leaf', 3), 66, 196)
-    A(bush(4, 'leaf', 5, berries=R['rose'][3]), 124, 190)
-    A(flowers(5, 6, 1), 82, 212)
-    # --- meadow
-    A(tree(10, 'leaf', 11), 30, 118)
-    A(tree(8, 'leaf', 12), 66, 106)
-    A(tree(7, 'leaf', 13), 84, 132)
-    A(bench(1), 58, 138)
-    A(reeds(1), 24, 152); A(reeds(2), 49, 148)
-    A(lily(1), 33, 150); A(lily(2), 41, 154)
-    A(rock(3, 2, moss=True), 22, 170)
-    A(bush(4, 'meadow', 7), 20, 136)
-    A(flowers(7, 9, 4, ('cherry', 'butter', 'cream')), 46, 172)
-    A(flowers(6, 8, 6, ('rose', 'butter', 'slate')), 50, 96)
-    # --- backyard
-    A(fence(30, 1), 150, 82)
-    if ws: A(workshop(1), 132, 112)
-    else: A(flowers(6, 9, 21, ('butter', 'cream', 'rose')), 132, 108); A(stump(1), 136, 100)
-    if hive: A(skep(1), 166, 110); A(skep(1), 176, 118)
-    if perch_: A(perch(1, perch_ == 'home'), 174, 160)
-    A(bed(1, 'carrot', 20, 9), 128, 140); A(bed(1, 'leafy', 20, 9), 152, 140)
-    A(bed(1, 'sprout', 20, 9), 128, 158)
-    A(tree(8, 'leaf', 21), 108, 92)
-    A(tree(7, 'leaf', 23), 176, 86)
-    A(bush(4, 'leaf', 9, berries=R['slate'][4]), 156, 166)
-    A(barrel(1, True), 114, 138)
-    # --- fields (clouds on top while locked)
-    A(windmill(1), 46, 262)
-    A(haystack(5, 1), 24, 248); A(haystack(4, 2), 70, 284); A(haystack(5, 3), 30, 276)
-    A(fence(26, 1), 66, 244)
-    # --- friends
-    A(house(1, roof='blue', variant='friend', lit=lit), 152, 268)
-    A(tree(9, 'cherry', 31), 130, 232)
-    A(tree(10, 'cherry', 32), 172, 228)
-    A(tree(7, 'cherry', 33), 176, 276)
-    A(lamp(1, lit=lit), 128, 276)
-    A(mailbox(1), 130, 290)
-    A(bench(1), 120, 300)
-    A(bush(4, 'cherry', 8), 164, 292)
-    A(flowers(5, 6, 9, ('cherry', 'cream')), 142, 296)
-    # --- shore
-    A(dock(34, 11), 100, 312)
-    A(boat(), 124, 366)
-    A(searock(4, 1), 180, 46); A(searock(3, 2), 12, 334); A(searock(4, 3), 178, 340); A(searock(3, 4), 16, 78)
-    A(signpost(1), 88, 306)
-    return it
+    return items_of('island', ws, hive, perch_, lit)
 
 
 def island_clouds():
     lay = Image.new('RGBA', (W, H))
-    for (wd, x, y, sd) in [(44, 30, 246, 1), (50, 62, 262, 2), (40, 28, 276, 3), (46, 56, 296, 4), (34, 78, 240, 5), (30, 20, 262, 6), (36, 76, 282, 8)]:
+    for (wd, x, y, sd) in layout('island')['clouds']:
         c = cloud(wd, sd)
         paste_clip(lay, c.im, x - c.cx, y - c.base)
     return lay
@@ -1351,51 +1327,12 @@ BACKYARD_POLY = [(-30, 132), (20, 104), (70, 96), (112, 80), (150, 84), (176, 10
 
 def backyard_terrain():
     seeds = [('grass', 100, 200, 1.0), ('home', -20, 430, 0.55), ('meadow', -30, 120, 0.45)]
-    # The path starts right at the workshop's doors.
-    paths = [([(-10, 400), (30, 372), (62, 350), (84, 318)], 5.5),
-             ([(84, 318), (88, 290), (76, 250), (54, 214)], 4.2),
-             ([(88, 290), (120, 262), (138, 240)], 3.6),
-             ([(84, 318), (120, 322), (150, 316)], 3.6)]
-    return build_terrain(BACKYARD_POLY, seeds, paths, seed=23, cliff=10, plazas=[(50, 208, 15, 5), (90, 316, 14, 7)])
+    paths, plazas, ponds = terrain_bits('backyard')
+    return build_terrain(BACKYARD_POLY, seeds, paths, seed=23, cliff=10, ponds=ponds, plazas=plazas)
 
 
 def backyard_items(ws=False, hive=False, perch_=None):
-    it = []
-    A = lambda s, x, y: it.append((s, x, y))
-    A(fence(70, 2), 60, 122); A(fence(56, 2), 138, 108)
-    A(tree(15, 'leaf', 41), 22, 150)
-    A(tree(13, 'leaf', 42), 160, 136)
-    A(tree(11, 'leaf', 44), 112, 118)
-    if ws:
-        A(workshop(2), 64, 204)
-        A(table(2), 124, 208)
-        A(barrel(2, False), 16, 206)
-    else:
-        A(stump(2), 64, 196); A(flowers(8, 18, 31, ('butter', 'cream', 'rose')), 60, 204)
-    if hive:
-        A(crate(2, 'honey'), 172, 256)
-        A(skep(2), 132, 256); A(skep(2), 158, 264)
-        for i, (bx, by) in enumerate([(120, 232), (146, 226), (170, 240), (150, 246), (126, 244)]):
-            A(bee(i), bx, by)
-    A(flowers(8, 14, 3, ('cherry', 'butter', 'cream')), 146, 278)
-    A(flowers(6, 10, 5, ('rose', 'butter')), 114, 268)
-    if perch_: A(perch(2, perch_ == 'home'), 166, 338)
-    A(bush(7, 'leaf', 9, berries=R['slate'][4]), 178, 356)
-    # garden beds 2x2
-    A(bed(2, 'carrot', 26, 11), 40, 300); A(bed(2, 'leafy', 26, 11), 40, 336)
-    A(bed(2, 'dry', 26, 11), 114, 344); A(bed(2, 'sprout', 26, 11), 114, 378)
-    A(wateringcan(2), 160, 392)
-    A(barrel(2, True), 8, 318)
-    A(crate(2, 'carrot'), 30, 244)  # off the path, by the beds
-    A(bush(6, 'leaf', 12), 20, 372)
-    A(rock(5, 5, moss=True), 20, 262)
-    A(lamp(2), 96, 288)
-    A(searock(5, 1), 178, 70); A(searock(3, 2), 30, 84)
-    A(stump(2), 110, 160)
-    A(bush(7, 'leaf', 15, berries=R['rose'][3]), 150, 180)
-    A(flowers(9, 16, 11, ('rose', 'butter', 'slate')), 126, 176)
-    A(rock(4, 8), 92, 150)
-    return it
+    return items_of('backyard', ws, hive, perch_)
 
 
 # Kept for the mockup page (compose*.html): the full scenes.
@@ -1685,6 +1622,14 @@ def write_map(name, base, extras, lights, covers, masks, spots, night):
     with open(os.path.join(GAME, name + '.json'), 'w') as f: json.dump(out, f, separators=(',', ':'))
 
 
+def area_bits(name):
+    """Each area's tap-shape seed (x, y, reach: 0 for no limit), and where
+    its bubble points (bottom tip) and where the pet stands."""
+    areas = layout(name)['areas']
+    return ({k: tuple(a['seed']) for k, a in areas.items()},
+            {k: (tuple(a['bubble']), tuple(a['pet'])) for k, a in areas.items()})
+
+
 def game():
     os.makedirs(GAME, exist_ok=True)
     # ---- the island
@@ -1701,15 +1646,8 @@ def game():
     for y in range(H):
         for x in range(W): land[y, x] = inside(ISLAND_POLY, x, y)
     ship = lambda x, y: 'ship' if (math.hypot(x - 120, y - 352) < 30 or (92 <= x <= 108 and 304 <= y <= 344)) else None
-    masks = areas_by_seeds(land, {
-        'home': (97, 205, 0), 'meadow': (56, 116, 0), 'pond': (36, 152, 17), 'backyard': (148, 122, 0),
-        'fields': (46, 266, 0), 'friends': (152, 262, 0), 'ship': (120, 352, 1),
-    }, ship)
-    spots = {  # where its bubble points (bottom tip) and where the pet stands
-        'home': ((97, 170), (110, 224)), 'meadow': ((62, 92), (58, 128)), 'pond': ((36, 138), (36, 160)),
-        'backyard': ((132, 86), (140, 128)), 'fields': ((46, 232), (46, 270)), 'friends': ((152, 238), (150, 286)),
-        'ship': ((126, 334), (100, 330)),
-    }
+    seeds, spots = area_bits('island')
+    masks = areas_by_seeds(land, seeds, ship)
     write_map('island', base, extras, diff_layer(lit, base), {'fields': island_clouds()}, masks, spots, True)
     # ---- the Backyard, close up
     ter, info = backyard_terrain()
@@ -1723,19 +1661,60 @@ def game():
     land = np.zeros((H, W), bool)
     for y in range(H):
         for x in range(W): land[y, x] = inside(BACKYARD_POLY, x, y) and y > 100
-    masks = areas_by_seeds(land, {
-        'workshop': (64, 176, 0), 'hive': (148, 246, 0), 'perch': (168, 306, 30), 'garden': (76, 340, 0),
-    })
-    spots = {
-        'workshop': ((64, 132), (64, 210)), 'hive': ((145, 222), (145, 262)),
-        'perch': ((166, 266), (166, 330)), 'garden': ((40, 274), (76, 330)),
-    }
+    seeds, spots = area_bits('backyard')
+    masks = areas_by_seeds(land, seeds)
     write_map('backyard', base, extras, None, {}, masks, spots, False)
+
+
+def editor_pieces():
+    """Everything the map editor needs, as data: each map's bare ground,
+    its clouds, and every prop as its own picture with its shadow."""
+    import base64, io, json
+    def url(im):
+        b = io.BytesIO(); im.save(b, 'PNG')
+        return 'data:image/png;base64,' + base64.b64encode(b.getvalue()).decode()
+    out = {}
+    for name, terrain in (('island', island_terrain), ('backyard', backyard_terrain)):
+        ter, info = terrain()
+        env = dict(globals(), lit=False, bird=True)
+        pieces = {}
+        for e in layout(name)['items']:
+            spr = eval(e['make'], env)
+            sh = Image.new('L', (W * 2, H * 2), 0)
+            paste_big(sh, spr, W, H)
+            box = sh.getbbox()
+            shadow = None
+            if box:
+                a = sh.crop(box)
+                im = Image.new('RGBA', a.size, (24, 30, 86, 0))
+                im.putalpha(a.point(lambda v: 92 if v else 0))
+                shadow = {'src': url(im), 'dx': box[0] - W, 'dy': box[1] - H}
+            pieces[e['id']] = {'src': url(spr.im), 'cx': spr.cx, 'base': spr.base, 'w': spr.w, 'h': spr.h, 'shadow': shadow}
+        m = {'width': W, 'height': H, 'ground': url(ter), 'pieces': pieces}
+        if name == 'island': m['clouds'] = url(island_clouds())
+        out[name] = m
+    return out
+
+
+def paste_big(layer, spr, x, y):
+    """paste()'s shadow on a layer twice the map's size, so nothing is cut."""
+    global W, H
+    w0, h0 = W, H
+    W, H = layer.size
+    try: paste(None, spr, x, y, layer)
+    finally: W, H = w0, h0
 
 
 if __name__ == '__main__':
     what = sys.argv[1] if len(sys.argv) > 1 else 'all'
     if what == 'game': game(); sys.exit()
+    if what == 'editor':
+        # The map editor page: python3 draw.py editor <out.html>
+        import json
+        data = json.dumps({'pieces': editor_pieces(), 'layout': json.load(open(LAYOUT_FILE))})
+        tpl = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'editor-template.html')).read()
+        with open(sys.argv[2], 'w') as f: f.write(tpl.replace('__DATA__', data))
+        sys.exit()
     if what in ('all', 'ui'): ui()
     if what in ('all', 'island'):
         island_scene(False, 'island_scene_nows')
