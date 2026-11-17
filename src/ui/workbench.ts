@@ -30,7 +30,7 @@
 import { STRINGS } from '../strings';
 import {
   CATEGORIES, getProject, haveMaterials, madeAlready, MATERIALS, materialCount, PARTS, partPlace, PATTERNS,
-  hasPart, progressOf, projectOpen, PROJECTS, type Category, type Pattern, type Project,
+  hasPart, progressOf, projectOpen, projectToShow, PROJECTS, stageReady, type Category, type Pattern, type Project,
 } from '../game/crafting';
 import type { GameState } from '../game/state';
 import { createDrawer } from './drawer';
@@ -52,6 +52,7 @@ export interface WorkbenchCallbacks {
   onBuild: (id: string) => boolean;
   onHang: () => void; // "Hang it in the room": off to decorating
   onExit: () => void;
+  onSeeProject: (id: string) => void; // looked at a project with a finished stage
   toast: (message: string) => void;
   roomBox: () => DOMRect;
 }
@@ -59,7 +60,9 @@ export interface WorkbenchCallbacks {
 export interface Workbench {
   row: HTMLElement;
   bench: HTMLElement;
-  start: () => void;
+  // Opens on a project with news (a finished stage, or one ready to
+  // start), else the bench; `projects`: on a project either way.
+  start: (projects?: boolean) => void;
   stop: () => void;
   active: () => boolean;
   update: (state: GameState, now: number) => void;
@@ -92,6 +95,7 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
   let now = 0;
   let active = false;
   let tab: Tab = BENCH;
+  let lastProject: Tab | null = null; // the project you last looked at
   let picked: Pattern | null = null;
   let taps = 0;
   let justMade: Pattern | null = null;
@@ -200,6 +204,10 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
     stations,
     pick: (t) => switchTo(t),
     current: () => tab,
+    tabs: [
+      { label: T.tabs.bench, has: (t) => t === BENCH, go: () => BENCH },
+      { label: T.tabs.projects, has: (t) => t !== BENCH, go: () => projectTab(), news: () => !!state && PROJECTS.some((p) => stageReady(state!, p.id)) },
+    ],
     frame: bench,
     room,
     swipeOn: [room, counter],
@@ -274,9 +282,18 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
   row.append(close, pouchDrawer.el, patternDrawer.el);
   const lift = createLift(bench, row);
 
+  // The project the Projects tab goes to: one with news, else the one
+  // you last looked at, else the first you've found.
+  function projectTab(): Tab {
+    const s = state;
+    if (!s) return PROJECTS[0]?.id ?? BENCH;
+    return projectToShow(s)?.id ?? lastProject ?? PROJECTS.find((p) => projectOpen(s, p))?.id ?? PROJECTS[0]?.id ?? BENCH;
+  }
+
   function switchTo(t: Tab): void {
     if (t === tab || hammering()) return;
     tab = t;
+    if (t !== BENCH) lastProject = t;
     justMade = null;
     bench.classList.remove('made');
     render();
@@ -355,6 +372,8 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
     const p = here();
     if (p) renderProject(s, p);
     renderLists(s);
+    // Looking at a finished stage: it isn't news any more.
+    if (p && stageReady(s, p.id)) cb.onSeeProject(p.id);
   }
 
   function renderBench(s: GameState): void {
@@ -553,9 +572,11 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
   return {
     row,
     bench,
-    start() {
+    start(projects = false) {
       active = true;
-      tab = BENCH;
+      const show = state ? projectToShow(state) : undefined;
+      tab = show ? show.id : projects ? projectTab() : BENCH;
+      if (tab !== BENCH) lastProject = tab;
       taps = 0;
       justMade = null;
       if (picked && state && madeAlready(state, picked)) picked = null;
@@ -567,7 +588,7 @@ export function createWorkbench(cb: WorkbenchCallbacks): Workbench {
       render();
       void bench.offsetHeight;
       bench.classList.add('is-in');
-      if (state) {
+      if (state && tab === BENCH) {
         const s = state;
         cb.toast(MATERIALS.some((id) => materialCount(s, id) > 0) ? T.start : T.startEmpty);
       }

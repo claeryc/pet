@@ -411,6 +411,17 @@ export function cantGo(pet: Pet, now: number): JourneyBlock | null {
 
 export const percyFree = (state: GameState, now: number): boolean => now >= state.journeys.percyFreeAt;
 
+// Where Percy is: away on a trip, resting after one, or ready to go.
+export function percyAtPerch(state: GameState, now: number): 'ready' | 'resting' | 'away' {
+  if ([state.pet, ...state.housemates].some((p) => p.trip?.percy === 'coming')) return 'away';
+  return percyFree(state, now) ? 'ready' : 'resting';
+}
+// When Percy's trip ends (0 if he isn't away).
+export function percyBackAt(state: GameState): number {
+  const trip = [state.pet, ...state.housemates].find((p) => p.trip?.percy === 'coming')?.trip;
+  return trip ? trip.endsAt : 0;
+}
+
 // The friend `pet` makes on an epic trip `offer`, setting off at `now`,
 // J.friend.chance of the time (null otherwise).
 function tripFriend(state: GameState, pet: Pet, offer: Offer, now: number): Trip['friend'] {

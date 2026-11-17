@@ -56,6 +56,7 @@ export interface TreeMember extends FamilyMember {
   stage: Stage; // earlier generations are shown as they were when grown up
   current: boolean; // the pet you're looking after now
   home: boolean; // in your room (the pet you're looking after, or another)
+  resting?: boolean; // passed away, resting under the stars (see resting.ts)
 }
 
 export interface Generation {
@@ -92,6 +93,7 @@ export function familyGenerations(state: GameState): Generation[] {
     ...state.family.map((m) => ({ ...m, stage: 'adult' as Stage, current: false, home: false })),
     atHome(state.pet, true),
     ...state.housemates.map((p) => atHome(p, false)),
+    ...(state.resting ?? []).map((p) => ({ ...rememberPet(p, state.owner), stage: p.stage, current: false, home: false, resting: true })),
   ];
   const numbers = [...new Set(members.map((m) => m.generation))].sort((a, b) => a - b);
   return numbers.map((number) => ({

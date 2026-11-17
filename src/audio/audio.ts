@@ -91,6 +91,9 @@ const SOUNDS = {
   setOff: { file: 'set-off', volume: 0.4 },
   unzip: { file: 'unzip', volume: 0.45 }, // a backpack opened
   camera: { file: 'camera', volume: 0.45 }, // a snapshot for the journal
+  // The dock
+  sheetOpen: { file: 'sheet-open', volume: 0.25 }, // a sheet or the pop-up opening
+  sheetClose: { file: 'sheet-close', volume: 0.2 },
 } as const;
 export type SoundId = keyof typeof SOUNDS;
 

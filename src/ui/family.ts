@@ -4,6 +4,7 @@
 // its stats and a Rename button. The pet's name and rarity live here, not
 // on the home screen.
 
+import { favouriteToy } from '../game/toys';
 import { STRINGS } from '../strings';
 import { THEMES, characterSheet, getCharacter, getVariant, sheetFor } from '../game/growth';
 import { carriedOf } from '../game/genes';
@@ -79,12 +80,13 @@ function likesLine(m: TreeMember): HTMLElement | null {
   if (m.stage === 'egg' || m.fromFriend || m.fromWild) return null;
   const t = STRINGS.family.likes;
   const likes = likesOf(m);
-  const shown = (kind: 'food' | 'play' | 'dislike', name: string) => (likes.found.includes(kind) ? name : t.unknown);
+  const shown = (kind: 'food' | 'play' | 'dislike' | 'toy', name: string) => (likes.found.includes(kind) ? name : t.unknown);
   const foodName = (id: string) => STRINGS.foods[id as keyof typeof STRINGS.foods] ?? id;
   const dislike = likes.dislike === 'bath' ? t.bath : likes.dislike === 'woken' ? t.woken : foodName(likes.dislike);
   const line = el('small', 'tree-likes', [
     t.food(shown('food', foodName(likes.food))),
     t.play(shown('play', STRINGS.activities[likes.play as keyof typeof STRINGS.activities] ?? likes.play)),
+    ...(likes.found.includes('toy') ? [t.toy(STRINGS.toys.names[favouriteToy(m)] ?? '')] : []),
     t.dislike(shown('dislike', dislike)),
     ...(m.favouritePlace ? [t.place(STRINGS.journeys.places[m.favouritePlace] ?? m.favouritePlace)] : []),
   ].join(' · '));
@@ -132,6 +134,7 @@ function card(m: TreeMember, state: GameState, cb: FamilyCallbacks): HTMLElement
   top.append(el('b', '', m.name || '…'));
   if (m.current) top.append(el('span', 'tree-now', STRINGS.family.you));
   else if (m.home) top.append(el('span', 'tree-now tree-home', STRINGS.family.atHome));
+  else if (m.resting) top.append(el('span', 'tree-now tree-home', STRINGS.family.resting));
   else if (m.meadow) top.append(el('span', 'tree-now tree-home', STRINGS.family.meadow));
   if (m.current && state.pet.named) {
     const rename = el('button', 'shop-btn shop-btn-soft tree-rename', STRINGS.family.rename);

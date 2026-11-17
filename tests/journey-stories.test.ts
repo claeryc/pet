@@ -25,6 +25,7 @@ function ready(offers: Offer[] = [
 ]): GameState {
   const s = newTeen(START);
   s.pet.stats = { hunger: 100, happiness: 100, health: 100, energy: 100 };
+  s.inventory.supplies['ticket:holiday'] = 0; // the free starting one, used up
   s.journeys.offers = offers;
   s.journeys.refillAt = [START, START, START];
   return s;
@@ -199,6 +200,11 @@ describe('a Holiday', () => {
     expect(bought.blocked).toBeUndefined();
     return bought.state;
   }
+
+  it('starts as one free ticket in a new game, and costs 30 star fragments after that', () => {
+    expect(holidayTickets(newTeen(START))).toBe(1);
+    expect(J.holiday.fragments).toBe(30);
+  });
 
   it('costs star fragments in the Star Shop', () => {
     const s = withTicket();

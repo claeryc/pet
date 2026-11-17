@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { MAPS, START_MAP, areaCard, firstPick, mistyAreas, parseOpens, petAt, ticketsAt } from '../src/game/map';
+import { MAPS, START_MAP, areaCard, firstPick, mistyAreas, parseOpens, petAt, placeToIntroduce, ticketsAt } from '../src/game/map';
 import { NIGHT, PLACES } from '../src/game/journeys';
 import { CONFIG } from '../src/game/config';
+import { localDay } from '../src/game/economy';
 import type { Trip } from '../src/game/state';
 import { newTeen } from './helpers';
 
@@ -103,6 +104,45 @@ describe('area cards', () => {
     expect(c.text).toBe(c.news![0].text);
   });
 
+  it('the Backyard is a close-up with the Workshop, and its news shows on the island', () => {
+    let s = newTeen(NOW);
+    s.unlocked.push('garden');
+    const inside = (id: string) => areaCard(s, NOW, area('backyard', id));
+    expect(inside('workshop').locked).toBe(true);
+    expect(inside('hive').hidden).toBe(true);
+    s.unlocked.push('workbench');
+    s = { ...s, crafting: { ...s.crafting, materials: { twig: 1 } } };
+    expect(inside('workshop').locked).toBe(false);
+    s = { ...s, crafting: { ...s.crafting, projects: { beehive: { built: 1, until: 0 } }, seen: { beehive: 0 } } };
+    expect(inside('workshop').news?.map((n) => n.badge)).toEqual(['project']);
+    const island = areaCard(s, NOW, area('island', 'backyard'));
+    expect(island.dot).toBe(true);
+    expect(island.news?.map((n) => n.badge)).toContain('project');
+  });
+
+  it("Percy's perch is either there or away, and away says when he's back", () => {
+    let s = newTeen(NOW);
+    s.unlocked.push('garden');
+    s = { ...s, crafting: { ...s.crafting, projects: { perch: { built: 3, until: 0 } } } };
+    const perch = () => areaCard(s, NOW, area('backyard', 'perch'));
+    expect(perch().hidden).toBeFalsy();
+    expect(perch().tellOnly).toBeFalsy();
+    s.pet.trip = { place: 'market', rarity: 'common', startedAt: NOW, endsAt: NOW + 2 * 3600e3, from: { hunger: 80, energy: 80 }, to: { hunger: 60, energy: 60 }, joy: 0, finds: [], percy: 'coming', backAt: null, early: false } as Trip;
+    expect(perch().tellOnly).toBe(true);
+    expect(JSON.stringify(perch())).toMatch(/2/);
+  });
+
+  it('introduces each place once, as it unlocks', () => {
+    const s = newTeen(NOW);
+    s.introduced = [];
+    expect(placeToIntroduce(s)).toBeNull();
+    s.unlocked.push('garden');
+    expect(placeToIntroduce(s)).toEqual({ unlock: 'garden', map: 'island', area: 'backyard' });
+    s.introduced.push('garden');
+    s.unlocked.push('workbench');
+    expect(placeToIntroduce(s)).toEqual({ unlock: 'workbench', map: 'backyard', area: 'workshop' });
+  });
+
   it('an island with an Adventure and a Stroll shows both, the Adventure first', () => {
     const s = newTeen(NOW);
     s.unlocked.push('journeys');
@@ -137,5 +177,18 @@ describe('where the pet is', () => {
     expect(at(0.5)).toEqual({ area: 'market', share: 1 });
     expect(at(1 - out / 2).share).toBeCloseTo(0.5);
     expect(petAt(s, NOW, 'island')).toBeNull();
+  });
+});
+
+describe('the pond', () => {
+  it('goes fishing, and says when the day\'s rewarded catches are used up', () => {
+    const s = newTeen(NOW);
+    const fresh = areaCard(s, NOW, area('island', 'pond'));
+    expect(parseOpens(area('island', 'pond').opens)).toEqual({ kind: 'pond' });
+    expect(fresh.enabled).toBe(true);
+    expect(fresh.good).toBe(true);
+    const full = areaCard({ ...s, pond: { day: localDay(NOW), fish: CONFIG.fishing.rewardedPerDay } }, NOW, area('island', 'pond'));
+    expect(full.text).not.toBe(fresh.text);
+    expect(full.enabled).toBe(true);
   });
 });

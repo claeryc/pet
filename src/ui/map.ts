@@ -26,7 +26,8 @@
 
 import { STRINGS } from '../strings';
 import { sheetFor } from '../game/growth';
-import { MAPS, START_MAP, areaCard, firstPick, parseOpens, petAt, type AreaCard, type Badge, type MapAreaDef, type Opens } from '../game/map';
+import { MAPS, START_MAP, areaCard, extraShown, firstPick, parseOpens, petAt, type AreaCard, type Badge, type MapAreaDef, type Opens } from '../game/map';
+import { bubbleHtml } from './mapBubbles';
 import { isEpicOffer } from '../game/journeys';
 import type { Offer } from '../game/state';
 import { ITEM_ICONS, MENU_ICONS, STAT_ICONS } from './icons';
@@ -40,6 +41,17 @@ export interface MapFile {
   night: boolean;
   locked: string[];
   areas: Record<string, { shape: string; box: number[]; label: [number, number]; pin: [number, number]; flag?: [number, number] }>;
+  // Buildings laid over the picture once they're there (src/game/map.ts
+  // extraShown): <map>-x-<id>.png.
+  extras?: { id: string; when: string }[];
+}
+
+// A place shown off when it opens: what the card says.
+export interface MapIntro {
+  title: string;
+  line: string;
+  button: string;
+  unlock: string; // its buildings pop up, its clouds part
 }
 
 export interface MapCallbacks {
@@ -65,6 +77,9 @@ export interface WorldMap {
   pick: (id: string) => void;
   useFile: (id: string, file: MapFile) => void;
   reload: () => void;
+  // Opens map `mapId` and shows off its area `area`: the rest dims, the
+  // place appears, and a card says what it is. `onGo`: its button.
+  intro: (mapId: string, area: string, card: MapIntro, onGo: () => void) => void;
 }
 
 const SVG = 'http://www.w3.org/2000/svg';
@@ -110,6 +125,10 @@ const FLAGS = Object.fromEntries(Object.entries(FLAG_ROWS).map(([k, rows]) => [k
 
 // The little picture on a sign for what's waiting there.
 const BADGES: Record<Badge, string> = {
+  fish: ITEM_ICONS.fish ?? ITEM_ICONS.paw,
+  dig: ITEM_ICONS.dig ?? ITEM_ICONS.paw,
+  lock: '',
+  project: ITEM_ICONS.workbench,
   water: STAT_ICONS.drop,
   honey: ITEM_ICONS.honey,
   crop: ITEM_ICONS.carrot,
@@ -144,6 +163,7 @@ export function createMap(cb: MapCallbacks): WorldMap {
   const picture = el('img', 'map-picture');
   picture.alt = '';
   picture.draggable = false;
+  const extras = el('div', 'map-extras');
   const covers = el('div', 'map-covers');
   const lights = el('img', 'map-lights');
   lights.alt = '';
@@ -151,7 +171,13 @@ export function createMap(cb: MapCallbacks): WorldMap {
   const shapes = document.createElementNS(SVG, 'svg');
   shapes.classList.add('map-shapes');
   const marks = el('div', 'map-marks');
-  stage.append(picture, lights, covers, shapes, marks); // lights under the clouds
+  stage.append(picture, extras, lights, covers, shapes, marks); // lights under the clouds
+  // A little dark tooltip over a place: its name when held, why it's
+  // locked, or when Percy's back.
+  const tip = el('div', 'map-tip');
+  tip.hidden = true;
+  tip.setAttribute('role', 'status');
+  stage.append(tip);
   view.append(stage);
 
   // The bubble over a picked place's sign: its name and news, its trips
@@ -173,12 +199,32 @@ export function createMap(cb: MapCallbacks): WorldMap {
   bubble.append(shut, head, text, cards, go);
   shut.addEventListener('click', () => pick(''));
 
+  // On a close-up map (the Backyard): back to the island, top left.
+  const upBack = el('button', 'map-up');
+  top.prepend(upBack);
+  upBack.addEventListener('click', () => zoomOut());
+
+  // Showing off a new place: the map dims round it, then a card.
+  const introDim = el('div', 'map-intro-dim');
+  const introRing = el('div', 'map-intro-ring');
+  introDim.append(introRing);
+  const introCard = el('div', 'map-intro-card');
+  introCard.setAttribute('role', 'dialog');
+  const introNew = el('span', 'map-intro-new', S.newPlace);
+  const introTitle = el('b', 'map-intro-title');
+  const introLine = el('p', 'map-intro-line');
+  const introGo = el('button', 'map-intro-go');
+  introCard.append(introNew, introTitle, introLine, introGo);
+  introDim.hidden = true;
+  introCard.hidden = true;
+  stage.append(introDim);
+
   const row = el('div', 'map-row');
   const back = el('button', 'btn map-back');
   const journal = el('button', 'btn map-journal', S.journal);
   row.append(back, journal);
 
-  root.append(top, view, row);
+  root.append(top, view, row, introCard);
 
   let mapId = START_MAP;
   let file: MapFile | null = null;
@@ -186,6 +232,9 @@ export function createMap(cb: MapCallbacks): WorldMap {
   let latest: { state: GameState; now: number } | null = null;
   let token = 0; // so a slow load for an old map is dropped
   let drawn = ''; // what was drawn last (see update)
+  let intro: { area: string; unlock: string; onGo: () => void } | null = null;
+  const plain = () => !!MAPS[mapId].plain;
+  const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const areas = () => MAPS[mapId].areas;
   const cardFor = (id: string): AreaCard | null => {
@@ -200,7 +249,9 @@ export function createMap(cb: MapCallbacks): WorldMap {
     if (!file) return;
     const w = view.clientWidth, h = view.clientHeight;
     if (!w || !h) return;
-    const scale = Math.min(w / file.width, h / file.height);
+    // A plain map fills the screen (the sea runs off the edges); the sea
+    // map fits inside it.
+    const scale = plain() ? Math.max(w / file.width, h / file.height) : Math.min(w / file.width, h / file.height);
     stage.style.width = `${Math.floor(file.width * scale)}px`;
     stage.style.height = `${Math.floor(file.height * scale)}px`;
     stage.style.setProperty('--flag-px', `${scale}px`);
@@ -214,9 +265,18 @@ export function createMap(cb: MapCallbacks): WorldMap {
     draw();
   }
 
-  // A tap on the sea or the sky (not on a place) closes the bubble.
+  // A tap on the sea or the sky (not on a place) closes the bubble; on a
+  // close-up map it zooms back out.
   view.addEventListener('click', (e) => {
-    if (e.target === view || e.target === stage || e.target === shapes || e.target === picture) pick('');
+    if (!(e.target === view || e.target === stage || e.target === shapes || e.target === picture)) return;
+    if (intro) return endIntro();
+    if (plain()) {
+      if (performance.now() < holdUntil) return;
+      if (!tip.hidden) return hideTip();
+      if (MAPS[mapId].back) zoomOut();
+      return;
+    }
+    pick('');
   });
 
   go.addEventListener('click', () => {
@@ -261,8 +321,10 @@ export function createMap(cb: MapCallbacks): WorldMap {
       p.dataset.area = a.id;
       p.addEventListener('click', (e) => {
         e.stopPropagation();
-        pick(a.id);
+        if (plain()) activate(a.id);
+        else pick(a.id);
       });
+      holdable(p, a.id);
       shapes.append(p);
     }
   }
@@ -275,15 +337,35 @@ export function createMap(cb: MapCallbacks): WorldMap {
     lights.hidden = !night || !file.night;
     sign.textContent = MAPS[mapId].title;
     const backTo = MAPS[mapId].back;
-    back.textContent = backTo ? S.back(MAPS[backTo].title) : S.close;
+    // On the island the way out is home; out at sea, back to the island.
+    if (backTo) back.textContent = S.back(MAPS[backTo].title);
+    else back.innerHTML = `<span class="map-back-icon" aria-hidden="true">${ITEM_ICONS.roomDoor}</span>${S.home}`;
     journal.hidden = !backTo;
+    root.classList.toggle('is-plain', plain());
+    upBack.hidden = !plain() || !backTo;
+    if (backTo) upBack.textContent = `‹ ${MAPS[backTo].title}`;
+    if (plain()) {
+      // On a plain map the way out at the bottom is always home.
+      back.innerHTML = `<span class="map-back-icon" aria-hidden="true">${ITEM_ICONS.roomDoor}</span>${S.home}`;
+      journal.hidden = true;
+    }
+    // Buildings that are there now (the Workshop once it's open, the
+    // beehive once it's built, Percy's perch with or without Percy).
+    extras.replaceChildren(...(file.extras ?? []).filter((x) => extraShown(state, now, x.when)).map((x) => {
+      const img = el('img', `map-extra${intro && intro.unlock === x.when ? ' is-appearing' : ''}`);
+      img.src = `${base()}${mapId}-x-${x.id}.png${version}`;
+      img.alt = '';
+      img.draggable = false;
+      return img;
+    }));
 
     // Clouds over what's still locked.
     const locked = new Set(areas().filter((a) => cardFor(a.id)?.locked).map((a) => a.id));
     // Mist (the same cover, thin) over a journey island no trip goes to.
     const misty = new Set(areas().filter((a) => cardFor(a.id)?.mist).map((a) => a.id));
-    covers.replaceChildren(...file.locked.filter((id) => locked.has(id) || misty.has(id)).map((id) => {
-      const img = el('img', `map-cover${misty.has(id) && !locked.has(id) ? ' is-mist' : ''}`);
+    const parting = intro && file.locked.includes(intro.area) ? intro.area : '';
+    covers.replaceChildren(...file.locked.filter((id) => locked.has(id) || misty.has(id) || id === parting).map((id) => {
+      const img = el('img', `map-cover${misty.has(id) && !locked.has(id) ? ' is-mist' : ''}${id === parting ? ' is-parting' : ''}`);
       img.src = `${base()}${mapId}-locked-${id}.png${version}`;
       img.alt = '';
       img.draggable = false;
@@ -291,13 +373,14 @@ export function createMap(cb: MapCallbacks): WorldMap {
     }));
 
     // The picked area: a soft glow and a butter ring around it.
-    const shape = file.areas[picked]?.shape ?? '';
+    // (none on the plain maps: a tap goes straight there)
+    const shape = plain() ? '' : file.areas[picked]?.shape ?? '';
     shapes.querySelector('.map-ring')?.setAttribute('d', shape);
     shapes.querySelector('.map-glow')?.setAttribute('d', shape);
 
     // Signs, dots, and the pet.
     const pct = (x: number, y: number) => `left:${(x / file!.width) * 100}%;top:${(y / file!.height) * 100}%`;
-    const signs = areas().map((a) => {
+    const signs = plain() ? bubbles() : areas().map((a) => {
       const c = cardFor(a.id)!;
       const at = file!.areas[a.id];
       const b = el('button', `map-label${a.id === picked ? ' is-picked' : ''}${c.locked ? ' is-locked' : ''}`, c.name);
@@ -315,6 +398,11 @@ export function createMap(cb: MapCallbacks): WorldMap {
         if (news.length > 2) stack.append(el('span', 'map-badge is-more', S.moreNews(news.length - 2)));
         b.append(stack);
       } else if (c.dot) b.append(el('span', 'map-dot'));
+      // What's going on there, in a word or two, under its name.
+      if ((c.dot || c.good) && !c.locked && !c.tickets) {
+        b.classList.add('has-status');
+        b.append(el('span', 'map-status', (c.news?.[0]?.text ?? c.text).replace(/[.!]$/, '')));
+      }
       b.addEventListener('click', (e) => {
         e.stopPropagation();
         pick(a.id === picked ? '' : a.id);
@@ -342,6 +430,8 @@ export function createMap(cb: MapCallbacks): WorldMap {
       const c = cardFor(p.dataset.area!);
       p.setAttribute('aria-label', c ? `${c.name}. ${c.text}` : '');
       p.classList.toggle('is-locked', !!c?.locked && !file.locked.includes(p.dataset.area!));
+      p.classList.toggle('is-gone', !!c?.hidden);
+      if (plain() && c) p.setAttribute('aria-label', c.locked ? `${c.name}. ${c.text}` : c.tellOnly ? `${c.name}. ${c.text}` : c.name + (c.news?.length ? `. ${c.news.map((n) => n.text).join('. ')}` : ''));
     }
     const marksNow: HTMLElement[] = [...flags, ...signs];
     const where = petAt(state, now, mapId);
@@ -372,7 +462,11 @@ export function createMap(cb: MapCallbacks): WorldMap {
     }
     marks.replaceChildren(...marksNow);
 
-    // The bubble.
+    // The bubble (not on a plain map: a tap goes straight there).
+    if (plain()) {
+      pop.replaceChildren();
+      return;
+    }
     const c = cardFor(picked);
     const at = file.areas[picked];
     if (!c || !at) {
@@ -440,8 +534,9 @@ export function createMap(cb: MapCallbacks): WorldMap {
     bubble.style.setProperty('--tail', `${Math.max(18, Math.min(w - 18, x - left))}px`);
   }
 
-  function show(id: string): void {
+  function show(id: string, after?: () => void): void {
     mapId = MAPS[id] ? id : START_MAP;
+    hideTip();
     const mine = ++token;
     picture.src = `${base()}${mapId}.png${version}`;
     lights.src = `${base()}${mapId}-night.png${version}`;
@@ -453,8 +548,167 @@ export function createMap(cb: MapCallbacks): WorldMap {
       build();
       fit();
       draw();
+      after?.();
     });
   }
+
+  // ---- Plain maps: bubbles, taps, holds, zooming ----
+
+  // The round bubbles: one over each place with something waiting (its
+  // first piece of news), a padlock over a locked place.
+  function bubbles(): HTMLElement[] {
+    if (!file) return [];
+    return areas().flatMap((a) => {
+      const c = cardFor(a.id);
+      const at = file!.areas[a.id];
+      if (!c || !at || c.hidden) return [];
+      const icon = c.locked ? 'lock' : intro?.area === a.id ? 'star' : c.news?.[0]?.badge ?? c.bubble;
+      if (!icon) return [];
+      const b = el('button', `map-bubble-pin is-${icon}`);
+      b.innerHTML = bubbleHtml(icon, c.news?.[0]?.count ?? 0);
+      b.setAttribute('style', `left:${(at.label[0] / file!.width) * 100}%;top:${(at.label[1] / file!.height) * 100}%`);
+      b.setAttribute('aria-label', c.locked ? `${c.name}. ${c.text}` : `${c.name}. ${c.news?.[0]?.text ?? c.text}`);
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        activate(a.id);
+      });
+      holdable(b, a.id);
+      return [b];
+    });
+  }
+
+  // A tap on a place: straight there. A locked place, or Percy's empty
+  // perch, says why in a tooltip instead.
+  function activate(id: string): void {
+    if (performance.now() < holdUntil || intro) return;
+    const a = areas().find((x) => x.id === id);
+    const c = cardFor(id);
+    if (!a || !c || c.hidden) return;
+    if (c.locked || c.tellOnly) return showTip(id, c.text);
+    const opens = parseOpens(a.opens);
+    if (!opens || !c.enabled) return;
+    hideTip();
+    if (opens.kind === 'map') return MAPS[opens.map]?.plain ? zoomTo(id, opens.map) : show(opens.map);
+    cb.onOpen(opens);
+  }
+
+  // Holding a place shows its name (the art says what it is; this is for
+  // when you forget).
+  let holdTimer = 0;
+  let holdUntil = 0; // the click that ends a hold doesn't count as a tap
+  function holdable(target: Element, id: string): void {
+    let x = 0, y = 0;
+    target.addEventListener('pointerdown', (e) => {
+      const p = e as PointerEvent;
+      x = p.clientX;
+      y = p.clientY;
+      clearTimeout(holdTimer);
+      holdTimer = window.setTimeout(() => {
+        const c = cardFor(id);
+        if (!c || c.hidden) return;
+        holdUntil = performance.now() + 600;
+        showTip(id, c.name, true);
+      }, 450);
+    });
+    target.addEventListener('pointermove', (e) => {
+      const p = e as PointerEvent;
+      if (Math.hypot(p.clientX - x, p.clientY - y) > 8) clearTimeout(holdTimer);
+    });
+    for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) target.addEventListener(ev, () => clearTimeout(holdTimer));
+    target.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+
+  let tipTimer = 0;
+  function showTip(id: string, words: string, name = false): void {
+    const at = file?.areas[id];
+    if (!at || !file) return;
+    tip.textContent = words;
+    tip.classList.toggle('is-name', name);
+    tip.hidden = false;
+    // Over its bubble spot; kept inside the screen.
+    const x = (at.label[0] / file.width) * 100;
+    tip.style.left = `${x}%`;
+    tip.style.top = `${(at.label[1] / file.height) * 100}%`;
+    const sr = stage.getBoundingClientRect(), vr = view.getBoundingClientRect();
+    const k = sr.width / (stage.clientWidth || 1) || 1;
+    const tr = tip.getBoundingClientRect();
+    const shift = Math.max(vr.left + 8 - tr.left, Math.min(0, vr.right - 8 - tr.right));
+    tip.style.setProperty('--shift', `${shift / k}px`);
+    clearTimeout(tipTimer);
+    tipTimer = window.setTimeout(hideTip, 2600);
+  }
+  function hideTip(): void {
+    clearTimeout(tipTimer);
+    tip.hidden = true;
+  }
+
+  // Zooming into a close-up (the Backyard) from the place on this map,
+  // and back out to it.
+  function centre(id: string): string {
+    const at = file?.areas[id];
+    if (!at || !file) return '50% 50%';
+    const [x, y, w, h] = at.box;
+    return `${((x + w / 2) / file.width) * 100}% ${((y + h / 2) / file.height) * 100}%`;
+  }
+  function zoomTo(id: string, to: string): void {
+    if (still()) return show(to);
+    stage.style.transformOrigin = centre(id);
+    const out = stage.animate([{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(2.6)', opacity: 0 }], { duration: 340, easing: 'ease-in' });
+    out.onfinish = () => show(to, () => {
+      stage.style.transformOrigin = '50% 50%';
+      stage.animate([{ transform: 'scale(0.9)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 260, easing: 'ease-out' });
+    });
+  }
+  function zoomOut(): void {
+    const to = MAPS[mapId].back;
+    if (!to) return;
+    const from = mapId;
+    if (still()) return show(to);
+    const out = stage.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(0.9)' }], { duration: 200, easing: 'ease-in' });
+    out.onfinish = () => show(to, () => {
+      const there = MAPS[to].areas.find((a) => a.opens === `map:${from}`);
+      stage.style.transformOrigin = there ? centre(there.id) : '50% 50%';
+      stage.animate([{ transform: 'scale(2.6)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 340, easing: 'ease-out' });
+    });
+  }
+
+  // ---- Showing off a new place ----
+  let introTimer = 0;
+  function startIntro(area: string, card: MapIntro, onGo: () => void): void {
+    if (!file) return;
+    const at = file.areas[area];
+    if (!at) return;
+    intro = { area, unlock: card.unlock, onGo };
+    const [x, y, w, h] = at.box;
+    const cx = ((x + w / 2) / file.width) * 100, cy = ((y + h / 2) / file.height) * 100;
+    // The dim reaches past the stage on every side (inset: -50%).
+    introDim.style.setProperty('--x', `${25 + cx / 2}%`);
+    introDim.style.setProperty('--y', `${25 + cy / 2}%`);
+    introDim.style.setProperty('--r', `${Math.max(40, (Math.max(w, h) / file.width) * stage.clientWidth * 0.55)}px`);
+    introDim.hidden = false;
+    introTitle.textContent = card.title;
+    introLine.textContent = card.line;
+    introGo.textContent = card.button;
+    drawn = '';
+    draw();
+    clearTimeout(introTimer);
+    introTimer = window.setTimeout(() => (introCard.hidden = false), still() ? 0 : 1300);
+  }
+  function endIntro(): void {
+    clearTimeout(introTimer);
+    intro = null;
+    introDim.hidden = true;
+    introCard.hidden = true;
+    drawn = '';
+    draw();
+  }
+  introGo.addEventListener('click', () => {
+    const was = intro;
+    endIntro();
+    if (!was) return;
+    activate(was.area);
+    was.onGo();
+  });
 
   return {
     el: root,
@@ -464,6 +718,8 @@ export function createMap(cb: MapCallbacks): WorldMap {
       requestAnimationFrame(fit);
     },
     close: () => {
+      if (intro) endIntro();
+      hideTip();
       root.hidden = true;
     },
     isOpen: () => !root.hidden,
@@ -482,6 +738,11 @@ export function createMap(cb: MapCallbacks): WorldMap {
       draw();
     },
     pick: (id) => pick(id),
+    intro: (id, area, card, onGo) => {
+      root.hidden = false;
+      show(id, () => startIntro(area, card, onGo));
+      requestAnimationFrame(fit);
+    },
     useFile: (id, f) => {
       files.set(id, Promise.resolve(f));
       if (id === mapId && !root.hidden) {

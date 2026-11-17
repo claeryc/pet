@@ -186,6 +186,29 @@ export const projectDone = (state: GameState, id: string): boolean => {
 };
 export const building = (state: GameState, id: string): boolean => progressOf(state, id).until > 0;
 
+// A stage that finished building since you last looked at the project.
+export const stageReady = (state: GameState, id: string): boolean => {
+  const seen = crafting(state).seen?.[id];
+  return seen !== undefined && progressOf(state, id).built > seen;
+};
+// Looking at a project: its finished stages aren't news any more.
+export function seeProject(state: GameState, id: string): GameState {
+  if (!stageReady(state, id)) return state;
+  const c = crafting(state);
+  return withCrafting(state, { seen: { ...c.seen, [id]: progressOf(state, id).built } });
+}
+// A project whose next stage you could start right now.
+export function stageCanStart(state: GameState, p: Project): boolean {
+  if (!projectOpen(state, p) || building(state, p.id)) return false;
+  const stage = p.stages[progressOf(state, p.id).built];
+  return !!stage && haveMaterials(state, stage.needs) && state.gold >= stage.gold;
+}
+// The project the Workshop opens on: a finished stage to see first, then
+// one ready to start. None: the bench.
+export function projectToShow(state: GameState): Project | undefined {
+  return PROJECTS.find((p) => stageReady(state, p.id)) ?? PROJECTS.find((p) => stageCanStart(state, p));
+}
+
 export type BuildBlock = 'locked' | 'done' | 'building' | 'short' | 'notEnoughGold';
 
 // Starts building a project's next stage: its materials and gold are used
@@ -200,7 +223,8 @@ export function buildStage(state: GameState, now: number, id: string): { state: 
   if (!haveMaterials(state, stage.needs)) return { state, blocked: 'short' };
   if (state.gold < stage.gold) return { state, blocked: 'notEnoughGold' };
   const s = useMaterials({ ...state, gold: state.gold - stage.gold }, stage.needs);
-  return { state: withCrafting(s, { projects: { ...crafting(s).projects, [id]: { built: prog.built, until: now + stage.hours * HOUR } } }) };
+  const c = crafting(s);
+  return { state: withCrafting(s, { projects: { ...c.projects, [id]: { built: prog.built, until: now + stage.hours * HOUR } }, seen: { ...c.seen, [id]: prog.built } }) };
 }
 
 // Catches projects up to time `t` (from simulate): stages that are done

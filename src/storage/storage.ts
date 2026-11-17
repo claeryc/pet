@@ -21,7 +21,7 @@ const SAVE_KEY = 'cozy-pixel-pet-save';
 
 // Bump this number whenever the shape of GameState changes, and teach
 // migrate() how to upgrade older saves so players never lose their pet.
-export const SAVE_VERSION = 44;
+export const SAVE_VERSION = 51;
 
 export interface SaveFile {
   version: number;
@@ -494,6 +494,50 @@ export function migrate(save: SaveFile): SaveFile {
   if (save.version === 43) {
     save.state.ads = { day: '', watched: 0 };
     save.version = 44;
+  }
+  // Version 44 -> 45: everyone starts with a Holiday ticket. A save that
+  // has never had one gets it now.
+  if (save.version === 44) {
+    const inv = save.state.inventory;
+    if (inv) {
+      inv.supplies ??= {};
+      if (inv.supplies['ticket:holiday'] === undefined) inv.supplies['ticket:holiday'] = 1;
+    }
+    save.version = 45;
+  }
+  // Version 45 -> 46: games now remember when they began. Older games are
+  // past their first week, so they get 0 (no first-week cushion).
+  if (save.version === 45) {
+    save.state.startedAt ??= 0;
+    save.version = 46;
+  }
+  // Version 46 -> 47: the auto-holiday switch, off.
+  if (save.version === 46) {
+    save.state.settings ??= { autoHoliday: false };
+    save.version = 47;
+  }
+  // Version 47 -> 48: a resting place for pets that passed away, empty.
+  // A pet already passed stays in the room and can be laid to rest there.
+  if (save.version === 47) {
+    save.state.resting ??= [];
+    save.version = 48;
+  }
+  // Version 48 -> 49: the stamp calendar and the pet's wishes, both new.
+  if (save.version === 48) {
+    save.state.stamps ??= { stamped: 0, day: '' };
+    save.state.wishes ??= { day: '', list: [] };
+    save.version = 49;
+  }
+  // Version 49 -> 50: toys. Everyone gets the ball.
+  if (save.version === 49) {
+    if (save.state.inventory) save.state.inventory.toys ??= ['ball'];
+    save.version = 50;
+  }
+  // Version 50 -> 51: places are shown off on the map as they unlock. The
+  // ones already open don't need it.
+  if (save.version === 50) {
+    save.state.introduced ??= [...(save.state.unlocked ?? [])];
+    save.version = 51;
   }
   return save;
 }

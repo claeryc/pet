@@ -28,6 +28,10 @@ export interface WalkOptions<T extends string> {
   swipeOn: HTMLElement[];
   // A station that needs you: its edge tab gets a red dot.
   needs?: (id: T) => boolean;
+  // Instead of the station's name, the sign can hold tabs: tap one to go
+  // straight to the station it picks (the workshop's Bench and Projects).
+  // A tab is lit while you're at one of its stations.
+  tabs?: { label: string; has: (id: T) => boolean; go: () => T; news?: () => boolean }[];
 }
 
 export interface Walk<T extends string> {
@@ -75,6 +79,22 @@ export function createWalk<T extends string>(o: WalkOptions<T>): Walk<T> {
   pips.className = 'walk-pips';
   pips.setAttribute('aria-hidden', 'true');
   sign.append(signName, pips);
+  const tabs = (o.tabs ?? []).map((t) => {
+    const b = document.createElement('button');
+    b.className = 'walk-tab';
+    b.textContent = t.label;
+    b.addEventListener('click', () => {
+      if (!t.has(on)) jump(t.go());
+    });
+    return { t, b };
+  });
+  if (tabs.length) {
+    sign.classList.add('has-tabs');
+    sign.removeAttribute('aria-live');
+    sign.setAttribute('role', 'tablist');
+    for (const { b } of tabs) b.setAttribute('role', 'tab');
+    sign.replaceChildren(...tabs.map((x) => x.b));
+  }
 
   const peeks = ([-1, 1] as const).map((dir) => {
     const peek = document.createElement('span');
@@ -109,6 +129,21 @@ export function createWalk<T extends string>(o: WalkOptions<T>): Walk<T> {
     clearTimeout(arriveTimer);
     arriveTimer = window.setTimeout(() => o.frame.classList.remove('arrive-l', 'arrive-r'), ARRIVE_MS);
     return true;
+  }
+
+  // Goes straight to a station, however far along it is.
+  function jump(id: T): void {
+    const list = open();
+    const from = list.findIndex((st) => st.id === on);
+    const to = list.findIndex((st) => st.id === id);
+    if (to < 0 || to === from) return;
+    o.pick(id);
+    if (o.current() !== id) return;
+    o.frame.classList.remove('arrive-l', 'arrive-r');
+    void o.frame.offsetWidth;
+    o.frame.classList.add(to > from ? 'arrive-r' : 'arrive-l');
+    clearTimeout(arriveTimer);
+    arriveTimer = window.setTimeout(() => o.frame.classList.remove('arrive-l', 'arrive-r'), ARRIVE_MS);
   }
 
   // ---- Swiping ----
@@ -181,6 +216,12 @@ export function createWalk<T extends string>(o: WalkOptions<T>): Walk<T> {
       return pip;
     }));
     sign.hidden = list.length < 2;
+    for (const { t, b } of tabs) {
+      const lit = t.has(now);
+      b.classList.toggle('is-on', lit);
+      b.setAttribute('aria-selected', String(lit));
+      b.classList.toggle('needs', !lit && (t.news?.() ?? false));
+    }
     for (const { dir, peek, edge } of peeks) {
       const to = neighbour(dir);
       peek.hidden = edge.hidden = !to;

@@ -34,10 +34,44 @@ describe('passing away', () => {
 
   it('only counts time spent sick, so a neglected pet always warns and gets sick first', () => {
     const s = newTeen(START);
+    s.startedAt = 0; // past the first week
     s.pet.stats.hunger = 25;
     // Warning, then sick, then the full countdown.
     expect(simulate(s, START + (WARN + PASS - 0.1) * HOUR).pet.condition).toBe('sick');
     expect(simulate(s, START + (WARN + PASS + 0.1) * HOUR).pet.condition).toBe('passed');
+  });
+
+  it('gives a baby, or any pet in the first week, 48 hours instead of 24', () => {
+    const GENTLE = CONFIG.sickness.hoursBeforePassingGentle;
+    expect(GENTLE).toBe(48);
+    // A teen in a brand new game.
+    const fresh = newTeen(START);
+    fresh.startedAt = START;
+    fresh.pet.stats.hunger = 25;
+    expect(simulate(fresh, START + (WARN + PASS + 1) * HOUR).pet.condition).toBe('sick');
+    const late = simulate(fresh, START + (WARN + GENTLE - 1) * HOUR);
+    expect(late.pet.condition).toBe('sick');
+    expect(timeLeftToTreat(late.pet)).toBeLessThanOrEqual(1.25 * HOUR);
+    expect(simulate(fresh, START + (WARN + GENTLE + 0.25) * HOUR).pet.condition).toBe('passed');
+    // A baby in an old game.
+    const baby = newTeen(START);
+    baby.startedAt = 0;
+    baby.pet.stage = 'baby';
+    baby.pet.stageStartedAt = START;
+    baby.pet.stats.hunger = 10;
+    const sick = simulate(baby, START + (WARN + PASS + 1) * HOUR);
+    expect(sick.pet.condition).toBe('sick');
+    expect(sick.pet.sickWindowHours).toBe(GENTLE);
+    // A teen in an old game keeps the usual 24 hours.
+    const old = newTeen(START);
+    old.startedAt = 0;
+    old.pet.stats.hunger = 25;
+    expect(simulate(old, START + (WARN + PASS + 0.25) * HOUR).pet.condition).toBe('passed');
+  });
+
+  it('old saves remember no start, so they get no first-week cushion', () => {
+    const out = migrate({ version: 45, state: {} } as never);
+    expect(out.state.startedAt).toBe(0);
   });
 
   it('turns critical in the last hours, with the time left', () => {

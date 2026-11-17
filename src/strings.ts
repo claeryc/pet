@@ -20,6 +20,8 @@ export const STRINGS = {
     energy: 'Energy',
   },
   buttons: {
+    bringBack: 'Bring back',
+    letRest: 'Let rest',
     feed: 'Feed',
     play: 'Play',
     lightsOff: 'Lights off',
@@ -29,6 +31,14 @@ export const STRINGS = {
     goodbye: 'Say goodbye',
     reset: 'Start over',
     menu: 'Menu',
+  },
+  // The chips at the top of Feed, by kind of food.
+  feedKinds: {
+    all: 'All',
+    fruitVeg: 'Fruit & veg',
+    seafood: 'Seafood',
+    sweets: 'Sweets',
+    soups: 'Soups & drinks',
   },
   foods: {
     riceBall: 'Rice ball',
@@ -86,6 +96,46 @@ export const STRINGS = {
     cuddle: 'Cuddle',
     tickle: 'Tickle',
   },
+  // Toys (Play > Toys) and stroking the pet (src/ui/toys.ts).
+  toys: {
+    names: { ball: 'Ball', wand: 'Feather wand', bubbles: 'Bubble wand', starKite: 'Star kite' } as Record<string, string>,
+    about: {
+      ball: 'Swipe to throw it, and your pet brings it back.',
+      wand: 'Wiggle the feather about and watch your pet pounce.',
+      bubbles: 'Tap to blow bubbles for your pet to pop.',
+      starKite: 'A little star on a string. Fly it and your pet leaps for it.',
+    } as Record<string, string>,
+    touchTip: (name: string) => `Touch ${name} in the room: tap for a cuddle, stroke slowly for a tickle, hold for the Wardrobe.`,
+    toysTitle: 'Toys',
+    inShop: 'In the Shop',
+    favourite: (name: string) => `${name}'s favourite`,
+    hint: {
+      ball: 'Swipe to throw the ball',
+      wand: 'Drag the feather around',
+      bubbles: 'Tap to blow bubbles',
+      starKite: 'Drag to fly the kite',
+    } as Record<string, string>,
+    playing: {
+      ball: 'Playing ball',
+      wand: 'Playing with the feather',
+      bubbles: 'Blowing bubbles',
+      starKite: 'Flying the star kite',
+    } as Record<string, string>,
+    count: {
+      ball: (name: string, n: number) => (n === 0 ? `${name} is ready to chase it` : n === 1 ? `${name} brought it back once` : `${name} brought it back ${n} times`),
+      wand: (name: string, n: number) => (n === 0 ? `${name} is watching the feather` : n === 1 ? `${name} pounced once` : `${name} pounced ${n} times`),
+      bubbles: (name: string, n: number) => (n === 0 ? `${name} is waiting for bubbles` : n === 1 ? `${name} popped a bubble` : `${name} popped ${n} bubbles`),
+      starKite: (name: string, n: number) => (n === 0 ? `${name} is looking up at the kite` : n === 1 ? `${name} leapt for it once` : `${name} leapt for it ${n} times`),
+    } as Record<string, (name: string, n: number) => string>,
+    done: 'Done',
+    stroking: (name: string) => `${name} loves this`,
+    // The Shop's Toys tab.
+    shopTitle: 'Toys',
+    shopKind: 'Toy',
+    starToy: 'Star toy',
+    favouriteTag: 'Favourite',
+    bought: (toy: string) => `You got the ${toy}! Find it in Play.`,
+  },
   effects: {
     full: 'Full', // a stat that was already full, floating up from the pet
     slowHunger: (percent: number, hours: number) =>
@@ -134,7 +184,7 @@ export const STRINGS = {
     wakeLabel: (price: number) => `Wake Percy up for ${price} gold`,
     away: 'Away',
   },
-  // The workbench and projects (Play > Workbench, see src/game/crafting.ts).
+  // The workbench and projects (Map > Backyard > Workshop, see src/game/crafting.ts).
   crafting: {
     tabs: { bench: 'Bench', projects: 'Projects' } as Record<string, string>,
     close: 'Close',
@@ -213,7 +263,7 @@ export const STRINGS = {
       perch: "Percy's perch is finished! He'll rest less after a courier trip.",
     } as Record<string, string>,
   },
-  // Sniff and dig (Play > Sniff and dig).
+  // Sniff and dig (Windmill Fields on the map).
   dig: {
     digsChip: (left: number, total: number) => `${left} of ${total} digs`,
     places: { meadow: 'Meadow', market: 'Market Town', woods: 'Mossy Woods', cove: 'Coral Cove', hill: 'Starlit Hill' } as Record<string, string>,
@@ -253,6 +303,7 @@ export const STRINGS = {
     menuTile: 'Map',
     menuLine: 'Island and journeys',
     close: 'Close',
+    home: 'Home',
     back: (title: string) => `‹ ${title}`,
     go: 'Go',
     goHome: 'Go home',
@@ -264,6 +315,26 @@ export const STRINGS = {
     soon: 'Soon',
     locked: 'Locked',
     lockedText: 'Opens as you play',
+    digsLeft: (left: number, all: number) => (left === all ? `${all} digs today. Something's buried here!` : `${left} of ${all} digs left today`),
+    digsDone: 'No digs left today. New ones tomorrow!',
+    goDig: 'Sniff and dig',
+    projectReady: 'A project stage is ready',
+    workshopText: 'Make things from what you find.',
+    hiveFilling: 'The bees are busy making honey.',
+    percyHome: 'Percy is home.',
+    percyRestingText: (left: string) => `Percy is resting. Ready in ${left}.`,
+    percyAwayText: 'Percy is out delivering.',
+    percyAwayUntil: (left: string) => `Percy is out delivering. Back in ${left}.`,
+    // A place shown off on the map when it opens (src/ui/map.ts intro).
+    newPlace: 'New place',
+    takeALook: 'Take a look',
+    intros: {
+      garden: { title: 'The Backyard', line: 'Grow food in the garden beds. Seeds are in the Shop.' },
+      workbench: { title: 'The Workshop', line: 'Make things from what you find.' },
+      familyTree: { title: 'The Meadow', line: 'Grown-up pets can live and play here.' },
+      messages: { title: 'Friends', line: 'Visit friends and read their letters.' },
+      dig: { title: 'Windmill Fields', line: 'Sniff and dig for buried treasure every day.' },
+    } as Record<string, { title: string; line: string }>,
     soonText: 'Coming later',
     youAreHere: 'You are here',
     yourEgg: 'Your egg',
@@ -280,6 +351,9 @@ export const STRINGS = {
     friendOver: (name: string) => `${name} dropped by!`,
     friendMail: (n: number) => (n === 1 ? '1 new letter.' : `${n} new letters.`),
     friendsQuiet: 'Letters and friends.',
+    pondBiting: 'The fish are biting.',
+    pondFull: 'The fish are full for today, but they still bite.',
+    goFishing: 'Go fishing',
     shipSailing: (name: string, place: string) => `${name} is sailing to ${place}.`,
     shipBackpack: (name: string) => `${name} is back with a backpack!`,
     shipReady: 'Sail to the journey places.',
@@ -552,6 +626,8 @@ export const STRINGS = {
     holidayLeft: 'Off to the Meadow for a holiday!',
     holidayAway: (time: string) => `On holiday in the Meadow. Back ${time}.`,
     holidayHome: (names: string) => `${names} came home from a holiday in the Meadow.`,
+    autoHoliday: (name: string, days: number) =>
+      `${name} wasn't feeling well, so a Holiday ticket sent everyone to the Meadow for ${days} days.`,
     tripFriend: (name: string, friend: string, place: string) => `${name} made a friend at ${place}: ${friend} is your friend now!`,
     ready: 'Ready',
     percyWoke: 'Percy is ready to go!',
@@ -699,6 +775,9 @@ export const STRINGS = {
     shop: 'Shop',
     collection: 'Collection',
     familyTree: 'Family Tree',
+    family: 'Family',
+    room: 'Room',
+    more: 'More',
     meadow: 'Meadow',
     messages: 'Messages',
     journeys: 'Journeys',
@@ -747,7 +826,7 @@ export const STRINGS = {
         name: (pet: string) => `Looking after ${pet}`,
         pages: [
           { title: (pet: string) => `Meet ${pet}!`, text: (pet: string) => `${pet} has four needs: Tummy, Joy, Health and Energy. Keep the bars from running low.` },
-          { title: 'Feed and play', text: 'Tap Feed for snacks and Play for cuddles, tickles and games. Each one fills a different bar.' },
+          { title: 'Feed and play', text: 'Tap Feed for snacks and Play for toys. Tap your pet for a cuddle, or stroke it slowly for a tickle. Each one fills a different bar.' },
           { title: 'Lights off for bed', text: (pet: string) => `When Energy runs low, tap the moon so ${pet} can sleep. Time keeps going while the game is closed.` },
           { title: 'Growing up', text: (pet: string) => `Good care adds up. How you look after ${pet} decides who ${pet} grows into. There are lots to find!` },
         ],
@@ -853,7 +932,7 @@ export const STRINGS = {
       sick: {
         name: 'Sick pets',
         pages: [
-          { title: (pet: string) => `${pet} is sick`, text: (pet: string) => `A sick pet needs medicine. Tap Give medicine. Wait too long and ${pet} gets very sick.` },
+          { title: (pet: string) => `${pet} is sick`, text: (pet: string) => `A sick pet needs medicine: tap Give medicine. Left sick too long (a day, or two for a baby or in your first week), ${pet} can pass away. The banner counts down.` },
           { title: 'Revival Stars', text: 'If a pet passes away, a Revival Star brings them back. Every good care day gives star fragments. 500 make a star in the Shop.' },
         ],
       },
@@ -894,8 +973,8 @@ export const STRINGS = {
     meet: 'Someone is visiting! Say hello under Play > Meet.',
     skills: 'New in the Menu: Skills! Spend your first skill point there.',
     journeys: 'New in Play: Journeys! Send your pet out to explore.',
-    dig: 'New in Play: Sniff and dig! A little treasure hunt every day.',
-    workbench: 'New in Play: the Workbench! Make things from what you find.',
+    dig: 'The clouds lifted over Windmill Fields! Sniff and dig there on the Map, a little treasure hunt every day.',
+    workbench: 'New on the Map: the Workshop! Tap the Backyard, then Workshop, to make things from what you find.',
   },
   // Meeting other pets, friends and little ones (Play > Meet).
   // Regulars (Percy for now): characters who aren't pets, with hearts that
@@ -1163,7 +1242,7 @@ export const STRINGS = {
     sick: (name: string) => `${name} is sick and needs medicine.`,
     critical: (name: string, timeLeft: string) =>
       `${name} is very sick! Give medicine within ${timeLeft}, or ${name} will pass away.`,
-    passed: (name: string) => `${name} was sick for too long and passed away. A Revival Star can bring ${name} back.`,
+    passed: (name: string) => `${name} was sick for too long and passed away. Bring ${name} back with a Revival Star, or let ${name} rest under the stars while you raise a new pet.`,
     recovering: (name: string, timeLeft: string) =>
       `${name} is resting after medicine (${timeLeft} left). No mini-games for now, but cuddles and snacks are fine.`,
   },
@@ -1178,6 +1257,7 @@ export const STRINGS = {
     passed: (name: string) => `${name} has passed away. A Revival Star can bring ${name} back.`,
     noRevival: (_name: string) => "You don't have a Revival Star.",
     away: (name: string) => `${name} is away on a journey. Back soon!`,
+    noToy: (_name: string) => 'Find that toy in the Shop first.',
   },
   // Bringing back a pet that passed away, and the Star Shop that sells
   // Revival Stars for real money (a stand-in purchase for now).
@@ -1211,6 +1291,8 @@ export const STRINGS = {
   decorate: {
     spots: { wallMid: 'Small wall', wall: 'Wall', sill: 'Windowsill', left: 'Floor, left', right: 'Floor, right' } as Record<string, string>,
     hint: 'Tap a spot in the room',
+    undo: 'Undo',
+    undoLabel: 'Put the last change back',
     empty: 'Nothing',
     nothingFits: 'Nothing for this spot yet.',
     shop: 'Shop',
@@ -1284,6 +1366,18 @@ export const STRINGS = {
     debugVisit: 'Meadow visit now',
   },
   revival: {
+    // Resting under the stars (see src/game/resting.ts).
+    restTitle: (name: string) => `${name} is resting`,
+    restTitleMany: 'Resting under the stars',
+    restChip: 'Under the stars',
+    restText: (name: string) => `${name} sleeps in the star in your window. A Revival Star brings ${name} back, as soon as you have one.`,
+    restTextMany: 'They sleep in the star in your window. A Revival Star brings one back, as soon as you have one.',
+    restProgress: (pieces: number, perStar: number) => `${pieces} / ${perStar} star fragments`,
+    restClose: 'Close',
+    restFull: (n: number) => `${n} pets are already resting. Bring one back or say goodbye first.`,
+    restNoRoom: "There's no free spot at home. Make room first, then bring them back.",
+    laidToRest: (name: string) => `${name} is resting under the stars. Look for the star in the window.`,
+    restGoodbyeAsk: (name: string) => `${name} will go to the Family Tree for good. This can't be undone.`,
     title: (name: string) => `Bring ${name} back?`,
     useAsk: (name: string, have: number) =>
       `A Revival Star brings ${name} back, a little weak and needing rest. You have ${have}.`,
@@ -1492,6 +1586,9 @@ export const STRINGS = {
     packExtra: '+30% extra',
     packBuy: (count: number, price: string) => `${count} star fragments for ${price}`,
     realMoney: 'Paid with real money. Star fragments are the only thing ever sold for money.',
+    starCash: 'A Revival Star is 500 fragments: a few months of good care, or about €4.50.',
+    goingAway: 'Going away?',
+    packWhat: ['3 holidays', '10 holidays', '1 Revival Star'],
   },
   // Rewarded ads: the Free treats card in the Star counter, and the
   // stand-in video (see src/ads.ts).
@@ -1555,6 +1652,12 @@ export const STRINGS = {
     'Snickers', 'Poppy', 'Ember', 'Twinkle', 'Puddle', 'Sesame', 'Truffle', 'Acorn', 'Wren', 'Zuzu',
   ],
   settings: {
+    goingAway: 'Going away?',
+    ticketsHave: (n: number) => (n === 1 ? '1 Holiday ticket' : `${n} Holiday tickets`),
+    holidayGo: 'Go on holiday',
+    holidayGetTicket: 'Get a ticket',
+    autoHoliday: 'Use a ticket if a pet gets unwell',
+    autoHolidayHelp: "While you're away, a pet that would get sick goes to the Meadow for 3 days instead. Not while a pet is on a journey.",
     owner: 'Your name',
     ownerHint: 'Optional. Shown in the Family Tree.',
     ownerPlaceholder: 'Your name',
@@ -1632,6 +1735,7 @@ export const STRINGS = {
     raisedByYou: 'Raised by you',
     raisedInWild: 'Raised in the wild',
     atHome: 'At home',
+    resting: 'Resting',
     meadow: 'In the Meadow',
     age: (days: number) => (days === 0 ? 'Born today' : days === 1 ? '1 day old' : `${days} days old`),
     born: (date: string) => `Born ${date}`,
@@ -1651,6 +1755,7 @@ export const STRINGS = {
     likes: {
       food: (food: string) => `Loves ${food}`,
       play: (activity: string) => `Favourite: ${activity}`,
+      toy: (toy: string) => `Favourite toy: ${toy}`,
       dislike: (what: string) => `Dislikes ${what}`,
       place: (place: string) => `Favourite place: ${place}`,
       bath: 'baths',
@@ -1723,6 +1828,12 @@ export const STRINGS = {
       allFish: 'Full Net',
       retired: 'The Meadow',
       starMaker: 'Star Maker',
+      firstDish: 'First Dish',
+      firstJourney: 'First Journey',
+      firstFriend: 'New Friend',
+      firstLittleOne: 'Little One',
+      firstHarvest: 'First Harvest',
+      firstGoldCatch: 'Gold Catch',
     },
     // How to earn it.
     goals: {
@@ -1734,15 +1845,68 @@ export const STRINGS = {
       allFish: 'Catch every kind of fish',
       retired: 'Send a grown-up pet to the Meadow',
       starMaker: 'Make a Revival Star from star fragments',
+      firstDish: 'Cook your first dish',
+      firstJourney: 'Come home from your first journey',
+      firstFriend: 'Make a friend',
+      firstLittleOne: 'Welcome a little one',
+      firstHarvest: 'Harvest your first crop',
+      firstGoldCatch: 'Land a perfect catch',
     },
     done: 'Earned!',
     earned: (name: string) => `New milestone: ${name}!`,
     newMilestone: 'Milestone reached!',
+    andMore: (n: number) => `Milestone reached! And ${n} more in the Collection.`,
+  },
+  // The stamp calendar and the pet's wishes (src/ui/calendar.ts).
+  stamps: {
+    title: 'Stamp calendar',
+    subtitle: 'One stamp for each day you visit',
+    count: (n: number) => `${n} / 28`,
+    chip: (day: number) => `Day ${day}`,
+    chipLabel: 'Stamp calendar and wishes',
+    tap: 'Tap',
+    seed: 'Seed',
+    treat: 'Treat',
+    gold: (n: number) => `${n}`,
+    fragments: (n: number) => `${n} ✦`,
+    today: (what: string) => `Today: ${what}.`,
+    next: (what: string) => `Next: ${what}.`,
+    rule: (day: number) => `One stamp on your first visit each day. Miss a day? Nothing is lost, day ${day} waits for you.`,
+    full: 'The whole calendar is stamped! A new one starts tomorrow.',
+    stamped: (day: number) => `Day ${day} stamped!`,
+    toGift: (days: number, what: string) =>
+      days === 1 ? `One more day to this week's gift: ${what}.` : `${days} more days to this week's gift: ${what}.`,
+    giftToday: "This week's gift is yours!",
+    lastDay: 'The whole calendar is stamped. A new one starts with your next visit.',
+    todayTag: 'Today',
+    lovely: 'Lovely',
+    close: 'Close',
+    day: 'Day',
+    parcel: (n: number) => `a parcel with ${n} star fragments`,
+    // What a reward is, for "Today: 30 gold."
+    goldWords: (n: number) => `${n} gold`,
+    fragmentWords: (n: number) => (n === 1 ? '1 star fragment' : `${n} star fragments`),
+    wishesTitle: (name: string) => `${name}'s wishes`,
+    wishGold: (n: number) => `${n} gold`,
+    claim: 'Claim',
+    noWishes: 'Wishes start once your egg hatches.',
+    wishes: {
+      fish: (n: number) => `Catch ${n} fish together`,
+      cravings: () => 'Treat a craving',
+      harvests: (n: number) => `Pick ${n} crops`,
+      dishes: () => 'Cook a dish',
+      journeys: () => 'Go on a journey',
+      deliveries: () => "Fill Percy's order",
+      gifts: () => 'Give a friend a gift',
+    } as Record<string, (n: number) => string>,
   },
   // The "While you were away" card.
   away: {
     title: 'While you were away',
     gone: (time: string) => `You were gone for ${time}.`,
+    awayFor: (time: string) => `Away ${time}`,
+    backTo: (name: string) => `Back to ${name}`,
+    giveMedicine: 'Medicine',
     ok: 'Got it',
     ready: (n: number) => (n === 1 ? 'A plant is ready to harvest.' : `${n} plants are ready to harvest.`),
     dry: (n: number) => (n === 1 ? 'A pot dried out. Give it some water!' : `${n} pots dried out. Give them some water!`),
@@ -1755,7 +1919,7 @@ export const STRINGS = {
       energy: (name: string) => `${name} got tired.`,
       happiness: (name: string) => `${name} got a bit lonely.`,
     },
-    sick: (name: string) => `${name} got sick. Medicine will help.`,
+    sick: (name: string) => `${name} got sick. Medicine now keeps ${name} safe.`,
     critical: (name: string, timeLeft: string) => `${name} is very sick! Only ${timeLeft} left to give medicine.`,
     passed: (name: string) => `${name} was sick for too long and passed away.`,
     warning: (name: string) => `${name} isn't feeling well.`,

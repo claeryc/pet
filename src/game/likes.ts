@@ -14,7 +14,7 @@ import { seededRoll } from './growth';
 import type { GameState, Pet } from './state';
 import traitData from '../data/traits.json';
 
-export type LikeKind = 'food' | 'play' | 'dislike';
+export type LikeKind = 'food' | 'play' | 'dislike' | 'toy';
 
 export interface Likes {
   food: string; // a food id
@@ -76,9 +76,9 @@ export function feeling(pet: Pet, kind: 'food' | 'play' | 'bath' | 'woken', what
 
 // Writes down what the pet just showed (if it's the first time): its
 // favourite food or way to play for 'loved', its dislike for 'disliked'.
-export function noticeFeeling(state: GameState, kind: 'food' | 'play' | 'bath' | 'woken', felt: 'loved' | 'disliked' | null): GameState {
+export function noticeFeeling(state: GameState, kind: 'food' | 'play' | 'bath' | 'woken' | 'toy', felt: 'loved' | 'disliked' | null): GameState {
   if (!felt) return state;
-  const found: LikeKind = felt === 'disliked' ? 'dislike' : kind === 'food' ? 'food' : 'play';
+  const found: LikeKind = felt === 'disliked' ? 'dislike' : kind === 'food' ? 'food' : kind === 'toy' ? 'toy' : 'play';
   const likes = likesOf(state.pet);
   if (likes.found.includes(found)) return state;
   return { ...state, pet: { ...state.pet, likes: { ...likes, found: [...likes.found, found] } } };

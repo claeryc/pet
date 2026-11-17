@@ -61,11 +61,16 @@ export function createDecorateView({ onPlace, onShop, onClose }: DecorateSetup):
   const T = STRINGS.decorate;
   const panel = el('div', 'deco-panel');
   panel.hidden = true;
+  // A tray: Undo, the spot's name, then the pieces that fit it. Each tap
+  // saves at once, so Undo puts the last change back.
   const head = el('div', 'deco-head');
+  const undoBtn = el('button', 'deco-undo menu-header-btn', `↶ ${T.undo}`);
+  undoBtn.setAttribute('aria-label', T.undoLabel);
   const title = el('b', 'deco-title');
-  head.append(title, el('span', 'deco-hint', T.hint));
+  head.append(undoBtn, title);
+  const hint = el('p', 'deco-hint', T.hint);
   const tiles = el('div', 'deco-tiles');
-  panel.append(head, tiles);
+  panel.append(head, hint, tiles);
 
   const row = el('div', 'actions trip-row');
   row.hidden = true;
@@ -76,9 +81,13 @@ export function createDecorateView({ onPlace, onShop, onClose }: DecorateSetup):
   let open = false;
   let spot: FurnitureSlot = 'wall';
   let latest: GameState | null = null;
+  // The last change: the spot, what was there, and where the new piece
+  // came from (it moves over when it was up somewhere else).
+  let last: { spot: FurnitureSlot; prev: string | null; id: string | null; from: FurnitureSlot | null } | null = null;
 
   function render(): void {
     title.textContent = T.spots[spot];
+    undoBtn.disabled = !last;
     tiles.replaceChildren();
     if (!latest) return;
     const here = roomDecor(latest).furniture ?? {};
@@ -94,7 +103,9 @@ export function createDecorateView({ onPlace, onShop, onClose }: DecorateSetup):
       const elsewhere = id && SPOTS.find((s) => s !== spot && here[s] === id);
       if (elsewhere) b.classList.add('is-elsewhere');
       b.addEventListener('click', () => {
-        if (!on) onPlace(spot, id);
+        if (on) return;
+        last = { spot, prev: here[spot] ?? null, id, from: elsewhere || null };
+        onPlace(spot, id);
       });
       return b;
     };
@@ -118,12 +129,22 @@ export function createDecorateView({ onPlace, onShop, onClose }: DecorateSetup):
     onShop();
   });
   doneBtn.addEventListener('click', close);
+  undoBtn.addEventListener('click', () => {
+    if (!last) return;
+    const { spot: at, prev, id, from } = last;
+    last = null;
+    if (from && id) onPlace(from, id); // the piece goes back where it was
+    onPlace(at, prev);
+    spot = at;
+    render();
+  });
 
   return {
     panel,
     row,
     open: (at) => {
       open = true;
+      last = null;
       // Start at the first spot with something for it.
       spot = at ?? (latest && SPOTS.find((s) => piecesFor(latest!, s).length > 0)) ?? 'wall';
       panel.hidden = false;

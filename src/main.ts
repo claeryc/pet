@@ -3,6 +3,7 @@
 //                                  |
 //                            saving (src/storage)
 
+import { placeToIntroduce } from './game/map';
 import { CONFIG, STAT_MAX } from './game/config';
 import { createNewGame, type GameState, type Message } from './game/state';
 import { simulate } from './game/simulate';
@@ -29,7 +30,7 @@ import { standInAds, useAdProvider, watchRewardedAd } from './ads';
 import { adsAllowed, claimAd, nextAd } from './game/ads';
 import { createAdPlayer } from './ui/adPlayer';
 import { getDecor, placeFurniture, takeDownFurniture, useDecor } from './game/decor';
-import { getLook, isNight } from './game/stats';
+import { getLook, hasPassed, isNight } from './game/stats';
 import { feeling } from './game/likes';
 import { afterEating, chooseExpression, idleEveryMs, reactionMs, type Expression, type Reaction } from './game/expressions';
 import { getTrait, traitOf } from './game/traits';
@@ -91,6 +92,14 @@ import { forecast } from './game/forecast';
 import { fortuneOf, useFortuneCookie } from './game/fortune';
 import { fortuneArt, skipFortuneOnTap } from './ui/fortune';
 import { createAwayCard } from './ui/away';
+import { createRestCard } from './ui/resting';
+import { goodbyeResting, layToRest, reviveResting } from './game/resting';
+import { createCalendar, rewardWords, type Calendar, type CalendarInfo } from './ui/calendar';
+import { dayReward, isGiftDay, nextDay, stamp, stampDue, stampsOf } from './game/stamps';
+import { claimWish, rollWishes, wishesOf, wishProgress } from './game/wishes';
+import { localDay } from './game/economy';
+import { buyToy, getToy, playToy, toyBlocked } from './game/toys';
+import { capacity } from './game/rooms';
 import { awayNotes } from './game/away';
 import type { Pet, Room } from './game/state';
 import { askToKeepStorage, BackupError, blockSaves, clearSave, exportSave, importSave, loadGame, saveGame, whenSaveFails } from './storage/storage';
@@ -108,7 +117,7 @@ import { DISH_MS, DONE_MS as COOKED_MS } from './ui/cooking';
 import { sound, startAudio, type SoundId } from './audio/audio';
 import { dig, digToday, sniff, type DigBlock } from './game/dig';
 import { placeName as digPlaceName } from './ui/dig';
-import { buildStage, collectHive, craft, getProject } from './game/crafting';
+import { buildStage, collectHive, craft, getProject, seeProject } from './game/crafting';
 import { patternIcon } from './ui/workbench';
 import { buyCharm, buyHolidayTicket, callHome, goHoliday, goTogether, offerAt, openBackpack, placeLevel, restPercy } from './game/journeys';
 import { postcardArt } from './ui/journal';
@@ -166,6 +175,9 @@ const afterNaming: string[] = [];
 // Replaces the current state, saves it and refreshes the screen. If the pet
 // just grew into a new stage, celebrate it, and say if anything new opened
 // up. A freshly hatched pet is asked for its name first.
+// The stamp calendar, made once the screen is up (see below).
+let calendar: Calendar | undefined;
+
 function setState(next: GameState): void {
   const before = new Map(allPets(state).map((p) => [p.id, p.stage]));
   const foundBefore = state.charactersFound;
@@ -190,13 +202,15 @@ function setState(next: GameState): void {
   for (const id of guides) state = markGuideRead(state, id);
   saveGame(state);
   home.update(state, gameNow());
+  calendar?.update(calendarInfo());
   for (const pet of grew) {
     if (pet.stage === 'baby') continue;
     showGrowUp(pet, foundBefore);
   }
   showLevels(progress.levels);
   showFragments(progress.fragments);
-  const notices = progress.unlocked.map((id) => STRINGS.unlocked[id]);
+  // Places on the map are shown off there instead of with a notice.
+  const notices = progress.unlocked.filter((id) => !(id in STRINGS.map.intros)).map((id) => STRINGS.unlocked[id]);
   if (needsName(state)) {
     afterNaming.push(
       ...progress.badges.map((b) => STRINGS.achievements.earned(STRINGS.achievements.names[b.id], STRINGS.achievements.tiers[b.tier])),
@@ -210,6 +224,7 @@ function setState(next: GameState): void {
   }
   announceMail(oldMessages);
   for (const id of guides) showGuide(id);
+  if (progress.unlocked.some((id) => id in STRINGS.map.intros)) window.setTimeout(maybeIntroduce, 1200);
 }
 
 // When the guides that aren't about opening something come up: Looking
@@ -259,8 +274,12 @@ function showAwards({ badges, milestones }: Pick<ReturnType<typeof updateProgres
       caption: STRINGS.achievements.newBadge(STRINGS.achievements.tiers[b.tier]), tier: b.tier, sound: 'badge',
     });
   }
-  for (const id of milestones) {
-    home.reveal({ icon: MILESTONE_ICONS[id], name: STRINGS.milestones.names[id], count: 1, stars: 0, caption: STRINGS.milestones.newMilestone, tier: 'gold', sound: 'badge' });
+  // One reveal at a time: an old save can reach several at once (the
+  // first-step ones came later), so the rest are counted on the first.
+  const [first, ...more] = milestones;
+  if (first) {
+    const caption = more.length ? STRINGS.milestones.andMore(more.length) : STRINGS.milestones.newMilestone;
+    home.reveal({ icon: MILESTONE_ICONS[first], name: STRINGS.milestones.names[first], count: 1, stars: 0, caption, tier: 'gold', sound: 'badge' });
   }
 }
 
@@ -681,6 +700,51 @@ function askGoodbye(): void {
   });
 }
 
+// ...or let it rest under the stars (a star in the window) while you raise
+// a new pet.
+function letRest(): void {
+  const name = state.pet.name;
+  const result = layToRest(state, gameNow());
+  setState(result.state);
+  if (result.blocked === 'full') return blocked(STRINGS.revival.restFull(state.resting.length));
+  if (result.blocked) return;
+  home.toast(STRINGS.revival.laidToRest(name));
+}
+
+// The star in the window: who's resting, and bringing one back.
+function showRestCard(): void {
+  restCard.open({
+    pets: state.resting,
+    pieces: state.fragments.pieces,
+    perStar: CONFIG.fragments.perStar,
+    stars: revivalStars(state),
+    room: allPets(state).length < capacity(state),
+    portrait: portraitOf,
+    onBringBack: (id) => {
+      const name = state.resting.find((p) => p.id === id)?.name ?? '';
+      const result = reviveResting(state, gameNow(), id);
+      setState(result.state);
+      if (result.blocked === 'noRoom') return blocked(STRINGS.revival.restNoRoom);
+      if (result.blocked === 'noRevival') return blocked(STRINGS.blocked.noRevival(name));
+      if (result.blocked) return;
+      sound('starMade');
+      home.toast(STRINGS.revival.back(name));
+      react('happy');
+    },
+    onGoodbye: (id) => {
+      const name = state.resting.find((p) => p.id === id)?.name ?? '';
+      choice.open({
+        title: STRINGS.revival.goodbyeTitle(name),
+        text: STRINGS.revival.restGoodbyeAsk(name),
+        options: [
+          { label: STRINGS.revival.keep, onPick: () => {} },
+          { label: STRINGS.revival.goodbyeYes, soft: true, onPick: () => setState(goodbyeResting(state, id)) },
+        ],
+      });
+    },
+  });
+}
+
 // Friends: says why something was refused.
 function friendBlocked(reason: FriendBlock | MingleBlock): void {
   blocked(STRINGS.friends.blocked[reason](state.pet.name));
@@ -939,18 +1003,73 @@ function mingleNow(id: string): void {
 // Shows the "While you were away" card, if you were gone a while and
 // something happened. `before` is the game as you left it at `leftAt`.
 // Skipped while the pet is being named or a choice is open.
+// Medicine, from the Medicine button or the away card.
+function medicineNow(): void {
+  const before = simulate(state, gameNow()).pet;
+  if (!runAction(giveMedicine)) return;
+  playMoment('medicine');
+  // Yuck! Then better.
+  window.setTimeout(() => pullFace('grumpy'), MOMENT_MS.medicine * 0.38);
+  window.setTimeout(() => showGains(before, { health: 1 }), MOMENT_MS.medicine * 0.72);
+}
+
 function showAway(before: GameState, leftAt: number): void {
   if (naming.isOpen() || choice.isOpen() || away.isOpen()) return;
   const notes = awayNotes(before, simulate(state, gameNow()), leftAt, gameNow());
-  if (notes.length > 0) away.open(notes, state.pet.name, gameNow() - leftAt);
+  const sick = simulate(state, gameNow()).pet.condition === 'sick';
+  if (notes.length > 0) away.open(notes, state.pet.name, gameNow() - leftAt, sick ? medicineNow : undefined);
 }
 
 function tryCheckIn(): void {
   const firstEver = state.checkIn.day === '';
   const { state: next, reward } = checkIn(simulate(state, gameNow()), gameNow());
-  setState(next);
+  setState(rollWishes(next, gameNow()));
   if (reward > 0) sound('coins');
   if (reward > 0) home.toast(firstEver ? STRINGS.gold.firstCheckIn(reward) : STRINGS.gold.checkIn(reward));
+  window.setTimeout(maybeOpenCalendar, 700);
+}
+
+// The stamp calendar (src/ui/calendar.ts): what it shows, from the state.
+function calendarInfo(): CalendarInfo {
+  const now = gameNow();
+  return {
+    stamped: stampsOf(state).stamped,
+    due: stampDue(state, now),
+    next: nextDay(state),
+    rewards: CONFIG.stamps.days,
+    petName: state.pet.name,
+    wishes: wishesOf(state).list.map((w) => ({ id: w.id, goal: w.goal, progress: wishProgress(state, w), claimed: w.claimed })),
+  };
+}
+
+function openCalendar(): void {
+  setState(rollWishes(state, gameNow()));
+  calendar?.open(calendarInfo());
+}
+
+// The calendar opens by itself once a day, on the first visit, while
+// today's stamp is waiting and nothing else is up.
+let calendarShownOn = '';
+function maybeOpenCalendar(): void {
+  const now = gameNow();
+  if (!stampDue(state, now) || calendarShownOn === localDay(now) || needsName(state) || hasPassed(state.pet)) return;
+  if (!calendar || calendar.isOpen() || document.querySelector('.name-backdrop:not([hidden])')) return;
+  calendarShownOn = localDay(now);
+  openCalendar();
+}
+
+function stampToday(): void {
+  const result = stamp(state, gameNow());
+  if (!result.stamped) return;
+  setState(result.state);
+  if (!calendar) return;
+  const cal = calendar;
+  cal.close();
+  sound('badge');
+  const { day, reward } = result.stamped;
+  const gift = Math.ceil(day / 7) * 7;
+  const toGift = isGiftDay(day) ? null : { days: gift - day, words: rewardWords(dayReward(gift)) };
+  cal.showStamp(day, reward, toGift, () => cal.open(calendarInfo()));
 }
 
 // The sprite sheets, filled in as they load: the pets at home first.
@@ -1025,16 +1144,50 @@ const home = createHomeScreen(root, {
     playMoment(state.pet.asleep ? 'doze' : 'wake');
     if (!state.pet.asleep && (getTrait(state.pet.trait)?.grumpyWhenWoken || feeling(state.pet, 'woken') === 'disliked')) pullFace('grumpy');
   },
-  onMedicine: () => {
-    const before = simulate(state, gameNow()).pet;
-    if (!runAction(giveMedicine)) return;
-    playMoment('medicine');
-    // Yuck! Then better.
-    window.setTimeout(() => pullFace('grumpy'), MOMENT_MS.medicine * 0.38);
-    window.setTimeout(() => showGains(before, { health: 1 }), MOMENT_MS.medicine * 0.72);
-  },
+  onMedicine: () => medicineNow(),
   onRevive: askRevive,
   onGoodbye: askGoodbye,
+  onLetRest: letRest,
+  onRestingStar: showRestCard,
+  onOpenCalendar: openCalendar,
+  onToyStart: (id) => {
+    const why = toyBlocked(simulate(state, gameNow()), id);
+    return why ? STRINGS.blocked[why](state.pet.name) : null;
+  },
+  onToyCount: () => {
+    lastTouched = performance.now();
+  },
+  onToyEnd: (id, count) => {
+    lastTouched = performance.now();
+    if (count === 0) return; // it never got going: nothing counts
+    const before = simulate(state, gameNow()).pet;
+    const result = playToy(state, gameNow(), id);
+    setState(result.state);
+    if (result.blocked) return;
+    const toy = getToy(id)!;
+    showGains(before, { happiness: toy.happiness, energy: toy.energy, hunger: toy.hunger });
+    react('happy', CONFIG.reactionMs, result.felt === 'loved' ? 'inLove' : undefined);
+    sound('hearts');
+    luckySeed('play');
+  },
+  onStroke: () => playWith('tickle'),
+  onBuyToy: (id) => {
+    const toy = getToy(id);
+    const name = STRINGS.toys.names[id] ?? id;
+    const buy = () => runShop(buyToy(state, id), STRINGS.toys.bought(name));
+    const { perStar } = CONFIG.fragments;
+    const left = state.fragments.pieces - (toy?.fragments ?? 0);
+    // Fragments going on a toy: first say how far that leaves a free star.
+    if (!toy?.fragments || left < 0 || left >= perStar) return buy();
+    choice.open({
+      title: STRINGS.shop.spendTitle,
+      text: STRINGS.shop.spendAsk(name, toy.fragments, left, perStar),
+      options: [
+        { label: STRINGS.shop.spendYes, onPick: buy },
+        { label: STRINGS.shop.spendNo, soft: true, onPick: () => {} },
+      ],
+    });
+  },
   onCast: (streak) => {
     const result = cast(state, gameNow());
     setState(result.state);
@@ -1135,6 +1288,7 @@ const home = createHomeScreen(root, {
     }, 700);
     return p;
   },
+  onSeeProject: (id) => setState(seeProject(state, id)),
   onBuild: (id) => {
     const result = buildStage(simulate(state, gameNow()), gameNow(), id);
     setState(result.state);
@@ -1605,6 +1759,7 @@ const home = createHomeScreen(root, {
   onReadGuide: (id) => guide.replay(id, state.pet.name),
   onRename: askName,
   onOwner: (name) => setState(setOwner(state, name)),
+  onAutoHoliday: (on) => setState({ ...state, settings: { ...state.settings, autoHoliday: on } }),
   onShowAllMenus: (showAllMenus) => setState({ ...state, showAllMenus }),
   // Going back to real time can't undo what happened, so we keep the pet as
   // it is and just restart the clock from now. Timers the pet is waiting on
@@ -1673,7 +1828,16 @@ const growUp = createGrowUpReveal(root, (moment) => {
   else react('happy');
 });
 skipFortuneOnTap();
-const away = createAwayCard(root);
+const away = createAwayCard(root, () => window.setTimeout(maybeOpenCalendar, 500));
+calendar = createCalendar(root, {
+  onStamp: stampToday,
+  onClaim: (i) => {
+    const before = state.gold;
+    setState(claimWish(state, i));
+    if (state.gold > before) sound('coins');
+  },
+});
+const restCard = createRestCard(root);
 // If saving fails (storage full, private browsing), say so once.
 let saveFailShown = false;
 whenSaveFails(() => {
@@ -1789,6 +1953,8 @@ function drawFrame(timeMs: number): void {
       mess: away ? undefined : messOf(pet, home.hidesSmell()),
       bath,
       glow: !away && pet.starGlow && pet.condition !== 'passed',
+      restingStar: (state.resting ?? []).length > 0,
+      toy: away ? null : home.toyScene(timeMs),
       note: away,
       night: isNight(gameNow()),
       lightsOff: pet.asleep,
@@ -1846,6 +2012,18 @@ function liveTick(): void {
   const next = simulate(state, gameNow());
   if (next !== state) setState(next);
   else home.update(state, gameNow());
+  maybeIntroduce();
+}
+
+// A place that just opened on the map gets shown off there, once, when
+// nothing else is going on (no name to give, no card or guide up).
+function maybeIntroduce(): void {
+  const next = placeToIntroduce(state);
+  if (!next || needsName(state) || hasPassed(state.pet)) return;
+  if (document.querySelector('.name-backdrop:not([hidden]), .guide-backdrop:not([hidden]), .cal-backdrop:not([hidden])')) return;
+  if (calendar?.isOpen()) return;
+  if (!home.introducePlace(next.map, next.area, next.unlock)) return;
+  setState({ ...state, introduced: [...(state.introduced ?? []), next.unlock] });
 }
 let ticker: ReturnType<typeof setInterval> | null = null;
 let tabLost = false; // another tab has the pet now

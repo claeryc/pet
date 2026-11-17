@@ -33,6 +33,8 @@ import { CURTAINS as CURTAIN_COLOURS, WALLPAPERS as WALL_PATTERNS } from '../ren
 import { PALETTE } from '../render/palette';
 import { adsAllowed, extrasLeft, nextAd, rewardOf } from '../game/ads';
 import { STORE_OPEN } from '../payments';
+import { TOYS, favouriteToy, ownsToy, type Toy } from '../game/toys';
+import { likesOf } from '../game/likes';
 
 // What the room above shows while a sheet is open: a hat on the pet, or a
 // decoration up in the room, before it's bought.
@@ -44,6 +46,7 @@ export interface ShopPreview {
 export interface ShopCallbacks {
   onBuyFood: (food: FoodId) => void;
   onBuyHat: (hat: string) => void;
+  onBuyToy: (toy: string) => void;
   onBuyGardenItem: (item: ShopItem) => void;
   onWearHat: (hat: string | null) => void;
   onBuyBait: (id: BaitId) => void;
@@ -215,7 +218,6 @@ function text<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, 
 }
 
 const CHECK = `<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 5.5l2 2 4-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-const BACK = `<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M7.5 2.5L4 6l3.5 3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
 type Cur = 'gold' | 'frag';
 
@@ -437,6 +439,31 @@ function hatItem(state: GameState, id: string, cb: ShopCallbacks): Item {
   return item;
 }
 
+// A toy: its price until it's yours (star fragments for a star toy).
+// Once the pet has shown which one it loves, that one says so.
+function toyItem(state: GameState, t: Toy, cb: ShopCallbacks): Item {
+  const T = STRINGS.toys;
+  const owned = ownsToy(state, t.id);
+  const loved = likesOf(state.pet).found.includes('toy') && favouriteToy(state.pet) === t.id;
+  const star = t.fragments > 0;
+  const item: Item = {
+    key: `toy:${t.id}`,
+    art: ITEM_ICONS[`toy_${t.id}`],
+    name: T.names[t.id] ?? t.id,
+    kind: T.shopKind,
+    about: T.about[t.id] ?? '',
+    tint: star ? TINT.starHat : TINT.hat,
+    tag: loved ? `♥ ${T.favouriteTag}` : star ? T.starToy : undefined,
+    starTag: star && !loved,
+    effects: foodEffects(t as unknown as Food),
+  };
+  if (owned) item.fact = STRINGS.shop.owned;
+  else item.price = star
+    ? { cur: 'frag', cost: t.fragments, onBuy: () => cb.onBuyToy(t.id) }
+    : { cur: 'gold', cost: t.price, onBuy: () => cb.onBuyToy(t.id) };
+  return item;
+}
+
 // What a food does, as little chips: [tummy] +10 [joy] +6.
 function foodEffects(f: Food): string {
   const chips: string[] = [];
@@ -593,7 +620,7 @@ function untilTomorrow(now: number): number {
 
 // The Shop's categories, in order. Other screens can open the Shop at one.
 // ('revival' is the Star counter.)
-export type ShopCategory = 'today' | 'revival' | 'food' | 'garden' | 'fishing' | 'journeys' | 'room' | 'hats';
+export type ShopCategory = 'today' | 'revival' | 'food' | 'garden' | 'fishing' | 'journeys' | 'room' | 'hats' | 'toys';
 
 // Food the Shop sells: only plain ingredients (the energy drink only on its days).
 export const soldInShop = (f: Food) => f.price > 0 && (f.source === 'shop' || f.source === 'staple');
@@ -672,6 +699,10 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
     kitchenText[id].note,
     hasKitchen(state, id) ? fact(S.owned) : priceButton({ cur: 'gold', cost: kitchenPrice(id)!, onBuy: () => cb.onBuyKitchen(id) }, gold)));
 
+  // Toys.
+  const toys = TOYS.map((t) => toyItem(state, t, cb));
+  const toysOwned = TOYS.filter((t) => ownsToy(state, t.id)).length;
+
   // Hats.
   const hats = HATS.map((h) => hatItem(state, h.id, cb));
   const hatsOwned = HATS.filter((h) => state.inventory.hats.includes(h.id)).length;
@@ -731,6 +762,11 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
   const percy = () => wideCard(ITEM_ICONS.percy, '#e9f6ff', STRINGS.journeys.percyRest,
     resting ? STRINGS.journeys.percyRestNote(formatDuration(state.journeys.percyFreeAt - now)) : STRINGS.journeys.percyReady,
     resting ? priceButton({ cur: 'gold', cost: CONFIG.journeys.percy.resetPrice, onBuy: cb.onWakePercy }, gold) : fact(STRINGS.journeys.ready));
+  const holidayCard = () => {
+    const c = holiday();
+    c.classList.add('is-holiday');
+    return c;
+  };
   const holiday = () => wideCard(MENU_ICONS.meadow, '#f1ecfa', STRINGS.journeys.holidayTicket, STRINGS.journeys.holidayShopNote(holidayTickets(state)),
     priceButton({ cur: 'frag', cost: CONFIG.journeys.holiday.fragments, onBuy: cb.onBuyHolidayTicket }, pieces));
 
@@ -831,18 +867,18 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
     craft.classList.add('is-craft');
     craft.classList.toggle('is-short', pieces < perStar);
     acts.append(ghostButton(S.howItWorks, cb.onFragmentsHelp), craft);
-    goal.append(goalRow, bar, text('small', '', S.starNote(revivalStars(state), perGoodDay)), acts);
+    goal.append(goalRow, bar, text('small', '', S.starNote(revivalStars(state), perGoodDay)), text('small', 'shop-cash', S.starCash), acts);
     have.append(num, goal);
     const ad = adCard();
     if (view.fly && ad) flyIn(view.fly, ad, bar, goalRow.lastElementChild as HTMLElement, haveNum);
     view.fly = undefined;
     const packs = el('div', 'shop-packs');
     CONFIG.store.forEach((p, i) => {
-      const best = i === CONFIG.store.length - 1;
+      const best = false;
       const pack = el('div', `shop-pack${best ? ' is-best' : ''}`);
       if (best) pack.append(text('span', 'shop-best', S.bestValue));
       pack.insertAdjacentHTML('beforeend', fragmentPile(i + 1));
-      pack.append(text('b', '', String(p.fragments)), text('small', '', best ? S.packExtra : ''));
+      pack.append(text('b', '', String(p.fragments)), text('small', '', S.packWhat[i] ?? ''));
       const buy = text('button', 'shop-buy is-cash', p.price);
       buy.setAttribute('aria-label', S.packBuy(p.fragments, p.price));
       buy.addEventListener('click', () => cb.onBuyPack(p.id));
@@ -850,8 +886,10 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
       packs.append(pack);
     });
     const free = ad ? [section(STRINGS.ads.freeTitle), ad, text('p', 'shop-fine is-ads', STRINGS.ads.optional)] : [];
-    if (!STORE_OPEN) return [have, ...free];
-    return [have, ...free, section(S.getFragments), packs, text('p', 'shop-fine', S.realMoney)];
+    // Going away: the Holiday ticket, right by the fragments it costs.
+    const away = journeysOpen ? [section(S.goingAway), holidayCard()] : [];
+    if (!STORE_OPEN) return [have, ...away, ...free];
+    return [have, ...away, ...free, section(S.getFragments), packs, text('p', 'shop-fine', S.realMoney)];
   };
 
   // Free treats: the next rewarded ad, if there are ads at all. Never
@@ -926,6 +964,7 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
       ],
     },
     { id: 'hats', title: S.hats, icon: hatIcon(cb.hatImage(HATS[1]?.id ?? '')), items: hats, body: () => [section(S.hats, S.ofAll(hatsOwned, HATS.length)), grid('', hats.map((h) => card(h, state, open)))] },
+    { id: 'toys', title: STRINGS.toys.shopTitle, icon: ITEM_ICONS.toy_ball, items: toys, body: () => [section(STRINGS.toys.shopTitle, S.ofAll(toysOwned, TOYS.length)), grid('', toys.map((t) => card(t, state, open)))] },
     { id: 'revival', title: S.starCounter, icon: FRAGMENT_ICON, items: [], body: stars },
   ];
   const shown = pages.find((p) => p.id === view.tab) ?? pages[0];
@@ -937,7 +976,8 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
   const awning = el('div', 'shop-awning');
   awning.setAttribute('aria-hidden', 'true');
   const head = el('div', 'shop-head');
-  const back = el('button', 'shop-back', BACK);
+  // The same "‹ Menu" pill as every other page's header.
+  const back = el('button', 'shop-back menu-header-btn', `<span class="menu-header-arrow" aria-hidden="true">‹</span>${STRINGS.menu.backTo}`);
   back.setAttribute('aria-label', STRINGS.menu.back);
   back.addEventListener('click', onBack);
   const purse = el('div', 'shop-purse');
@@ -965,7 +1005,7 @@ export function shopPage(state: GameState, cb: ShopCallbacks, view: ShopView, re
   return [page];
 }
 
-// [today][FOOD][garden][fishing][journeys][room][hats][stars]
+// [today][FOOD][garden][fishing][journeys][room][hats][toys][stars]
 // Fragments from an ad fly from its card into the Revival Star bar, which
 // then fills up and its count ticks over. Runs once the page is showing;
 // with "reduce motion" on, the bar is just shown full.

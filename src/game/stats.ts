@@ -43,7 +43,8 @@ export function hasPassed(pet: Pet): boolean {
 
 // How long a sick pet has left before it passes away, in milliseconds.
 export function timeLeftToTreat(pet: Pet): number {
-  return Math.max(0, CONFIG.sickness.hoursBeforePassing * 60 - pet.sickMinutes) * 60_000;
+  const hours = pet.sickWindowHours ?? CONFIG.sickness.hoursBeforePassing;
+  return Math.max(0, hours * 60 - pet.sickMinutes) * 60_000;
 }
 
 // True in a sick pet's last hours, when the banner turns urgent.

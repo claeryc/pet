@@ -63,7 +63,7 @@ export const CONFIG = {
     // need anything at all.
     decayMultiplier: {
       egg: 0,
-      baby: 1.25,
+      baby: 1, // babies need the same as teens: a first day shouldn't be harder
       teen: 1,
       adult: 0.9,
     },
@@ -137,6 +137,9 @@ export const CONFIG = {
     // the room, greyed out, until a Revival Star brings it back or you say
     // goodbye. With the warning first, that's over a day of neglect.
     hoursBeforePassing: 24,
+    // Babies, and every pet in a keeper's first week, get twice as long.
+    hoursBeforePassingGentle: 48,
+    gentleFirstDays: 7,
     // In its last hours the banner turns urgent and counts down.
     criticalHours: 6,
   },
@@ -145,6 +148,9 @@ export const CONFIG = {
   // with these stats (at least), and rests like it does after medicine.
   revival: {
     stats: { hunger: 60, happiness: 60, health: 60, energy: 60 },
+    // A pet that passed away can rest under the stars (the star in the
+    // window) while you raise a new one. This many can rest at once.
+    restingSpots: 3,
   },
 
   // Star fragments (see src/game/fragments.ts): the one currency for
@@ -154,6 +160,41 @@ export const CONFIG = {
   // in packs (`store` below). `perStar` of them make a Revival Star, which
   // money can't buy directly. A daily player earns about 150 a month.
   fragments: { perGoodDay: 5, perMilestone: 25, perStar: 500 },
+
+  // The stamp calendar (see src/game/stamps.ts): 28 days, one stamp on the
+  // first visit of each day, so a missed day is never lost. Each day is
+  // written like the journey finds ("gold:20", "seed:carrot", "mat:twig", a
+  // food id) or "frag:n" for star fragments. Days 7, 14, 21 and 28 are the
+  // gifts. Keep a whole calendar at about 56 fragments, so all free
+  // sources stay near 480 a month.
+  stamps: {
+    days: [
+      ['gold:20'], ['seed:carrot'], ['frag:2'], ['mat:twig'], ['gold:30'], ['strawberry'], ['frag:5', 'honeyCake'],
+      ['gold:20'], ['seed:pumpkin'], ['frag:2'], ['mat:pebble'], ['gold:30'], ['cookie'], ['frag:8', 'mat:beeswax'],
+      ['gold:25'], ['seed:dragonFruit'], ['frag:3'], ['mat:clay'], ['gold:30'], ['honey'], ['frag:8', 'starCookies'],
+      ['gold:25'], ['seed:carrot'], ['frag:3'], ['mat:shell'], ['gold:40'], ['starCookies'], ['frag:25'],
+    ] as string[][],
+    fullMaterialGold: 10, // a material you can't hold more of turns into this much gold
+  },
+
+  // Three wishes a day, from the pet (see src/game/wishes.ts). Each pays a
+  // little gold and Keeper XP, never fragments.
+  wishes: {
+    perDay: 3,
+    gold: 12,
+    xp: 5,
+    // Each wish: what it counts (a tally) and how many, and what must be
+    // open for it.
+    pool: [
+      { id: 'fish', goal: 3, needs: null },
+      { id: 'cravings', goal: 1, needs: null },
+      { id: 'harvests', goal: 2, needs: 'garden' },
+      { id: 'dishes', goal: 1, needs: 'cooking' },
+      { id: 'journeys', goal: 1, needs: 'journeys' },
+      { id: 'deliveries', goal: 1, needs: 'delivery' },
+      { id: 'gifts', goal: 1, needs: 'meet' },
+    ] as { id: string; goal: number; needs: string | null }[],
+  },
 
   // The Family Home: a second room with `friends.maxPets` more spots (see
   // src/game/rooms.ts). Pets there lose tummy, joy and energy at
@@ -187,7 +228,7 @@ export const CONFIG = {
   store: [
     { id: 'fragments100', fragments: 100, price: '€0.99' },
     { id: 'fragments300', fragments: 300, price: '€2.99' },
-    { id: 'fragments650', fragments: 650, price: '€4.99' },
+    { id: 'fragments550', fragments: 550, price: '€4.99' },
   ],
 
   // Rewarded ads (see src/game/ads.ts), only ever watched when the player
@@ -318,6 +359,27 @@ export const CONFIG = {
   petting: {
     holdMs: 500,
     tapCooldownMs: 1400,
+    // Stroking: a slow drag over the pet (it starts once the finger has
+    // moved a few pixels, so a tap still cuddles and a hold still opens the
+    // Wardrobe). This many room pixels of stroking fill the heart, and
+    // count as a Tickle. Then the heart rests for a little while.
+    strokeNeeded: 80,
+    strokeCooldownMs: 8000,
+  },
+
+  // Toys (Play > Toys, sold in the Shop's Toys tab). Playing with one is a
+  // short game in the room, about `playSeconds` long; what it does to the
+  // pet's needs counts once a game, like a play. Every keeper starts with
+  // the ball. One toy is each pet's favourite (rolled from its id).
+  toys: [
+    { id: 'ball', price: 90, fragments: 0, happiness: 16, hunger: -2, energy: -6 },
+    { id: 'wand', price: 140, fragments: 0, happiness: 18, hunger: -2, energy: -8 },
+    { id: 'bubbles', price: 180, fragments: 0, happiness: 20, hunger: -2, energy: -6 },
+    { id: 'starKite', price: 0, fragments: 120, happiness: 26, hunger: -3, energy: -6 },
+  ],
+  toyPlay: {
+    playSeconds: 15,
+    startWith: ['ball'],
   },
 
   // Poop and bath time (see src/game/hygiene.ts). Now and then the pet
@@ -801,7 +863,12 @@ export const CONFIG = {
     // everything waits while they're away. Hunger, energy and health stay
     // as they were, the garden stops, growing up pauses, nothing is found
     // and no good care days are counted. They come home `joy` happier.
-    holiday: { fragments: 50, days: [1, 2, 3], joy: 10 },
+    holiday: {
+      fragments: 30, days: [1, 2, 3], joy: 10,
+      // With "Use a ticket if a pet gets unwell" on (Settings), a pet that
+      // would fall sick while you're away goes on a Holiday this long.
+      autoDays: 3,
+    },
     // Snapshots (see snapshots.ts): each look at a trip has `chance` of a
     // little moment after a few seconds, and another try every `againMs`
     // while you keep looking; a moment lasts `momentMs`. `freshShare` of the
@@ -1117,6 +1184,9 @@ export const CONFIG = {
     startingGold: 50,
     // Food in a brand new pet's pantry.
     startingFood: { riceBall: 3, strawberry: 2, cookie: 1 },
+    // Supplies a brand new game starts with: one Holiday ticket, so going
+    // away is never a reason to lose a pet.
+    startingSupplies: { 'ticket:holiday': 1 } as Record<string, number>,
     // Coming back to check on your pet earns a little gold: more for the
     // first visit of the day, a bit for later visits at least
     // `minHoursBetween` apart, up to `maxPerDay` rewards a day.

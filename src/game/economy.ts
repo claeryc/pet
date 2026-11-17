@@ -141,6 +141,8 @@ export function revivalStars(state: GameState): number {
 
 // Gives the player the star fragments in a pack, once it's been paid for.
 export function grantPack(state: GameState, productId: string): GameState {
+  // The old top pack (650) was sold while testing: it still pays out.
+  if (productId === 'fragments650') return { ...state, fragments: { ...state.fragments, pieces: state.fragments.pieces + 650 } };
   const pack = CONFIG.store.find((p) => p.id === productId);
   if (!pack) return state;
   return { ...state, fragments: { ...state.fragments, pieces: state.fragments.pieces + pack.fragments } };

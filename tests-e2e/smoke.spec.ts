@@ -15,10 +15,11 @@ function watchErrors(page: Page): string[] {
 
 // A grown-up pet with every menu showing and every guide read, so nothing
 // pops up in the way. Written straight into the save, then the page reloads.
-async function seedAdult(page: Page): Promise<void> {
+async function seedAdult(page: Page, stampDue = false): Promise<void> {
   await page.goto('/');
-  await page.evaluate(async () => {
+  await page.evaluate(async (due) => {
     const { createNewGame } = await import('/src/game/state.ts');
+    const { localDay } = await import('/src/game/economy.ts');
     const { GUIDES } = await import('/src/game/guides.ts');
     const { SAVE_VERSION } = await import('/src/storage/storage.ts');
     const s = createNewGame(Date.now());
@@ -26,22 +27,38 @@ async function seedAdult(page: Page): Promise<void> {
     s.showAllMenus = true;
     s.guidesRead = [...GUIDES];
     s.gold = 5000;
+    // Today's stamp is done, so the stamp calendar doesn't open by itself.
+    s.stamps = due ? { stamped: 0, day: '' } : { stamped: 1, day: localDay(Date.now()) };
     localStorage.setItem('cozy-pixel-pet-save', JSON.stringify({ version: SAVE_VERSION, state: s }));
-  });
+  }, stampDue);
 }
 
-// Loads the seeded game fresh and waits for the bottom buttons.
+// Loads the seeded game fresh and waits for the dock.
 async function openGame(page: Page): Promise<void> {
   await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Menu' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'More' })).toBeVisible();
   await page.waitForTimeout(300);
 }
 
-// The items in one drawer: Feed and Play list options, Menu shows tiles.
+// The dock's "···" button, which opens the pop-up menu.
+async function openMore(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'More', exact: true }).click();
+  await page.waitForTimeout(400);
+}
+
+// The items in one panel, and how to get there: Feed from the dock, the
+// pop-up menu from "···", and Play from its row in the pop-up.
 const DRAWERS = [
-  { name: 'Feed', items: '.drawer-option' },
-  { name: 'Play', items: '.drawer-option' },
-  { name: 'Menu', items: '.menu-tile' },
+  { name: 'Feed', items: '.drawer-option', open: (page: Page) => page.getByRole('button', { name: 'Feed', exact: true }).click() },
+  {
+    name: 'Play',
+    items: '.drawer-option',
+    open: async (page: Page) => {
+      await openMore(page);
+      await page.locator('.menu-list .menu-tile', { hasText: 'Play' }).click();
+    },
+  },
+  { name: 'Menu', items: '.menu-tile', open: openMore },
 ] as const;
 
 test('the game opens with no errors', async ({ page }) => {
@@ -60,7 +77,7 @@ for (const drawer of DRAWERS) {
     await seedAdult(page);
     await openGame(page);
     const open = async () => {
-      await page.getByRole('button', { name: drawer.name, exact: true }).click();
+      await drawer.open(page);
       await page.waitForTimeout(400);
       return page.locator(`.drawer.is-open ${drawer.items}:visible`);
     };
@@ -74,8 +91,23 @@ for (const drawer of DRAWERS) {
       const label = (await item.textContent())?.trim().slice(0, 40);
       if (await item.isDisabled()) continue;
       await item.click();
+      // Feed's tiles pick a food; the bar's button feeds it.
+      if (drawer.name === 'Feed') await page.locator('.drawer.is-open .drawer-pick-go').click();
       await page.waitForTimeout(800);
       expect(errors, `after ${drawer.name} > ${label}`).toEqual([]);
     }
   });
 }
+
+test('the stamp calendar opens by itself and stamps today', async ({ page }) => {
+  const errors = watchErrors(page);
+  await seedAdult(page, true);
+  await openGame(page);
+  const today = page.locator('.cal-day.is-today');
+  await expect(today).toBeVisible({ timeout: 5000 });
+  await today.click();
+  await expect(page.locator('.cal-card')).toContainText('Day 1 stamped!');
+  await page.locator('.cal-ok').click();
+  await expect(page.locator('.cal-tag')).toContainText('1 / 28');
+  expect(errors).toEqual([]);
+});

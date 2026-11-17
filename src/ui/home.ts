@@ -10,11 +10,14 @@ import type { FurnitureSlot, GameState, PetStats } from '../game/state';
 import { meadowVisitor } from '../game/meadow';
 import { createMenu, type MenuCallbacks } from './menu';
 import { createMap } from './map';
+import { sound } from '../audio/audio';
+import { firstPick, START_MAP } from '../game/map';
 import { visitor } from '../game/friends';
 import { foodCount, revivalStars } from '../game/economy';
 import { BAITS, baitCount, baitInUse, type BaitId, type Bite } from '../game/fishing';
+import { NEED_ICONS, needStep } from './needIcons';
 import { createDrawer, type DrawerOption, type Effect } from './drawer';
-import { ITEM_ICONS, STAT_ICONS } from './icons';
+import { ITEM_ICONS, MENU_ICONS, STAT_ICONS } from './icons';
 import type { ActivityId, Food, FoodId } from '../game/actions';
 import type { CatchGrade } from '../game/fishing';
 import { createFishing, DRAIN_MS, type FishingPhase } from './fishing';
@@ -28,10 +31,18 @@ import { unreadMail } from '../game/messages';
 import { needsTending, type CropId } from '../game/garden';
 import { isNew, isUnlocked } from '../game/unlocks';
 import { pointsToSpend, reelPerks } from '../game/skills';
-import { FISHING_LINE_X, petAt, ROOM_HEIGHT, ROOM_WIDTH } from '../render/canvas';
+import { FISHING_LINE_X, fitRoomHeight, onWindow, petAt, ROOM_HEIGHT, ROOM_WIDTH } from '../render/canvas';
 import { createMeet, MEET_OUT_MS } from './meet';
 import { petStandsLeft } from '../game/friends';
 import { needsYou, otherRoom, petsIn, roommates } from '../game/rooms';
+import { restingFull } from '../game/resting';
+import { stampDue, stampsOf, nextDay } from '../game/stamps';
+import { wishesToClaim } from '../game/wishes';
+import { calendarIcon } from './stampArt';
+import { createToyGame } from './toys';
+import { TOYS, favouriteToy, ownsToy } from '../game/toys';
+import { likesOf } from '../game/likes';
+import type { ToyScene } from '../render/toys';
 import type { Friend } from '../game/state';
 import type { CookOptions } from '../game/cooking';
 import { potAt, type GardenScene } from '../render/garden';
@@ -44,7 +55,7 @@ import type { ShopCategory } from './shop';
 import { createFx, type Gains } from './fx';
 import { hasBackpack, isAway, nobodyHome } from '../game/presence';
 import { formatClock } from './time';
-import { createJourneys, JOURNEYS_OUT_MS } from './journeys';
+import { createJourneys, HOLIDAY_SLOT, JOURNEYS_OUT_MS } from './journeys';
 import { createDig, type DigCallbacks } from './dig';
 import { createTripView, tripNotes, type TripMoment } from './trip';
 import { newestPlace } from './journal';
@@ -67,12 +78,20 @@ export interface HomeCallbacks extends MenuCallbacks, DigCallbacks {
   onMedicine: () => void;
   onRevive: () => void; // a pet that passed away: use (or buy) a Revival Star
   onGoodbye: () => void; // ...or let it go
+  onLetRest: () => void; // ...or let it rest under the stars while you raise a new pet
+  onRestingStar: () => void; // tapped the star in the window: who's resting
+  onOpenCalendar: () => void; // the stamp calendar chip in the room
+  onToyStart: (toy: string) => string | null; // why the pet can't play with it now, or null
+  onToyCount: () => void; // the pet caught the toy
+  onToyEnd: (toy: string, count: number) => void; // the game with a toy is over
+  onStroke: () => void; // stroked until the heart filled: a tickle
   onCast: (streak: number) => Bite | null; // throws the fishing line; what will bite, or null if refused
   onLand: (grade: CatchGrade, bite: Bite) => string | null; // the fish landed (a food id), or null
   onPickBait: () => void;
   onCook: (items: FoodId[], opts: CookOptions) => FoodId | null; // the dish made, or null if refused
   onCraft: (pattern: string) => Pattern | null; // the workbench: what was made, or null if refused
   onBuild: (project: string) => boolean; // a project's next stage started
+  onSeeProject: (project: string) => void; // looked at a project with a finished stage
   onPlant: (pot: number, crop: CropId) => void;
   onWater: (pot: number, perfect: boolean) => void;
   onFertilize: (pot: number) => void;
@@ -101,6 +120,9 @@ export interface HomeCallbacks extends MenuCallbacks, DigCallbacks {
 
 export interface HomeScreen {
   canvas: HTMLCanvasElement;
+  // Shows off a place that just opened on the map (`map`, `area`), when
+  // nothing else is going on. False if now isn't a good time.
+  introducePlace: (map: string, area: string, unlock: string) => boolean;
   update: (state: GameState, now: number) => void;
   toast: (message: string, shop?: ShopCategory) => void; // `shop`: offer a button to that part of the Shop
   // Like toast, but waits for the message showing now to finish first.
@@ -125,6 +147,7 @@ export interface HomeScreen {
   decorateScene: () => { spot: FurnitureSlot | null } | null; // decorating: the spot picked
   shelfScene: () => { picked: number | null } | null; // the keepsake shelf up close
   bathScene: (timeMs: number) => BathScene | null; // the suds, drips and sponge or dryer
+  toyScene: (timeMs: number) => ToyScene | null; // playing with a toy
   hidesSmell: () => boolean; // soapy, wet or just washed: no smell lines
   // With every pet out on a journey, shows the trip instead of the empty room.
   showTripIfEmpty: () => void;
@@ -385,18 +408,57 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const tryTag = document.createElement('div');
   tryTag.className = 'try-tag';
   tryTag.hidden = true;
-  roomWrap.append(canvas, fx.el, bubble, corner, door, tryTag);
+  // The four needs, pinned to the top of the room: each icon shows its own
+  // level (see needIcons.ts), so the room can fill the screen.
+  const needs = document.createElement('div');
+  needs.className = 'needs-pill';
+  needs.setAttribute('role', 'group');
+  const needIcons = {} as Record<keyof PetStats, HTMLElement>;
+  for (const key of ['hunger', 'happiness', 'health', 'energy'] as (keyof PetStats)[]) {
+    const i = document.createElement('span');
+    i.className = 'need';
+    i.dataset.need = key;
+    needIcons[key] = i;
+    needs.append(i);
+  }
+  // The old 4:3 room at the bottom of the (taller) canvas: what sits on
+  // the pet, its bubble and the Shop's tag are placed in it.
+  const scene = document.createElement('div');
+  scene.className = 'room-scene';
+  scene.append(fx.el, bubble, tryTag);
+  // The stamp calendar's chip, under the corner: the day on the card, and a
+  // dot while today's stamp or a wish is waiting.
+  const todayChip = document.createElement('button');
+  todayChip.className = 'today-chip';
+  todayChip.type = 'button';
+  const chipIc = document.createElement('span');
+  chipIc.className = 'chip-ic';
+  chipIc.innerHTML = calendarIcon();
+  const chipText = document.createElement('span');
+  todayChip.append(chipIc, chipText);
+  todayChip.addEventListener('click', () => cb.onOpenCalendar());
+  roomWrap.append(canvas, needs, scene, corner, door, todayChip);
+  // (the toy game's hint and the stroking heart are added below)
+  // The canvas grows to fill the room's box, a row of wall at a time (see
+  // fitRoomHeight). Folded back to 4:3 (a sheet open, or a game on), it
+  // keeps its height and shows just its bottom.
+  new ResizeObserver(() => {
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    if (w && h / w > ROOM_HEIGHT / ROOM_WIDTH + 0.02) fitRoomHeight(canvas, (h / w) * ROOM_WIDTH);
+  }).observe(canvas);
 
   // Warning / sick / recovering / passed away banner, hidden when all is well.
   const banner = document.createElement('div');
   banner.className = 'banner';
   const bannerText = document.createElement('p');
   const medicine = button(STRINGS.buttons.medicine, 'btn btn-medicine', cb.onMedicine);
-  const revive = button(STRINGS.buttons.revive, 'btn', cb.onRevive);
+  const revive = button(STRINGS.buttons.bringBack, 'btn', cb.onRevive);
+  const rest = button(STRINGS.buttons.letRest, 'btn btn-rest', cb.onLetRest);
   const goodbye = button(STRINGS.buttons.goodbye, 'btn btn-soft', cb.onGoodbye);
   const passedButtons = document.createElement('div');
-  passedButtons.className = 'banner-buttons';
-  passedButtons.append(revive, goodbye);
+  passedButtons.className = 'banner-buttons is-three';
+  passedButtons.append(revive, rest, goodbye);
   // A pet out on a journey can be called home, and one that's back has a
   // backpack to open.
   const openBackpack = button(STRINGS.journeys.openBackpack, 'btn', () => {
@@ -419,7 +481,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   stats.append(...Object.values(bars).map((b) => b.el));
 
   const actions = document.createElement('div');
-  actions.className = 'actions';
+  actions.className = 'actions dock';
 
   // Turns stat changes like { hunger: 20, energy: -8 } into effect chips.
   const statEffects = (changes: Partial<Record<keyof PetStats, number>>): Effect[] =>
@@ -496,11 +558,12 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   // The food rows wearing the craving heart right now.
   const cravedRows = new Set<number>();
   const playOptions: DrawerOption[] = [
-    ...CONFIG.activities.map((a) => ({
-      icon: ITEM_ICONS[a.id],
-      label: STRINGS.activities[a.id],
-      effects: statEffects({ happiness: a.happiness, energy: a.energy }),
-      onPick: () => cb.onPlay(a.id),
+    // Toys. Cuddles and tickles are done by touching the pet in the room.
+    ...TOYS.map((t) => ({
+      icon: ITEM_ICONS[`toy_${t.id}`],
+      label: STRINGS.toys.names[t.id] ?? t.id,
+      effects: statEffects({ happiness: t.happiness, energy: t.energy }),
+      onPick: () => pickToy(t.id),
     })),
     // Meeting friends, right after the quick ones.
     {
@@ -544,13 +607,74 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     },
   ];
 
-  const MEET_ROW = CONFIG.activities.length; // after Cuddle and Tickle
+  const MEET_ROW = TOYS.length; // after the toys
   const GARDEN_ROW = MEET_ROW + 2; // after Meet and Fishing
   const JOURNEYS_ROW = GARDEN_ROW + 1;
   const DIG_ROW = JOURNEYS_ROW + 1;
   const WORKBENCH_ROW = DIG_ROW + 1;
-  const feedDrawer = createDrawer({ id: 'feed', label: STRINGS.buttons.feed, options: feedOptions, ...drawerSetup });
-  const playDrawer = createDrawer({ id: 'play', label: STRINGS.buttons.play, options: playOptions, ...drawerSetup });
+  // Feed's sheet: its name and the cooking pot at the top, then chips to
+  // narrow the pantry down by kind, then the food as a grid of tiles. A tap
+  // picks a food; the bar under the grid says what it does and feeds it.
+  const feedHead = document.createElement('div');
+  feedHead.className = 'sheet-head';
+  const feedTitle = document.createElement('h2');
+  feedTitle.textContent = STRINGS.buttons.feed;
+  const cookButton = button('', 'sheet-head-btn', () => {
+    feedDrawer.close();
+    startCooking();
+  });
+  cookButton.innerHTML = `<span class="sheet-head-btn-icon" aria-hidden="true">${ITEM_ICONS.cooking}</span>${STRINGS.cooking.open}`;
+  feedHead.append(feedTitle, cookButton);
+  const FEED_KINDS: { id: string; label: string; tags: string[] }[] = [
+    { id: 'all', label: STRINGS.feedKinds.all, tags: [] },
+    { id: 'fruitVeg', label: STRINGS.feedKinds.fruitVeg, tags: ['fruit', 'veg'] },
+    { id: 'seafood', label: STRINGS.feedKinds.seafood, tags: ['seafood'] },
+    { id: 'sweets', label: STRINGS.feedKinds.sweets, tags: ['sweet'] },
+    { id: 'soups', label: STRINGS.feedKinds.soups, tags: ['soup', 'drink'] },
+  ];
+  let feedKind = 'all';
+  const foodTags = (row: number): readonly string[] => (CONFIG.foods as readonly Food[])[row - 1]?.tags ?? [];
+  const kindShows = (kind: string, row: number) => {
+    const k = FEED_KINDS.find((f) => f.id === kind)!;
+    return row !== COOK_ROW && (k.tags.length === 0 || foodTags(row).some((t) => k.tags.includes(t)));
+  };
+  const feedChips = document.createElement('div');
+  feedChips.className = 'sheet-chips';
+  const chipButtons = FEED_KINDS.map((k) => {
+    const b = button(k.label, 'sheet-chip', () => {
+      feedKind = k.id;
+      chipButtons.forEach((c, i) => c.classList.toggle('is-on', FEED_KINDS[i].id === feedKind));
+      feedDrawer.setShown((row) => kindShows(feedKind, row));
+    });
+    b.classList.toggle('is-on', k.id === feedKind);
+    return b;
+  });
+  feedChips.append(...chipButtons);
+  const feedTop = document.createElement('div');
+  feedTop.className = 'sheet-top';
+  feedTop.append(feedHead, feedChips);
+  const feedDrawer = createDrawer({
+    id: 'feed', label: STRINGS.buttons.feed, options: feedOptions, ...drawerSetup,
+    header: feedTop, grid: { pickLabel: STRINGS.buttons.feed },
+  });
+  // In the dock, Feed wears a rice ball next to its name, like Map's island.
+  feedDrawer.el.querySelector('.drawer-label')!.innerHTML = `<span class="dock-icon" aria-hidden="true">${ITEM_ICONS.riceBall}</span>${STRINGS.buttons.feed}`;
+  // Over the toys: how to cuddle and tickle (touch the pet), then "Toys".
+  const playTop = document.createElement('div');
+  playTop.className = 'play-top';
+  const playTip = document.createElement('p');
+  playTip.className = 'play-tip';
+  const playTipIcon = document.createElement('span');
+  playTipIcon.className = 'play-tip-icon';
+  playTipIcon.setAttribute('aria-hidden', 'true');
+  playTipIcon.innerHTML = ITEM_ICONS.cuddle;
+  const playTipText = document.createElement('span');
+  playTip.append(playTipIcon, playTipText);
+  const toysLabel = document.createElement('div');
+  toysLabel.className = 'play-label';
+  toysLabel.textContent = STRINGS.toys.toysTitle;
+  playTop.append(playTip, toysLabel);
+  const playDrawer = createDrawer({ id: 'play', label: STRINGS.buttons.play, options: playOptions, ...drawerSetup, header: playTop });
 
   // The backpack button opens the menu (shop, inventory, settings and more) the
   // same way Feed and Play open. It always opens, even for an egg.
@@ -559,11 +683,16 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   // shopping), so its rows get the room under its tabs.
   let menuOverStats = false;
   const menu = createMenu(
-    { ...cb, onOpenDelivery: () => startDelivery(), onOpenMeet: () => startMeet(), onOpenJourneys: () => openJourneys(), onOpenMap: () => openMap(), onDecorate: () => openDecorate() },
+    {
+      ...cb, onOpenDelivery: () => startDelivery(), onOpenMeet: () => startMeet(), onOpenJourneys: () => openJourneys(), onOpenHoliday: () => openJourneys(HOLIDAY_SLOT), onOpenMap: () => openMap(), onDecorate: () => openDecorate(),
+      onOpenPlay: () => playDrawer.open(),
+    },
     () => menuDrawer?.isOpen() ?? false,
     () => menuDrawer?.close(),
     (page) => {
-      if (menuOverStats === (page === 'shop')) return;
+      // The main page is the pop-up over "···"; the rest are sheets or
+      // full pages (see style.css, "the dock").
+      actions.dataset.page = page;
       menuOverStats = page === 'shop';
       if (menuDrawer) fitDrawers();
     },
@@ -580,27 +709,62 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     },
     beforeOpen: () => null,
   });
-  const lights = button('', 'btn btn-icon', cb.onLights);
+  // Sleep: a moon in the room, by where the lamp will be.
+  const lights = button('', 'room-lights', cb.onLights);
+  roomWrap.append(lights);
+
+  // The dock: Feed, Map, and "···" for everything else. While anything is
+  // open, "···" turns into "×", which always goes back to the room.
+  const mapButton = button('', 'dock-btn dock-map', () => openMap());
+  mapButton.innerHTML = `<span class="dock-icon" aria-hidden="true">${MENU_ICONS.map}</span><span class="dock-label">${STRINGS.map.menuTile}</span>`;
+  const moreButton = button('', 'dock-btn dock-more', () => {
+    if (actions.dataset.open) return closePanels();
+    menuDrawer!.open();
+  });
+  moreButton.innerHTML = '<span class="dock-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="dock-x" aria-hidden="true"></span>';
+  const closePanels = () => {
+    feedDrawer.close();
+    playDrawer.close();
+    menuDrawer!.close();
+  };
+  // "···" or "×", and what screen readers hear, follow whatever is open.
+  // A soft swish as something opens over the dock, or goes away.
+  let wasOpen = false;
+  const syncMore = () => {
+    const open = !!actions.dataset.open;
+    if (open !== wasOpen) sound(open ? 'sheetOpen' : 'sheetClose');
+    wasOpen = open;
+    moreButton.classList.toggle('is-close', open);
+    moreButton.setAttribute('aria-label', open ? STRINGS.menu.close : STRINGS.menu.more);
+  };
+  new MutationObserver(syncMore).observe(actions, { attributes: true, attributeFilter: ['data-open'] });
+  moreButton.classList.toggle('is-close', false);
+  moreButton.setAttribute('aria-label', STRINGS.menu.more);
 
   // An open Feed, Play or Menu panel reaches up to just under the stat bars,
   // so taller screens show more rows. Small screens keep the old height
   // (the panel covers the bars there). The panel's button, frame and
   // padding take about 74px. The Shop goes over the bars, its top edge
   // lined up with theirs (the frame itself is 58px).
+  // Two heights, whatever is open (see "the dock" in style.css): a tall
+  // sheet comes up to the bottom of the room, so the pet stays in view,
+  // and a full page (the "books": Journal, Collection, Skills, Family)
+  // comes up to just under the needs.
   function fitDrawers(): void {
-    const bottom = actions.getBoundingClientRect().bottom;
-    const slot = statSlot.getBoundingClientRect();
-    const fit = (room: number) => `${Math.max(DRAWER_MIN, Math.floor(room))}px`;
-    const underBars = fit(bottom - slot.bottom - DRAWER_GAP - 74);
-    actions.style.setProperty('--drawer-fit', underBars);
-    menuDrawer?.el.style.setProperty('--drawer-fit', menuOverStats ? fit(bottom - slot.top - 58) : underBars);
-    // The travel journal is a book, so it takes the whole screen above the
-    // button, over the room too.
-    actions.style.setProperty('--drawer-full', fit(bottom - roomWrap.getBoundingClientRect().top - 74));
+    const top = actions.getBoundingClientRect().top;
+    const room = roomWrap.getBoundingClientRect();
+    const fit = (h: number) => `${Math.max(DRAWER_MIN, Math.floor(h))}px`;
+    // The panel floats DRAWER_GAP over the dock, and keeps the same gap
+    // under the room (or the needs). With a sheet open the room folds back
+    // to 4:3, whatever its height now.
+    const border = canvas.offsetWidth - canvas.clientWidth;
+    const folded = room.top + canvas.clientWidth * (ROOM_HEIGHT / ROOM_WIDTH) + border;
+    actions.style.setProperty('--sheet-h', fit(top - folded - 2 * DRAWER_GAP));
+    actions.style.setProperty('--page-h', fit(top - room.top - needs.offsetTop - needs.offsetHeight - 2 * DRAWER_GAP));
   }
   window.addEventListener('resize', fitDrawers);
 
-  actions.append(feedDrawer.el, playDrawer.el, menuDrawer.el, lights);
+  actions.append(feedDrawer.el, mapButton, playDrawer.el, menuDrawer.el, moreButton);
 
   // Journeys: the board of trips, then the lunchbox, over the stat bars.
   function openJourneys(slot?: number): void {
@@ -627,9 +791,23 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       switch (opens.kind) {
         case 'garden':
           return startGarden();
+        case 'pond':
+          return startFishing();
+        case 'dig':
+          return openDig();
+        case 'workshop':
+          return startWorkbench(opens.projects);
+        case 'hive':
+        case 'perch':
+          return startGarden(opens.kind);
         case 'meadow':
         case 'friends':
-          if (opens.kind === 'friends' && latest && visitor(latest.state)) return startMeet();
+          // Friends: play with whoever's over, or meet one (letters first
+          // when there are new ones and nobody's over).
+          if (opens.kind === 'friends' && latest) {
+            const s = latest.state;
+            if (visitor(s) || (isUnlocked(s, 'meet') && unreadMail(s) === 0)) return startMeet();
+          }
           if (actions.hidden) return;
           feedDrawer.close();
           playDrawer.close();
@@ -648,6 +826,13 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       goJournal(place ?? (latest && newestPlace(latest.state)) ?? 'market');
     },
   });
+  function introducePlace(map: string, area: string, unlock: string): boolean {
+    const words = STRINGS.map.intros[unlock];
+    if (!words || actions.hidden || worldMap.isOpen() || feedDrawer.isOpen() || playDrawer.isOpen() || menuDrawer!.isOpen()) return false;
+    if (latest) worldMap.update(latest.state, latest.now);
+    worldMap.intro(map, area, { ...words, button: STRINGS.map.takeALook, unlock }, () => {});
+    return true;
+  }
   function openMap(): void {
     if (actions.hidden) return; // busy with something else
     feedDrawer.close();
@@ -689,10 +874,13 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   let press: { x: number; y: number; held: boolean } | null = null;
   let lastCuddle = -Infinity;
   const roomPoint = (e: PointerEvent) => {
+    // The old room fills the canvas's width and sits at its bottom.
     const rect = canvas.getBoundingClientRect();
+    const scale = canvas.clientWidth / ROOM_WIDTH;
+    const bottom = rect.top + canvas.clientTop + canvas.clientHeight;
     return {
-      x: ((e.clientX - rect.left) / rect.width) * ROOM_WIDTH,
-      y: ((e.clientY - rect.top) / rect.height) * ROOM_HEIGHT,
+      x: (e.clientX - rect.left - canvas.clientLeft) / scale,
+      y: ROOM_HEIGHT - (bottom - e.clientY) / scale,
     };
   };
   // Which pet a tap is on: the one you're looking after, the other one in
@@ -742,9 +930,23 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       trip.tap(x, y);
       return;
     }
+    // Playing with a toy: swipes, drags and taps go to the toy.
+    if (toyGame.active()) {
+      const { x, y } = roomPoint(e);
+      canvas.setPointerCapture?.(e.pointerId);
+      toyGame.down(x, y);
+      return;
+    }
     if (actions.hidden) return;
+    // Tapping the room while something is open goes back to the room.
+    if (actions.dataset.open) return closePanels();
     // A poop on the floor: pick it up.
     if (tapPoop(e)) return;
+    // The star in the window: a pet resting under the stars.
+    if (latest && (latest.state.resting ?? []).length > 0) {
+      const { x, y } = roomPoint(e);
+      if (onWindow(x, y)) return cb.onRestingStar();
+    }
     // The keepsake shelf: see it up close.
     if (latest) {
       const { x, y } = roomPoint(e);
@@ -756,6 +958,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     const other = latest && roommate(latest.state);
     if (which === 'housemate' && other) return cb.onSwitchPet(other.id);
     press = { x: e.clientX, y: e.clientY, held: false };
+    canvas.setPointerCapture?.(e.pointerId);
     clearTimeout(holdTimer);
     holdTimer = window.setTimeout(() => {
       if (!press) return;
@@ -770,13 +973,31 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       bath.move(x, y, petBody());
       return;
     }
-    // Moving a finger away (to scroll, say) cancels the tap or hold.
-    if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 10) {
+    if (toyGame.active()) {
+      const { x, y } = roomPoint(e);
+      toyGame.move(x, y);
+      return;
+    }
+    if (stroke) return strokeMove(e);
+    // Moving a finger over the pet strokes it (once it has moved a few
+    // pixels, so a tap still cuddles and a hold still opens the Wardrobe).
+    // Moving away cancels the tap or hold.
+    if (press && !press.held && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 10) {
       clearTimeout(holdTimer);
       press = null;
+      if (canStroke() && tappedPet(e) === 'pet') {
+        const { x, y } = roomPoint(e);
+        startStroke(x, y);
+      }
     }
   });
-  canvas.addEventListener('pointerup', () => {
+  canvas.addEventListener('pointerup', (e) => {
+    if (toyGame.active()) {
+      const { x, y } = roomPoint(e);
+      toyGame.up(x, y);
+      return;
+    }
+    if (stroke) endStroke();
     bath.up();
     clearTimeout(holdTimer);
     if (press && !press.held) {
@@ -790,6 +1011,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     press = null;
   });
   canvas.addEventListener('pointercancel', () => {
+    if (stroke) endStroke();
     bath.up();
     clearTimeout(holdTimer);
     press = null;
@@ -877,6 +1099,112 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     showActions(BATH_OUT_MS);
   }
 
+  // Playing with a toy: the tray under the tall room, in place of the
+  // stat bars and the dock (see src/ui/toys.ts).
+  const toyGame = createToyGame({
+    onCount: () => {
+      const r = canvas.getBoundingClientRect();
+      const box = petBody();
+      const scale = canvas.clientWidth / ROOM_WIDTH;
+      const bottom = r.top + canvas.clientTop + canvas.clientHeight;
+      const dx = toyGame.petDx();
+      fx.hearts(r.left + ((box.x0 + box.x1) / 2 + dx) * scale, bottom - (ROOM_HEIGHT - box.y0) * scale);
+      cb.onToyCount();
+    },
+    onFinish: (toy, count) => {
+      roomWrap.classList.remove('is-toy');
+      showActions(0);
+      cb.onToyEnd(toy, count);
+    },
+  });
+  function pickToy(id: string): void {
+    const s = latest?.state;
+    if (!s) return;
+    if (!ownsToy(s, id)) return goShop('toys');
+    const why = cb.onToyStart(id);
+    if (why) return showToast(why);
+    if (actions.hidden) return;
+    feedDrawer.close();
+    playDrawer.close();
+    menuDrawer!.close();
+    hideActions();
+    roomWrap.classList.add('is-toy');
+    const sheet = cb.petSheet();
+    toyGame.start(id, petName, petLefts(s).pet + (sheet?.frameWidth ?? 32) / 2);
+  }
+
+  // Stroking: a slow drag over the pet fills a little heart over its head;
+  // full, it counts as a tickle. Then the heart rests a moment.
+  const strokeHeart = document.createElement('div');
+  strokeHeart.className = 'stroke-heart';
+  strokeHeart.hidden = true;
+  strokeHeart.setAttribute('aria-hidden', 'true');
+  strokeHeart.innerHTML = `<span class="sh-empty">${ITEM_ICONS.cuddle}</span><span class="sh-fill">${ITEM_ICONS.cuddle}</span>`;
+  const strokeHint = document.createElement('div');
+  strokeHint.className = 'toy-hint stroke-hint';
+  strokeHint.hidden = true;
+  let stroke: { x: number; y: number; dist: number; heartsAt: number } | null = null;
+  let strokeRestUntil = 0;
+  let strokeHide = 0;
+  function placeHeart(): void {
+    const s = latest?.state;
+    if (!s) return;
+    const sheet = cb.petSheet();
+    const left = petLefts(s).pet;
+    const scale = canvas.clientWidth / ROOM_WIDTH;
+    const cx = left + (sheet?.head?.x ?? (sheet?.frameWidth ?? 32) / 2);
+    const top = 40 - (sheet?.frameHeight ?? 32) + (sheet?.head?.y ?? 6) - 13;
+    const wrap = roomWrap.getBoundingClientRect();
+    const r = canvas.getBoundingClientRect();
+    const bottom = r.top + canvas.clientTop + canvas.clientHeight;
+    strokeHeart.style.left = `${r.left - wrap.left + canvas.clientLeft + cx * scale}px`;
+    strokeHeart.style.top = `${bottom - wrap.top - (ROOM_HEIGHT - top) * scale}px`;
+    strokeHeart.style.setProperty('--px', `${scale}px`);
+  }
+  function setHeart(level: number): void {
+    strokeHeart.style.setProperty('--fill', String(Math.max(0, Math.min(1, level))));
+  }
+  const canStroke = () => !petIsEgg && !petAsleep && !petAway && !smelly() && !!latest && !hasPassed(latest.state.pet) && performance.now() >= strokeRestUntil;
+  function startStroke(x: number, y: number): void {
+    clearTimeout(strokeHide);
+    stroke = { x, y, dist: 0, heartsAt: 0 };
+    placeHeart();
+    setHeart(0);
+    strokeHeart.classList.remove('is-full');
+    strokeHeart.hidden = false;
+    strokeHint.textContent = STRINGS.toys.stroking(petName);
+    strokeHint.hidden = false;
+  }
+  function endStroke(): void {
+    stroke = null;
+    strokeHint.hidden = true;
+    clearTimeout(strokeHide);
+    strokeHide = window.setTimeout(() => (strokeHeart.hidden = true), strokeHeart.classList.contains('is-full') ? 700 : 250);
+  }
+  function strokeMove(e: PointerEvent): void {
+    if (!stroke) return;
+    const { x, y } = roomPoint(e);
+    const d = Math.hypot(x - stroke.x, y - stroke.y);
+    stroke.x = x;
+    stroke.y = y;
+    if (tappedPet(e) !== 'pet') return; // only counts over the pet
+    stroke.dist += d;
+    setHeart(stroke.dist / CONFIG.petting.strokeNeeded);
+    const now = performance.now();
+    if (now - stroke.heartsAt > 350) {
+      stroke.heartsAt = now;
+      fx.hearts(e.clientX, e.clientY);
+    }
+    if (stroke.dist >= CONFIG.petting.strokeNeeded) {
+      strokeRestUntil = now + CONFIG.petting.strokeCooldownMs;
+      lastCuddle = now; // no cuddle on top of it
+      strokeHeart.classList.add('is-full');
+      navigator.vibrate?.(15);
+      cb.onStroke();
+      endStroke();
+    }
+  }
+
   // Fishing swaps the button row for its own [Cancel] [Cast] row, and the
   // stat bars for a pond of the same size.
   const fishing = createFishing({
@@ -921,6 +1249,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const workbench = createWorkbench({
     onCraft: cb.onCraft,
     onBuild: cb.onBuild,
+    onSeeProject: cb.onSeeProject,
     onHang: () => {
       showActions(0);
       openDecorate();
@@ -929,7 +1258,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     toast: showToast,
     roomBox: () => roomWrap.getBoundingClientRect(),
   });
-  function startWorkbench(): void {
+  function startWorkbench(projects = false): void {
     if (actions.hidden) return;
     cb.onSeen('workbench');
     feedDrawer.close();
@@ -939,7 +1268,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     stats.setAttribute('aria-hidden', 'true');
     roomWrap.setAttribute('aria-hidden', 'true');
     if (latest) workbench.update(latest.state, latest.now);
-    workbench.start();
+    workbench.start(projects);
     cb.onGuide('workbench');
   }
   // The garden too: its own buttons, and a bed of pots that slides up over
@@ -985,7 +1314,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     backyard.stop();
     showActions(ms);
   }
-  function startGarden(): void {
+  function startGarden(stop: 'garden' | 'hive' | 'perch' = 'garden'): void {
     if (petAway) return showToast(STRINGS.blocked.away(petName));
     // Asleep: the same as Play > Garden, also from the map.
     if (petAsleep) return showToast(STRINGS.blocked.asleep(petName));
@@ -1002,7 +1331,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       backyard.update(latest.state, latest.now);
     }
     garden.start();
-    backyard.start();
+    backyard.start(stop);
     cb.onGuide('garden');
   }
   // Percy's order: his meadow, its own [Close] [Fill all] row, and a
@@ -1255,7 +1584,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
   const reveal = createReveal();
   const craft = createCraft();
   const backpack = createBackpack();
-  statSlot.append(stats, bath.panel, journeys.panel, dig.panel, trip.panel, decorate.panel, shelf.panel, fishing.pond, cooking.kitchen, workbench.bench, backyard.frame, delivery.panel, meet.panel, backpack.el, reveal.el, craft.el);
+  roomWrap.append(toyGame.hint, strokeHeart, strokeHint);
+  statSlot.append(stats, toyGame.panel, bath.panel, journeys.panel, dig.panel, trip.panel, decorate.panel, shelf.panel, fishing.pond, cooking.kitchen, workbench.bench, backyard.frame, delivery.panel, meet.panel, backpack.el, reveal.el, craft.el);
 
   // A short message that pops up and fades, e.g. "Mochi is asleep". When
   // you've run out of something the Shop sells, it has a Shop button too.
@@ -1348,6 +1678,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
 
   return {
     canvas,
+    introducePlace,
     update(state, now) {
       const switched = barsFor !== null && barsFor !== state.pet.id && !stats.hidden;
       barsFor = state.pet.id;
@@ -1366,6 +1697,26 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       for (const key of Object.keys(bars) as (keyof PetStats)[]) {
         if (switched) bars[key].slide(pet.stats[key]);
         else bars[key].set(pet.stats[key]);
+        const step = needStep(pet.stats[key]);
+        const icon = needIcons[key];
+        if (icon.dataset.step !== String(step)) {
+          icon.dataset.step = String(step);
+          icon.innerHTML = NEED_ICONS[key][step];
+        }
+        const words = `${STRINGS.stats[key]}: ${Math.round(pet.stats[key])}%`;
+        icon.setAttribute('aria-label', words);
+        icon.setAttribute('role', 'img');
+        icon.title = words;
+      }
+      needs.hidden = isEgg || petAway;
+      {
+        const due = stampDue(state, now);
+        const day = due ? nextDay(state) : Math.max(1, stampsOf(state).stamped);
+        const fresh = due || wishesToClaim(state) > 0;
+        chipText.textContent = STRINGS.stamps.chip(day);
+        todayChip.classList.toggle('has-new', fresh);
+        todayChip.setAttribute('aria-label', `${STRINGS.stamps.chipLabel}: ${STRINGS.stamps.chip(day)}`);
+        todayChip.hidden = hasPassed(pet) || !!state.journeys.holiday;
       }
       // With two pets, the craving bubble floats over the one you're
       // looking after.
@@ -1379,6 +1730,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       // Caught fish and cooked dishes also show their stars. Dishes only
       // show up once you have some, to keep the list short.
       // Only food you have is listed.
+      const have: boolean[] = [];
       CONFIG.foods.forEach((f: Food, i) => {
         const count = foodCount(state, f.id);
         const stars = f.stars ? `${STRINGS.stars(f.stars)}  ` : '';
@@ -1386,6 +1738,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
         const refill = f.id === 'riceBall' && state.riceJarAt ? `  ${STRINGS.shop.riceJar(formatIn(state.riceJarAt - now))}` : '';
         feedDrawer.setNote(foodRow(i), count === Infinity ? STRINGS.shop.free : `${stars}× ${count}${refill}`);
         feedDrawer.setHidden(foodRow(i), count === 0);
+        have[i] = count > 0;
         // A heart on what the pet is craving.
         const craved = state.craving.food === f.id;
         if (craved !== cravedRows.has(i)) {
@@ -1394,11 +1747,25 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
           else cravedRows.delete(i);
         }
       });
-      feedDrawer.setHidden(COOK_ROW, !isUnlocked(state, 'cooking'));
+      // The pot is the Cook button at the top of the sheet, not a tile.
+      feedDrawer.setHidden(COOK_ROW, true);
+      cookButton.hidden = !isUnlocked(state, 'cooking');
+      // Only the kinds you have something of, and back to All if the one
+      // picked has run out.
+      chipButtons.forEach((c, k) => {
+        c.hidden = k > 0 && !have.some((h, i) => h && kindShows(FEED_KINDS[k].id, foodRow(i)));
+      });
+      if (chipButtons.find((c, k) => FEED_KINDS[k].id === feedKind)?.hidden) chipButtons[0].click();
+      feedChips.hidden = chipButtons.filter((c) => !c.hidden).length < 3;
       const cookIsNew = isNew(state, 'cooking');
       feedDrawer.setOptionNew(COOK_ROW, cookIsNew);
+      cookButton.classList.toggle('has-new', cookIsNew);
       feedDrawer.setNew(cookIsNew);
-      menuDrawer!.setNew(
+      // Something going on at a place on the island (a crop to pick, a
+      // friend over, a new place to try): a dot on Map.
+      mapButton.classList.toggle('has-new', firstPick(state, now, START_MAP) !== '' ||
+        isNew(state, 'garden') || isNew(state, 'meet') || isNew(state, 'journeys'));
+      moreButton.classList.toggle('has-new',
         isNew(state, 'shop') || isNew(state, 'collection') || isNew(state, 'familyTree') || isNew(state, 'journeys') ||
           [pet, ...state.housemates].some(hasBackpack) ||
           isNew(state, 'messages') || unreadMail(state) > 0 || isNew(state, 'skills') ||
@@ -1416,6 +1783,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
         feedOrderKey = orderKey;
         feedDrawer.setOrder(order);
       }
+      // The bar under the grid follows the picked food's count.
+      feedDrawer.refreshPick();
       cooking.update(state);
       workbench.update(state, now);
       fishing.setBait(baitInUse(state), Object.fromEntries(BAITS.map((id) => [id, baitCount(state, id)])) as Record<BaitId, number>);
@@ -1432,28 +1801,42 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       refreshNotes(state);
       refreshParcel();
       parcel.classList.toggle('all-full', !!state.delivery.order?.boxes.every((b) => b.have >= b.want));
-      playDrawer.setHidden(GARDEN_ROW, !isUnlocked(state, 'garden'));
+      // Meet, Fishing, the Garden and Journeys are places on the map now.
+      playDrawer.setHidden(GARDEN_ROW, true);
       const gardenIsNew = isNew(state, 'garden');
       playDrawer.setOptionNew(GARDEN_ROW, gardenIsNew);
-      playDrawer.setHidden(MEET_ROW, !isUnlocked(state, 'meet'));
+      playDrawer.setHidden(MEET_ROW, true);
+      playDrawer.setHidden(MEET_ROW + 1, true);
       const meetIsNew = isNew(state, 'meet');
       playDrawer.setOptionNew(MEET_ROW, meetIsNew);
-      playDrawer.setHidden(JOURNEYS_ROW, !isUnlocked(state, 'journeys'));
+      playDrawer.setHidden(JOURNEYS_ROW, true);
       const journeysIsNew = isNew(state, 'journeys');
       playDrawer.setOptionNew(JOURNEYS_ROW, journeysIsNew);
-      playDrawer.setHidden(DIG_ROW, !isUnlocked(state, 'dig'));
-      const digIsNew = isNew(state, 'dig');
-      playDrawer.setOptionNew(DIG_ROW, digIsNew);
-      playDrawer.setHidden(WORKBENCH_ROW, !isUnlocked(state, 'workbench'));
-      const benchIsNew = isNew(state, 'workbench');
-      playDrawer.setOptionNew(WORKBENCH_ROW, benchIsNew);
-      playDrawer.setNew(gardenIsNew || meetIsNew || journeysIsNew || digIsNew || benchIsNew);
+      // Sniff and dig is at Windmill Fields on the map now, and the
+      // Workbench in the Backyard's Workshop.
+      playDrawer.setHidden(DIG_ROW, true);
+      playDrawer.setHidden(WORKBENCH_ROW, true);
+      // Toys: the ones you don't have point to the Shop. The favourite
+      // wears a heart once the pet has shown it.
+      playTipText.innerHTML = '';
+      {
+        const [lead, ...rest] = STRINGS.toys.touchTip(pet.name).split(':');
+        const b = document.createElement('b');
+        b.textContent = lead;
+        playTipText.append(b, rest.length ? `:${rest.join(':')}` : '');
+      }
+      const lovedToy = likesOf(pet).found.includes('toy') ? favouriteToy(pet) : null;
+      TOYS.forEach((t, i) => {
+        playDrawer.setLocked(i, ownsToy(state, t.id) ? null : STRINGS.toys.inShop);
+        playDrawer.setOptionBadge(i, t.id === lovedToy ? STAT_ICONS.happiness : null);
+      });
+      playDrawer.setNew(false);
       // A drop on Play when a pot is dry, sick or ready to harvest.
       const tend = isUnlocked(state, 'garden') && needsTending(state.garden, now);
       // ...or a jar of honey when the beehive is full.
       const honey = !tend && stopNeedsYou(state, now, 'hive');
       playDrawer.setBadge(tend ? STAT_ICONS.drop : honey ? ITEM_ICONS.honey : null, tend ? STRINGS.garden.needsYou : STRINGS.backyard.hiveFull);
-      stats.hidden = isEgg || journeys.active() || dig.active() || trip.active() || decorate.active() || shelf.active(); // an egg has no needs yet
+      stats.hidden = isEgg || toyGame.active() || journeys.active() || dig.active() || trip.active() || decorate.active() || shelf.active(); // an egg has no needs yet
       const mood = petAway ? STRINGS.blocked.away(pet.name) : isEgg ? STRINGS.mood.egg : STRINGS.mood[getLook(pet)](pet.name);
       const mess = [
         ...(!petAway && pet.hygiene.smelly ? [STRINGS.bath.smelly(pet.name)] : []),
@@ -1495,6 +1878,9 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       bannerText.textContent = text;
       medicine.hidden = pet.condition !== 'sick' || !!pet.trip;
       passedButtons.hidden = !passed || !!pet.trip;
+      // Every resting spot taken: say so, and Let rest waits.
+      rest.disabled = restingFull(state);
+      if (passed && rest.disabled) bannerText.textContent = `${text} ${STRINGS.revival.restFull(state.resting.length)}`;
       // Hidden while the sack is out over the stat bars, waiting for its tap.
       openBackpack.hidden = !hasBackpack(pet) || !backpack.el.hidden;
       makeRoom.hidden = !nestWaits;
@@ -1517,6 +1903,8 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
       }
       // The bath stops if the pet falls asleep, sets off, or you switch pets.
       if (bath.active() && (pet.asleep || petAway || isEgg || passed || switched || !pet.hygiene.smelly)) stopBath();
+      // A toy game ends if the pet falls asleep, sets off, or you switch pets.
+      if (toyGame.active() && (pet.asleep || petAway || isEgg || passed || switched)) toyGame.stop();
       // Fishing stops if the pet falls asleep or gets sick.
       if (!canPlayMinigames(pet, now) || isEgg) stopFishing();
       // Looking after an egg now (it can't meet anyone): the friend goes
@@ -1550,6 +1938,7 @@ export function createHomeScreen(root: HTMLElement, cb: HomeCallbacks): HomeScre
     decorateScene: () => decorate.scene(),
     shelfScene: () => shelf.scene(),
     bathScene: (timeMs) => bath.scene(timeMs),
+    toyScene: () => toyGame.scene(performance.now()),
     hidesSmell: () => bath.hidesSmell(),
     showTripIfEmpty,
   };

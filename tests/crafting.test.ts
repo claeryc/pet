@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CONFIG } from '../src/game/config';
 import {
   addMaterial, addPart, buildStage, collectHive, craft, hiveBuilt, hiveFull, hiveNextAt, hiveStock, digForPart, hasAnyMaterial, hasPart, materialCount, PATTERNS,
-  getProject, PARTS, partAt, perchRestOff, progressOf, PROJECTS, projectDone, stepCrafting, tripCrafting,
+  getProject, PARTS, partAt, perchRestOff, progressOf, PROJECTS, projectDone, projectToShow, seeProject, stageReady, stepCrafting, tripCrafting,
 } from '../src/game/crafting';
 import { FURNITURE, ownsDecor } from '../src/game/decor';
 import { percyPerks } from '../src/game/regulars';
@@ -139,6 +139,22 @@ describe('projects', () => {
     const later = stepCrafting(r.state, START + stage.hours * HOUR);
     expect(progressOf(later, 'windmill')).toEqual({ built: 1, until: 0 });
     expect(later.messages.some((m) => m.kind === 'built')).toBe(true);
+  });
+
+  it('a finished stage is news until you look at it', () => {
+    let s = { ...addPart(withMaterials(newTeen(START)), 'queenCrown'), gold: 1000 };
+    expect(projectToShow(s)?.id).toBe('beehive'); // ready to start
+    const hours = getProject('beehive')!.stages[0].hours;
+    s = buildStage(s, START, 'beehive').state;
+    expect(stageReady(s, 'beehive')).toBe(false);
+    s = stepCrafting(s, START + hours * HOUR);
+    expect(stageReady(s, 'beehive')).toBe(true);
+    expect(projectToShow(s)?.id).toBe('beehive');
+    s = seeProject(s, 'beehive');
+    expect(stageReady(s, 'beehive')).toBe(false);
+    // Older saves with no record: nothing waiting.
+    const old = { ...s, crafting: { ...s.crafting, seen: undefined } };
+    expect(stageReady(old, 'beehive')).toBe(false);
   });
 
   it('needs the gold', () => {

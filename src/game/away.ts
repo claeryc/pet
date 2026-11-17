@@ -17,6 +17,7 @@ export type AwayNote =
   | { kind: 'missedCraving' | 'craving'; food: string }
   | { kind: 'low'; stat: 'hunger' | 'energy' | 'happiness' }
   | { kind: 'sick' | 'warning' }
+  | { kind: 'autoHoliday'; name: string; days: number }
   // Any pet in the room, so these carry its name.
   | { kind: 'passed'; name: string }
   | { kind: 'tripHome'; name: string; place: string }
@@ -57,6 +58,12 @@ export function awayNotes(before: GameState, after: GameState, leftAt: number, n
   const wasAway = new Set([before.pet, ...before.housemates].filter(isAway).map((p) => p.id));
   for (const p of [after.pet, ...after.housemates]) {
     if (wasAway.has(p.id) && hasBackpack(p)) notes.push({ kind: 'tripHome', name: p.name, place: p.trip!.place });
+  }
+
+  // A ticket used by itself while you were gone.
+  for (const m of after.messages) {
+    if (m.at <= leftAt) break;
+    if (m.kind === 'autoHoliday') notes.push({ kind: 'autoHoliday', name: m.name, days: m.days });
   }
 
   // Any pet in the room that passed away, or is close to it.
