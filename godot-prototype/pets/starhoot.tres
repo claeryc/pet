@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="PetLook" format=3]
+
+[ext_resource type="Script" path="res://scripts/pet_look.gd" id="script"]
+[ext_resource type="SpriteFrames" path="res://pets/starhoot_frames.tres" id="frames"]
+[ext_resource type="SpriteFrames" path="res://faces/owl.tres" id="faces"]
+
+[resource]
+script = ExtResource("script")
+display_name = "Starhoot"
+frames = ExtResource("frames")
+face_frames = ExtResource("faces")
+face_point = Vector2i(16, 17)
+head_offsets = {
+"idle": [0, -1, -1, 0],
+"sad": [1, 1, 2, 1],
+"sleep": [1, 2, 2, 1],
+"sick": [0, 0, 0, 0],
+"eat": [0, 1, 0, 1],
+"happy": [0, -2, -2, -1],
+"cheerful": [0, 0, -1, 0]
+}
+head_shifts = {
+"idle": [0, 0, 0, 0],
+"sad": [0, 0, 0, 0],
+"sleep": [0, 0, 0, 0],
+"sick": [0, -1, 0, 1],
+"eat": [0, 0, 0, 0],
+"happy": [0, 0, 0, 0],
+"cheerful": [0, 0, 0, 0]
+}
+idle_moves = PackedStringArray()

@@ -1,0 +1,118 @@
+[gd_resource type="SpriteFrames" format=3]
+
+[ext_resource type="Texture2D" path="res://art/pets/acornet.png" id="tex"]
+
+[sub_resource type="AtlasTexture" id="idle_0"]
+atlas = ExtResource("tex")
+region = Rect2(0, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="idle_1"]
+atlas = ExtResource("tex")
+region = Rect2(32, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="idle_2"]
+atlas = ExtResource("tex")
+region = Rect2(64, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="idle_3"]
+atlas = ExtResource("tex")
+region = Rect2(96, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="sad_0"]
+atlas = ExtResource("tex")
+region = Rect2(0, 32, 32, 32)
+
+[sub_resource type="AtlasTexture" id="sad_1"]
+atlas = ExtResource("tex")
+region = Rect2(32, 32, 32, 32)
+
+[sub_resource type="AtlasTexture" id="sad_2"]
+atlas = ExtResource("tex")
+region = Rect2(64, 32, 32, 32)
+
+[sub_resource type="AtlasTexture" id="sad_3"]
+atlas = ExtResource("tex")
+region = Rect2(96, 32, 32, 32)
+
+[sub_resource type="AtlasTexture" id="sleep_0"]
+atlas = ExtResource("tex")
+region = Rect2(0, 64, 32, 32)
+
+[sub_resource type="AtlasTexture" id="sleep_1"]
+atlas = ExtResource("tex")
+region = Rect2(32, 64, 32, 32)
+
+[sub_resource type="AtlasTexture" id="sleep_2"]
+atlas = ExtResource("tex")
+region = Rect2(64, 64, 32, 32)
+
+[sub_resource type="AtlasTexture" id="sleep_3"]
+atlas = ExtResource("tex")
+region = Rect2(96, 64, 32, 32)
+
+[sub_resource type="AtlasTexture" id="sick_0"]
+atlas = ExtResource("tex")
+region = Rect2(0, 96, 32, 32)
+
+[sub_resource type="AtlasTexture" id="sick_1"]
+atlas = ExtResource("tex")
+region = Rect2(32, 96, 32, 32)
+
+[sub_resource type="AtlasTexture" id="sick_2"]
+atlas = ExtResource("tex")
+region = Rect2(64, 96, 32, 32)
+
+[sub_resource type="AtlasTexture" id="sick_3"]
+atlas = ExtResource("tex")
+region = Rect2(96, 96, 32, 32)
+
+[sub_resource type="AtlasTexture" id="eat_0"]
+atlas = ExtResource("tex")
+region = Rect2(0, 128, 32, 32)
+
+[sub_resource type="AtlasTexture" id="eat_1"]
+atlas = ExtResource("tex")
+region = Rect2(32, 128, 32, 32)
+
+[sub_resource type="AtlasTexture" id="eat_2"]
+atlas = ExtResource("tex")
+region = Rect2(64, 128, 32, 32)
+
+[sub_resource type="AtlasTexture" id="eat_3"]
+atlas = ExtResource("tex")
+region = Rect2(96, 128, 32, 32)
+
+[sub_resource type="AtlasTexture" id="happy_0"]
+atlas = ExtResource("tex")
+region = Rect2(0, 160, 32, 32)
+
+[sub_resource type="AtlasTexture" id="happy_1"]
+atlas = ExtResource("tex")
+region = Rect2(32, 160, 32, 32)
+
+[sub_resource type="AtlasTexture" id="happy_2"]
+atlas = ExtResource("tex")
+region = Rect2(64, 160, 32, 32)
+
+[sub_resource type="AtlasTexture" id="happy_3"]
+atlas = ExtResource("tex")
+region = Rect2(96, 160, 32, 32)
+
+[sub_resource type="AtlasTexture" id="cheerful_0"]
+atlas = ExtResource("tex")
+region = Rect2(0, 192, 32, 32)
+
+[sub_resource type="AtlasTexture" id="cheerful_1"]
+atlas = ExtResource("tex")
+region = Rect2(32, 192, 32, 32)
+
+[sub_resource type="AtlasTexture" id="cheerful_2"]
+atlas = ExtResource("tex")
+region = Rect2(64, 192, 32, 32)
+
+[sub_resource type="AtlasTexture" id="cheerful_3"]
+atlas = ExtResource("tex")
+region = Rect2(96, 192, 32, 32)
+
+[resource]
+animations = [{"frames": [{"duration": 1.0, "texture": SubResource("idle_0")}, {"duration": 1.0, "texture": SubResource("idle_1")}, {"duration": 1.0, "texture": SubResource("idle_2")}, {"duration": 1.0, "texture": SubResource("idle_3")}], "loop": true, "name": &"idle", "speed": 4.5455}, {"frames": [{"duration": 1.0, "texture": SubResource("sad_0")}, {"duration": 1.0, "texture": SubResource("sad_1")}, {"duration": 1.0, "texture": SubResource("sad_2")}, {"duration": 1.0, "texture": SubResource("sad_3")}], "loop": true, "name": &"sad", "speed": 2.5000}, {"frames": [{"duration": 1.0, "texture": SubResource("sleep_0")}, {"duration": 1.0, "texture": SubResource("sleep_1")}, {"duration": 1.0, "texture": SubResource("sleep_2")}, {"duration": 1.0, "texture": SubResource("sleep_3")}], "loop": true, "name": &"sleep", "speed": 1.6667}, {"frames": [{"duration": 1.0, "texture": SubResource("sick_0")}, {"duration": 1.0, "texture": SubResource("sick_1")}, {"duration": 1.0, "texture": SubResource("sick_2")}, {"duration": 1.0, "texture": SubResource("sick_3")}], "loop": true, "name": &"sick", "speed": 2.8571}, {"frames": [{"duration": 1.0, "texture": SubResource("eat_0")}, {"duration": 1.0, "texture": SubResource("eat_1")}, {"duration": 1.0, "texture": SubResource("eat_2")}, {"duration": 1.0, "texture": SubResource("eat_3")}], "loop": true, "name": &"eat", "speed": 5.5556}, {"frames": [{"duration": 1.0, "texture": SubResource("happy_0")}, {"duration": 1.0, "texture": SubResource("happy_1")}, {"duration": 1.0, "texture": SubResource("happy_2")}, {"duration": 1.0, "texture": SubResource("happy_3")}], "loop": true, "name": &"happy", "speed": 7.1429}, {"frames": [{"duration": 1.0, "texture": SubResource("cheerful_0")}, {"duration": 1.0, "texture": SubResource("cheerful_1")}, {"duration": 1.0, "texture": SubResource("cheerful_2")}, {"duration": 1.0, "texture": SubResource("cheerful_3")}], "loop": true, "name": &"cheerful", "speed": 3.1250}]

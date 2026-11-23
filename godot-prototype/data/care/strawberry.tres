@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CareOption" format=3]
+
+[ext_resource type="Script" path="res://scripts/care_option.gd" id="1"]
+[ext_resource type="Texture2D" path="res://art/icons/strawberry.png" id="2"]
+[ext_resource type="AudioStream" path="res://audio/munch.mp3" id="3"]
+
+[resource]
+script = ExtResource("1")
+id = "strawberry"
+display_name = "Strawberry"
+kind = 0
+icon = ExtResource("2")
+hunger = 10
+happiness = 6
+health = 0
+energy = 0
+starting_count = 2
+refills_daily = false
+sound = ExtResource("3")

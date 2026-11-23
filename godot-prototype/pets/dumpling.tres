@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="PetLook" format=3]
+
+[ext_resource type="Script" path="res://scripts/pet_look.gd" id="script"]
+[ext_resource type="SpriteFrames" path="res://pets/dumpling_frames.tres" id="frames"]
+[ext_resource type="SpriteFrames" path="res://faces/blob.tres" id="faces"]
+
+[resource]
+script = ExtResource("script")
+display_name = "Dumpling"
+frames = ExtResource("frames")
+face_frames = ExtResource("faces")
+face_point = Vector2i(16, 18)
+head_offsets = {
+"idle": [0, -1, -1, 0],
+"sad": [1, 1, 2, 1],
+"sleep": [1, 2, 2, 1],
+"sick": [0, 0, 0, 0],
+"eat": [0, 1, 0, 1],
+"happy": [0, -2, -3, -1],
+"cheerful": [0, 0, -1, 0],
+"idle-look": [0, 0, 0, 0],
+"idle-stretch": [0, -1, -2, -1]
+}
+head_shifts = {
+"idle": [0, 0, 0, 0],
+"sad": [0, 0, 0, 0],
+"sleep": [0, 0, 0, 0],
+"sick": [0, -1, 0, 1],
+"eat": [0, 0, 0, 0],
+"happy": [0, 0, 0, 0],
+"cheerful": [0, 0, 0, 0],
+"idle-look": [-1, -2, -2, -1],
+"idle-stretch": [0, 0, 0, 0]
+}
+idle_moves = PackedStringArray("idle-look", "idle-stretch")

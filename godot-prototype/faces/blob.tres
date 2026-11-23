@@ -1,0 +1,102 @@
+[gd_resource type="SpriteFrames" format=3]
+
+[ext_resource type="Texture2D" path="res://art/faces/blob.png" id="tex"]
+
+[sub_resource type="AtlasTexture" id="content_0"]
+atlas = ExtResource("tex")
+region = Rect2(0, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="content_1"]
+atlas = ExtResource("tex")
+region = Rect2(32, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="content_2"]
+atlas = ExtResource("tex")
+region = Rect2(64, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="content_3"]
+atlas = ExtResource("tex")
+region = Rect2(96, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="content_4"]
+atlas = ExtResource("tex")
+region = Rect2(128, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="content_5"]
+atlas = ExtResource("tex")
+region = Rect2(160, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="content_6"]
+atlas = ExtResource("tex")
+region = Rect2(192, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="content_7"]
+atlas = ExtResource("tex")
+region = Rect2(224, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="content_8"]
+atlas = ExtResource("tex")
+region = Rect2(256, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="content_9"]
+atlas = ExtResource("tex")
+region = Rect2(288, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="happy_0"]
+atlas = ExtResource("tex")
+region = Rect2(0, 32, 32, 32)
+
+[sub_resource type="AtlasTexture" id="pouting_0"]
+atlas = ExtResource("tex")
+region = Rect2(0, 64, 32, 32)
+
+[sub_resource type="AtlasTexture" id="sad_0"]
+atlas = ExtResource("tex")
+region = Rect2(0, 96, 32, 32)
+
+[sub_resource type="AtlasTexture" id="crying_0"]
+atlas = ExtResource("tex")
+region = Rect2(0, 128, 32, 32)
+
+[sub_resource type="AtlasTexture" id="surprised_0"]
+atlas = ExtResource("tex")
+region = Rect2(0, 160, 32, 32)
+
+[sub_resource type="AtlasTexture" id="inLove_0"]
+atlas = ExtResource("tex")
+region = Rect2(0, 192, 32, 32)
+
+[sub_resource type="AtlasTexture" id="inLove_1"]
+atlas = ExtResource("tex")
+region = Rect2(32, 192, 32, 32)
+
+[sub_resource type="AtlasTexture" id="grumpy_0"]
+atlas = ExtResource("tex")
+region = Rect2(0, 224, 32, 32)
+
+[sub_resource type="AtlasTexture" id="sleepy_0"]
+atlas = ExtResource("tex")
+region = Rect2(0, 256, 32, 32)
+
+[sub_resource type="AtlasTexture" id="hungry_0"]
+atlas = ExtResource("tex")
+region = Rect2(0, 288, 32, 32)
+
+[sub_resource type="AtlasTexture" id="chewing_0"]
+atlas = ExtResource("tex")
+region = Rect2(0, 320, 32, 32)
+
+[sub_resource type="AtlasTexture" id="chewing_1"]
+atlas = ExtResource("tex")
+region = Rect2(32, 320, 32, 32)
+
+[sub_resource type="AtlasTexture" id="sick_0"]
+atlas = ExtResource("tex")
+region = Rect2(0, 352, 32, 32)
+
+[sub_resource type="AtlasTexture" id="sick_1"]
+atlas = ExtResource("tex")
+region = Rect2(32, 352, 32, 32)
+
+[resource]
+animations = [{"frames": [{"duration": 1.0, "texture": SubResource("content_0")}, {"duration": 1.0, "texture": SubResource("content_1")}, {"duration": 1.0, "texture": SubResource("content_2")}, {"duration": 1.0, "texture": SubResource("content_3")}, {"duration": 1.0, "texture": SubResource("content_4")}, {"duration": 1.0, "texture": SubResource("content_5")}, {"duration": 1.0, "texture": SubResource("content_6")}, {"duration": 1.0, "texture": SubResource("content_7")}, {"duration": 1.0, "texture": SubResource("content_8")}, {"duration": 1.0, "texture": SubResource("content_9")}], "loop": true, "name": &"content", "speed": 3.3333}, {"frames": [{"duration": 1.0, "texture": SubResource("happy_0")}], "loop": true, "name": &"happy", "speed": 3.3333}, {"frames": [{"duration": 1.0, "texture": SubResource("pouting_0")}], "loop": true, "name": &"pouting", "speed": 2.0000}, {"frames": [{"duration": 1.0, "texture": SubResource("sad_0")}], "loop": true, "name": &"sad", "speed": 1.6667}, {"frames": [{"duration": 1.0, "texture": SubResource("crying_0")}], "loop": true, "name": &"crying", "speed": 3.3333}, {"frames": [{"duration": 1.0, "texture": SubResource("surprised_0")}], "loop": true, "name": &"surprised", "speed": 3.3333}, {"frames": [{"duration": 1.0, "texture": SubResource("inLove_0")}, {"duration": 1.0, "texture": SubResource("inLove_1")}], "loop": true, "name": &"inLove", "speed": 2.8571}, {"frames": [{"duration": 1.0, "texture": SubResource("grumpy_0")}], "loop": true, "name": &"grumpy", "speed": 2.0000}, {"frames": [{"duration": 1.0, "texture": SubResource("sleepy_0")}], "loop": true, "name": &"sleepy", "speed": 1.4286}, {"frames": [{"duration": 1.0, "texture": SubResource("hungry_0")}], "loop": true, "name": &"hungry", "speed": 2.5000}, {"frames": [{"duration": 1.0, "texture": SubResource("chewing_0")}, {"duration": 1.0, "texture": SubResource("chewing_1")}], "loop": true, "name": &"chewing", "speed": 5.5556}, {"frames": [{"duration": 1.0, "texture": SubResource("sick_0")}, {"duration": 1.0, "texture": SubResource("sick_1")}], "loop": true, "name": &"sick", "speed": 1.6667}]
