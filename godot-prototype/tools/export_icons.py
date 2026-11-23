@@ -7,7 +7,8 @@ from PIL import Image
 PAL = dict(re.findall(r"^\s+(\w+): '(#[0-9a-f]{6})'", open('src/render/palette.ts').read(), re.M))
 LETTERS = {'k':'ink','w':'white','r':'rose','p':'pink','g':'leaf','m':'mint','b':'ocean','s':'sky',
            'y':'butter','c':'cocoa','o':'peach','l':'lilac','v':'lavender','e':'cream','u':'plum'}
-WANT = ['gold','hunger','happiness','health','energy','riceBall','strawberry','cookie','cuddle','tickle']
+WANT = ['gold','hunger','happiness','health','energy','riceBall','strawberry','cookie','cuddle','tickle',
+        'cooking','shop','map','journal','collection','skills','familyTree','guide','settings','letter']
 src = open('src/ui/icons.ts').read()
 out = sys.argv[1] if len(sys.argv) > 1 else 'godot-prototype/art/icons'
 for name in WANT:
@@ -29,3 +30,23 @@ for name in WANT:
                 img.putpixel((x, y), tuple(int(col[i:i+2], 16) for i in (1, 3, 5)) + (255,))
     img.save(f'{out}/{name}.png')
     print(name, img.size)
+
+
+# The four need icons, which show their own level in five steps (needIcons.ts):
+# one sheet per need, 0 (empty) on the left to 4 (full) on the right.
+NKEY = dict(re.findall(r"^\s+(\w): '(\w+)',", open('src/ui/needIcons.ts').read().split('const ROWS')[0], re.M))
+need_src = open('src/ui/needIcons.ts').read().split('const ROWS')[1]
+for need in ['hunger', 'happiness', 'health', 'energy']:
+    block = need_src.split(need + ': [', 1)[1]
+    frames = re.findall(r"\[\s*((?:'[^']*',?\s*)+)\]", block)[:5]
+    grids = [re.findall(r"'([^']*)'", f) for f in frames]
+    w, h = len(grids[0][0]), len(grids[0])
+    sheet = Image.new('RGBA', (w * 5, h), (0, 0, 0, 0))
+    for i, g in enumerate(grids):
+        for y, row in enumerate(g):
+            for x, ch in enumerate(row):
+                if ch in NKEY:
+                    c = PAL[NKEY[ch]]
+                    sheet.putpixel((i * w + x, y), tuple(int(c[k:k+2], 16) for k in (1, 3, 5)) + (255,))
+    sheet.save(f'{out}/need-{need}.png')
+    print('need', need, sheet.size)

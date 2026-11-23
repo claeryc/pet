@@ -9,6 +9,8 @@ enum Kind { FOOD, PLAY }
 @export var id := ""
 @export var display_name := ""
 @export var kind := Kind.FOOD
+## Which Feed filters it shows under: "fruit", "veg", "sweet"...
+@export var tags: PackedStringArray = []
 @export var icon: Texture2D
 @export_group("Changes to stats")
 @export_range(-100, 100) var hunger := 0

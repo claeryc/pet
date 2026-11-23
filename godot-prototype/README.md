@@ -4,12 +4,21 @@ A test rebuild of just the home screen in [Godot 4.5](https://godotengine.org),
 to compare with the web game before deciding whether to move. It doesn't
 touch the web game: everything is in this folder.
 
-What's in it: the room (window, wallpaper, floor), the pet with its face
-layer and idle moves, the four stat bars, the Feed and Play drawers (rice
-ball, strawberry, cookie, cuddle, tickle), tapping the pet to cuddle it,
-Lights off / sleep, time passing (also while the game is closed), and saving.
-Prototype-only buttons swap between five pets, run time 60× or 600× faster,
-and reset the pet.
+What's in it, matching the redesigned web game:
+
+- The tall room (ceiling beam, fairy lights, picture, clock, hanging lamp)
+  with the pet, its face layer and idle moves, and the four need icons that
+  empty in five steps.
+- The dock: Feed, Map and "···". Feed and Play open a sheet and the room
+  folds up to make room. "···" opens the pop-up menu (only Play works; the
+  rest say they're not ported yet).
+- The map: the island with its bubbles and the pet at home, tap a place to
+  go there, hold it for its name, and the Backyard zooms into its close-up.
+- Tapping the pet to cuddle it, the moon button for sleep, time passing
+  (also while the game is closed), the rice jar, and saving.
+
+The bottom of the "···" menu has prototype-only rows: swap between five
+pets, run time 60× or 600× faster, and reset the pet.
 
 ## Opening it
 
@@ -40,11 +49,17 @@ Where to look in the editor:
 - `scripts/pet.gd`: picks the pet's animation and face, and moves the face
   with the head.
 - `scripts/room.gd`: draws the room (a port of `src/render/room.ts`).
+- `scenes/map.tscn` and `scripts/map_screen.gd`: the map. The places come
+  from `data/maps/*.json`.
 - `tools/import_art.py`: copies the art from `public/sprites/` and writes the
   Godot resources for it. Run it again after changing the art:
   `python3 godot-prototype/tools/import_art.py` (from the repository root).
 - `tools/export_icons.py`: turns the text-grid icons in `src/ui/icons.ts`
-  into PNGs.
+  and the need icons in `src/ui/needIcons.ts` into PNGs.
+- `tools/import_map.py`: copies the map art from `public/sprites/map/` and
+  writes each place's tap shape and bubble point to `data/maps/`.
+- `tools/export_bubbles.mjs`: writes the map bubbles from
+  `src/ui/mapBubbles.ts` as SVG files (`node godot-prototype/tools/export_bubbles.mjs`).
 
 ## Checks
 

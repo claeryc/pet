@@ -9,6 +9,7 @@ script = ExtResource("1")
 id = "riceBall"
 display_name = "Rice ball"
 kind = 0
+tags = PackedStringArray("grain")
 icon = ExtResource("2")
 hunger = 15
 happiness = 0

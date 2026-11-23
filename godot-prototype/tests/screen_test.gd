@@ -22,9 +22,10 @@ func _ready() -> void:
 	check("pet starts cheerful", pet.body.animation == &"cheerful")
 
 	main.get_node("%Feed").pressed.emit()
-	await get_tree().process_frame
-	check("feed drawer opens with 3 foods", main.get_node("%List").get_child_count() == 3)
-	main.get_node("%List").get_child(0).pressed.emit() # rice ball
+	await get_tree().create_timer(0.4).timeout
+	check("feed sheet opens with 3 foods", main.get_node("%Grid").get_child_count() == 3)
+	check("room folds up for the sheet", main.fold == 1.0)
+	main.get_node("%Go").pressed.emit() # the rice ball is picked
 	await get_tree().process_frame
 	check("eating plays", pet.body.animation == &"eat")
 	check("face chews", pet.face.animation == &"chewing")
@@ -32,17 +33,40 @@ func _ready() -> void:
 	check("tummy went up", Game.state.stats.hunger > 90.0)
 	await get_tree().create_timer(4.4).timeout
 	check("back to cheerful after eating", pet.body.animation == &"cheerful")
+	main.get_node("%More").pressed.emit() # "×" closes the sheet
+	await get_tree().create_timer(0.4).timeout
+	check("sheet closed, room full height", main.fold == 0.0 and not main.get_node("%Sheet").visible)
 
-	main.get_node("%Lights").pressed.emit()
+	main.get_node("%Moon").pressed.emit()
 	await get_tree().process_frame
 	check("lights off: asleep", Game.state.asleep and pet.body.animation == &"sleep")
 	check("room dims", main.get_node("%Dim").visible)
-	main.get_node("%Play").pressed.emit()
+	main.get_node("%More").pressed.emit()
 	await get_tree().process_frame
-	main.get_node("%List").get_child(0).pressed.emit() # cuddle
+	check("menu opens", main.get_node("%Pop").visible)
+	main.get_node("%PopList").get_node("play").pressed.emit()
+	await get_tree().create_timer(0.4).timeout
+	check("play sheet opens with 2 games", main.get_node("%Grid").get_child_count() == 2)
+	main.get_node("%Go").pressed.emit()
 	await get_tree().process_frame
 	check("can't play while asleep", main.get_node("%Toast").visible)
-	main.get_node("%Lights").pressed.emit()
+	main.get_node("%Moon").pressed.emit()
+	main.close_all()
+
+	main.get_node("%MapButton").pressed.emit()
+	await get_tree().create_timer(0.3).timeout
+	var map: Control = main.get_node("%Map")
+	check("map opens", map.visible and map.map_id == "island")
+	check("bubbles on the island", map.get_node("Marks").get_child_count() >= 4)
+	map.zoom_into("backyard", "backyard")
+	await get_tree().create_timer(0.8).timeout
+	check("zoomed into the Backyard", map.map_id == "backyard")
+	map.zoom_out()
+	await get_tree().create_timer(0.8).timeout
+	check("back on the island", map.map_id == "island")
+	map.get_node("%Home").pressed.emit()
+	await get_tree().create_timer(0.3).timeout
+	check("home again", not map.visible)
 
 	for i in Game.PETS.size():
 		Game.next_pet()

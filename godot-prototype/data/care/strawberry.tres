@@ -9,6 +9,7 @@ script = ExtResource("1")
 id = "strawberry"
 display_name = "Strawberry"
 kind = 0
+tags = PackedStringArray("fruit", "sweet")
 icon = ExtResource("2")
 hunger = 10
 happiness = 6

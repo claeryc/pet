@@ -9,6 +9,7 @@ script = ExtResource("1")
 id = "cookie"
 display_name = "Cookie"
 kind = 0
+tags = PackedStringArray("sweet")
 icon = ExtResource("2")
 hunger = 6
 happiness = 12
