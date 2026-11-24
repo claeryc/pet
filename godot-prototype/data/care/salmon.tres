@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CareOption" format=3]
+
+[ext_resource type="Script" path="res://scripts/care_option.gd" id="1"]
+[ext_resource type="Texture2D" path="res://art/icons/salmon.png" id="2"]
+[ext_resource type="AudioStream" path="res://audio/munch.mp3" id="3"]
+
+[resource]
+script = ExtResource("1")
+id = "salmon"
+display_name = "Salmon"
+kind = 0
+tags = PackedStringArray("seafood")
+icon = ExtResource("2")
+hunger = 20
+happiness = 6
+health = 3
+sound = ExtResource("3")

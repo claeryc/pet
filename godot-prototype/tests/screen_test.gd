@@ -23,7 +23,7 @@ func _ready() -> void:
 
 	main.get_node("%Feed").pressed.emit()
 	await get_tree().create_timer(0.4).timeout
-	check("feed sheet opens with 3 foods", main.get_node("%Grid").get_child_count() == 3)
+	check("feed sheet shows every food", main.get_node("%Grid").get_child_count() == Game.options(CareOption.Kind.FOOD).size())
 	check("room folds up for the sheet", main.fold == 1.0)
 	main.get_node("%Go").pressed.emit() # the rice ball is picked
 	await get_tree().process_frame
@@ -67,6 +67,45 @@ func _ready() -> void:
 	map.get_node("%Home").pressed.emit()
 	await get_tree().create_timer(0.3).timeout
 	check("home again", not map.visible)
+
+	# Fishing: the pond on the map, a cast, a bite, reeling in and a catch.
+	main.get_node("%MapButton").pressed.emit()
+	await get_tree().create_timer(0.3).timeout
+	map._activate("pond")
+	await get_tree().create_timer(0.8).timeout
+	var fishing: Control = main.get_node("%Fishing")
+	var cast_button: Button = main.get_node("%FishMain")
+	check("the pond opens fishing", fishing.visible and fishing.phase == "ready" and not map.visible)
+	check("the dock makes way", not main.get_node("%Dock").visible)
+	check("the rod is out", main.get_node("%Rod").visible)
+	var energy: float = Game.state.stats.energy
+	cast_button.pressed.emit()
+	check("Cast throws the line", fishing.phase == "waiting" and cast_button.text == "Reel in")
+	check("casting costs energy", Game.state.stats.energy < energy)
+	cast_button.pressed.emit()
+	check("reeling in too soon scares it", fishing.phase == "ready" or cast_button.disabled)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	cast_button.pressed.emit()
+	fishing._timers.clear()
+	fishing._bite()
+	check("a bite", fishing.phase == "bite")
+	cast_button.pressed.emit()
+	check("Reel in brings up the bar", fishing.phase == "reeling" and main.get_node("%CatchBar").visible and cast_button.text == "Pull")
+	var fish_id: String = fishing._hooked.food.id
+	var had := int(Game.state.inventory.get(fish_id, 0))
+	fishing._reel.meter = 0.99
+	fishing._reel.marker = fishing._reel.center
+	fishing._reel.elapsed = 3.0
+	cast_button.button_down.emit()
+	await get_tree().create_timer(0.3).timeout
+	cast_button.button_up.emit()
+	check("a landed fish goes in the pantry", int(Game.state.inventory.get(fish_id, 0)) == had + 1)
+	await get_tree().create_timer(1.0).timeout
+	check("ready to cast again", fishing.phase == "ready" and cast_button.text == "Cast")
+	main.get_node("%FishCancel").pressed.emit()
+	await get_tree().create_timer(0.6).timeout
+	check("Cancel drains the pond", not fishing.visible and main.get_node("%Dock").visible)
 
 	for i in Game.PETS.size():
 		Game.next_pet()

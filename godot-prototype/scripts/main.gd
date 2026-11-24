@@ -56,6 +56,8 @@ const DOCK_TOP := 84.0 # the dock's height and the gap above it
 @onready var sheet: PanelContainer = %Sheet
 @onready var pop: PanelContainer = %Pop
 @onready var map_screen: Control = %Map
+@onready var fishing: Control = %Fishing
+@onready var rod: Node2D = %Rod
 
 ## How far the room is folded up for a sheet: 0 = full height, 1 = 4:3.
 var fold := 0.0:
@@ -91,6 +93,10 @@ func _ready() -> void:
 			_fill_sheet())
 	map_screen.go_home.connect(_close_map)
 	map_screen.say.connect(toast)
+	map_screen.fish.connect(_start_fishing)
+	fishing.say.connect(toast)
+	fishing.phase_changed.connect(func(p: String) -> void: rod.phase = p)
+	fishing.exited.connect(_stop_fishing)
 	_build_menu()
 	Game.changed.connect(_refresh)
 	Game.cared.connect(_on_cared)
@@ -137,6 +143,7 @@ func _layout() -> void:
 	room_card.offset_bottom = lerpf(full_bottom, -(size.y - 16 - folded_h), fold)
 	sheet.offset_top = 16 + folded_h + 12 + (1.0 - fold) * (size.y - folded_h)
 	sheet.modulate.a = clampf(fold * 2.0, 0.0, 1.0)
+	fishing.place(16 + folded_h + 12)
 
 
 ## The room is 64 pixels wide and as tall as the card allows (48 to 192):
@@ -256,14 +263,23 @@ func _chip(stat: String, amount: int) -> PanelContainer:
 	return chip
 
 
+func _place_toast() -> void:
+	var box: PanelContainer = %Toast
+	%Text.reset_size()
+	box.reset_size()
+	box.position = Vector2((size.x - box.size.x) / 2, size.y - DOCK_TOP - 24 - box.size.y)
+
+
 func toast(text: String) -> void:
 	var box: PanelContainer = %Toast
 	%Text.text = text
 	box.visible = true
 	box.size = Vector2.ZERO
 	box.custom_minimum_size.x = minf(size.x - 64, 320)
-	box.reset_size()
-	box.position = Vector2((size.x - box.size.x) / 2, size.y - DOCK_TOP - 24 - box.size.y)
+	# A wrapping label needs its width before it can work out its height.
+	%Text.custom_minimum_size.x = box.custom_minimum_size.x - 32
+	_place_toast()
+	_place_toast.call_deferred() # again once the text has been laid out
 	box.modulate.a = 1.0
 	if _toast_tween:
 		_toast_tween.kill()
@@ -472,3 +488,22 @@ func _open_map() -> void:
 
 func _close_map() -> void:
 	map_screen.close()
+
+
+# --- Fishing (scripts/fishing_screen.gd) ----------------------------------
+
+func _start_fishing() -> void:
+	map_screen.close()
+	if Game.state.asleep:
+		toast("%s is asleep. Let it rest!" % Game.pet_name())
+		return
+	close_all()
+	%Dock.hide()
+	_animate_fold(1.0).tween_callback(func() -> void:
+		fishing.align_line(room_view.global_position.x + _room_to_screen(Vector2(rod.LINE_X + 0.5, 0)).x))
+	fishing.start()
+
+
+func _stop_fishing() -> void:
+	_animate_fold(0.0)
+	%Dock.show()

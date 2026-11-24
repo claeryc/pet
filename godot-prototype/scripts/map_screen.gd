@@ -8,6 +8,8 @@ extends Control
 
 signal go_home
 signal say(text: String)
+## The pond was tapped: go fishing.
+signal fish
 
 const SEA := Color8(63, 108, 186)
 const HOLD := 0.45
@@ -227,6 +229,8 @@ func _activate(id: String) -> void:
 		go_home.emit()
 	elif opens == "map:backyard":
 		zoom_into(id, "backyard")
+	elif opens == "pond":
+		fish.emit()
 	else:
 		_show_tip(id, "%s isn't in this prototype yet." % a.name)
 

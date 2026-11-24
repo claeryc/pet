@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="FishKind" format=3]
+
+[ext_resource type="Script" path="res://scripts/fish_kind.gd" id="1"]
+[ext_resource type="CareOption" path="res://data/care/lobster.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = "lobster"
+display_name = "Lobster"
+food = ExtResource("2")
+odds = 12
+shadow = 2
+rare = true
+hold_line = "A lobster! It tugs hard, so hold on tight!"
+shift_every = 1.0
+shift_by = 1.0
+glide = 1.0
+drain = 1.3
+tug = 0.85

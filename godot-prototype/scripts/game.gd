@@ -11,10 +11,14 @@ signal refused(option: CareOption, reason: String)
 
 const SAVE_PATH := "user://pet.json"
 const TUNING: Tuning = preload("res://data/tuning.tres")
+const FISHING: FishingTuning = preload("res://data/fishing.tres")
 const OPTIONS: Array[CareOption] = [
 	preload("res://data/care/rice_ball.tres"),
 	preload("res://data/care/strawberry.tres"),
 	preload("res://data/care/cookie.tres"),
+	preload("res://data/care/shrimp.tres"),
+	preload("res://data/care/salmon.tres"),
+	preload("res://data/care/lobster.tres"),
 	preload("res://data/care/cuddle.tres"),
 	preload("res://data/care/tickle.tres"),
 ]
@@ -99,6 +103,23 @@ func care(option: CareOption) -> void:
 	last_care_at = now()
 	save()
 	cared.emit(option, gains)
+	changed.emit()
+
+
+## Throws the fishing line. Returns why it can't, or "".
+func cast() -> String:
+	tick()
+	var why := FishingRules.cast(state, FISHING)
+	if why == "":
+		last_care_at = now()
+		save()
+		changed.emit()
+	return why
+
+
+func land(fish: FishKind) -> void:
+	FishingRules.land(state, fish)
+	save()
 	changed.emit()
 
 

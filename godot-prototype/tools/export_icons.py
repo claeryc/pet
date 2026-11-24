@@ -8,7 +8,7 @@ PAL = dict(re.findall(r"^\s+(\w+): '(#[0-9a-f]{6})'", open('src/render/palette.t
 LETTERS = {'k':'ink','w':'white','r':'rose','p':'pink','g':'leaf','m':'mint','b':'ocean','s':'sky',
            'y':'butter','c':'cocoa','o':'peach','l':'lilac','v':'lavender','e':'cream','u':'plum'}
 WANT = ['gold','hunger','happiness','health','energy','riceBall','strawberry','cookie','cuddle','tickle',
-        'cooking','shop','map','journal','collection','skills','familyTree','guide','settings','letter']
+        'cooking','shop','map','journal','collection','skills','familyTree','guide','settings','letter','shrimp','salmon','lobster']
 src = open('src/ui/icons.ts').read()
 out = sys.argv[1] if len(sys.argv) > 1 else 'godot-prototype/art/icons'
 for name in WANT:

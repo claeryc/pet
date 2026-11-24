@@ -119,5 +119,63 @@ func _init() -> void:
 	check("rice jar refills", s.inventory.riceBall == 3)
 	check("cookies don't", s.inventory.cookie == 0)
 
+	_fishing()
+
 	print("%d passed, %d failed" % [passed, failed])
 	quit(1 if failed else 0)
+
+
+## The fishing rules (scripts/fishing_rules.gd).
+func _fishing() -> void:
+	var t: FishingTuning = load("res://data/fishing.tres")
+	var shrimp: FishKind = t.fish[0]
+	var lobster: FishKind = t.fish[2]
+	var z := FishingRules.zones_around(t, 0.0, 1.0)
+	check("zones stay on the bar", z.weak.x >= 0.0 and z.weak.y <= 1.0)
+	check("the dot on green is perfect", FishingRules.grade_at(z, (z.perfect.x + z.perfect.y) / 2) == "perfect")
+
+	# Keeping the dot on the green lands the fish, perfectly.
+	var reel := FishingRules.start_reel(t, 0.5, shrimp)
+	var steps := 0
+	while FishingRules.outcome(reel) == "" and steps < 2000:
+		FishingRules.step_reel(t, reel, false, 0.02, 0.5)
+		reel.marker = reel.center # a perfect player
+		steps += 1
+	check("staying on green lands it", FishingRules.outcome(reel) == "landed")
+	check("...as a perfect catch", FishingRules.grade(t, reel) == "perfect")
+
+	# Never pulling: the dot sits on blue at the left and the line goes slack.
+	reel = FishingRules.start_reel(t, 0.9, shrimp)
+	steps = 0
+	while FishingRules.outcome(reel) == "" and steps < 2000:
+		FishingRules.step_reel(t, reel, false, 0.02, 0.5)
+		steps += 1
+	check("never pulling loses it", FishingRules.outcome(reel) == "lost")
+
+	# Holding Pull drags the dot right; a lobster tugs it back.
+	reel = FishingRules.start_reel(t, 0.5, shrimp)
+	for i in 20:
+		FishingRules.step_reel(t, reel, true, 0.02, 0.5)
+	check("pulling moves the dot right", reel.marker > 0.0)
+
+	# Nibbles come before the bite, never on top of it.
+	var times := FishingRules.nibble_times(t, 8.0, 0.99, [0.5, 0.5])
+	check("nibbles before the bite", times.size() == t.nibbles_max and times.all(func(x: float) -> bool: return x < 8.0 - 1.0))
+
+	# A streak of perfects makes the lobster likelier.
+	var lobsters := [0, 0]
+	for streak in [0, 3]:
+		for i in 1000:
+			if FishingRules.pick_fish(t, i / 1000.0, streak) == lobster:
+				lobsters[1 if streak else 0] += 1
+	check("streaks make lobsters likelier", lobsters[1] > lobsters[0])
+
+	# Casting costs energy, and a catch goes in the pantry.
+	var s := fresh()
+	var e: float = s.stats.energy
+	check("casting works", FishingRules.cast(s, t) == "")
+	check("casting costs energy", s.stats.energy == e - t.energy_per_cast)
+	s.stats.energy = 1.0
+	check("too tired to cast", FishingRules.cast(s, t) == "too_tired")
+	FishingRules.land(s, shrimp)
+	check("a catch goes in the pantry", s.inventory.get("shrimp") == 1)

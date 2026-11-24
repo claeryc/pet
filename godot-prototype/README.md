@@ -14,6 +14,12 @@ What's in it, matching the redesigned web game:
   rest say they're not ported yet).
 - The map: the island with its bubbles and the pet at home, tap a place to
   go there, hold it for its name, and the Backyard zooms into its close-up.
+- Fishing: tap the pond on the map. The room folds up, water rises into a
+  pond under it, and the dock becomes [Cancel] [Cast]. Cast, wait through
+  the nibbles, Reel in on the bite ("!"), then hold Pull to keep the dot
+  on the green until the meter fills. Shrimp, salmon (darts about) and
+  lobster (tugs hard), the "Perfect!" streak, and the catch goes into the
+  Feed sheet. Bait, fishing skills, XP and the daily limit aren't ported.
 - Tapping the pet to cuddle it, the moon button for sleep, time passing
   (also while the game is closed), the rice jar, and saving.
 
@@ -35,6 +41,8 @@ Where to look in the editor:
   thresholds…). Change them in the Inspector.
 - `data/care/*.tres`: one file per food or way to play. Duplicate one to
   add a new food.
+- `data/fishing.tres` and `data/fish/*.tres`: every fishing number (bite
+  timing, zone sizes, pull and drift, how each fish fights).
 - `data/theme.tres`: colours, fonts and button styles.
 - `pets/*_frames.tres`: open one to see every animation in the SpriteFrames
   panel at the bottom.
@@ -49,6 +57,9 @@ Where to look in the editor:
 - `scripts/pet.gd`: picks the pet's animation and face, and moves the face
   with the head.
 - `scripts/room.gd`: draws the room (a port of `src/render/room.ts`).
+- `scripts/fishing_rules.gd`: the fishing rules, also screen-free.
+  `scripts/fishing_screen.gd` runs the mini-game, `scripts/pond.gd` draws
+  the pond, `scripts/catch_bar.gd` the bar and `scripts/rod.gd` the rod.
 - `scenes/map.tscn` and `scripts/map_screen.gd`: the map. The places come
   from `data/maps/*.json`.
 - `tools/import_art.py`: copies the art from `public/sprites/` and writes the
@@ -65,7 +76,7 @@ Where to look in the editor:
 
 ```bash
 godot --headless --path godot-prototype --import                          # first time only
-godot --headless --path godot-prototype -s res://tests/test_rules.gd      # 26 rule checks
+godot --headless --path godot-prototype -s res://tests/test_rules.gd      # 38 rule checks
 godot --headless --path godot-prototype res://tests/screen_test.tscn      # presses the real buttons
 ```
 
