@@ -11,6 +11,9 @@ WANT = ['gold','hunger','happiness','health','energy','riceBall','strawberry','c
         'cooking','shop','map','journal','collection','skills','familyTree','guide','settings','letter','shrimp','salmon','lobster']
 src = open('src/ui/icons.ts').read()
 out = sys.argv[1] if len(sys.argv) > 1 else 'godot-prototype/art/icons'
+# "--all" as a second argument exports every icon in icons.ts, not just WANT.
+if len(sys.argv) > 2 and sys.argv[2] == '--all':
+    WANT = re.findall(r"\n\s+(\w+): pixelIcon\(", src)
 for name in WANT:
     m = re.search(r"\n\s+" + name + r": pixelIcon\(\s*\[(.*?)\]\s*(?:,\s*\{(.*?)\})?\s*,?\s*\)", src, re.S)
     if not m:
