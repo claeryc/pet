@@ -1,0 +1,532 @@
+[gd_scene format=3 uid="uid://cmainscene001"]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/room.gd" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/pet.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/map.tscn" id="4"]
+[ext_resource type="Texture2D" path="res://art/icons/gold.png" id="5"]
+[ext_resource type="Texture2D" path="res://art/icons/moon.png" id="6"]
+[ext_resource type="Texture2D" path="res://art/icons/riceBall.png" id="7"]
+[ext_resource type="Texture2D" path="res://art/icons/map.png" id="8"]
+[ext_resource type="Texture2D" path="res://art/icons/cooking.png" id="9"]
+[ext_resource type="Script" path="res://scripts/rod.gd" id="10"]
+[ext_resource type="Script" path="res://scripts/fishing_screen.gd" id="11"]
+[ext_resource type="Script" path="res://scripts/pond.gd" id="12"]
+[ext_resource type="Script" path="res://scripts/catch_bar.gd" id="13"]
+
+[sub_resource type="ButtonGroup" id="filters"]
+
+[sub_resource type="StyleBoxFlat" id="pond"]
+bg_color = Color(0.604, 0.827, 0.941, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[node name="Main" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="RoomCard" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = -84.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"RoomCard"
+
+[node name="RoomStack" type="Control" parent="RoomCard"]
+clip_contents = true
+layout_mode = 2
+
+[node name="RoomView" type="TextureRect" parent="RoomCard/RoomStack"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="RoomViewport" type="SubViewport" parent="RoomCard/RoomStack/RoomView"]
+unique_name_in_owner = true
+disable_3d = true
+canvas_item_default_texture_filter = 0
+size = Vector2i(64, 48)
+render_target_update_mode = 4
+
+[node name="World" type="Node2D" parent="RoomCard/RoomStack/RoomView/RoomViewport"]
+unique_name_in_owner = true
+
+[node name="Room" type="Node2D" parent="RoomCard/RoomStack/RoomView/RoomViewport/World"]
+unique_name_in_owner = true
+script = ExtResource("2")
+
+[node name="Rod" type="Node2D" parent="RoomCard/RoomStack/RoomView/RoomViewport/World"]
+unique_name_in_owner = true
+visible = false
+script = ExtResource("10")
+
+[node name="Pet" parent="RoomCard/RoomStack/RoomView/RoomViewport/World" instance=ExtResource("3")]
+unique_name_in_owner = true
+position = Vector2(16, 8)
+
+[node name="Dim" type="ColorRect" parent="RoomCard/RoomStack/RoomView/RoomViewport/World"]
+unique_name_in_owner = true
+visible = false
+z_index = 5
+offset_right = 64.0
+offset_bottom = 48.0
+mouse_filter = 2
+color = Color(0.169, 0.129, 0.251, 0.45)
+
+[node name="Fx" type="Control" parent="RoomCard/RoomStack"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Needs" type="PanelContainer" parent="RoomCard/RoomStack"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -70.0
+offset_top = 4.0
+offset_right = 70.0
+offset_bottom = 38.0
+grow_horizontal = 2
+theme_type_variation = &"NeedsPill"
+mouse_filter = 2
+
+[node name="Row" type="HBoxContainer" parent="RoomCard/RoomStack/Needs"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 6
+
+[node name="hunger" type="TextureRect" parent="RoomCard/RoomStack/Needs/Row"]
+custom_minimum_size = Vector2(24, 22)
+layout_mode = 2
+pivot_offset = Vector2(12, 11)
+expand_mode = 1
+stretch_mode = 5
+
+[node name="happiness" type="TextureRect" parent="RoomCard/RoomStack/Needs/Row"]
+custom_minimum_size = Vector2(24, 22)
+layout_mode = 2
+pivot_offset = Vector2(12, 11)
+expand_mode = 1
+stretch_mode = 5
+
+[node name="health" type="TextureRect" parent="RoomCard/RoomStack/Needs/Row"]
+custom_minimum_size = Vector2(24, 22)
+layout_mode = 2
+pivot_offset = Vector2(12, 11)
+expand_mode = 1
+stretch_mode = 5
+
+[node name="energy" type="TextureRect" parent="RoomCard/RoomStack/Needs/Row"]
+custom_minimum_size = Vector2(24, 22)
+layout_mode = 2
+pivot_offset = Vector2(12, 11)
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Gold" type="PanelContainer" parent="RoomCard/RoomStack"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 8.0
+offset_top = 200.0
+theme_type_variation = &"GoldPill"
+mouse_filter = 2
+
+[node name="Row" type="HBoxContainer" parent="RoomCard/RoomStack/Gold"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Icon" type="TextureRect" parent="RoomCard/RoomStack/Gold/Row"]
+custom_minimum_size = Vector2(14, 14)
+layout_mode = 2
+size_flags_vertical = 4
+texture = ExtResource("5")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="GoldLabel" type="Label" parent="RoomCard/RoomStack/Gold/Row"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"GoldText"
+text = "120"
+
+[node name="Moon" type="Button" parent="RoomCard/RoomStack"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -54.0
+offset_top = -54.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_type_variation = &"MoonButton"
+icon = ExtResource("6")
+expand_icon = true
+icon_alignment = 1
+
+[node name="Sheet" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 320.0
+offset_right = -16.0
+offset_bottom = -84.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"Sheet"
+
+[node name="Box" type="VBoxContainer" parent="Sheet"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Handle" type="PanelContainer" parent="Sheet/Box"]
+custom_minimum_size = Vector2(40, 5)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"Handle"
+
+[node name="Head" type="HBoxContainer" parent="Sheet/Box"]
+layout_mode = 2
+
+[node name="SheetTitle" type="Label" parent="Sheet/Box/Head"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"Title"
+text = "Feed"
+
+[node name="Cook" type="Button" parent="Sheet/Box/Head"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(88, 34)
+layout_mode = 2
+theme_type_variation = &"SmallWhite"
+text = "Cook"
+icon = ExtResource("9")
+expand_icon = true
+
+[node name="Filters" type="HBoxContainer" parent="Sheet/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="All" type="Button" parent="Sheet/Box/Filters"]
+layout_mode = 2
+theme_type_variation = &"ChipButton"
+toggle_mode = true
+button_pressed = true
+button_group = SubResource("filters")
+text = "All"
+
+[node name="FruitVeg" type="Button" parent="Sheet/Box/Filters"]
+layout_mode = 2
+theme_type_variation = &"ChipButton"
+toggle_mode = true
+button_group = SubResource("filters")
+text = "Fruit & veg"
+
+[node name="Sweets" type="Button" parent="Sheet/Box/Filters"]
+layout_mode = 2
+theme_type_variation = &"ChipButton"
+toggle_mode = true
+button_group = SubResource("filters")
+text = "Sweets"
+
+[node name="Scroll" type="ScrollContainer" parent="Sheet/Box"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Grid" type="GridContainer" parent="Sheet/Box/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+columns = 4
+
+[node name="PickBar" type="PanelContainer" parent="Sheet/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"PickBar"
+
+[node name="Row" type="HBoxContainer" parent="Sheet/Box/PickBar"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="PickIcon" type="TextureRect" parent="Sheet/Box/PickBar/Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+size_flags_vertical = 4
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Info" type="VBoxContainer" parent="Sheet/Box/PickBar/Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 1
+theme_override_constants/separation = 2
+
+[node name="PickName" type="Label" parent="Sheet/Box/PickBar/Row/Info"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Rice ball"
+
+[node name="PickChips" type="HBoxContainer" parent="Sheet/Box/PickBar/Row/Info"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Go" type="Button" parent="Sheet/Box/PickBar/Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(84, 46)
+layout_mode = 2
+size_flags_vertical = 4
+text = "Feed"
+
+[node name="Fishing" type="Control" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("11")
+
+[node name="PondClip" type="Control" parent="Fishing"]
+unique_name_in_owner = true
+clip_contents = true
+layout_mode = 0
+offset_left = 16.0
+offset_top = 300.0
+offset_right = 374.0
+offset_bottom = 436.0
+mouse_filter = 2
+
+[node name="PondFill" type="Panel" parent="Fishing/PondClip"]
+unique_name_in_owner = true
+clip_children = 2
+layout_mode = 0
+offset_right = 358.0
+offset_bottom = 136.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("pond")
+
+[node name="PondView" type="TextureRect" parent="Fishing/PondClip/PondFill"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 0
+
+[node name="PondViewport" type="SubViewport" parent="Fishing/PondClip/PondFill/PondView"]
+unique_name_in_owner = true
+disable_3d = true
+canvas_item_default_texture_filter = 0
+size = Vector2i(96, 36)
+render_target_update_mode = 4
+
+[node name="Pond" type="Node2D" parent="Fishing/PondClip/PondFill/PondView/PondViewport"]
+unique_name_in_owner = true
+script = ExtResource("12")
+
+[node name="CatchBar" type="Control" parent="Fishing/PondClip/PondFill"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = -47.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+script = ExtResource("13")
+
+[node name="Cheer" type="VBoxContainer" parent="Fishing/PondClip/PondFill"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+mouse_filter = 2
+theme_override_constants/separation = 2
+
+[node name="CheerLabel" type="Label" parent="Fishing/PondClip/PondFill/Cheer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.424, 0.757, 0.604, 1)
+theme_override_colors/font_outline_color = Color(0.357, 0.247, 0.431, 1)
+theme_override_constants/outline_size = 8
+theme_override_font_sizes/font_size = 28
+text = "Perfect!"
+horizontal_alignment = 1
+
+[node name="StreakLabel" type="Label" parent="Fishing/PondClip/PondFill/Cheer"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.357, 0.247, 0.431, 1)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 14
+text = "2 in a row!"
+horizontal_alignment = 1
+
+[node name="FishRow" type="HBoxContainer" parent="Fishing"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -72.0
+offset_right = -16.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 12
+
+[node name="FishCancel" type="Button" parent="Fishing/FishRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(88, 0)
+layout_mode = 2
+theme_type_variation = &"LilacButton"
+text = "Cancel"
+
+[node name="FishMain" type="Button" parent="Fishing/FishRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Cast"
+
+[node name="Pop" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -270.0
+offset_top = -500.0
+offset_right = -16.0
+offset_bottom = -84.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_type_variation = &"Pop"
+
+[node name="PopList" type="VBoxContainer" parent="Pop"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Dock" type="HBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -72.0
+offset_right = -16.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 12
+
+[node name="Feed" type="Button" parent="Dock"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Feed"
+icon = ExtResource("7")
+expand_icon = true
+
+[node name="MapButton" type="Button" parent="Dock"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"BlueButton"
+text = "Map"
+icon = ExtResource("8")
+expand_icon = true
+
+[node name="More" type="Button" parent="Dock"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(56, 0)
+layout_mode = 2
+theme_type_variation = &"LilacButton"
+theme_override_font_sizes/font_size = 26
+text = "···"
+
+[node name="Map" parent="." instance=ExtResource("4")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+
+[node name="Toast" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+theme_type_variation = &"Toast"
+mouse_filter = 2
+
+[node name="Text" type="Label" parent="Toast"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 15
+text = "Toast"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Sfx" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true

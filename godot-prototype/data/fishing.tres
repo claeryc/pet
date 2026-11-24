@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="FishingTuning" format=3]
+
+[ext_resource type="Script" path="res://scripts/fishing_tuning.gd" id="1"]
+[ext_resource type="FishKind" path="res://data/fish/shrimp.tres" id="2"]
+[ext_resource type="FishKind" path="res://data/fish/salmon.tres" id="3"]
+[ext_resource type="FishKind" path="res://data/fish/lobster.tres" id="4"]
+
+[resource]
+script = ExtResource("1")
+fish = Array[FishKind]([ExtResource("2"), ExtResource("3"), ExtResource("4")])

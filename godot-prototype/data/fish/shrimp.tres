@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="FishKind" format=3]
+
+[ext_resource type="Script" path="res://scripts/fish_kind.gd" id="1"]
+[ext_resource type="CareOption" path="res://data/care/shrimp.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = "shrimp"
+display_name = "Shrimp"
+food = ExtResource("2")
+odds = 55
+shadow = 0
+rare = false
+hold_line = "A shrimp! Hold Pull to keep the dot on the green!"
+shift_every = 1.0
+shift_by = 1.0
+glide = 1.0
+drain = 1.0
+tug = 0.0

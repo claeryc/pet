@@ -1,0 +1,49 @@
+[gd_scene format=3 uid="uid://cpetscene0001"]
+
+[ext_resource type="Script" path="res://scripts/pet.gd" id="1"]
+[ext_resource type="PetLook" path="res://pets/sprig.tres" id="2"]
+[ext_resource type="Script" path="res://scripts/zzz.gd" id="3"]
+[ext_resource type="Texture2D" path="res://art/icons/happiness.png" id="4"]
+
+[sub_resource type="Gradient" id="fade"]
+offsets = PackedFloat32Array(0, 0.7, 1)
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0)
+
+[node name="Pet" type="Node2D"]
+script = ExtResource("1")
+look = ExtResource("2")
+
+[node name="Body" type="AnimatedSprite2D" parent="."]
+centered = false
+
+[node name="Face" type="AnimatedSprite2D" parent="."]
+centered = false
+
+[node name="Food" type="Sprite2D" parent="."]
+visible = false
+position = Vector2(29, 26)
+offset = Vector2(0, -6)
+
+[node name="Hearts" type="CPUParticles2D" parent="."]
+position = Vector2(16, 8)
+emitting = false
+amount = 4
+lifetime = 1.2
+one_shot = true
+explosiveness = 0.6
+texture = ExtResource("4")
+direction = Vector2(0, -1)
+spread = 70.0
+gravity = Vector2(0, -6)
+initial_velocity_min = 8.0
+initial_velocity_max = 14.0
+color_ramp = SubResource("fade")
+
+[node name="Zzz" type="Node2D" parent="."]
+visible = false
+z_index = 10
+position = Vector2(16, 12)
+script = ExtResource("3")
+
+[node name="IdleTimer" type="Timer" parent="."]
+one_shot = true

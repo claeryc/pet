@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="CareOption" format=3]
+
+[ext_resource type="Script" path="res://scripts/care_option.gd" id="1"]
+[ext_resource type="Texture2D" path="res://art/icons/riceBall.png" id="2"]
+[ext_resource type="AudioStream" path="res://audio/munch.mp3" id="3"]
+
+[resource]
+script = ExtResource("1")
+id = "riceBall"
+display_name = "Rice ball"
+kind = 0
+tags = PackedStringArray("grain")
+icon = ExtResource("2")
+hunger = 15
+happiness = 0
+health = 0
+energy = 0
+starting_count = 3
+refills_daily = true
+sound = ExtResource("3")
